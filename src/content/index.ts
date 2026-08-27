@@ -8,6 +8,8 @@ import { DomCaptionSource } from '../adapters/dom-captions';
 import { ensureDictionary, lookupWord } from '../dict/client';
 import { DEFAULT_BOTTOM, bottomOffset, namedMatches, occupiedBands } from './coexist';
 import { closePopup, showPopup } from './popup';
+import { Sidebar } from './sidebar';
+import { Transcript } from './transcript';
 import { clearNotice, showNotice } from './notice';
 import { Overlay } from './renderer';
 
@@ -43,6 +45,9 @@ let segmented = new Map<number, Token[]>();
 let active = -1;
 let raf = 0;
 let domSource: DomCaptionSource | null = null;
+let sidebar: Sidebar | null = null;
+const transcript = new Transcript();
+let activeVideo: HTMLVideoElement | null = null;
 
 function pickAdapter(): SubtitleSource | null {
   return ADAPTERS.find((a) => a.matches(location.href)) ?? null;
@@ -142,6 +147,7 @@ function tick(video: HTMLVideoElement, seg: Segmenter): void {
     } else {
       paint(i);
     }
+    sidebar?.setActive(transcript.activeAt(video.currentTime));
   }
   raf = requestAnimationFrame(() => tick(video, seg));
 }
@@ -267,6 +273,7 @@ async function run(): Promise<boolean> {
 
   segmented = new Map();
   active = -1;
+  transcript.setFull(cues);
 
   if (getComputedStyle(mount).position === 'static') mount.style.position = 'relative';
   adapter.hideNative();
@@ -276,6 +283,7 @@ async function run(): Promise<boolean> {
   applyAnchor(overlay, mount, adapter);
   overlay.onToken((tok, el) => void openLookup(mount, el, tok));
 
+  mountSidebar(mount, video);
   cancelAnimationFrame(raf);
   tick(video, seg);
   clearNotice();
@@ -308,6 +316,7 @@ function startDomFallback(mount: HTMLElement, seg: Segmenter, adapter: SubtitleS
   const started = domSource.start((text) => {
     if (!text) return overlay?.clear();
     currentLine = text;
+    transcript.observe(text, activeVideo?.currentTime ?? 0);
     const result = (segmenter ?? seg).segment(text);
     if (Array.isArray(result)) overlay?.render(result);
     else void result.then((toks) => overlay?.render(toks));
@@ -317,6 +326,8 @@ function startDomFallback(mount: HTMLElement, seg: Segmenter, adapter: SubtitleS
 
   // Not `libregaku-active`: that hides the container with display:none, and we
   // are reading from it.
+  const v = pickAdapter()?.video();
+  if (v) mountSidebar(mount, v);
   document.documentElement.classList.add('libregaku-reading');
   clearNotice();
   stalledOn = null;
@@ -357,8 +368,31 @@ async function openLookup(mount: HTMLElement, el: HTMLElement, token: Token): Pr
   }
 }
 
+function mountSidebar(mount: HTMLElement, video: HTMLVideoElement): void {
+  activeVideo = video;
+  if (sidebar) return;
+  sidebar = new Sidebar(mount, {
+    transcript,
+    segmenter: () => segmenter,
+    seek: (t) => {
+      if (activeVideo) activeVideo.currentTime = t;
+    },
+    currentTime: () => activeVideo?.currentTime ?? 0,
+    onWordClick: (token, el, sentence) => {
+      void lookupWord(token.lemma, token.surface).then((entries) => {
+        const host = el.getRootNode() as ShadowRoot;
+        showPopup((host.host as HTMLElement).parentElement ?? mount, el, entries, { token, sentence });
+      });
+    },
+  });
+  log('sidebar ready — press S to open it');
+}
+
 function reset(): void {
   closePopup();
+  sidebar?.destroy();
+  sidebar = null;
+  transcript.clear();
   domSource?.stop();
   domSource = null;
   cancelAnimationFrame(raf);
@@ -399,7 +433,20 @@ if (/netflix\.com/.test(location.hostname)) {
 }
 
 // popup-dismiss
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePopup(); }, true);
+document.addEventListener(
+  'keydown',
+  (e) => {
+    if (e.key === 'Escape') closePopup();
+    if (e.key.toLowerCase() !== 's' || e.metaKey || e.ctrlKey || e.altKey) return;
+    const t = e.target as HTMLElement | null;
+    if (t && (t.isContentEditable || /^(input|textarea|select)$/i.test(t.tagName))) return;
+    if (!sidebar) return;
+    e.preventDefault();
+    e.stopPropagation();
+    sidebar.toggle();
+  },
+  true,
+);
 document.addEventListener(
   'click',
   (e) => {
