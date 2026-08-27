@@ -34,7 +34,7 @@ const STYLE = `
     clip-path: none !important;
   }
   .wrap {
-    position: absolute; left: 0; right: 0; bottom: var(--bottom, 12%);
+    position: absolute; left: 0; right: 0;
     display: flex; flex-direction: column; align-items: center; gap: 8px;
     font-family: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic", sans-serif;
     text-align: center; pointer-events: none;
@@ -102,6 +102,7 @@ export class Overlay {
     this.#secondary.className = 'secondary hidden';
 
     wrap.append(this.#primary, this.#secondary);
+    wrap.style.bottom = '12%';   // default; setAnchor overrides
     this.#root.append(style, wrap);
     mount.appendChild(this.#host);
 
@@ -115,6 +116,17 @@ export class Overlay {
 
   onToken(cb: (t: Token, el: HTMLElement) => void): void {
     this.#onToken = cb;
+  }
+
+  /**
+   * Anchor the line to the top or bottom of the player.
+   * `offset` is a percentage of player height from that edge.
+   */
+  setAnchor(edge: 'top' | 'bottom', offset = 12): void {
+    const wrap = this.#primary.parentElement;
+    if (!wrap) return;
+    wrap.style.top = edge === 'top' ? `${offset}%` : '';
+    wrap.style.bottom = edge === 'bottom' ? `${offset}%` : '';
   }
 
   /** always | unknown | never */

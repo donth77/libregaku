@@ -5,6 +5,7 @@ import { IntlSegmenter } from '../morphology/intl';
 import { LinderaSegmenter } from '../morphology/lindera';
 import type { Segmenter, Token } from '../morphology/types';
 import { DomCaptionSource } from '../adapters/dom-captions';
+import { detect, preferredAnchor } from './coexist';
 import { clearNotice, showNotice } from './notice';
 import { Overlay } from './renderer';
 
@@ -263,6 +264,7 @@ async function run(): Promise<boolean> {
 
   overlay?.destroy();
   overlay = new Overlay(mount);
+  applyAnchor(overlay);
   overlay.onToken((tok) => {
     // M2 opens the dictionary popup here.
     console.log('libregaku token:', tok.surface, seg.hasLemma ? tok.lemma : '(no lemma at tier 0)');
@@ -292,6 +294,7 @@ function startDomFallback(mount: HTMLElement, seg: Segmenter, adapter: SubtitleS
 
   overlay?.destroy();
   overlay = new Overlay(mount);
+  applyAnchor(overlay);
   overlay.onToken((tok) => {
     console.log('libregaku token:', tok.surface, seg.hasLemma ? tok.lemma : '(no lemma at tier 0)');
   });
@@ -314,6 +317,22 @@ function startDomFallback(mount: HTMLElement, seg: Segmenter, adapter: SubtitleS
   stalledOn = null;
   log('reading captions from the player DOM (current line only — the sidebar will need a fetched track)');
   return true;
+}
+
+/**
+ * Position the line, getting out of the way of any bilingual extension that is
+ * already supplying the native-language track.
+ */
+function applyAnchor(o: Overlay): void {
+  const found = detect();
+  const edge = preferredAnchor(found);
+  o.setAnchor(edge, edge === 'top' ? 8 : 12);
+  if (found.length) {
+    log(
+      `sharing the player with ${found.map((f) => f.name).join(', ')} — ` +
+        `anchoring our line to the ${edge}`,
+    );
+  }
 }
 
 function reset(): void {

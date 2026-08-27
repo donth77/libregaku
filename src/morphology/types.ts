@@ -18,6 +18,8 @@ export interface Token {
   pos?: string;
   /** True when the token is a content word worth looking up. */
   content?: boolean;
+  /** Morphemes this token was merged from — 来た is ["来", "た"]. */
+  parts?: string[];
 }
 
 export interface Segmenter {

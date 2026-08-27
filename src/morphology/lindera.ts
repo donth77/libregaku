@@ -1,4 +1,5 @@
 import { furigana } from './furigana';
+import { mergeMorphemes, type Morpheme } from './merge';
 import type { Segmenter, Token } from './types';
 
 /**
@@ -9,15 +10,7 @@ import type { Segmenter, Token } from './types';
  * cached per cue text — the same line is never analysed twice.
  */
 
-interface Analysed {
-  surface: string;
-  lemma?: string;
-  reading?: string;
-  pos?: string;
-}
-
-/** POS tags whose tokens are grammar, not vocabulary worth looking up. */
-const FUNCTION_POS = new Set(['助詞', '助動詞', '記号', 'フィラー']);
+type Analysed = Morpheme;
 
 export class LinderaSegmenter implements Segmenter {
   readonly tier = 2 as const;
@@ -63,28 +56,32 @@ export class LinderaSegmenter implements Segmenter {
 }
 
 /**
+ * Merge morphemes into words, then locate each in the original text.
+ *
  * Lindera reports byte offsets; the DOM needs UTF-16 ones. Rather than convert,
- * walk the original text and locate each surface in order — which also survives
- * the analyser dropping characters it considers insignificant.
+ * walk the text and find each surface in order — which also survives the
+ * analyser normalising a character away.
  */
 export function toTokens(text: string, analysed: Analysed[]): Token[] {
+  const merged = mergeMorphemes(analysed);
   const out: Token[] = [];
   let cursor = 0;
 
-  for (const a of analysed) {
-    if (!a.surface) continue;
-    const at = text.indexOf(a.surface, cursor);
-    if (at < 0) continue;   // analyser normalised something; skip rather than misalign
-    cursor = at + a.surface.length;
+  for (const t of merged) {
+    if (!t.surface) continue;
+    const at = text.indexOf(t.surface, cursor);
+    if (at < 0) continue;   // normalised; skip rather than misalign the rest
+    cursor = at + t.surface.length;
 
     out.push({
-      surface: a.surface,
+      surface: t.surface,
       start: at,
       end: cursor,
-      lemma: a.lemma,
-      reading: a.reading,
-      pos: a.pos,
-      content: a.pos ? !FUNCTION_POS.has(a.pos) : true,
+      lemma: t.lemma,
+      reading: t.reading,
+      pos: t.pos,
+      content: t.content,
+      parts: t.parts.length > 1 ? t.parts : undefined,
     });
   }
   return out;

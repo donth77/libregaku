@@ -85,6 +85,7 @@ async function load(name: string): Promise<void> {
 }
 
 /** IPADIC feature columns. */
+const POS1 = 1;
 const BASE_FORM = 6;
 const READING = 7;
 
@@ -94,7 +95,7 @@ interface RawToken {
   isUnknown?: boolean;
 }
 
-function analyse(text: string): Array<{ surface: string; lemma?: string; reading?: string; pos?: string }> {
+function analyse(text: string): Array<{ surface: string; lemma?: string; reading?: string; pos?: string; pos1?: string }> {
   if (!tokenizer) return [];
   return (tokenizer.tokenize(text) as RawToken[]).map((t) => {
     const d = t.details ?? [];
@@ -102,11 +103,13 @@ function analyse(text: string): Array<{ surface: string; lemma?: string; reading
     const usable = d.length > READING;
     const base = usable ? d[BASE_FORM] : undefined;
     const reading = usable ? d[READING] : undefined;
+    const pos1 = d[POS1];
     return {
       surface: t.surface,
       lemma: base && base !== '*' ? base : undefined,
       reading: reading && reading !== '*' ? reading : undefined,
       pos: d[0] && d[0] !== '*' ? d[0] : undefined,
+      pos1: pos1 && pos1 !== '*' ? pos1 : undefined,
     };
   });
 }
