@@ -13,7 +13,7 @@ import type { Token } from '../morphology/types';
  * Pre-alpha: outline the text and log its geometry, so "nothing rendered" is
  * never ambiguous. Set false once the overlay is trusted on a given site.
  */
-export const DEBUG_BOX = true;
+export const DEBUG_BOX = false;
 
 const STYLE = `
   /* Inner-tree !important beats the outer document, so these cannot be
@@ -37,12 +37,12 @@ const STYLE = `
     display: flex; flex-direction: column; align-items: center; gap: 8px;
     font-family: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic", sans-serif;
     text-align: center; pointer-events: none;
-    min-height: 2em;
   }
   .primary, .secondary {
     max-width: 88%; padding: 4px 12px; border-radius: 5px;
     background: rgba(0,0,0,.72); pointer-events: auto;
   }
+  .primary:empty, .secondary:empty { display: none; }
   .primary {
     font-size: var(--size, 2.1vw); line-height: 1.85; color: #F2F5FC;
     display: flex; flex-wrap: wrap; justify-content: center; gap: 0 2px;

@@ -35,7 +35,37 @@ export async function ensureOffscreen(): Promise<void> {
   return creating;
 }
 
-chrome.runtime.onMessage.addListener((msg: { type?: string }, _sender, sendResponse) => {
+/**
+ * Inject a page-world script on behalf of a content script.
+ *
+ * Content scripts declared with `world: "MAIN"` are subject to the *page's*
+ * CSP, and Netflix's blocks them outright — the hook simply never runs. An
+ * injection initiated by the extension is not subject to page CSP, so routing
+ * it through here is the only way onto pages that lock the main world down.
+ */
+async function injectMainWorld(tabId: number, file: string): Promise<void> {
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    files: [file],
+    world: 'MAIN',
+    injectImmediately: true,
+  });
+}
+
+chrome.runtime.onMessage.addListener((msg: { type?: string; file?: string }, sender, sendResponse) => {
+  if (msg?.type === 'inject-main-world') {
+    const tabId = sender.tab?.id;
+    if (tabId == null || !msg.file) {
+      sendResponse({ ok: false, error: 'no tab or file' });
+      return true;
+    }
+    injectMainWorld(tabId, msg.file).then(
+      () => sendResponse({ ok: true }),
+      (e: unknown) => sendResponse({ ok: false, error: String(e) }),
+    );
+    return true;
+  }
+
   if (msg?.type === 'ensure-offscreen') {
     ensureOffscreen().then(
       () => sendResponse({ ok: true }),

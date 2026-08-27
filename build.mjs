@@ -14,6 +14,7 @@ const targets = [
   { entry: 'src/background.ts',      out: 'background',      format: 'iife' },
   { entry: 'src/content/index.ts',   out: 'content',         format: 'iife' },
   { entry: 'src/content/inject.ts',  out: 'inject',          format: 'iife' },
+  { entry: 'src/content/inject-netflix.ts', out: 'inject-netflix', format: 'iife' },
   { entry: 'src/offscreen.ts',       out: 'offscreen',       format: 'esm'  },
 ];
 

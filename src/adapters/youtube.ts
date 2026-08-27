@@ -25,6 +25,11 @@ interface Json3 {
 
 export class YouTubeAdapter implements SubtitleSource {
   readonly id = 'youtube';
+  readonly domCaptions = {
+    container: '.ytp-caption-window-container',
+    segment: '.ytp-caption-segment',
+  };
+  readonly playerRoot = ['#movie_player'];
 
   #tracks: RawTrack[] = [];
   #liveUrls = new Map<string, string>();

@@ -12,31 +12,44 @@ import type { Cue } from './types';
  * never the whole transcript. The sidebar will still need a fetched track.
  */
 
-const CONTAINER = '.ytp-caption-window-container';
-const SEGMENT = '.ytp-caption-segment';
+export interface DomCaptionSelectors {
+  /** The element the site renders captions into. */
+  container: string;
+  /** Individual text runs within it. */
+  segment: string;
+  /** Join runs with this — Japanese needs no separator, English does. */
+  join?: string;
+}
 
 export class DomCaptionSource {
   #observer: MutationObserver | null = null;
   #last = '';
   #onCue: ((text: string) => void) | null = null;
+  readonly #sel: DomCaptionSelectors;
 
-  static container(): HTMLElement | null {
-    return document.querySelector<HTMLElement>(CONTAINER);
+  constructor(selectors: DomCaptionSelectors) {
+    this.#sel = selectors;
+  }
+
+  container(): HTMLElement | null {
+    return document.querySelector<HTMLElement>(this.#sel.container);
   }
 
   /** Current caption text, or '' when nothing is showing. */
-  static read(): string {
-    const segs = document.querySelectorAll<HTMLElement>(SEGMENT);
-    if (!segs.length) return '';
-    return Array.from(segs)
+  read(): string {
+    const root = this.container();
+    if (!root) return '';
+    const segs = root.querySelectorAll<HTMLElement>(this.#sel.segment);
+    const parts = segs.length ? Array.from(segs) : [root];
+    return parts
       .map((s) => s.textContent ?? '')
-      .join('')
+      .join(this.#sel.join ?? '')
       .replace(/\s+/g, ' ')
       .trim();
   }
 
   start(onCue: (text: string) => void): boolean {
-    const root = DomCaptionSource.container();
+    const root = this.container();
     if (!root) return false;
 
     this.#onCue = onCue;
@@ -47,7 +60,7 @@ export class DomCaptionSource {
   }
 
   #emit(): void {
-    const text = DomCaptionSource.read();
+    const text = this.read();
     if (text === this.#last) return;
     this.#last = text;
     this.#onCue?.(text);

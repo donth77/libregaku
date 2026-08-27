@@ -1,8 +1,10 @@
+import { NetflixAdapter } from '../adapters/netflix';
 import { YouTubeAdapter } from '../adapters/youtube';
 import type { Cue, SubtitleSource } from '../adapters/types';
 import { IntlSegmenter } from '../morphology/intl';
 import type { Segmenter, Token } from '../morphology/types';
 import { DomCaptionSource } from '../adapters/dom-captions';
+import { clearNotice, showNotice } from './notice';
 import { Overlay } from './renderer';
 
 /**
@@ -18,7 +20,18 @@ const TARGET_LANG = 'ja'; // M-later: from the active profile
 /** Loud by default while the adapters are young. */
 const log = (...a: unknown[]) => console.log('%c[libregaku]', 'color:#8AA2E8', ...a);
 
-const ADAPTERS: SubtitleSource[] = [new YouTubeAdapter()];
+/** Log a waiting-state once, not once per retry. */
+let lastQuiet = '';
+/** The assumption behind the current wait, reported if we give up. */
+let stalledOn: { id: string; detail?: string } | null = null;
+const quiet = (msg: string, id?: string, detail?: string) => {
+  if (id) stalledOn = { id, detail };
+  if (msg === lastQuiet) return;
+  lastQuiet = msg;
+  log(msg);
+};
+
+const ADAPTERS: SubtitleSource[] = [new YouTubeAdapter(), new NetflixAdapter()];
 
 let overlay: Overlay | null = null;
 let cues: Cue[] = [];
@@ -75,38 +88,94 @@ function tick(video: HTMLVideoElement, seg: Segmenter): void {
 }
 
 let starting = false;
+let rendering = false;
+let retries = 0;
+let retryTimer = 0;
 
+const MAX_RETRIES = 60;   // ~30s at 500ms
+const RETRY_MS = 500;
+
+/**
+ * Players mount asynchronously — Netflix in particular builds its <video> well
+ * after document_idle. Checking once and giving up is how M1 first failed, so
+ * anything that is merely "not ready yet" schedules another attempt.
+ */
 async function start(): Promise<void> {
-  if (starting) return;
+  if (starting || rendering) return;
   starting = true;
   try {
-    await run();
+    rendering = await run();
+    if (rendering) {
+      retries = 0;
+      return;
+    }
   } finally {
     starting = false;
   }
+
+  if (retries++ >= MAX_RETRIES) {
+    if (retries === MAX_RETRIES + 1) {
+      log('gave up waiting after 30s — reload the tab to retry');
+      // Say so on screen. Silence is the failure mode that costs months.
+      const adapter = pickAdapter();
+      const root = adapter
+        ? adapter.playerRoot.reduce<HTMLElement | null>(
+            (f, sel) => f ?? document.querySelector<HTMLElement>(sel),
+            null,
+          )
+        : null;
+      if (root && stalledOn) showNotice(root, stalledOn.id, stalledOn.detail);
+    }
+    return;
+  }
+  clearTimeout(retryTimer);
+  retryTimer = window.setTimeout(() => void start(), RETRY_MS);
 }
 
-async function run(): Promise<void> {
+/** @returns true once cues are on screen; false means "not ready, try again". */
+async function run(): Promise<boolean> {
   const adapter = pickAdapter();
-  if (!adapter) return log('no adapter for', location.href);
+  if (!adapter) { quiet('no adapter for ' + location.href); return false; }
 
   const seg = makeSegmenter();
-  if (!seg) return;
+  if (!seg) return true;   // unrecoverable; retrying will not help
 
   const video = adapter.video();
-  if (!video) return log('waiting: video element not in the DOM yet');
+  if (!video) {
+    quiet('waiting for the player to mount its video element', 'no-subtitles-on',
+          'The player never finished loading.');
+    return false;
+  }
 
-  // #movie_player is the full-size, positioned player root. The video's
-  // immediate parent (.html5-video-container) is sized to the video itself and
-  // can clip an overlay.
+  // Adapters name their own player root. The video's immediate parent is the
+  // wrong choice on both sites: it clips on YouTube, and on Netflix it sits
+  // under the control layer, which then swallows hover.
   const mount =
-    document.querySelector<HTMLElement>('#movie_player') ??
-    video.parentElement;
-  if (!mount) return log('waiting: no player container to mount into');
+    adapter.playerRoot.reduce<HTMLElement | null>(
+      (found, sel) => found ?? document.querySelector<HTMLElement>(sel),
+      null,
+    ) ?? video.parentElement;
+  if (!mount) { quiet('waiting for a player container to mount into'); return false; }
+
   log('mounting into', mount.id || mount.className || mount.tagName);
 
   const tracks = await adapter.listTracks();
-  if (!tracks.length) return log('waiting: no caption tracks yet');
+  if (!tracks.length) {
+    // No manifest reached us — on Netflix the page CSP blocks the MAIN-world
+    // hook entirely. That only costs us the *whole* transcript; if the player
+    // is rendering subtitles we can still read them, so never sit and wait
+    // when there is a caption container right there.
+    if (new DomCaptionSource(adapter.domCaptions).container()) {
+      log('no track list (the page may block our manifest hook) — reading rendered captions instead');
+      return startDomFallback(mount, seg, adapter);
+    }
+    quiet(
+      'waiting for a subtitle track list, or for subtitles to be switched on',
+      adapter.id === 'netflix' ? 'nf.timedtexttracks' : 'yt.player-response',
+      'Subtitles may simply be switched off in the player.',
+    );
+    return false;
+  }
 
   log(
     'tracks:',
@@ -116,10 +185,10 @@ async function run(): Promise<void> {
   // M0: first track matching the target language; a picker arrives with the UI.
   const track = tracks.find((t) => t.lang.startsWith(TARGET_LANG));
   if (!track) {
-    return log(
-      `no "${TARGET_LANG}" track on this video — available:`,
-      tracks.map((t) => t.lang).join(', ') || '(none)',
-    );
+    const have = tracks.map((t) => t.lang).join(', ');
+    log(`no "${TARGET_LANG}" track here — available:`, have);
+    showNotice(mount, 'no-target-track', `Available here: ${have || 'none'}`);
+    return true;   // the list is known and lacks our language; retrying is pointless
   }
   if (track.generated) log('note: this track is auto-generated; segmentation will look rough');
 
@@ -127,11 +196,11 @@ async function run(): Promise<void> {
     cues = await adapter.loadTrack(track.id);
   } catch (err) {
     log('could not fetch the track:', err);
-    return startDomFallback(mount, seg);
+    return startDomFallback(mount, seg, adapter);
   }
   if (!cues.length) {
     log('track loaded but contained no cues');
-    return startDomFallback(mount, seg);
+    return startDomFallback(mount, seg, adapter);
   }
 
   log(`rendering ${cues.length} cues · segmenter tier ${seg.tier}` +
@@ -152,15 +221,24 @@ async function run(): Promise<void> {
 
   cancelAnimationFrame(raf);
   tick(video, seg);
+  clearNotice();
+  stalledOn = null;
+  return true;
 }
 
 /**
  * Tokenize whatever YouTube is currently displaying. Only the current line, but
  * it works wherever captions are visible, which the fetched path does not.
  */
-function startDomFallback(mount: HTMLElement, seg: Segmenter): void {
-  if (!DomCaptionSource.container()) {
-    return log('fallback unavailable: no caption container — turn captions on in the player');
+function startDomFallback(mount: HTMLElement, seg: Segmenter, adapter: SubtitleSource): boolean {
+  const source = new DomCaptionSource(adapter.domCaptions);
+  if (!source.container()) {
+    quiet(
+      'waiting for a caption container — are subtitles switched on?',
+      adapter.id === 'netflix' ? 'nf.caption-dom' : 'yt.caption-dom',
+      `Looked for ${adapter.domCaptions.container}`,
+    );
+    return false;
   }
 
   overlay?.destroy();
@@ -170,18 +248,21 @@ function startDomFallback(mount: HTMLElement, seg: Segmenter): void {
   });
 
   domSource?.stop();
-  domSource = new DomCaptionSource();
+  domSource = source;
   const started = domSource.start((text) => {
     if (!text) return overlay?.clear();
     overlay?.render(seg.segment(text) as Token[]);
   });
 
-  if (!started) return log('fallback could not observe the caption container');
+  if (!started) { quiet('could not observe the caption container'); return false; }
 
   // Not `libregaku-active`: that hides the container with display:none, and we
   // are reading from it.
   document.documentElement.classList.add('libregaku-reading');
+  clearNotice();
+  stalledOn = null;
   log('reading captions from the player DOM (current line only — the sidebar will need a fetched track)');
+  return true;
 }
 
 function reset(): void {
@@ -198,10 +279,30 @@ function reset(): void {
 for (const a of ADAPTERS) {
   a.onNavigate(() => {
     reset();
+    rendering = false;
+    retries = 0;
+    lastQuiet = '';
+    stalledOn = null;
+    clearNotice();
     setTimeout(() => void start(), 600);
   });
   // The real trigger: the track list arrives after we first ran.
   a.onTracks(() => void start());
+}
+
+/**
+ * Netflix blocks manifest-declared MAIN-world scripts via its CSP, so ask the
+ * service worker to inject the hook instead — extension-initiated injection is
+ * not subject to the page's policy. Harmless if the declared script already ran.
+ */
+if (/netflix\.com/.test(location.hostname)) {
+  chrome.runtime
+    .sendMessage({ type: 'inject-main-world', file: 'inject-netflix.js' })
+    .then((r: { ok?: boolean; error?: string } | undefined) => {
+      log(r?.ok ? 'injected the page hook via the service worker' : `page hook injection failed: ${r?.error}`);
+      void start();
+    })
+    .catch((e: unknown) => log('page hook injection failed:', e));
 }
 
 log('content script loaded on', location.href);

@@ -23,6 +23,14 @@ export interface TrackInfo {
 
 export interface SubtitleSource {
   readonly id: string;
+  /** Where this site renders captions, for the DOM-reading fallback. */
+  readonly domCaptions: { container: string; segment: string; join?: string };
+  /**
+   * Candidate mount points, outermost-first. Must be at or above the site's own
+   * control layer in the tree, or that layer paints over the overlay and eats
+   * pointer events regardless of z-index.
+   */
+  readonly playerRoot: string[];
   /** Whether this adapter handles the current page. */
   matches(url: string): boolean;
   /** The video element to render over. */

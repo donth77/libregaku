@@ -228,3 +228,5 @@ window.addEventListener('yt-navigate-finish', () => {
     if (tryPublish('navigate') || ++n > 40) clearInterval(again);
   }, 250);
 });
+
+export {};
