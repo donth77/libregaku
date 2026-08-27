@@ -1,6 +1,7 @@
 import init, { TokenizerBuilder, loadDictionaryFromBytes, type Tokenizer } from 'lindera-wasm';
 import { downloadDictionary, hasDictionary, loadDictionaryFiles } from 'lindera-wasm/opfs';
 import { jishoLookup } from './dict/jisho';
+import { jotobaLookup } from './dict/jotoba';
 import { build as buildDict, isPopulated, lookup } from './dict/store';
 
 /**
@@ -189,11 +190,19 @@ chrome.runtime.onMessage.addListener((msg: { target?: string; type?: string; tex
       // While the local copy is still downloading — or if it never arrives —
       // Jisho serves the same JMdict data, so a word is never unlookupable
       // just because indexing has not finished.
+      // Jotoba first: its API is documented and permitted, where Jisho's is
+      // unofficial. Both serve JMdict, so the data is the same either way.
       const remote = (): void => {
-        void jishoLookup(key).then(
-          (entries) => respond({ ok: true, entries, source: 'jisho' }),
-          (e: unknown) => respond({ ok: false, error: String(e) }),
-        );
+        void jotobaLookup(key)
+          .then((entries) => (entries.length ? entries : jishoLookup(key)))
+          .then(
+            (entries) => respond({ ok: true, entries, source: 'remote' }),
+            () =>
+              void jishoLookup(key).then(
+                (entries) => respond({ ok: true, entries, source: 'remote' }),
+                (e: unknown) => respond({ ok: false, error: String(e) }),
+              ),
+          );
       };
 
       if (!dict.ready) {
