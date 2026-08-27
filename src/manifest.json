@@ -18,7 +18,8 @@
     "https://*.nflxvideo.net/*",
     "https://*.oca.nflxvideo.net/*",
     "https://github.com/*",
-    "https://*.githubusercontent.com/*"
+    "https://*.githubusercontent.com/*",
+    "http://127.0.0.1/*"
   ],
   "background": {
     "service_worker": "background.js"

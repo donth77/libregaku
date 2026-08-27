@@ -51,6 +51,8 @@ export interface Settings {
   ruby: 'unknown' | 'always' | 'never';
   /** Preview definitions on hover in the transcript panel. */
   sidebarHover: boolean;
+  /** Deck new cards go to, and the deck read for word status. */
+  deck: string;
 }
 
 export const DEFAULTS: Settings = {
@@ -62,6 +64,7 @@ export const DEFAULTS: Settings = {
   hoverPause: true,
   ruby: 'unknown',
   sidebarHover: true,
+  deck: '',
 };
 
 const KEY = 'libregaku.settings';

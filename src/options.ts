@@ -1,3 +1,4 @@
+import { browseOurCards, countOurCards, deckNames, ensureModel, isAvailable } from './anki/client';
 import {
   DEFAULTS,
   NATIVE_LANGUAGES,
@@ -70,10 +71,73 @@ async function main(): Promise<void> {
     void setSetting('configured', true);
   });
 
+  void wireAnki(s);
+
   bind('interaction', 'select');
   bind('hoverPause', 'check');
   bind('sidebarHover', 'check');
   bind('ruby', 'select');
+}
+
+/**
+ * Anki is optional and frequently absent — it is a desktop app that may simply
+ * not be open. Every control here degrades to a plain statement of fact rather
+ * than an error, because "Anki is closed" is a normal condition.
+ */
+async function wireAnki(s: Settings): Promise<void> {
+  const status = document.getElementById('ankiStatus') as HTMLElement;
+  const deck = document.getElementById('deck') as HTMLSelectElement;
+  const count = document.getElementById('cardCount') as HTMLElement;
+  const browse = document.getElementById('browse') as HTMLButtonElement;
+  const check = document.getElementById('ankiCheck') as HTMLButtonElement;
+
+  const refresh = async (): Promise<void> => {
+    status.textContent = 'Checking…';
+    status.className = '';
+    deck.disabled = true;
+    browse.disabled = true;
+
+    if (!(await isAvailable())) {
+      status.textContent = 'Not reachable — open Anki and install the AnkiConnect add-on.';
+      status.className = 'bad';
+      count.textContent = '—';
+      return;
+    }
+
+    try {
+      const created = await ensureModel();
+      const decks = await deckNames();
+
+      deck.replaceChildren();
+      for (const d of decks) {
+        const o = document.createElement('option');
+        o.value = d;
+        o.textContent = d;
+        deck.appendChild(o);
+      }
+      deck.value = decks.includes(s.deck) ? s.deck : (decks[0] ?? '');
+      deck.disabled = false;
+      if (deck.value && deck.value !== s.deck) void setSetting('deck', deck.value);
+
+      status.textContent =
+        created === 'created'
+          ? 'Connected. Installed the Libregaku note type.'
+          : 'Connected.';
+      status.className = 'ok';
+
+      const n = await countOurCards();
+      count.textContent = n ? `${n} card${n === 1 ? '' : 's'}` : 'None yet';
+      browse.disabled = n === 0;
+    } catch (e) {
+      status.textContent = String(e instanceof Error ? e.message : e);
+      status.className = 'bad';
+    }
+  };
+
+  deck.addEventListener('change', () => void setSetting('deck', deck.value));
+  browse.addEventListener('click', () => void browseOurCards());
+  check.addEventListener('click', () => void refresh());
+  await refresh();
 }
 
 void main();
