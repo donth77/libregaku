@@ -12,6 +12,7 @@
   "host_permissions": [
     "https://*.youtube.com/*",
     "https://*.netflix.com/*",
+    "https://assets.languagepod101.com/*",
     "https://*.nflxvideo.net/*",
     "https://*.oca.nflxvideo.net/*",
     "https://github.com/*",

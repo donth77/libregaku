@@ -1,6 +1,8 @@
-import type { Entry } from '../dict/jmdict';
+import { pronounce } from '../audio/pronounce';
+import type { LookupResult } from '../dict/client';
 import { readablePos } from '../dict/pos';
 import type { Token } from '../morphology/types';
+import { icon } from './icons';
 
 /**
  * The lookup card.
@@ -36,10 +38,16 @@ const STYLE = `
   .badge { padding: 2px 7px; border-radius: 4px; background: #16281F; color: #63AF97; letter-spacing: .05em; }
   .tools { display: flex; gap: 5px; padding: 10px 14px; border-bottom: 1px solid #212939; }
   .tb {
-    width: 27px; height: 27px; border-radius: 50%;
+    width: 28px; height: 28px; border-radius: 50%;
     border: 1px solid #2A3348; background: #1B2234; color: #B4BDD4;
-    cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; padding: 0;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0;
   }
+  .tb svg { display: block; }
+  .tb.busy { color: #8AA2E8; }
+  .tb.busy svg { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .tb.busy svg { animation: none; } }
+  .loading { padding: 14px; color: #D9A64A; font-size: 12px; }
   .tb:hover { border-color: #8AA2E8; color: #E8ECF6; }
   .tb:focus-visible { outline: 2px solid #8AA2E8; outline-offset: 2px; }
   ol { margin: 0; padding: 10px 14px 10px 30px; }
@@ -82,9 +90,10 @@ interface Context {
 export function showPopup(
   mount: HTMLElement,
   anchor: HTMLElement,
-  entries: Entry[],
+  result: LookupResult,
   ctx: Context,
 ): void {
+  const entries = result.state === 'ok' ? result.entries : [];
   closePopup();
 
   host = document.createElement('div');
@@ -149,36 +158,53 @@ export function showPopup(
     toastT = window.setTimeout(() => toast.classList.remove('on'), 1500);
   };
 
-  const button = (glyph: string, title: string, fn: () => void): void => {
+  const button = (name: string, title: string, fn: (b: HTMLButtonElement) => void): HTMLButtonElement => {
     const b = document.createElement('button');
     b.className = 'tb';
-    b.textContent = glyph;
+    b.appendChild(icon(name));
     b.title = title;
     b.setAttribute('aria-label', title);
-    b.addEventListener('click', fn);
+    b.addEventListener('click', () => fn(b));
     tools.appendChild(b);
+    return b;
   };
 
-  button('▶', 'Pronounce', () => {
-    if (!('speechSynthesis' in window)) return say('no speech synthesis here');
-    const u = new SpeechSynthesisUtterance(word);
-    u.lang = 'ja-JP';
-    u.rate = 0.85;
-    speechSynthesis.cancel();
-    speechSynthesis.speak(u);
-    say(`🔊 ${word}`);
+  button('volume', 'Pronounce', (b) => {
+    b.classList.add('busy');
+    b.replaceChildren(icon('loader'));
+    void pronounce(word, reading)
+      .then((spoken) => {
+        // Say which source was used: a human recording and a synthesised one
+        // are not equally trustworthy models to imitate.
+        say(spoken.human ? `${word} · recording` : `${word} · synthesised`);
+      })
+      .catch(() => say('could not play audio'))
+      .finally(() => {
+        b.classList.remove('busy');
+        b.replaceChildren(icon('volume'));
+      });
   });
-  button('⧉', 'Copy word', () => void navigator.clipboard.writeText(word).then(() => say('word copied')));
-  button('¶', 'Copy sentence', () => void navigator.clipboard.writeText(ctx.sentence).then(() => say('sentence copied')));
-  button('↗', 'Open in jisho.org', () => {
+  button('copy', 'Copy word', () => void navigator.clipboard.writeText(word).then(() => say('word copied')));
+  button('quote', 'Copy sentence', () => void navigator.clipboard.writeText(ctx.sentence).then(() => say('sentence copied')));
+  button('external', 'Open in jisho.org', () => {
     window.open(`https://jisho.org/search/${encodeURIComponent(word)}`, '_blank', 'noopener');
   });
   card.appendChild(tools);
 
-  if (!entries.length) {
+  if (result.state === 'loading') {
+    const e = document.createElement('div');
+    e.className = 'loading';
+    e.textContent = `Dictionary still loading — ${result.percent}%. Try again in a moment.`;
+    card.appendChild(e);
+  } else if (result.state === 'error') {
+    const e = document.createElement('div');
+    e.className = 'loading';
+    e.textContent = `Dictionary unavailable: ${result.error}`;
+    card.appendChild(e);
+  } else if (!entries.length) {
     const e = document.createElement('div');
     e.className = 'empty';
-    e.textContent = 'No dictionary entry found.';
+    e.textContent = 'No dictionary entry for this word.';
     card.appendChild(e);
   } else {
     const ol = document.createElement('ol');

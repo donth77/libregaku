@@ -11,6 +11,12 @@ export interface DictStatus {
 
 const cache = new Map<string, Entry[]>();
 
+export type LookupResult =
+  | { state: 'ok'; entries: Entry[] }
+  | { state: 'empty' }
+  | { state: 'loading'; percent: number }
+  | { state: 'error'; error: string };
+
 export async function ensureDictionary(): Promise<DictStatus> {
   await chrome.runtime.sendMessage({ type: 'ensure-offscreen' });
   const res = (await chrome.runtime.sendMessage({ target: 'offscreen', type: 'dict-load' })) as
@@ -31,24 +37,47 @@ export async function dictStatus(): Promise<DictStatus> {
  *
  * The lemma is what JMdict is keyed on, so 来た resolves through 来る. Falling
  * back to the surface covers words the analyser could not resolve.
+ *
+ * Only *answers* are cached. Caching a failure was the original bug here: a
+ * click while the dictionary was still indexing stored an empty result, and
+ * every later lookup of that word returned it — so the card said "no entry"
+ * forever, even once the data had landed.
  */
-export async function lookupWord(lemma: string | undefined, surface: string): Promise<Entry[]> {
-  for (const key of [lemma, surface].filter((k): k is string => Boolean(k))) {
+export async function lookupWord(lemma: string | undefined, surface: string): Promise<LookupResult> {
+  const keys = [lemma, surface].filter((k): k is string => Boolean(k));
+
+  for (const key of keys) {
     const hit = cache.get(key);
-    if (hit) {
-      if (hit.length) return hit;
-      continue;
-    }
+    if (hit?.length) return { state: 'ok', entries: hit };
+  }
+
+  for (const key of keys) {
+    if (cache.has(key)) continue;   // known-empty, but a later key may still hit
+
     const res = (await chrome.runtime.sendMessage({
       target: 'offscreen',
       type: 'dict-lookup',
       key,
-    })) as { ok?: boolean; entries?: Entry[] } | undefined;
+    })) as { ok?: boolean; entries?: Entry[]; error?: string } | undefined;
 
-    const entries = res?.ok ? (res.entries ?? []) : [];
+    if (!res?.ok) {
+      // Not an answer — do not remember it.
+      const status = await dictStatus();
+      if (status.error) return { state: 'error', error: status.error };
+      if (!status.ready) return { state: 'loading', percent: status.percent };
+      return { state: 'error', error: res?.error ?? 'lookup failed' };
+    }
+
+    const entries = res.entries ?? [];
     if (cache.size > 2000) cache.clear();
     cache.set(key, entries);
-    if (entries.length) return entries;
+    if (entries.length) return { state: 'ok', entries };
   }
-  return [];
+
+  return { state: 'empty' };
+}
+
+/** Forget negative results so a finished download takes effect immediately. */
+export function clearLookupCache(): void {
+  cache.clear();
 }

@@ -5,7 +5,7 @@ import { IntlSegmenter } from '../morphology/intl';
 import { LinderaSegmenter } from '../morphology/lindera';
 import type { Segmenter, Token } from '../morphology/types';
 import { DomCaptionSource } from '../adapters/dom-captions';
-import { ensureDictionary, lookupWord } from '../dict/client';
+import { clearLookupCache, ensureDictionary, lookupWord } from '../dict/client';
 import { DEFAULT_BOTTOM, bottomOffset, namedMatches, occupiedBands } from './coexist';
 import { closePopup, showPopup } from './popup';
 import { Sidebar } from './sidebar';
@@ -69,6 +69,22 @@ async function makeSegmenter(): Promise<Segmenter | null> {
   }
   segmenter = new IntlSegmenter(TARGET_LANG);
 
+  // The dictionary is independent of the analyser: a failure to load lindera
+  // must not also cost us definitions.
+  void (async () => {
+    try {
+      const d = await ensureDictionary();
+      log(
+        d.ready
+          ? 'JMdict ready — click a word to look it up'
+          : `dictionary unavailable: ${d.error ?? d.phase}`,
+      );
+      clearLookupCache();   // drop anything looked up before it was ready
+    } catch (e) {
+      log('dictionary unavailable:', e);
+    }
+  })();
+
   // Upgrade in the background.
   void (async () => {
     try {
@@ -85,8 +101,7 @@ async function makeSegmenter(): Promise<Segmenter | null> {
       active = -1;
       log('upgraded to tier 2 — lemmas, readings and furigana are live');
 
-      const d = await ensureDictionary();
-      log(d.ready ? 'JMdict ready — click a word to look it up' : `dictionary unavailable: ${d.error}`);
+      log('upgraded to tier 2 — lemmas, readings and furigana are live');
     } catch (e) {
       log('staying on tier 0 —', e);
     }
@@ -361,8 +376,8 @@ let currentLine = '';
 
 async function openLookup(mount: HTMLElement, el: HTMLElement, token: Token): Promise<void> {
   try {
-    const entries = await lookupWord(token.lemma, token.surface);
-    showPopup(mount, el, entries, { token, sentence: currentLine });
+    const result = await lookupWord(token.lemma, token.surface);
+    showPopup(mount, el, result, { token, sentence: currentLine });
   } catch (e) {
     log('lookup failed:', e);
   }
@@ -379,9 +394,9 @@ function mountSidebar(mount: HTMLElement, video: HTMLVideoElement): void {
     },
     currentTime: () => activeVideo?.currentTime ?? 0,
     onWordClick: (token, el, sentence) => {
-      void lookupWord(token.lemma, token.surface).then((entries) => {
+      void lookupWord(token.lemma, token.surface).then((result) => {
         const host = el.getRootNode() as ShadowRoot;
-        showPopup((host.host as HTMLElement).parentElement ?? mount, el, entries, { token, sentence });
+        showPopup((host.host as HTMLElement).parentElement ?? mount, el, result, { token, sentence });
       });
     },
   });

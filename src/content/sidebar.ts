@@ -357,8 +357,8 @@ export class Sidebar {
     const tok = w.dataset.tok ? (JSON.parse(w.dataset.tok) as Token) : null;
     if (!tok) return;
 
-    const entries = await lookupWord(tok.lemma, tok.surface);
-    const top = entries[0];
+    const result = await lookupWord(tok.lemma, tok.surface);
+    const top = result.state === 'ok' ? result.entries[0] : undefined;
 
     this.#hover.replaceChildren();
     const head = document.createElement('div');
@@ -387,7 +387,12 @@ export class Sidebar {
     } else {
       const hd = document.createElement('div');
       hd.className = 'hd';
-      hd.textContent = 'No entry.';
+      hd.textContent =
+        result.state === 'loading'
+          ? `Dictionary loading — ${result.percent}%`
+          : result.state === 'error'
+            ? 'Dictionary unavailable'
+            : 'No entry.';
       this.#hover.appendChild(hd);
     }
 
