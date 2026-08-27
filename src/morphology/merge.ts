@@ -33,6 +33,16 @@ export interface MergedToken {
 }
 
 const AUX_VERBS = new Set(['いる', 'ある', 'おく', 'しまう', 'みる', 'いく', 'くる', 'もらう', 'くれる', 'あげる']);
+
+/**
+ * Conjunctive particles that are part of a verb's conjugation, not separate
+ * words: て/で (te-form), ば (conditional), たり/だり (representative listing).
+ *
+ * The rest of 接続助詞 join *clauses* rather than inflect a verb — が, から,
+ * ので, のに, けれど, し. Attaching those would swallow the remainder of the
+ * sentence into one token, so the list is a whitelist rather than a category.
+ */
+const CONJUGATIONAL_PARTICLES = new Set(['て', 'で', 'ば', 'たり', 'だり']);
 const FUNCTION_POS = new Set(['助詞', '助動詞', '記号', 'フィラー']);
 
 /**
@@ -63,9 +73,15 @@ function attaches(group: Morpheme[], cur: Morpheme): boolean {
   // 勉強 + する / 勉強 + し
   if (cur.pos === '動詞' && prev.pos === '名詞' && prev.pos1 === 'サ変接続') return true;
 
-  // し + て + いる — the て only attaches on the way to an auxiliary
-  if (cur.pos === '助詞' && cur.pos1 === '接続助詞' && cur.surface === 'て' &&
-      (prev.pos === '動詞' || prev.pos === '形容詞')) return true;
+  // し+て+いる, うまくいけ+ば, 行っ+たり — endings, not words.
+  if (
+    cur.pos === '助詞' &&
+    cur.pos1 === '接続助詞' &&
+    CONJUGATIONAL_PARTICLES.has(cur.surface) &&
+    isVerbal(group)
+  ) {
+    return true;
+  }
 
   // …て + いる, …て + しまう
   if (cur.pos === '動詞' && (cur.pos1 === '非自立' || AUX_VERBS.has(cur.lemma ?? ''))) return true;

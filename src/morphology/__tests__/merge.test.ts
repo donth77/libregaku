@@ -146,3 +146,53 @@ describe('copula after a noun', () => {
     expect(out[0]?.lemma).toBe('勉強する');
   });
 });
+
+describe('conjunctive particles', () => {
+  it('keeps the conditional ば with its verb', () => {
+    const out = mergeMorphemes([
+      m('うまくいけ', '動詞', '自立', 'うまくいく', 'ウマクイケ'),
+      m('ば', '助詞', '接続助詞', 'ば', 'バ'),
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0]?.surface).toBe('うまくいけば');
+    expect(out[0]?.lemma).toBe('うまくいく');
+  });
+
+  it('keeps たり with its verb', () => {
+    const out = mergeMorphemes([
+      m('行っ', '動詞', '自立', '行く', 'イッ'),
+      m('たり', '助詞', '接続助詞', 'たり', 'タリ'),
+    ]);
+    expect(out[0]?.surface).toBe('行ったり');
+  });
+
+  it('does NOT swallow a clause connector', () => {
+    // が, から, ので join clauses. Attaching them would pull the rest of the
+    // sentence into one token.
+    for (const p of ['が', 'から', 'ので', 'けれど', 'し']) {
+      const out = mergeMorphemes([
+        m('行く', '動詞', '自立', '行く', 'イク'),
+        m(p, '助詞', '接続助詞', p, p),
+      ]);
+      expect(out.map((t) => t.surface), `${p} should not attach`).toEqual(['行く', p]);
+    }
+  });
+
+  it('does not attach ば to a noun', () => {
+    const out = mergeMorphemes([
+      m('ワールド', '名詞', '一般', 'ワールド', 'ワールド'),
+      m('ば', '助詞', '接続助詞', 'ば', 'バ'),
+    ]);
+    expect(out).toHaveLength(2);
+  });
+
+  it('still handles て on the way to an auxiliary', () => {
+    const out = mergeMorphemes([
+      m('し', '動詞', '自立', 'する', 'シ'),
+      m('て', '助詞', '接続助詞', 'て', 'テ'),
+      m('いる', '動詞', '非自立', 'いる', 'イル'),
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0]?.surface).toBe('している');
+  });
+});
