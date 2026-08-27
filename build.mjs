@@ -16,6 +16,7 @@ const targets = [
   { entry: 'src/content/inject.ts',  out: 'inject',          format: 'iife' },
   { entry: 'src/content/inject-netflix.ts', out: 'inject-netflix', format: 'iife' },
   { entry: 'src/offscreen.ts',       out: 'offscreen',       format: 'esm'  },
+  { entry: 'src/options.ts',         out: 'options',         format: 'esm'  },
 ];
 
 await mkdir(outdir, { recursive: true });
@@ -24,6 +25,8 @@ await mkdir(outdir, { recursive: true });
 await cp('src/manifest.json',  `${outdir}/manifest.json`);
 await cp('src/offscreen.html', `${outdir}/offscreen.html`);
 await cp('src/content/subs.css', `${outdir}/subs.css`);
+await cp('src/options.html', `${outdir}/options.html`);
+await cp('src/options.css', `${outdir}/options.css`);
 
 // lindera ships the wasm binary beside its JS glue; the offscreen page loads
 // it by extension URL, so it has to sit in dist/ as a real file.

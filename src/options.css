@@ -1,0 +1,37 @@
+:root {
+  --bg: #0D111C; --card: #141A2A; --line: #2A3348;
+  --ink: #E8ECF6; --dim: #B4BDD4; --faint: #838DA8; --accent: #8AA2E8;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 14px/1.6 system-ui, -apple-system, "Hiragino Sans", sans-serif;
+}
+main { max-width: 620px; margin: 0 auto; padding: 40px 24px 80px; }
+h1 { font-size: 28px; letter-spacing: -.02em; margin: 0 0 28px; }
+h2 {
+  font: 600 11px/1.4 ui-monospace, monospace; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--faint); margin: 0 0 12px;
+}
+section { margin-bottom: 34px; }
+.row {
+  display: flex; align-items: center; justify-content: space-between; gap: 20px;
+  padding: 13px 16px; background: var(--card);
+  border: 1px solid var(--line); border-radius: 8px; margin-bottom: 8px;
+  cursor: pointer;
+}
+.row b { display: block; font-weight: 600; }
+.row small { display: block; color: var(--faint); font-size: 12px; margin-top: 1px; }
+select, input[type=checkbox] { accent-color: var(--accent); }
+select {
+  background: var(--bg); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 6px; padding: 6px 9px; font: inherit; font-size: 13px;
+}
+select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.lede { color: var(--dim); margin: 0 0 16px; }
+dl { margin: 0; }
+dt { font-weight: 600; margin-top: 14px; }
+dd { margin: 3px 0 0; color: var(--dim); font-size: 13px; }
+a { color: var(--accent); }
+.fine { color: var(--faint); font-size: 12px; margin-top: 22px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

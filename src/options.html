@@ -1,0 +1,74 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Libregaku</title>
+<link rel="stylesheet" href="options.css">
+<main>
+  <h1>Libregaku</h1>
+
+  <section>
+    <h2>Looking words up</h2>
+    <label class="row">
+      <span>
+        <b>Open the card on</b>
+        <small>Hover pauses playback while you read, and resumes when you leave.</small>
+      </span>
+      <select id="interaction">
+        <option value="hover">Hover</option>
+        <option value="click">Click</option>
+      </select>
+    </label>
+    <label class="row">
+      <span><b>Pause while hovering</b><small>Stops the subtitle moving on mid-lookup.</small></span>
+      <input type="checkbox" id="hoverPause">
+    </label>
+    <label class="row">
+      <span><b>Preview in the transcript</b><small>Hovering a word in the panel shows a short definition.</small></span>
+      <input type="checkbox" id="sidebarHover">
+    </label>
+  </section>
+
+  <section>
+    <h2>Subtitles</h2>
+    <label class="row">
+      <span><b>Furigana</b><small>Unknown-only keeps the screen quiet as you improve.</small></span>
+      <select id="ruby">
+        <option value="unknown">On unknown words</option>
+        <option value="always">Always</option>
+        <option value="never">Never</option>
+      </select>
+    </label>
+  </section>
+
+  <section>
+    <h2>Data and licences</h2>
+    <p class="lede">
+      Libregaku is built on freely licensed data. Credit where it is due, and
+      the terms it is used under.
+    </p>
+    <dl>
+      <dt><a href="https://www.edrdg.org/jmdict/j_jmdict.html" target="_blank" rel="noopener">JMdict</a></dt>
+      <dd>
+        Japanese–English dictionary data, © the
+        <a href="https://www.edrdg.org/" target="_blank" rel="noopener">Electronic Dictionary
+        Research and Development Group</a>, used under
+        <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a>.
+        Repackaged as JSON by
+        <a href="https://github.com/scriptin/jmdict-simplified" target="_blank" rel="noopener">jmdict-simplified</a>.
+      </dd>
+
+      <dt><a href="https://github.com/lindera/lindera" target="_blank" rel="noopener">Lindera</a> · IPADIC</dt>
+      <dd>Morphological analysis. Lindera is MIT; IPADIC carries its own terms.</dd>
+
+      <dt><a href="https://jotoba.de/" target="_blank" rel="noopener">Jotoba</a> · <a href="https://jisho.org/" target="_blank" rel="noopener">Jisho</a></dt>
+      <dd>Consulted when the local dictionary is still downloading. Both serve JMdict.</dd>
+
+      <dt><a href="https://lucide.dev/" target="_blank" rel="noopener">Lucide</a></dt>
+      <dd>Interface icons, ISC licence.</dd>
+    </dl>
+    <p class="fine">
+      Libregaku itself is MIT licensed. Dictionary data is downloaded at
+      runtime and is not redistributed by this extension.
+    </p>
+  </section>
+</main>
+<script type="module" src="options.js"></script>
