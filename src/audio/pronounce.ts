@@ -19,6 +19,8 @@
  * cost or the licence.
  */
 
+import { toHiragana } from '../morphology/furigana';
+
 const JPOD = 'https://assets.languagepod101.com/dictionary/japanese/audiomp3.php';
 
 /**
@@ -51,10 +53,28 @@ async function playUrl(url: string): Promise<void> {
   await audio.play();
 }
 
+/**
+ * Build the query the service actually answers to.
+ *
+ * Two things it is strict about, both of which silently returned the
+ * "not found" recording before:
+ *
+ *  - The reading must be hiragana. Lindera hands back katakana (タベル), and
+ *    kana=タベル misses for every kanji word — which would have meant no
+ *    recording ever played for the vocabulary that most needs one.
+ *  - `kana` is required even when the word is already kana. Sending kanji=やばい
+ *    alone misses; kanji=やばい&kana=やばい returns audio.
+ */
+export function jpodQuery(word: string, reading?: string): string {
+  return new URLSearchParams({
+    kanji: word,
+    kana: toHiragana(reading ?? word),
+  }).toString();
+}
+
 /** Fetch as a blob so the body can be inspected before anything is played. */
 async function tryJpod(word: string, reading?: string): Promise<string | null> {
-  const q = new URLSearchParams({ kanji: word });
-  if (reading) q.set('kana', reading);
+  const q = jpodQuery(word, reading);
 
   try {
     const res = await fetch(`${JPOD}?${q}`);
