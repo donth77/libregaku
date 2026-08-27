@@ -119,14 +119,13 @@ export class Overlay {
   }
 
   /**
-   * Anchor the line to the top or bottom of the player.
-   * `offset` is a percentage of player height from that edge.
+   * Distance up from the bottom of the player, as a percentage of its height.
+   * There is deliberately no top anchor: subtitles belong in the lower frame.
    */
-  setAnchor(edge: 'top' | 'bottom', offset = 12): void {
+  setBottom(percent: number): void {
     const wrap = this.#primary.parentElement;
     if (!wrap) return;
-    wrap.style.top = edge === 'top' ? `${offset}%` : '';
-    wrap.style.bottom = edge === 'bottom' ? `${offset}%` : '';
+    wrap.style.bottom = `${percent}%`;
   }
 
   /** always | unknown | never */

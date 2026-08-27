@@ -5,7 +5,7 @@ import { IntlSegmenter } from '../morphology/intl';
 import { LinderaSegmenter } from '../morphology/lindera';
 import type { Segmenter, Token } from '../morphology/types';
 import { DomCaptionSource } from '../adapters/dom-captions';
-import { detect, preferredAnchor } from './coexist';
+import { DEFAULT_BOTTOM, bottomOffset, namedMatches, occupiedBands } from './coexist';
 import { clearNotice, showNotice } from './notice';
 import { Overlay } from './renderer';
 
@@ -264,7 +264,7 @@ async function run(): Promise<boolean> {
 
   overlay?.destroy();
   overlay = new Overlay(mount);
-  applyAnchor(overlay);
+  applyAnchor(overlay, mount, adapter);
   overlay.onToken((tok) => {
     // M2 opens the dictionary popup here.
     console.log('libregaku token:', tok.surface, seg.hasLemma ? tok.lemma : '(no lemma at tier 0)');
@@ -294,7 +294,7 @@ function startDomFallback(mount: HTMLElement, seg: Segmenter, adapter: SubtitleS
 
   overlay?.destroy();
   overlay = new Overlay(mount);
-  applyAnchor(overlay);
+  applyAnchor(overlay, mount, adapter);
   overlay.onToken((tok) => {
     console.log('libregaku token:', tok.surface, seg.hasLemma ? tok.lemma : '(no lemma at tier 0)');
   });
@@ -323,16 +323,21 @@ function startDomFallback(mount: HTMLElement, seg: Segmenter, adapter: SubtitleS
  * Position the line, getting out of the way of any bilingual extension that is
  * already supplying the native-language track.
  */
-function applyAnchor(o: Overlay): void {
-  const found = detect();
-  const edge = preferredAnchor(found);
-  o.setAnchor(edge, edge === 'top' ? 8 : 12);
-  if (found.length) {
-    log(
-      `sharing the player with ${found.map((f) => f.name).join(', ')} — ` +
-        `anchoring our line to the ${edge}`,
-    );
-  }
+function applyAnchor(o: Overlay, mount: HTMLElement, adapter: SubtitleSource): void {
+  const place = (): void => {
+    const bands = occupiedBands(mount, adapter.domCaptions.container);
+    const offset = bottomOffset(bands);
+    o.setBottom(offset);
+    if (offset !== DEFAULT_BOTTOM) {
+      const names = namedMatches().map((n) => n.name).join(', ');
+      log(`sharing the player${names ? ` with ${names}` : ''} — stacking our line above theirs`);
+    }
+  };
+
+  place();
+  // Extension load order is not deterministic, so re-measure a couple of times.
+  setTimeout(place, 2000);
+  setTimeout(place, 6000);
 }
 
 function reset(): void {
