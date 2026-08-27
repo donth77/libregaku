@@ -4,8 +4,6 @@ Tokenized dual subtitles, a clickable transcript, and a real dictionary — in y
 browser, for free. Cards go straight into Anki, which you already use, which already
 syncs to your phone.
 
-> **Status: pre-alpha.** Nothing works yet. Watch the repo if you want to know when it does.
-
 ---
 
 ## What it does

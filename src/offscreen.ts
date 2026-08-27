@@ -1,5 +1,6 @@
 import init, { TokenizerBuilder, loadDictionaryFromBytes, type Tokenizer } from 'lindera-wasm';
 import { downloadDictionary, hasDictionary, loadDictionaryFiles } from 'lindera-wasm/opfs';
+import { build as buildDict, isPopulated, lookup } from './dict/store';
 
 /**
  * The morphological analyser lives here and nowhere else.
@@ -114,7 +115,39 @@ function analyse(text: string): Array<{ surface: string; lemma?: string; reading
   });
 }
 
-chrome.runtime.onMessage.addListener((msg: { target?: string; type?: string; text?: string; dict?: string }, _s, respond) => {
+/* ── JMdict ─────────────────────────────────────────────────────── */
+
+const dict = { ready: false, loading: false, phase: 'idle', percent: 0, error: null as string | null };
+
+async function ensureDict(): Promise<void> {
+  if (dict.ready || dict.loading) return;
+  dict.loading = true;
+  dict.error = null;
+  try {
+    if (await isPopulated()) {
+      dict.ready = true;
+      dict.phase = 'ready';
+      dict.percent = 100;
+      return;
+    }
+    const n = await buildDict((phase, percent) => {
+      dict.phase = phase;
+      dict.percent = percent;
+    });
+    dict.ready = true;
+    dict.phase = 'ready';
+    dict.percent = 100;
+    console.log(`[libregaku] JMdict ready — ${n} entries`);
+  } catch (e) {
+    dict.error = String(e);
+    dict.phase = 'error';
+    console.warn('[libregaku] JMdict failed to load:', e);
+  } finally {
+    dict.loading = false;
+  }
+}
+
+chrome.runtime.onMessage.addListener((msg: { target?: string; type?: string; text?: string; dict?: string; key?: string }, _s, respond) => {
   if (msg?.target !== 'offscreen') return false;
 
   switch (msg.type) {
@@ -140,6 +173,25 @@ chrome.runtime.onMessage.addListener((msg: { target?: string; type?: string; tex
       } catch (e) {
         respond({ ok: false, error: String(e) });
       }
+      return true;
+
+    case 'dict-load':
+      void ensureDict().then(() => respond({ ok: !dict.error, ...dict }));
+      return true;
+
+    case 'dict-status':
+      respond({ ok: true, ...dict });
+      return true;
+
+    case 'dict-lookup':
+      if (!dict.ready) {
+        respond({ ok: false, error: dict.error ?? 'dictionary not loaded yet' });
+        return true;
+      }
+      void lookup(msg.key ?? '').then(
+        (entries) => respond({ ok: true, entries }),
+        (e: unknown) => respond({ ok: false, error: String(e) }),
+      );
       return true;
 
     default:

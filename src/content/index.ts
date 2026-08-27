@@ -5,7 +5,9 @@ import { IntlSegmenter } from '../morphology/intl';
 import { LinderaSegmenter } from '../morphology/lindera';
 import type { Segmenter, Token } from '../morphology/types';
 import { DomCaptionSource } from '../adapters/dom-captions';
+import { ensureDictionary, lookupWord } from '../dict/client';
 import { DEFAULT_BOTTOM, bottomOffset, namedMatches, occupiedBands } from './coexist';
+import { closePopup, showPopup } from './popup';
 import { clearNotice, showNotice } from './notice';
 import { Overlay } from './renderer';
 
@@ -77,6 +79,9 @@ async function makeSegmenter(): Promise<Segmenter | null> {
       segmented = new Map();   // re-segment with lemmas and readings
       active = -1;
       log('upgraded to tier 2 — lemmas, readings and furigana are live');
+
+      const d = await ensureDictionary();
+      log(d.ready ? 'JMdict ready — click a word to look it up' : `dictionary unavailable: ${d.error}`);
     } catch (e) {
       log('staying on tier 0 —', e);
     }
@@ -111,13 +116,17 @@ function paint(i: number): void {
   const result = (segmenter ?? { segment: () => [] as Token[] }).segment(cue.text);
   if (Array.isArray(result)) {
     segmented.set(i, result);
+    currentLine = cue.text;
     overlay?.render(result, cue.secondary);
     return;
   }
   void result.then((toks) => {
     segmented.set(i, toks);
     // The cue may have moved on while we were analysing.
-    if (active === i) overlay?.render(toks, cue.secondary);
+    if (active === i) {
+      currentLine = cue.text;
+      overlay?.render(toks, cue.secondary);
+    }
   });
 }
 
@@ -265,10 +274,7 @@ async function run(): Promise<boolean> {
   overlay?.destroy();
   overlay = new Overlay(mount);
   applyAnchor(overlay, mount, adapter);
-  overlay.onToken((tok) => {
-    // M2 opens the dictionary popup here.
-    console.log('libregaku token:', tok.surface, seg.hasLemma ? tok.lemma : '(no lemma at tier 0)');
-  });
+  overlay.onToken((tok, el) => void openLookup(mount, el, tok));
 
   cancelAnimationFrame(raf);
   tick(video, seg);
@@ -295,14 +301,13 @@ function startDomFallback(mount: HTMLElement, seg: Segmenter, adapter: SubtitleS
   overlay?.destroy();
   overlay = new Overlay(mount);
   applyAnchor(overlay, mount, adapter);
-  overlay.onToken((tok) => {
-    console.log('libregaku token:', tok.surface, seg.hasLemma ? tok.lemma : '(no lemma at tier 0)');
-  });
+  overlay.onToken((tok, el) => void openLookup(mount, el, tok));
 
   domSource?.stop();
   domSource = source;
   const started = domSource.start((text) => {
     if (!text) return overlay?.clear();
+    currentLine = text;
     const result = (segmenter ?? seg).segment(text);
     if (Array.isArray(result)) overlay?.render(result);
     else void result.then((toks) => overlay?.render(toks));
@@ -340,7 +345,20 @@ function applyAnchor(o: Overlay, mount: HTMLElement, adapter: SubtitleSource): v
   setTimeout(place, 6000);
 }
 
+/** Current line, for copy-sentence in the popup. */
+let currentLine = '';
+
+async function openLookup(mount: HTMLElement, el: HTMLElement, token: Token): Promise<void> {
+  try {
+    const entries = await lookupWord(token.lemma, token.surface);
+    showPopup(mount, el, entries, { token, sentence: currentLine });
+  } catch (e) {
+    log('lookup failed:', e);
+  }
+}
+
 function reset(): void {
+  closePopup();
   domSource?.stop();
   domSource = null;
   cancelAnimationFrame(raf);
@@ -379,6 +397,18 @@ if (/netflix\.com/.test(location.hostname)) {
     })
     .catch((e: unknown) => log('page hook injection failed:', e));
 }
+
+// popup-dismiss
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePopup(); }, true);
+document.addEventListener(
+  'click',
+  (e) => {
+    const t = e.target as Element | null;
+    if (t?.closest?.('.libregaku-popup') || t?.closest?.('.libregaku-root')) return;
+    closePopup();
+  },
+  true,
+);
 
 log('content script loaded on', location.href);
 void start();
