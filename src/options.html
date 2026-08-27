@@ -72,8 +72,18 @@
       <button type="button" id="ankiCheck">Check</button>
     </div>
     <label class="row">
-      <span><b>Deck for new cards</b><small>Also the deck read for word status.</small></span>
-      <select id="deck"><option value="">—</option></select>
+      <span><b>New cards go to</b><small>One deck, for everything Libregaku creates.</small></span>
+      <span class="pair">
+        <select id="deck"><option value="">—</option></select>
+        <button type="button" id="newDeck">New…</button>
+      </span>
+    </label>
+    <label class="row">
+      <span>
+        <b>Words you already know</b>
+        <small>Read from here to decide what to underline. Includes subdecks.</small>
+      </span>
+      <select id="statusScope"><option value="">Whole collection</option></select>
     </label>
     <div class="row">
       <span><b>Cards from Libregaku</b><small id="cardCount">—</small></span>

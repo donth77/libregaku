@@ -108,13 +108,13 @@ function repaint(): void {
 
 async function refreshStatus(): Promise<void> {
   overrides = await loadOverrides();
-  const deck = settings().deck;
+  const scope = settings().statusScope;
   try {
-    status = await buildStatusMap(deck);
+    status = await buildStatusMap(scope);
     log(
       status.size
-        ? `Anki: ${status.size} words known or learning${deck ? ` in "${deck}"` : ''}`
-        : 'Anki reachable but that deck has no notes — everything will read as unknown',
+        ? `Anki: ${status.size} words known or learning in ${scope || 'the whole collection'}`
+        : 'Anki reachable but nothing found in that scope — everything reads as unknown',
     );
   } catch {
     // Anki being closed is normal, not a fault. Everything simply reads unknown.

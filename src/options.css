@@ -44,3 +44,5 @@ button[type=button]:hover { border-color: var(--accent); }
 button[type=button]:disabled { opacity: .5; cursor: default; }
 .ok { color: #63AF97; }
 .bad { color: #E5806C; }
+
+.pair { display: flex; gap: 6px; align-items: center; }

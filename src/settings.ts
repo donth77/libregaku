@@ -51,8 +51,24 @@ export interface Settings {
   ruby: 'unknown' | 'always' | 'never';
   /** Preview definitions on hover in the transcript panel. */
   sidebarHover: boolean;
-  /** Deck new cards go to, and the deck read for word status. */
+  /**
+   * Where new cards go. One specific deck.
+   */
   deck: string;
+  /**
+   * Which deck is read to decide what you already know. Empty means the whole
+   * collection.
+   *
+   * Separate from `deck` on purpose. A learner's known words live all over
+   * their collection — a core deck, an old textbook deck, a JLPT deck — while
+   * new cards belong in one place. Using a single setting for both forces a
+   * bad trade: scope status to the mining deck and thousands of known words
+   * read as unknown, or dump new cards into a broad parent deck.
+   *
+   * Anki's `deck:` search includes subdecks, so choosing "Japanese" covers
+   * "Japanese::Mining" and everything beside it.
+   */
+  statusScope: string;
   /** Show comprehension and per-line counts in the transcript panel. */
   sidebarStats: boolean;
   /** Underline known words too, rather than leaving them bare. */
@@ -69,6 +85,7 @@ export const DEFAULTS: Settings = {
   ruby: 'unknown',
   sidebarHover: true,
   deck: '',
+  statusScope: '',
   sidebarStats: true,
   markKnown: false,
 };

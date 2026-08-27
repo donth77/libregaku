@@ -88,8 +88,11 @@ export interface StatusMap {
   size: number;
 }
 
-export async function buildStatusMap(deck: string): Promise<StatusMap> {
-  const query = deck ? `deck:"${deck}"` : `note:"${MODEL_NAME}"`;
+export async function buildStatusMap(scope: string): Promise<StatusMap> {
+  // Empty scope means the whole collection, which is the honest default: a
+  // learner knows what they know regardless of which deck it is filed under.
+  // `deck:` includes subdecks, so a parent covers everything beneath it.
+  const query = scope ? `deck:"${scope}"` : 'deck:*';
   const ids = await call<number[]>('findNotes', { query });
 
   const map = new Map<string, Status>();

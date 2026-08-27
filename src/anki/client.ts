@@ -65,6 +65,10 @@ export interface NewCard {
   tags: string[];
 }
 
+export async function createDeck(name: string): Promise<void> {
+  await call('createDeck', { deck: name });
+}
+
 export async function addNote(card: NewCard): Promise<number> {
   return call<number>('addNote', {
     note: {

@@ -1,4 +1,6 @@
-import { browseOurCards, countOurCards, deckNames, ensureModel, isAvailable } from './anki/client';
+import {
+  browseOurCards, countOurCards, createDeck, deckNames, ensureModel, isAvailable,
+} from './anki/client';
 import {
   DEFAULTS,
   NATIVE_LANGUAGES,
@@ -89,6 +91,8 @@ async function main(): Promise<void> {
 async function wireAnki(s: Settings): Promise<void> {
   const status = document.getElementById('ankiStatus') as HTMLElement;
   const deck = document.getElementById('deck') as HTMLSelectElement;
+  const scope = document.getElementById('statusScope') as HTMLSelectElement;
+  const newDeck = document.getElementById('newDeck') as HTMLButtonElement;
   const count = document.getElementById('cardCount') as HTMLElement;
   const browse = document.getElementById('browse') as HTMLButtonElement;
   const check = document.getElementById('ankiCheck') as HTMLButtonElement;
@@ -119,7 +123,24 @@ async function wireAnki(s: Settings): Promise<void> {
       }
       deck.value = decks.includes(s.deck) ? s.deck : (decks[0] ?? '');
       deck.disabled = false;
+      newDeck.disabled = false;
       if (deck.value && deck.value !== s.deck) void setSetting('deck', deck.value);
+
+      // "Whole collection" stays first: it is the right default, since known
+      // words are scattered and a narrow scope silently under-reports them.
+      scope.replaceChildren();
+      const all = document.createElement('option');
+      all.value = '';
+      all.textContent = 'Whole collection';
+      scope.appendChild(all);
+      for (const d of decks) {
+        const o = document.createElement('option');
+        o.value = d;
+        o.textContent = `${d} (and subdecks)`;
+        scope.appendChild(o);
+      }
+      scope.value = decks.includes(s.statusScope) ? s.statusScope : '';
+      scope.disabled = false;
 
       status.textContent =
         created === 'created'
@@ -137,6 +158,14 @@ async function wireAnki(s: Settings): Promise<void> {
   };
 
   deck.addEventListener('change', () => void setSetting('deck', deck.value));
+  scope.addEventListener('change', () => void setSetting('statusScope', scope.value));
+  newDeck.addEventListener('click', () => {
+    const name = prompt('New deck name — use :: for subdecks, e.g. Japanese::Mining');
+    if (!name?.trim()) return;
+    void createDeck(name.trim())
+      .then(() => setSetting('deck', name.trim()))
+      .then(() => refresh());
+  });
   browse.addEventListener('click', () => void browseOurCards());
   check.addEventListener('click', () => void refresh());
   await refresh();

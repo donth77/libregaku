@@ -1,8 +1,6 @@
 # Libregaku
 
-Tokenized dual subtitles, a clickable transcript, and a real dictionary — in your
-browser, for free. Cards go straight into Anki, which you already use, which already
-syncs to your phone.
+Tokenized dual subtitles, interactive transcript, and a dictionary in your browser, for free. Cards go straight into Anki, which you already use and syncs to your phone.
 
 ---
 
@@ -21,16 +19,10 @@ become yours.
   filter to lines with exactly one unknown word.
 - **Click-to-look-up** — definitions, readings, frequency and inflection, with furigana
   for Japanese.
-- **Anki, properly** — cards carry the sentence, reading, definition, timestamp and a
+- **Anki integration** — cards carry the sentence, reading, definition, timestamp and a
   link back. Media where the source allows it.
 - **Your word list is your Anki collection.** Libregaku stores nothing of its own, so
   what you know stays consistent everywhere without an account.
-
-## What it deliberately doesn't do
-
-No mobile app, no built-in review system, no accounts, no server, no subscription.
-Anki does all of that already, and does it better. Libregaku is one browser extension
-that feeds it.
 
 ## Requirements
 
