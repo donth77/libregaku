@@ -65,6 +65,21 @@ const STYLE = `
     color: #E8ECF6; font: 13px system-ui, sans-serif;
   }
   input:focus { outline: none; border-color: #8AA2E8; }
+  .filters { display: flex; gap: 5px; padding: 0 12px 9px; flex: none; }
+  .f {
+    font: 600 10px/1 ui-monospace, monospace; letter-spacing: .06em;
+    text-transform: uppercase; padding: 6px 10px; border-radius: 5px;
+    border: 1px solid #2A3348; background: #12172A; color: #838DA8; cursor: pointer;
+  }
+  .f[aria-pressed="true"] { background: #1A2138; color: #8AA2E8; border-color: #3B4A6B; }
+  .summary {
+    padding: 10px 12px 8px; font-size: 12px; color: #B4BDD4;
+    display: flex; gap: 12px; flex-wrap: wrap; font-variant-numeric: tabular-nums;
+  }
+  .summary b { color: #E8ECF6; }
+  .x { font: 10px/1.6 ui-monospace, monospace; text-align: right; font-variant-numeric: tabular-nums; }
+  .x.hot { color: #E5806C; font-weight: 600; }
+  .x.one { color: #D9A64A; font-weight: 600; }
   .note {
     padding: 8px 12px; font-size: 11px; color: #D9A64A;
     background: #2C2314; border-bottom: 1px solid #212939; flex: none;
@@ -104,6 +119,8 @@ const STYLE = `
 export interface SidebarDeps {
   transcript: Transcript;
   segmenter: () => Segmenter | null;
+  /** Unknown content words in a line, and how many words it has. */
+  measure: (text: string) => Promise<{ unknown: number; words: number }>;
   seek: (t: number) => void;
   currentTime: () => number;
   onWordClick: (token: Token, el: HTMLElement, sentence: string) => void;
@@ -122,6 +139,8 @@ export class Sidebar {
   #width = 340;
   #active = -1;
   #hits = new Set<number>();
+  #filter: 'all' | 'unknown' | 'i1' = 'all';
+  #counts = new Map<number, { unknown: number; words: number }>();
   #userScrolled = false;
   #hoverTimer = 0;
   #hoverOn = true;
@@ -160,6 +179,32 @@ export class Sidebar {
     controls.append(hoverBtn, close);
     head.append(title, controls);
 
+    const filters = document.createElement('div');
+    filters.className = 'filters';
+    for (const [key, label, title] of [
+      ['all', 'All', 'Every line'],
+      ['unknown', 'Has new', 'Lines containing a word you have no card for'],
+      ['i1', 'i+1', 'Exactly one unknown word — the highest-value lines to mine'],
+    ] as const) {
+      const b = document.createElement('button');
+      b.className = 'f';
+      b.textContent = label;
+      b.title = title;
+      b.setAttribute('aria-pressed', String(key === 'all'));
+      b.addEventListener('click', () => {
+        this.#filter = key;
+        filters.querySelectorAll('button').forEach((x) =>
+          x.setAttribute('aria-pressed', String(x === b)),
+        );
+        this.render();
+      });
+      filters.appendChild(b);
+    }
+
+    const summary = document.createElement('div');
+    summary.className = 'summary';
+    summary.id = 'lg-summary';
+
     const search = document.createElement('div');
     search.className = 'search';
     const input = document.createElement('input');
@@ -185,7 +230,7 @@ export class Sidebar {
     this.#hover = document.createElement('div');
     this.#hover.className = 'hover';
 
-    this.#panel.append(grip, head, search, this.#note, this.#list);
+    this.#panel.append(grip, head, search, summary, filters, this.#note, this.#list);
     this.#root.append(style, this.#panel, this.#hover);
     mount.appendChild(this.#host);
 
@@ -277,8 +322,13 @@ export class Sidebar {
     }
 
     transcript.lines.forEach((line, i) => {
+      const c = this.#counts.get(i);
+      if (this.#filter === 'unknown' && (c?.unknown ?? 0) === 0) return;
+      if (this.#filter === 'i1' && c?.unknown !== 1) return;
+
       const row = document.createElement('div');
       row.className = 'line' + (i === this.#active ? ' cur' : '') + (this.#hits.has(i) ? ' hit' : '');
+      row.dataset.i = String(i);
       row.addEventListener('click', (e) => {
         if ((e.target as HTMLElement).closest('.w')) return;   // word clicks are not seeks
         this.#userScrolled = false;
@@ -300,9 +350,76 @@ export class Sidebar {
         tx.appendChild(s);
       }
 
-      row.append(t, tx);
+      const x = document.createElement('span');
+      x.className = 'x' + (c ? (c.unknown === 1 ? ' one' : c.unknown ? ' hot' : '') : '');
+      x.textContent = c ? String(c.unknown) : '';
+      row.append(t, tx, x);
       this.#list.appendChild(row);
     });
+
+    void this.#measure();
+  }
+
+  /**
+   * Count unknown words per line, lazily.
+   *
+   * Measuring the whole transcript up front would tokenize thousands of lines
+   * before the panel could paint. Counting after the first render, then
+   * repainting once, keeps opening instant.
+   */
+  async #measure(): Promise<void> {
+    const { transcript } = this.#deps;
+    if (this.#counts.size >= transcript.lines.length) {
+      this.#paintSummary();
+      return;
+    }
+
+    let changed = false;
+    await Promise.all(
+      transcript.lines.map(async (line, i) => {
+        if (this.#counts.has(i)) return;
+        this.#counts.set(i, await this.#deps.measure(line.text));
+        changed = true;
+      }),
+    );
+    if (!changed) return;
+
+    for (const el of Array.from(this.#list.children)) {
+      const i = Number((el as HTMLElement).dataset.i);
+      const c = this.#counts.get(i);
+      const x = el.querySelector('.x');
+      if (!c || !x) continue;
+      x.textContent = String(c.unknown);
+      x.className = 'x' + (c.unknown === 1 ? ' one' : c.unknown ? ' hot' : '');
+    }
+    this.#paintSummary();
+  }
+
+  #paintSummary(): void {
+    const el = this.#root.querySelector('.summary');
+    if (!el) return;
+
+    let words = 0;
+    let unknown = 0;
+    let i1 = 0;
+    for (const c of this.#counts.values()) {
+      words += c.words;
+      unknown += c.unknown;
+      if (c.unknown === 1) i1++;
+    }
+    if (!words) {
+      el.textContent = '';
+      return;
+    }
+    const known = Math.round(((words - unknown) / words) * 100);
+    el.replaceChildren();
+    for (const [n, label] of [[`${known}%`, 'known'], [unknown, 'new'], [i1, 'at i+1']] as const) {
+      const span = document.createElement('span');
+      const b = document.createElement('b');
+      b.textContent = String(n);
+      span.append(b, document.createTextNode(` ${label}`));
+      el.appendChild(span);
+    }
   }
 
   /** Tokenize lazily — a long transcript should not analyse every line up front. */

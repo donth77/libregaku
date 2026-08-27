@@ -47,4 +47,14 @@ export interface SubtitleSource {
   onTracks(cb: () => void): void;
   /** A unique id for the current video, for per-video settings. */
   videoId(): string | null;
+  /** Human-readable title, for card provenance. */
+  title(): string | null;
+  /**
+   * A URL that reopens this video at `seconds`.
+   *
+   * Goes on the card, so a review can jump straight back to the moment the
+   * word was mined — which is most of what makes a mined card better than a
+   * word list.
+   */
+  deepLink(seconds: number): string | null;
 }

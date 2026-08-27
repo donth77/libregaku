@@ -81,6 +81,19 @@ export class YouTubeAdapter implements SubtitleSource {
     return this.#videoId ?? new URLSearchParams(location.search).get('v');
   }
 
+  title(): string | null {
+    return (
+      document.querySelector('meta[name="title"]')?.getAttribute('content') ??
+      document.title.replace(/ - YouTube$/, '') ??
+      null
+    );
+  }
+
+  deepLink(seconds: number): string | null {
+    const id = this.videoId();
+    return id ? `https://www.youtube.com/watch?v=${id}&t=${Math.floor(seconds)}s` : null;
+  }
+
   hideNative(): void {
     document.documentElement.classList.add('libregaku-active');
   }

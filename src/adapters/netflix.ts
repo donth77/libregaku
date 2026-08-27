@@ -66,6 +66,19 @@ export class NetflixAdapter implements SubtitleSource {
     return this.#movieId ?? location.pathname.split('/watch/')[1]?.split(/[?/]/)[0] ?? null;
   }
 
+  title(): string | null {
+    // Netflix builds the title bar from the show and episode; the document
+    // title is the most stable thing available without touching internals.
+    const el = document.querySelector('.video-title, [data-uia="video-title"]');
+    return el?.textContent?.trim() || document.title.replace(/ - Netflix$/, '') || null;
+  }
+
+  /** Netflix watch URLs accept a `t` parameter in seconds. */
+  deepLink(seconds: number): string | null {
+    const id = location.pathname.split('/watch/')[1]?.split(/[?/]/)[0];
+    return id ? `https://www.netflix.com/watch/${id}?t=${Math.floor(seconds)}` : null;
+  }
+
   hideNative(): void {
     document.documentElement.classList.add('libregaku-active');
   }

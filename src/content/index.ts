@@ -498,6 +498,16 @@ function mountSidebar(mount: HTMLElement, video: HTMLVideoElement): void {
   sidebar = new Sidebar(mount, {
     transcript,
     segmenter: () => segmenter,
+    measure: async (text) => {
+      const seg = segmenter;
+      if (!seg) return { unknown: 0, words: 0 };
+      const toks = await seg.segment(text);
+      const words = toks.filter((t) => t.content && !t.punct);
+      return {
+        words: words.length,
+        unknown: words.filter((t) => statusOf(t) === 'unknown').length,
+      };
+    },
     seek: (t) => {
       if (activeVideo) activeVideo.currentTime = t;
     },
