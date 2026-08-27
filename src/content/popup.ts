@@ -78,14 +78,41 @@ const STYLE = `
 `;
 
 let host: HTMLElement | null = null;
+let openFor: string | null = null;
+let hideTimer = 0;
+let overCard = false;
 
+/** One card, ever. Opening a second closes the first. */
 export function closePopup(): void {
+  clearTimeout(hideTimer);
   host?.remove();
   host = null;
+  openFor = null;
+  overCard = false;
 }
 
 export function popupIsOpen(): boolean {
   return host !== null;
+}
+
+/** Which token the open card describes, so a re-hover is not a re-render. */
+export function popupKey(): string | null {
+  return openFor;
+}
+
+/**
+ * Close after a grace period, so the cursor can travel from the word to the
+ * card without the card vanishing on the way.
+ */
+export function closePopupSoon(delay = 260): void {
+  clearTimeout(hideTimer);
+  hideTimer = window.setTimeout(() => {
+    if (!overCard) closePopup();
+  }, delay);
+}
+
+export function cancelPopupClose(): void {
+  clearTimeout(hideTimer);
 }
 
 interface Context {
@@ -101,7 +128,10 @@ export function showPopup(
   ctx: Context,
 ): void {
   const entries = result.state === 'ok' ? result.entries : [];
+  const key = `${ctx.token.start}:${ctx.token.surface}`;
+  if (openFor === key) return;   // already showing this word
   closePopup();
+  openFor = key;
 
   host = document.createElement('div');
   host.className = 'libregaku-popup';
@@ -113,6 +143,14 @@ export function showPopup(
   const card = document.createElement('div');
   card.className = 'card';
   card.setAttribute('role', 'dialog');
+  card.addEventListener('mouseenter', () => {
+    overCard = true;
+    cancelPopupClose();
+  });
+  card.addEventListener('mouseleave', () => {
+    overCard = false;
+    closePopupSoon();
+  });
 
   const top = entries[0];
   const word = top?.word ?? ctx.token.lemma ?? ctx.token.surface;
@@ -193,7 +231,15 @@ export function showPopup(
   });
   button('copy', 'Copy word', () => void navigator.clipboard.writeText(word).then(() => say('word copied')));
   button('quote', 'Copy sentence', () => void navigator.clipboard.writeText(ctx.sentence).then(() => say('sentence copied')));
-  button('external', 'Open in jisho.org', () => {
+  /*
+   * Jisho for the human link, Jotoba for the API — the distinction is real.
+   * Calling someone's API implicates their terms, so that goes to the one that
+   * documents and permits it. Opening a web page in a new tab implicates
+   * nothing, so it goes to whichever site a learner would rather land on: for
+   * English speakers that is Jisho, with its conjugation tables, kanji
+   * breakdowns and example sentences.
+   */
+  button('external', 'Open in Jisho', () => {
     window.open(`https://jisho.org/search/${encodeURIComponent(word)}`, '_blank', 'noopener');
   });
   card.appendChild(tools);

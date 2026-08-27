@@ -84,6 +84,7 @@ export class Overlay {
   #primary: HTMLElement;
   #secondary: HTMLElement;
   #onToken?: (t: Token, el: HTMLElement) => void;
+  #onHover?: (t: Token | null, el: HTMLElement | null) => void;
 
   constructor(mount: HTMLElement) {
     this.#host = document.createElement('div');
@@ -112,10 +113,29 @@ export class Overlay {
       const raw = el.dataset.tok;
       if (raw) this.#onToken(JSON.parse(raw) as Token, el);
     });
+
+    this.#primary.addEventListener('mouseover', (e) => {
+      const el = (e.target as HTMLElement).closest('.t') as HTMLElement | null;
+      if (!el?.dataset.tok) return;
+      this.#onHover?.(JSON.parse(el.dataset.tok) as Token, el);
+    });
+    this.#primary.addEventListener('mouseout', (e) => {
+      const el = (e.target as HTMLElement).closest('.t') as HTMLElement | null;
+      if (!el) return;
+      // Moving between two tokens is not a leave; the next mouseover follows.
+      const to = (e as MouseEvent).relatedTarget as HTMLElement | null;
+      if (to?.closest?.('.t')) return;
+      this.#onHover?.(null, null);
+    });
   }
 
   onToken(cb: (t: Token, el: HTMLElement) => void): void {
     this.#onToken = cb;
+  }
+
+  /** Fires with a token on enter and with null on leave. */
+  onHover(cb: (t: Token | null, el: HTMLElement | null) => void): void {
+    this.#onHover = cb;
   }
 
   /**

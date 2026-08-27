@@ -7,7 +7,8 @@ import type { Segmenter, Token } from '../morphology/types';
 import { DomCaptionSource } from '../adapters/dom-captions';
 import { clearLookupCache, ensureDictionary, lookupWord } from '../dict/client';
 import { DEFAULT_BOTTOM, bottomOffset, namedMatches, occupiedBands } from './coexist';
-import { closePopup, showPopup } from './popup';
+import { loadSettings, onSettingsChange, settings } from '../settings';
+import { cancelPopupClose, closePopup, closePopupSoon, popupKey, showPopup } from './popup';
 import { Sidebar } from './sidebar';
 import { Transcript } from './transcript';
 import { clearNotice, showNotice } from './notice';
@@ -297,6 +298,7 @@ async function run(): Promise<boolean> {
   overlay = new Overlay(mount);
   applyAnchor(overlay, mount, adapter);
   overlay.onToken((tok, el) => void openLookup(mount, el, tok));
+  wireHover(overlay, mount);
 
   mountSidebar(mount, video);
   cancelAnimationFrame(raf);
@@ -373,8 +375,55 @@ function applyAnchor(o: Overlay, mount: HTMLElement, adapter: SubtitleSource): v
 
 /** Current line, for copy-sentence in the popup. */
 let currentLine = '';
+let hoverTimer = 0;
+let pausedForHover = false;
+
+/**
+ * Hover-to-open.
+ *
+ * Two things make this workable rather than maddening over playing video: a
+ * grace period before opening, so sweeping the cursor across a line does not
+ * flash a card per word; and pausing playback while the cursor rests on a
+ * word, so the subtitle does not race away mid-lookup.
+ */
+function wireHover(o: Overlay, mount: HTMLElement): void {
+  o.onHover((tok, el) => {
+    clearTimeout(hoverTimer);
+
+    if (!tok || !el) {
+      closePopupSoon();
+      resumeAfterHover();
+      return;
+    }
+    if (settings().interaction !== 'hover') return;
+
+    // Already showing this word — do not restart anything.
+    if (popupKey() === `${tok.start}:${tok.surface}`) {
+      cancelPopupClose();
+      return;
+    }
+
+    hoverTimer = window.setTimeout(() => {
+      pauseForHover();
+      void openLookup(mount, el, tok);
+    }, settings().hoverDelay);
+  });
+}
+
+function pauseForHover(): void {
+  if (!settings().hoverPause || !activeVideo || activeVideo.paused) return;
+  activeVideo.pause();
+  pausedForHover = true;
+}
+
+function resumeAfterHover(): void {
+  if (!pausedForHover || !activeVideo) return;
+  pausedForHover = false;
+  void activeVideo.play().catch(() => {});
+}
 
 async function openLookup(mount: HTMLElement, el: HTMLElement, token: Token): Promise<void> {
+  cancelPopupClose();
   try {
     const result = await lookupWord(token.lemma, token.surface);
     showPopup(mount, el, result, { token, sentence: currentLine });
@@ -471,6 +520,11 @@ document.addEventListener(
   },
   true,
 );
+
+void loadSettings().then((s) => log(`lookup opens on ${s.interaction}`));
+onSettingsChange((s) => {
+  if (s.interaction !== 'hover') closePopup();
+});
 
 log('content script loaded on', location.href);
 void start();
