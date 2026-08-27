@@ -1,0 +1,28 @@
+/**
+ * The seam that keeps every language out of the renderer.
+ *
+ * Tier 0 (`Intl.Segmenter`) covers every language for zero bytes but yields
+ * boundaries only. Tier 2 (lindera) adds `lemma` and `reading`. Nothing above
+ * this file may branch on language — if it needs to, the seam is wrong.
+ */
+
+export interface Token {
+  surface: string;
+  /** UTF-16 offset into the cue text. */
+  start: number;
+  end: number;
+  /** Dictionary form. Tier 2 only — this is the key matched against Anki. */
+  lemma?: string;
+  /** Reading for furigana / romanization. Tier 2 only. */
+  reading?: string;
+  pos?: string;
+  /** True when the token is a content word worth looking up. */
+  content?: boolean;
+}
+
+export interface Segmenter {
+  readonly tier: 0 | 1 | 2;
+  /** Whether this segmenter can supply `lemma`. The UI must say when it can't. */
+  readonly hasLemma: boolean;
+  segment(text: string): Token[] | Promise<Token[]>;
+}

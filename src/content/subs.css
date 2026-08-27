@@ -1,0 +1,22 @@
+/* Host-page styles. The overlay lives in a shadow root and is styled there;
+   this file only positions the container and suppresses native captions. */
+
+.libregaku-root {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 60;
+}
+
+/* Fetched-track mode: YouTube's captions are redundant, so remove them. */
+.libregaku-active .ytp-caption-window-container {
+  display: none !important;
+}
+
+/* DOM-reading mode: we depend on YouTube continuing to render captions, so it
+   must stay in the layout. Hide it visually only — `display:none` would risk
+   YouTube skipping the updates we are reading. */
+.libregaku-reading .ytp-caption-window-container {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
