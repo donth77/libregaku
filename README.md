@@ -55,31 +55,7 @@ Libregaku leans on Anki heavily, so here is exactly what that pulls in.
 | AnkiMobile (iPhone/iPad) | proprietary | optional client, $24.99 one-time |
 
 You can run the entire stack as free software: Anki desktop, AnkiDroid, and Anki's own
-bundled sync server, which is official and works with both mobile clients. Nothing in
-that path is proprietary and nothing is hosted by anyone else.
-
-The two proprietary entries are both **optional clients**, not the core, and neither is
-required to use Libregaku.
-
-### Does depending on Anki undercut the "libre" in the name?
-
-No — and the reason is about licensing and control rather than price.
-
-**Your data stays in an open format regardless.** An Anki collection is a SQLite
-database with a documented schema, on your own disk. `.apkg` is a documented zip around
-that database. Even an iOS user reading their cards through a proprietary client owns
-open data that any free software can read. A proprietary *client* over open data is a
-categorically weaker concern than proprietary data.
-
-**The alternative would be less free, not more.** Building our own scheduler, sync
-service and accounts would put your cards on a server we operate, in a format we
-define. Depending instead on AGPL software that you run, writing into a file you own,
-gives you more control — not less.
-
-**Nothing Libregaku produces requires proprietary software to read.** The extension is
-MIT, the dictionaries are CC BY-SA, the cards are an open format. Libregaku talks to
-Anki over HTTP rather than linking, so the two remain separate programs, and the
-`.apkg` export produces a portable file with no AnkiConnect involved at all.
+bundled sync server, which is official and works with both mobile clients. 
 
 ## Install from source
 
@@ -114,12 +90,6 @@ machinery, at a fidelity that depends on what data exists for them.
 "Basic" means word boundaries and lookups, but no dictionary-form matching — so an
 inflected word may not match a card you already have. The interface tells you when
 that applies.
-
-## Contributing
-
-Issues and pull requests are welcome. Before opening a PR, read
-[`AGENTS.md`](AGENTS.md) — it describes the architectural invariants and the things
-this project intentionally refuses to build.
 
 ## Licence
 
