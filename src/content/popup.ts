@@ -60,6 +60,13 @@ const STYLE = `
   }
   .trace b { color: #8AA2E8; font-weight: 600; }
   .empty { padding: 14px; color: #838DA8; }
+  .attrib {
+    display: flex; justify-content: space-between; gap: 8px;
+    padding: 7px 14px; border-top: 1px solid #212939;
+    font: 10px/1.4 ui-monospace, monospace; color: #5A6480; letter-spacing: .04em;
+  }
+  .attrib a { color: #6B7490; text-decoration: none; }
+  .attrib a:hover { color: #8AA2E8; text-decoration: underline; }
   .toast {
     position: absolute; left: 50%; bottom: -26px; transform: translateX(-50%);
     background: #E8ECF6; color: #12172A; font: 600 10px/1 ui-monospace, monospace;
@@ -228,6 +235,26 @@ export function showPopup(
     tr.appendChild(b);
     card.appendChild(tr);
   }
+
+  /*
+   * Attribution is a licence obligation, not a courtesy: JMdict is CC BY-SA
+   * 4.0, which requires crediting the creator and linking the licence wherever
+   * the material is used. The README is not where a user sees the data.
+   */
+  const attrib = document.createElement('div');
+  attrib.className = 'attrib';
+  const src = document.createElement('a');
+  src.href = 'https://www.edrdg.org/jmdict/j_jmdict.html';
+  src.target = '_blank';
+  src.rel = 'noopener';
+  src.textContent = 'JMdict · EDRDG';
+  const lic = document.createElement('a');
+  lic.href = 'https://creativecommons.org/licenses/by-sa/4.0/';
+  lic.target = '_blank';
+  lic.rel = 'noopener';
+  lic.textContent = 'CC BY-SA 4.0';
+  attrib.append(src, lic);
+  if (result.state === 'ok') card.appendChild(attrib);
 
   card.appendChild(toast);
   root.append(style, card);

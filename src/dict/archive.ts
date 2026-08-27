@@ -36,7 +36,22 @@ export async function fetchJsonTgz(
   url: string,
   onProgress?: (loaded: number, total: number) => void,
 ): Promise<unknown> {
-  const res = await fetch(url);
+  let res: Response;
+  try {
+    res = await fetch(url);
+  } catch (e) {
+    /*
+     * "Failed to fetch" from an extension page almost always means a blocked
+     * host rather than a dead network — and the blocked host is usually the
+     * *last* hop of a redirect chain, which is invisible from the error. Say
+     * so, because the raw TypeError sends you looking in the wrong place.
+     */
+    throw new Error(
+      `libregaku: could not fetch ${new URL(url).host} — ${String(e)}. ` +
+        `If this is "Failed to fetch", check host_permissions covers every ` +
+        `redirect hop, not just the URL requested.`,
+    );
+  }
   if (!res.ok) throw new Error(`libregaku: dictionary download failed (HTTP ${res.status})`);
 
   const total = Number(res.headers.get('content-length') ?? 0);
