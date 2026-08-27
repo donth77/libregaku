@@ -1,22 +1,146 @@
+import init, { TokenizerBuilder, loadDictionaryFromBytes, type Tokenizer } from 'lindera-wasm';
+import { downloadDictionary, hasDictionary, loadDictionaryFiles } from 'lindera-wasm/opfs';
+
 /**
- * Offscreen document — the WASM and OPFS host.
+ * The morphological analyser lives here and nowhere else.
  *
- * M0 establishes the message plumbing only. M2 loads lindera-wasm here and
- * downloads its dictionary into OPFS; nothing above this file changes when it
- * does, because callers speak to the `Segmenter` interface, not to lindera.
+ * It cannot run in the service worker (killed aggressively, no OPFS) nor in a
+ * content script (OPFS belongs to the host page's origin, and WASM is subject
+ * to the page's CSP). An offscreen document is a real extension page: our
+ * origin, our CSP, persistent, with OPFS.
  */
 
-type Req = { target?: string; type: string };
+const DICTS: Record<string, string> = {
+  ipadic: 'https://github.com/lindera/lindera/releases/download/v6.0.0/lindera-ipadic-6.0.0.zip',
+  'ko-dic': 'https://github.com/lindera/lindera/releases/download/v6.0.0/lindera-ko-dic-6.0.0.zip',
+  'cc-cedict': 'https://github.com/lindera/lindera/releases/download/v6.0.0/lindera-cc-cedict-6.0.0.zip',
+};
 
-chrome.runtime.onMessage.addListener((msg: Req, _sender, sendResponse) => {
+interface State {
+  ready: boolean;
+  loading: boolean;
+  dict: string | null;
+  phase: string;
+  percent: number;
+  error: string | null;
+}
+
+const state: State = { ready: false, loading: false, dict: null, phase: 'idle', percent: 0, error: null };
+
+let tokenizer: Tokenizer | null = null;
+let wasmReady: Promise<void> | null = null;
+
+function initWasm(): Promise<void> {
+  // The binary sits beside us in the extension, not on a CDN.
+  wasmReady ??= init({ module_or_path: chrome.runtime.getURL('lindera_wasm_bg.wasm') }).then(() => undefined);
+  return wasmReady;
+}
+
+async function load(name: string): Promise<void> {
+  if (state.loading) return;
+  state.loading = true;
+  state.error = null;
+  state.dict = name;
+
+  try {
+    await initWasm();
+
+    const url = DICTS[name];
+    if (!url) throw new Error(`no download URL for dictionary "${name}"`);
+
+    if (!(await hasDictionary(name))) {
+      // ~10 MB, once. Kept in OPFS so a reinstall is the only thing that
+      // triggers it again.
+      await downloadDictionary(url, name, {
+        onProgress: (p) => {
+          state.phase = p.phase;
+          state.percent = p.total ? Math.round(((p.loaded ?? 0) / p.total) * 100) : 0;
+        },
+      });
+    }
+
+    state.phase = 'loading';
+    const f = await loadDictionaryFiles(name);
+    const dict = loadDictionaryFromBytes(
+      f.metadata, f.dictTrie, f.dictValsIdx, f.dictVals,
+      f.dictWordsIdx, f.dictWords, f.matrixMtx, f.charDef, f.unk,
+    );
+
+    const builder = new TokenizerBuilder();
+    builder.setDictionaryInstance(dict);
+    builder.setMode('normal');
+    tokenizer = builder.build();
+
+    state.ready = true;
+    state.phase = 'ready';
+    state.percent = 100;
+    console.log(`[libregaku] lindera ready with ${name}`);
+  } catch (e) {
+    state.error = String(e);
+    state.phase = 'error';
+    console.warn('[libregaku] lindera failed to load:', e);
+  } finally {
+    state.loading = false;
+  }
+}
+
+/** IPADIC feature columns. */
+const BASE_FORM = 6;
+const READING = 7;
+
+interface RawToken {
+  surface: string;
+  details?: string[];
+  isUnknown?: boolean;
+}
+
+function analyse(text: string): Array<{ surface: string; lemma?: string; reading?: string; pos?: string }> {
+  if (!tokenizer) return [];
+  return (tokenizer.tokenize(text) as RawToken[]).map((t) => {
+    const d = t.details ?? [];
+    // Unknown words come back as ["UNK"]; there is no lemma or reading to take.
+    const usable = d.length > READING;
+    const base = usable ? d[BASE_FORM] : undefined;
+    const reading = usable ? d[READING] : undefined;
+    return {
+      surface: t.surface,
+      lemma: base && base !== '*' ? base : undefined,
+      reading: reading && reading !== '*' ? reading : undefined,
+      pos: d[0] && d[0] !== '*' ? d[0] : undefined,
+    };
+  });
+}
+
+chrome.runtime.onMessage.addListener((msg: { target?: string; type?: string; text?: string; dict?: string }, _s, respond) => {
   if (msg?.target !== 'offscreen') return false;
 
   switch (msg.type) {
     case 'ping':
-      sendResponse({ ok: true, ready: true });
+      respond({ ok: true, ready: state.ready });
       return true;
+
+    case 'status':
+      respond({ ok: true, ...state });
+      return true;
+
+    case 'load':
+      void load(msg.dict ?? 'ipadic').then(() => respond({ ok: !state.error, ...state }));
+      return true;
+
+    case 'tokenize':
+      if (!state.ready) {
+        respond({ ok: false, error: state.error ?? 'dictionary not loaded yet' });
+        return true;
+      }
+      try {
+        respond({ ok: true, tokens: analyse(msg.text ?? '') });
+      } catch (e) {
+        respond({ ok: false, error: String(e) });
+      }
+      return true;
+
     default:
-      sendResponse({ ok: false, error: `unknown message: ${msg.type}` });
+      respond({ ok: false, error: `unknown message: ${msg.type}` });
       return true;
   }
 });

@@ -10,6 +10,8 @@ export interface Cue {
   start: number;
   end: number;
   text: string;
+  /** Native-language line, when a second track is loaded. */
+  secondary?: string;
 }
 
 export interface TrackInfo {

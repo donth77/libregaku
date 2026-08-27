@@ -2,6 +2,7 @@ import { NetflixAdapter } from '../adapters/netflix';
 import { YouTubeAdapter } from '../adapters/youtube';
 import type { Cue, SubtitleSource } from '../adapters/types';
 import { IntlSegmenter } from '../morphology/intl';
+import { LinderaSegmenter } from '../morphology/lindera';
 import type { Segmenter, Token } from '../morphology/types';
 import { DomCaptionSource } from '../adapters/dom-captions';
 import { clearNotice, showNotice } from './notice';
@@ -44,10 +45,43 @@ function pickAdapter(): SubtitleSource | null {
   return ADAPTERS.find((a) => a.matches(location.href)) ?? null;
 }
 
-function makeSegmenter(): Segmenter | null {
-  if (IntlSegmenter.supported) return new IntlSegmenter(TARGET_LANG);
-  console.warn('libregaku: Intl.Segmenter unavailable; cannot segment');
-  return null;
+let segmenter: Segmenter | null = null;
+
+/**
+ * Prefer real morphology, but never block on it. The dictionary is a ~10 MB
+ * one-time download; until it lands, tier 0 renders boundaries so the overlay
+ * is useful immediately rather than blank.
+ */
+async function makeSegmenter(): Promise<Segmenter | null> {
+  if (segmenter) return segmenter;
+
+  if (!IntlSegmenter.supported) {
+    log('Intl.Segmenter unavailable — cannot segment at all');
+    return null;
+  }
+  segmenter = new IntlSegmenter(TARGET_LANG);
+
+  // Upgrade in the background.
+  void (async () => {
+    try {
+      const status = await LinderaSegmenter.status();
+      if (!status.ready) log('downloading the Japanese dictionary (~10 MB, once)…');
+
+      const r = await LinderaSegmenter.ensure('ipadic');
+      if (!r.ok) {
+        log('staying on tier 0 — analyser unavailable:', r.error);
+        return;
+      }
+      segmenter = new LinderaSegmenter();
+      segmented = new Map();   // re-segment with lemmas and readings
+      active = -1;
+      log('upgraded to tier 2 — lemmas, readings and furigana are live');
+    } catch (e) {
+      log('staying on tier 0 —', e);
+    }
+  })();
+
+  return segmenter;
 }
 
 /** Binary search for the cue covering `t`. */
@@ -65,6 +99,27 @@ function cueAt(t: number): number {
   return -1;
 }
 
+function paint(i: number): void {
+  const cue = cues[i];
+  if (!cue) return;
+  const cached = segmented.get(i);
+  if (cached) {
+    overlay?.render(cached, cue.secondary);
+    return;
+  }
+  const result = (segmenter ?? { segment: () => [] as Token[] }).segment(cue.text);
+  if (Array.isArray(result)) {
+    segmented.set(i, result);
+    overlay?.render(result, cue.secondary);
+    return;
+  }
+  void result.then((toks) => {
+    segmented.set(i, toks);
+    // The cue may have moved on while we were analysing.
+    if (active === i) overlay?.render(toks, cue.secondary);
+  });
+}
+
 function tick(video: HTMLVideoElement, seg: Segmenter): void {
   const i = cueAt(video.currentTime);
   if (i !== active) {
@@ -75,13 +130,7 @@ function tick(video: HTMLVideoElement, seg: Segmenter): void {
           (cues[0] ? ` · first cue starts at ${cues[0].start.toFixed(1)}s` : ''));
       overlay?.clear();
     } else {
-      let toks = segmented.get(i);
-      if (!toks) {
-        const cue = cues[i];
-        toks = cue ? (seg.segment(cue.text) as Token[]) : [];
-        segmented.set(i, toks);
-      }
-      overlay?.render(toks);
+      paint(i);
     }
   }
   raf = requestAnimationFrame(() => tick(video, seg));
@@ -137,7 +186,7 @@ async function run(): Promise<boolean> {
   const adapter = pickAdapter();
   if (!adapter) { quiet('no adapter for ' + location.href); return false; }
 
-  const seg = makeSegmenter();
+  const seg = await makeSegmenter();
   if (!seg) return true;   // unrecoverable; retrying will not help
 
   const video = adapter.video();
@@ -251,7 +300,9 @@ function startDomFallback(mount: HTMLElement, seg: Segmenter, adapter: SubtitleS
   domSource = source;
   const started = domSource.start((text) => {
     if (!text) return overlay?.clear();
-    overlay?.render(seg.segment(text) as Token[]);
+    const result = (segmenter ?? seg).segment(text);
+    if (Array.isArray(result)) overlay?.render(result);
+    else void result.then((toks) => overlay?.render(toks));
   });
 
   if (!started) { quiet('could not observe the caption container'); return false; }

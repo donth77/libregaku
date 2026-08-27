@@ -1,3 +1,4 @@
+import { furigana } from '../morphology/furigana';
 import type { Token } from '../morphology/types';
 
 /**
@@ -51,6 +52,13 @@ const STYLE = `
   .secondary { font-size: calc(var(--size, 2.1vw) * .68); color: #B9C3D8; user-select: text; }
   .t { position: relative; padding: 0 1px 3px; border-radius: 2px; cursor: pointer; }
   .t:hover { background: rgba(255,255,255,.15); }
+  .t rt {
+    font-size: .48em; font-weight: 400; color: #9FB4E8;
+    letter-spacing: .02em; user-select: none;
+  }
+  /* Ruby only where it earns its place: words you have not learned yet. */
+  .wrap:not(.ruby-all) .t:not([data-s="unknown"]):not([data-s="learning"]) rt { visibility: hidden; }
+  .wrap.ruby-off rt { display: none; }
   .t[data-s="unknown"]  { box-shadow: inset 0 -2.5px 0 #E5806C; }
   .t[data-s="learning"] { box-shadow: inset 0 -1.5px 0 #D9A64A; }
   .hidden { display: none; }
@@ -109,6 +117,13 @@ export class Overlay {
     this.#onToken = cb;
   }
 
+  /** always | unknown | never */
+  setRubyMode(mode: 'always' | 'unknown' | 'never'): void {
+    const wrap = this.#primary.parentElement;
+    wrap?.classList.toggle('ruby-all', mode === 'always');
+    wrap?.classList.toggle('ruby-off', mode === 'never');
+  }
+
   render(tokens: Token[], secondary?: string): void {
     if (DEBUG_BOX) {
       const h = this.#host.getBoundingClientRect();
@@ -126,12 +141,31 @@ export class Overlay {
     }
     this.#primary.replaceChildren();
     for (const tok of tokens) {
+      const segs = furigana(tok.surface, tok.reading);
+      const annotated = segs.some((x) => x.ruby);
+
       const el = document.createElement('span');
       el.className = 't';
       el.dataset.s = 'unknown';        // M4 replaces this with real Anki status
       el.dataset.tok = JSON.stringify(tok);
       el.tabIndex = 0;
-      el.textContent = tok.surface;
+
+      if (!annotated) {
+        el.textContent = tok.surface;
+      } else {
+        for (const seg of segs) {
+          if (!seg.ruby) {
+            el.appendChild(document.createTextNode(seg.text));
+            continue;
+          }
+          const ruby = document.createElement('ruby');
+          ruby.appendChild(document.createTextNode(seg.text));
+          const rt = document.createElement('rt');
+          rt.textContent = seg.ruby;
+          ruby.appendChild(rt);
+          el.appendChild(ruby);
+        }
+      }
       this.#primary.appendChild(el);
     }
     if (secondary) {
