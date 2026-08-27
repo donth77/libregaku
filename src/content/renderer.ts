@@ -62,6 +62,8 @@ const STYLE = `
   .wrap.ruby-off rt { display: none; }
   .t[data-s="unknown"]  { box-shadow: inset 0 -2.5px 0 #E5806C; }
   .t[data-s="learning"] { box-shadow: inset 0 -1.5px 0 #D9A64A; }
+  /* known and ignored carry no marking at all — see the note above. */
+  .t[data-s="known"], .t[data-s="ignored"] { box-shadow: none; }
   .hidden { display: none; }
   /* Hug the text. The wrapper is a full-width flex column, so outlining it
      drew a box across the whole player. */
@@ -86,6 +88,7 @@ export class Overlay {
   #secondary: HTMLElement;
   #onToken?: (t: Token, el: HTMLElement) => void;
   #onHover?: (t: Token | null, el: HTMLElement | null) => void;
+  #statusOf: (t: Token) => string = () => 'unknown';
 
   constructor(mount: HTMLElement) {
     this.#host = document.createElement('div');
@@ -132,6 +135,14 @@ export class Overlay {
 
   onToken(cb: (t: Token, el: HTMLElement) => void): void {
     this.#onToken = cb;
+  }
+
+  /**
+   * How each token is coloured. Supplied rather than computed here so the
+   * renderer never learns what Anki is.
+   */
+  setStatusSource(fn: (t: Token) => string): void {
+    this.#statusOf = fn;
   }
 
   /** Fires with a token on enter and with null on leave. */
@@ -187,7 +198,7 @@ export class Overlay {
 
       const el = document.createElement('span');
       el.className = 't';
-      el.dataset.s = 'unknown';        // M4 replaces this with real Anki status
+      el.dataset.s = this.#statusOf(tok);
       el.dataset.tok = JSON.stringify(tok);
       el.tabIndex = 0;
 

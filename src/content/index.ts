@@ -7,6 +7,7 @@ import type { Segmenter, Token } from '../morphology/types';
 import { DomCaptionSource } from '../adapters/dom-captions';
 import { clearLookupCache, ensureDictionary, lookupWord } from '../dict/client';
 import { DEFAULT_BOTTOM, bottomOffset, namedMatches, occupiedBands } from './coexist';
+import { buildStatusMap, loadOverrides, type Status, type StatusMap } from '../anki/status';
 import { TIER2_LANGS, loadSettings, onSettingsChange, settings } from '../settings';
 import { cancelPopupClose, closePopup, closePopupSoon, popupKey, showPopup } from './popup';
 import { Sidebar } from './sidebar';
@@ -50,6 +51,47 @@ let domSource: DomCaptionSource | null = null;
 let sidebar: Sidebar | null = null;
 const transcript = new Transcript();
 let activeVideo: HTMLVideoElement | null = null;
+let status: StatusMap | null = null;
+let overrides = new Map<string, Status>();
+
+/**
+ * A token's status, by dictionary form.
+ *
+ * The lemma is the key, which is the whole reason M2 merges morphemes: 来た has
+ * to resolve to 来る or a card you already have will never light up.
+ */
+function statusOf(tok: Token): Status {
+  if (tok.punct || !tok.content) return 'ignored';
+  const key = tok.lemma ?? tok.surface;
+  return overrides.get(key) ?? status?.get(key) ?? 'unknown';
+}
+
+/** Share of content words already known, for the sidebar. */
+export function comprehension(tokens: Token[]): number {
+  const words = tokens.filter((t) => t.content && !t.punct);
+  if (!words.length) return 1;
+  const known = words.filter((t) => statusOf(t) === 'known').length;
+  return known / words.length;
+}
+
+async function refreshStatus(): Promise<void> {
+  overrides = await loadOverrides();
+  const deck = settings().deck;
+  try {
+    status = await buildStatusMap(deck);
+    log(
+      status.size
+        ? `Anki: ${status.size} words known or learning${deck ? ` in "${deck}"` : ''}`
+        : 'Anki reachable but that deck has no notes — everything will read as unknown',
+    );
+  } catch {
+    // Anki being closed is normal, not a fault. Everything simply reads unknown.
+    status = null;
+    log('Anki not reachable — words will show as unknown until it is running');
+  }
+  segmented = new Map();
+  active = -1;
+}
 
 function pickAdapter(): SubtitleSource | null {
   return ADAPTERS.find((a) => a.matches(location.href)) ?? null;
@@ -398,6 +440,7 @@ function makeOverlay(mount: HTMLElement, adapter: SubtitleSource): Overlay {
   const o = new Overlay(mount);
   applyAnchor(o, mount, adapter);
   o.setRubyMode(settings().ruby);
+  o.setStatusSource(statusOf);
   o.onToken((tok, el) => void openLookup(mount, el, tok));
   wireHover(o, mount);
   return o;
@@ -538,7 +581,11 @@ document.addEventListener(
   true,
 );
 
-void loadSettings().then((s) => log(`lookup opens on ${s.interaction}`));
+void loadSettings().then(async (s) => {
+  log(`lookup opens on ${s.interaction}`);
+  await refreshStatus();
+});
+onSettingsChange(() => void refreshStatus());
 onSettingsChange((s) => {
   if (s.interaction !== 'hover') closePopup();
 });
