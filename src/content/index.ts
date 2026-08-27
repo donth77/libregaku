@@ -295,10 +295,7 @@ async function run(): Promise<boolean> {
   adapter.hideNative();
 
   overlay?.destroy();
-  overlay = new Overlay(mount);
-  applyAnchor(overlay, mount, adapter);
-  overlay.onToken((tok, el) => void openLookup(mount, el, tok));
-  wireHover(overlay, mount);
+  overlay = makeOverlay(mount, adapter);
 
   mountSidebar(mount, video);
   cancelAnimationFrame(raf);
@@ -324,9 +321,7 @@ function startDomFallback(mount: HTMLElement, seg: Segmenter, adapter: SubtitleS
   }
 
   overlay?.destroy();
-  overlay = new Overlay(mount);
-  applyAnchor(overlay, mount, adapter);
-  overlay.onToken((tok, el) => void openLookup(mount, el, tok));
+  overlay = makeOverlay(mount, adapter);
 
   domSource?.stop();
   domSource = source;
@@ -386,6 +381,22 @@ let pausedForHover = false;
  * flash a card per word; and pausing playback while the cursor rests on a
  * word, so the subtitle does not race away mid-lookup.
  */
+/**
+ * One construction site for the overlay.
+ *
+ * There are two code paths that need one — a fetched track and the DOM
+ * fallback — and wiring them separately is how hover ended up working on
+ * YouTube and not on Netflix. Anything an overlay needs belongs here.
+ */
+function makeOverlay(mount: HTMLElement, adapter: SubtitleSource): Overlay {
+  const o = new Overlay(mount);
+  applyAnchor(o, mount, adapter);
+  o.setRubyMode(settings().ruby);
+  o.onToken((tok, el) => void openLookup(mount, el, tok));
+  wireHover(o, mount);
+  return o;
+}
+
 function wireHover(o: Overlay, mount: HTMLElement): void {
   o.onHover((tok, el) => {
     clearTimeout(hoverTimer);

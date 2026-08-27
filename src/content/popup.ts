@@ -214,10 +214,16 @@ export function showPopup(
     return b;
   };
 
+  // The dictionary headword may differ from what is on screen (JMdict lists
+  // 私 under わたし, the analyser may have read it わたくし). Ask for the
+  // headword with the entry's own reading, which is the pair jpod101 keys on.
+  const sayWord = top?.word ?? word;
+  const sayReading = top?.reading ?? reading;
+
   button('volume', 'Pronounce', (b) => {
     b.classList.add('busy');
     b.replaceChildren(icon('loader'));
-    void pronounce(word, reading)
+    void pronounce(sayWord, sayReading)
       .then((spoken) => {
         // Say which source was used: a human recording and a synthesised one
         // are not equally trustworthy models to imitate.

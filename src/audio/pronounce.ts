@@ -75,14 +75,30 @@ export function jpodQuery(word: string, reading?: string): string {
 /** Fetch as a blob so the body can be inspected before anything is played. */
 async function tryJpod(word: string, reading?: string): Promise<string | null> {
   const q = jpodQuery(word, reading);
+  const say = (verdict: string): void =>
+    console.log(`%c[libregaku]%c audio ${verdict} · ${q}`, 'color:#8AA2E8', '');
 
   try {
     const res = await fetch(`${JPOD}?${q}`);
-    if (!res.ok) return null;
+    if (!res.ok) {
+      say(`HTTP ${res.status}`);
+      return null;
+    }
     const blob = await res.blob();
-    if (blob.size === JPOD_MISSING_BYTES || blob.size < 512) return null;
+    if (blob.size === JPOD_MISSING_BYTES) {
+      say('not in jpod101');
+      return null;
+    }
+    if (blob.size < 512) {
+      say(`suspiciously small (${blob.size}b)`);
+      return null;
+    }
+    say(`recording ${blob.size}b`);
     return URL.createObjectURL(blob);
-  } catch {
+  } catch (e) {
+    // A blocked host reports identically to a dead network here, and the
+    // fallback hides it — so name it rather than failing quietly.
+    say(`fetch failed (${String(e)})`);
     return null;
   }
 }
