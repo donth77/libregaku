@@ -21,6 +21,22 @@ pnpm test            # vitest
 node scripts/check-captions.mjs --lang ja <url-or-id>   # screen a test video
 ```
 
+### Tests
+
+| Command | Scope | When |
+|---|---|---|
+| `pnpm test` | Pure logic — parsers, segmenter. Hermetic. | Every push |
+| `pnpm test:contract` | Live-site assumptions. Networked, allowed to flake. | Daily, via CI |
+
+Contract tests exist because this extension reads pages it does not control, and
+the failure mode is silent: subtitles just stop appearing. Every assumption is
+registered in `tests/contract/assumptions.ts` with what it claims, what breaks
+when it stops being true, and whether a fallback covers it — so a red canary
+names the cause instead of a line number.
+
+**Add an assumption to that registry whenever you rely on a new selector, field
+or endpoint.** An unregistered assumption is one that will fail silently.
+
 `check-captions` lists a YouTube video's subtitle tracks and marks each human or
 auto-generated (`kind="asr"`). Use it before testing segmentation against a video —
 ASR output has no punctuation and invents words, so it tells you nothing about
