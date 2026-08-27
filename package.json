@@ -1,0 +1,41 @@
+{
+  "name": "libregaku",
+  "version": "0.0.1",
+  "private": true,
+  "description": "A free, Migaku-style Japanese immersion layer for the browser. Anki is the backend.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node build.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "lindera-wasm": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.287",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.6.0",
+    "vitest": "^4.1.11"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/donth77/libregaku.git"
+  },
+  "bugs": {
+    "url": "https://github.com/donth77/libregaku/issues"
+  },
+  "homepage": "https://github.com/donth77/libregaku#readme",
+  "packageManager": "pnpm@10.14.0",
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=10"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

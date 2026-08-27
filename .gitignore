@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*.log
+
+# Internal planning notes and design documentation. Not part of the
+# published repository — external documentation lives in README.md
+# and AGENTS.md at the root.
+docs/
+
+# pnpm
+.pnpm-store/
