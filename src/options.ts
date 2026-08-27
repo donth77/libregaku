@@ -3,6 +3,8 @@ import {
 } from './anki/client';
 import {
   DEFAULTS,
+  onSettingsChange,
+  settings as settingsSnapshot,
   NATIVE_LANGUAGES,
   TARGET_LANGUAGES,
   loadSettings,
@@ -40,6 +42,10 @@ async function main(): Promise<void> {
     0: 'Word boundaries only. Lookups match exactly what is on screen.',
   };
 
+  // Seeing the page at all means the pair has been reviewed; a learner whose
+  // pair happens to be the default should not be nagged forever.
+  if (!s.configured) void setSetting('configured', true);
+
   const target = document.getElementById('target') as HTMLSelectElement;
   const note = document.getElementById('tierNote') as HTMLElement;
   for (const l of TARGET_LANGUAGES) {
@@ -74,6 +80,31 @@ async function main(): Promise<void> {
   });
 
   void wireAnki(s);
+
+  /*
+   * A first run needs two decisions and nothing else. The language pair cannot
+   * be guessed; the deck cannot either, and without one the Add button has
+   * nowhere to put a card. Everything else on this page has a defensible
+   * default, so the checklist covers exactly these two and then disappears.
+   */
+  const setup = document.getElementById('setup') as HTMLElement;
+  const stepLang = document.getElementById('step-lang') as HTMLElement;
+  const stepAnki = document.getElementById('step-anki') as HTMLElement;
+
+  const refreshSetup = (): void => {
+    const cur = { ...s, ...settingsSnapshot() };
+    const langDone = Boolean(cur.configured);
+    const ankiDone = Boolean(cur.deck);
+
+    stepLang.classList.toggle('done', langDone);
+    stepAnki.classList.toggle('done', ankiDone);
+    (stepLang.querySelector('.tick') as HTMLElement).textContent = langDone ? '✓' : '○';
+    (stepAnki.querySelector('.tick') as HTMLElement).textContent = ankiDone ? '✓' : '○';
+    setup.hidden = langDone && ankiDone;
+  };
+
+  onSettingsChange(refreshSetup);
+  refreshSetup();
 
   bind('interaction', 'select');
   bind('hoverPause', 'check');

@@ -46,3 +46,15 @@ button[type=button]:disabled { opacity: .5; cursor: default; }
 .bad { color: #E5806C; }
 
 .pair { display: flex; gap: 6px; align-items: center; }
+
+.setup {
+  background: #1A2138; border: 1px solid #3B4A6B; border-radius: 10px;
+  padding: 18px 20px; margin-bottom: 32px;
+}
+.setup h2 { color: var(--accent); margin-bottom: 10px; }
+.setup ol { margin: 0; padding-left: 4px; list-style: none; }
+.setup li { display: flex; gap: 10px; align-items: baseline; padding: 4px 0; color: var(--dim); }
+.setup li.done { color: var(--faint); text-decoration: line-through; }
+.setup .tick { font-family: ui-monospace, monospace; color: var(--faint); }
+.setup li.done .tick { color: #63AF97; text-decoration: none; }
+.setup .fine { margin-top: 12px; margin-bottom: 0; }
