@@ -7,7 +7,7 @@ import type { Segmenter, Token } from '../morphology/types';
 import { DomCaptionSource } from '../adapters/dom-captions';
 import { clearLookupCache, ensureDictionary, lookupWord } from '../dict/client';
 import { DEFAULT_BOTTOM, bottomOffset, namedMatches, occupiedBands } from './coexist';
-import { buildStatusMap, loadOverrides, type Status, type StatusMap } from '../anki/status';
+import { buildStatusMap, loadOverrides, setOverride, type Status, type StatusMap } from '../anki/status';
 import { TIER2_LANGS, loadSettings, onSettingsChange, settings } from '../settings';
 import { cancelPopupClose, closePopup, closePopupSoon, popupKey, showPopup } from './popup';
 import { Sidebar } from './sidebar';
@@ -72,6 +72,32 @@ export function comprehension(tokens: Token[]): number {
   if (!words.length) return 1;
   const known = words.filter((t) => statusOf(t) === 'known').length;
   return known / words.length;
+}
+
+/**
+ * Record a hand-marked status.
+ *
+ * Applied immediately so the underline changes under the cursor, then written
+ * to storage. The optimistic update matters: a status change that takes a
+ * round-trip to appear reads as broken.
+ */
+async function mark(word: string, next: Status | null): Promise<void> {
+  if (next) overrides.set(word, next);
+  else overrides.delete(word);
+  repaint();
+  await setOverride(word, next);
+}
+
+/** Re-render the current line so a status change is visible at once. */
+function repaint(): void {
+  if (active >= 0) {
+    segmented.delete(active);
+    const i = active;
+    active = -1;
+    paint(i);
+    active = i;
+  }
+  sidebar?.render();
 }
 
 async function refreshStatus(): Promise<void> {
@@ -486,7 +512,12 @@ async function openLookup(mount: HTMLElement, el: HTMLElement, token: Token): Pr
   cancelPopupClose();
   try {
     const result = await lookupWord(token.lemma, token.surface);
-    showPopup(mount, el, result, { token, sentence: currentLine });
+    showPopup(mount, el, result, {
+      token,
+      sentence: currentLine,
+      status: statusOf(token),
+      onMark: mark,
+    });
   } catch (e) {
     log('lookup failed:', e);
   }
@@ -515,7 +546,12 @@ function mountSidebar(mount: HTMLElement, video: HTMLVideoElement): void {
     onWordClick: (token, el, sentence) => {
       void lookupWord(token.lemma, token.surface).then((result) => {
         const host = el.getRootNode() as ShadowRoot;
-        showPopup((host.host as HTMLElement).parentElement ?? mount, el, result, { token, sentence });
+        showPopup((host.host as HTMLElement).parentElement ?? mount, el, result, {
+          token,
+          sentence,
+          status: statusOf(token),
+          onMark: mark,
+        });
       });
     },
   });

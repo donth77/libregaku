@@ -53,6 +53,8 @@ export interface Settings {
   sidebarHover: boolean;
   /** Deck new cards go to, and the deck read for word status. */
   deck: string;
+  /** Show comprehension and per-line counts in the transcript panel. */
+  sidebarStats: boolean;
 }
 
 export const DEFAULTS: Settings = {
@@ -65,6 +67,7 @@ export const DEFAULTS: Settings = {
   ruby: 'unknown',
   sidebarHover: true,
   deck: '',
+  sidebarStats: true,
 };
 
 const KEY = 'libregaku.settings';

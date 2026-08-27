@@ -1,6 +1,7 @@
 import { lookupWord } from '../dict/client';
 import { readablePos } from '../dict/pos';
 import type { Segmenter, Token } from '../morphology/types';
+import { settings } from '../settings';
 import type { Transcript } from './transcript';
 
 /**
@@ -181,6 +182,7 @@ export class Sidebar {
 
     const filters = document.createElement('div');
     filters.className = 'filters';
+    if (!settings().sidebarStats) filters.style.display = 'none';
     for (const [key, label, title] of [
       ['all', 'All', 'Every line'],
       ['unknown', 'Has new', 'Lines containing a word you have no card for'],
@@ -203,7 +205,6 @@ export class Sidebar {
 
     const summary = document.createElement('div');
     summary.className = 'summary';
-    summary.id = 'lg-summary';
 
     const search = document.createElement('div');
     search.className = 'search';
@@ -322,7 +323,8 @@ export class Sidebar {
     }
 
     transcript.lines.forEach((line, i) => {
-      const c = this.#counts.get(i);
+      const stats = settings().sidebarStats;
+      const c = stats ? this.#counts.get(i) : undefined;
       if (this.#filter === 'unknown' && (c?.unknown ?? 0) === 0) return;
       if (this.#filter === 'i1' && c?.unknown !== 1) return;
 
@@ -357,7 +359,7 @@ export class Sidebar {
       this.#list.appendChild(row);
     });
 
-    void this.#measure();
+    if (settings().sidebarStats) void this.#measure();
   }
 
   /**
@@ -398,6 +400,10 @@ export class Sidebar {
   #paintSummary(): void {
     const el = this.#root.querySelector('.summary');
     if (!el) return;
+    if (!settings().sidebarStats) {
+      el.textContent = '';
+      return;
+    }
 
     let words = 0;
     let unknown = 0;

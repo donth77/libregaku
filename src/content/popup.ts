@@ -1,3 +1,4 @@
+import type { Status } from '../anki/status';
 import { pronounce } from '../audio/pronounce';
 import type { LookupResult } from '../dict/client';
 import { readablePos } from '../dict/pos';
@@ -48,6 +49,17 @@ const STYLE = `
   @keyframes spin { to { transform: rotate(360deg); } }
   @media (prefers-reduced-motion: reduce) { .tb.busy svg { animation: none; } }
   .loading { padding: 14px; color: #D9A64A; font-size: 12px; }
+  .marks { display: flex; gap: 6px; padding: 10px 14px; border-top: 1px solid #212939; }
+  .mk {
+    flex: 1; padding: 7px 8px; border-radius: 6px; cursor: pointer;
+    font: 600 10px/1.2 ui-monospace, monospace; letter-spacing: .07em;
+    text-transform: uppercase; border: 1px solid transparent;
+  }
+  .mk.known   { background: #16281F; color: #63AF97; border-color: #2A5245; }
+  .mk.card    { background: #1A2138; color: #8AA2E8; border-color: #3B4A6B; }
+  .mk.ignore  { background: #1B2234; color: #838DA8; border-color: #2A3348; }
+  .mk[aria-pressed="true"] { outline: 2px solid currentColor; outline-offset: -1px; }
+  .mk:hover { filter: brightness(1.12); }
   .tb:hover { border-color: #8AA2E8; color: #E8ECF6; }
   .tb:focus-visible { outline: 2px solid #8AA2E8; outline-offset: 2px; }
   ol { margin: 0; padding: 10px 14px 10px 30px; }
@@ -112,6 +124,9 @@ interface Context {
   token: Token;
   /** The whole line, for copy-sentence. */
   sentence: string;
+  /** Current status, so the matching control reads as pressed. */
+  status: Status;
+  onMark: (word: string, status: Status | null) => void;
 }
 
 export function showPopup(
@@ -280,6 +295,38 @@ export function showPopup(
     tr.appendChild(b);
     card.appendChild(tr);
   }
+
+  /*
+   * Marking is deliberately separate from carding.
+   *
+   * "I know this" and "I have a flashcard for this" are different facts, and
+   * conflating them is how a learner ends up carding words they have known for
+   * years. Anki can express the second; only the user can express the first,
+   * so it is stored as an override and reconciled into Anki later as a tagged
+   * suspended note.
+   */
+  const marks = document.createElement('div');
+  marks.className = 'marks';
+  const markKey = ctx.token.lemma ?? ctx.token.surface;
+
+  const mark = (cls: string, label: string, next: Status | null): void => {
+    const b = document.createElement('button');
+    b.className = `mk ${cls}`;
+    b.textContent = label;
+    b.setAttribute('aria-pressed', String(ctx.status === next));
+    b.addEventListener('click', () => {
+      const value = ctx.status === next ? null : next;   // clicking again clears
+      void ctx.onMark(markKey, value);
+      say(value ? `marked ${value}` : 'cleared');
+      closePopup();
+    });
+    marks.appendChild(b);
+  };
+
+  mark('known', 'Known', 'known');
+  mark('card', 'Learning', 'learning');
+  mark('ignore', 'Ignore', 'ignored');
+  card.appendChild(marks);
 
   card.appendChild(toast);
   root.append(style, card);

@@ -76,6 +76,7 @@ async function main(): Promise<void> {
   bind('interaction', 'select');
   bind('hoverPause', 'check');
   bind('sidebarHover', 'check');
+  bind('sidebarStats', 'check');
   bind('ruby', 'select');
 }
 
