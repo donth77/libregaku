@@ -95,3 +95,54 @@ describe('mergeMorphemes', () => {
     );
   });
 });
+
+describe('copula after a noun', () => {
+  it('keeps ワールド and です apart', () => {
+    // です is a copula, not an inflection of the noun — two lookups.
+    const out = mergeMorphemes([
+      m('ワールド', '名詞', '一般', 'ワールド', 'ワールド'),
+      m('です', '助動詞', '*', 'です', 'デス'),
+    ]);
+    expect(out.map((t) => t.surface)).toEqual(['ワールド', 'です']);
+  });
+
+  it('keeps 学生 and でし + た apart from the noun', () => {
+    const out = mergeMorphemes([
+      m('学生', '名詞', '一般', '学生', 'ガクセイ'),
+      m('でし', '助動詞', '*', 'です', 'デシ'),
+      m('た', '助動詞', '*', 'た', 'タ'),
+    ]);
+    expect(out[0]?.surface).toBe('学生');
+    expect(out.length).toBeGreaterThan(1);
+  });
+
+  it('still attaches auxiliaries to a verb', () => {
+    const out = mergeMorphemes([
+      m('来', '動詞', '自立', '来る', 'キ'),
+      m('た', '助動詞', '*', 'た', 'タ'),
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0]?.surface).toBe('来た');
+  });
+
+  it('still attaches auxiliaries to an adjective', () => {
+    const out = mergeMorphemes([
+      m('高', '形容詞', '自立', '高い', 'タカ'),
+      m('かっ', '助動詞', '*', 'た', 'カッ'),
+      m('た', '助動詞', '*', 'た', 'タ'),
+    ]);
+    expect(out).toHaveLength(1);
+  });
+
+  it('attaches an auxiliary once a suru-noun has become verbal', () => {
+    // 勉強 heads a noun group until する joins it; then た belongs.
+    const out = mergeMorphemes([
+      m('勉強', '名詞', 'サ変接続', '勉強', 'ベンキョウ'),
+      m('し', '動詞', '自立', 'する', 'シ'),
+      m('た', '助動詞', '*', 'た', 'タ'),
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0]?.surface).toBe('勉強した');
+    expect(out[0]?.lemma).toBe('勉強する');
+  });
+});

@@ -35,10 +35,30 @@ export interface MergedToken {
 const AUX_VERBS = new Set(['いる', 'ある', 'おく', 'しまう', 'みる', 'いく', 'くる', 'もらう', 'くれる', 'あげる']);
 const FUNCTION_POS = new Set(['助詞', '助動詞', '記号', 'フィラー']);
 
-/** Does `cur` continue the word `prev` started? */
-function attaches(prev: Morpheme, cur: Morpheme): boolean {
-  // 食べ + まし + た, 来 + た, 高 + かっ + た
-  if (cur.pos === '助動詞') return true;
+/**
+ * Is this group inflecting a verb or adjective?
+ *
+ * The head alone is not enough: 勉強 heads a noun group until する attaches to
+ * it, after which the whole thing conjugates like a verb.
+ */
+function isVerbal(group: Morpheme[]): boolean {
+  const head = group[0];
+  if (head?.pos === '動詞' || head?.pos === '形容詞') return true;
+  return group.some((m) => m.pos === '動詞');
+}
+
+/** Does `cur` continue the word this `group` started? */
+function attaches(group: Morpheme[], cur: Morpheme): boolean {
+  const prev = group[group.length - 1]!;
+
+  /*
+   * Auxiliaries inflect verbs and adjectives — 食べ+まし+た, 来+た, 高+かっ+た —
+   * and there the auxiliary is part of the conjugation.
+   *
+   * After a noun it is not. ワールド + です is a noun and a copula: two words a
+   * learner looks up separately, and です is not an inflection of ワールド.
+   */
+  if (cur.pos === '助動詞') return isVerbal(group);
 
   // 勉強 + する / 勉強 + し
   if (cur.pos === '動詞' && prev.pos === '名詞' && prev.pos1 === 'サ変接続') return true;
@@ -95,7 +115,7 @@ export function mergeMorphemes(morphemes: Morpheme[]): MergedToken[] {
     }
     // Never let a trailing particle start absorbing things.
     const head = group[0]!;
-    if (!FUNCTION_POS.has(head.pos ?? '') && attaches(group[group.length - 1]!, m)) {
+    if (!FUNCTION_POS.has(head.pos ?? '') && attaches(group, m)) {
       group.push(m);
     } else {
       flush();
