@@ -58,7 +58,7 @@ export async function lookupWord(lemma: string | undefined, surface: string): Pr
       target: 'offscreen',
       type: 'dict-lookup',
       key,
-    })) as { ok?: boolean; entries?: Entry[]; error?: string } | undefined;
+    })) as { ok?: boolean; entries?: Entry[]; error?: string; source?: string } | undefined;
 
     if (!res?.ok) {
       // Not an answer — do not remember it.
@@ -69,8 +69,12 @@ export async function lookupWord(lemma: string | undefined, surface: string): Pr
     }
 
     const entries = res.entries ?? [];
-    if (cache.size > 2000) cache.clear();
-    cache.set(key, entries);
+    // Only remember answers from the local copy. A remote miss may simply mean
+    // Jisho was rate-limited, and caching that would repeat the original bug.
+    if (res.source === 'local') {
+      if (cache.size > 2000) cache.clear();
+      cache.set(key, entries);
+    }
     if (entries.length) return { state: 'ok', entries };
   }
 

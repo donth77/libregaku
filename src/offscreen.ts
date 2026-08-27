@@ -1,5 +1,6 @@
 import init, { TokenizerBuilder, loadDictionaryFromBytes, type Tokenizer } from 'lindera-wasm';
 import { downloadDictionary, hasDictionary, loadDictionaryFiles } from 'lindera-wasm/opfs';
+import { jishoLookup } from './dict/jisho';
 import { build as buildDict, isPopulated, lookup } from './dict/store';
 
 /**
@@ -183,16 +184,28 @@ chrome.runtime.onMessage.addListener((msg: { target?: string; type?: string; tex
       respond({ ok: true, ...dict });
       return true;
 
-    case 'dict-lookup':
+    case 'dict-lookup': {
+      const key = msg.key ?? '';
+      // While the local copy is still downloading — or if it never arrives —
+      // Jisho serves the same JMdict data, so a word is never unlookupable
+      // just because indexing has not finished.
+      const remote = (): void => {
+        void jishoLookup(key).then(
+          (entries) => respond({ ok: true, entries, source: 'jisho' }),
+          (e: unknown) => respond({ ok: false, error: String(e) }),
+        );
+      };
+
       if (!dict.ready) {
-        respond({ ok: false, error: dict.error ?? 'dictionary not loaded yet' });
+        remote();
         return true;
       }
-      void lookup(msg.key ?? '').then(
-        (entries) => respond({ ok: true, entries }),
-        (e: unknown) => respond({ ok: false, error: String(e) }),
-      );
+      void lookup(key).then((entries) => {
+        if (entries.length) respond({ ok: true, entries, source: 'local' });
+        else remote();
+      }, remote);
       return true;
+    }
 
     default:
       respond({ ok: false, error: `unknown message: ${msg.type}` });

@@ -13,10 +13,11 @@
     "https://*.youtube.com/*",
     "https://*.netflix.com/*",
     "https://assets.languagepod101.com/*",
+    "https://jisho.org/*",
     "https://*.nflxvideo.net/*",
     "https://*.oca.nflxvideo.net/*",
     "https://github.com/*",
-    "https://objects.githubusercontent.com/*"
+    "https://*.githubusercontent.com/*"
   ],
   "background": {
     "service_worker": "background.js"
