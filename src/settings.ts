@@ -55,6 +55,8 @@ export interface Settings {
   deck: string;
   /** Show comprehension and per-line counts in the transcript panel. */
   sidebarStats: boolean;
+  /** Underline known words too, rather than leaving them bare. */
+  markKnown: boolean;
 }
 
 export const DEFAULTS: Settings = {
@@ -68,6 +70,7 @@ export const DEFAULTS: Settings = {
   sidebarHover: true,
   deck: '',
   sidebarStats: true,
+  markKnown: false,
 };
 
 const KEY = 'libregaku.settings';

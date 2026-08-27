@@ -7,9 +7,15 @@ import type { Segmenter, Token } from '../morphology/types';
 import { DomCaptionSource } from '../adapters/dom-captions';
 import { clearLookupCache, ensureDictionary, lookupWord } from '../dict/client';
 import { DEFAULT_BOTTOM, bottomOffset, namedMatches, occupiedBands } from './coexist';
+import { addNote, ensureModel } from '../anki/client';
+import { tagsFor, toAnkiFurigana } from '../anki/model';
+import { sourceField } from '../anki/source';
 import { buildStatusMap, loadOverrides, setOverride, type Status, type StatusMap } from '../anki/status';
+import { furigana } from '../morphology/furigana';
 import { TIER2_LANGS, loadSettings, onSettingsChange, settings } from '../settings';
-import { cancelPopupClose, closePopup, closePopupSoon, popupKey, showPopup } from './popup';
+import {
+  cancelPopupClose, closePopup, closePopupSoon, popupKey, showPopup, type CardDraft,
+} from './popup';
 import { Sidebar } from './sidebar';
 import { Transcript } from './transcript';
 import { clearNotice, showNotice } from './notice';
@@ -466,6 +472,7 @@ function makeOverlay(mount: HTMLElement, adapter: SubtitleSource): Overlay {
   const o = new Overlay(mount);
   applyAnchor(o, mount, adapter);
   o.setRubyMode(settings().ruby);
+  o.setMarkKnown(settings().markKnown);
   o.setStatusSource(statusOf);
   o.onToken((tok, el) => void openLookup(mount, el, tok));
   wireHover(o, mount);
@@ -508,6 +515,36 @@ function resumeAfterHover(): void {
   void activeVideo.play().catch(() => {});
 }
 
+/** Turn a lookup into an Anki note, with everything needed to review it. */
+async function addCard(draft: CardDraft, token: Token): Promise<string> {
+  const deck = settings().deck;
+  if (!deck) throw new Error('Pick a deck in Libregaku settings first');
+
+  const adapter = pickAdapter();
+  const at = activeVideo?.currentTime ?? 0;
+
+  await ensureModel();
+  await addNote({
+    deck,
+    expression: draft.expression,
+    // Anki renders 勉強[べんきょう] as ruby, so store the bracket form.
+    reading: toAnkiFurigana(furigana(draft.expression, token.reading)),
+    meaning: draft.meaning,
+    sentence: draft.sentence,
+    source: sourceField({
+      title: adapter?.title() ?? null,
+      seconds: at,
+      url: adapter?.deepLink(at) ?? null,
+    }),
+    tags: tagsFor({ source: adapter?.id ?? 'unknown', lang: targetLang() }),
+  });
+
+  // A new card means the word is being learned; reflect it without waiting for
+  // the next status refresh.
+  await mark(token.lemma ?? token.surface, 'learning');
+  return `added to ${deck}`;
+}
+
 async function openLookup(mount: HTMLElement, el: HTMLElement, token: Token): Promise<void> {
   cancelPopupClose();
   try {
@@ -517,6 +554,8 @@ async function openLookup(mount: HTMLElement, el: HTMLElement, token: Token): Pr
       sentence: currentLine,
       status: statusOf(token),
       onMark: mark,
+      onAddCard: (draft) => addCard(draft, token),
+      hasCard: statusOf(token) === 'learning' || statusOf(token) === 'known',
     });
   } catch (e) {
     log('lookup failed:', e);
@@ -551,6 +590,8 @@ function mountSidebar(mount: HTMLElement, video: HTMLVideoElement): void {
           sentence,
           status: statusOf(token),
           onMark: mark,
+          onAddCard: (draft) => addCard(draft, token),
+          hasCard: statusOf(token) === 'learning' || statusOf(token) === 'known',
         });
       });
     },

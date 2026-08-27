@@ -78,6 +78,7 @@ async function main(): Promise<void> {
   bind('sidebarHover', 'check');
   bind('sidebarStats', 'check');
   bind('ruby', 'select');
+  bind('markKnown', 'check');
 }
 
 /**

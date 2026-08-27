@@ -44,6 +44,8 @@ const STYLE = `
     cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0;
   }
   .tb svg { display: block; }
+  .tb.add { background: #1A2138; color: #8AA2E8; border-color: #3B4A6B; }
+  .tb.add.has { background: #16281F; color: #63AF97; border-color: #2A5245; }
   .tb.busy { color: #8AA2E8; }
   .tb.busy svg { animation: spin 1s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -56,7 +58,7 @@ const STYLE = `
     text-transform: uppercase; border: 1px solid transparent;
   }
   .mk.known   { background: #16281F; color: #63AF97; border-color: #2A5245; }
-  .mk.card    { background: #1A2138; color: #8AA2E8; border-color: #3B4A6B; }
+  .mk.track   { background: #211A38; color: #A78BFA; border-color: #46396B; }
   .mk.ignore  { background: #1B2234; color: #838DA8; border-color: #2A3348; }
   .mk[aria-pressed="true"] { outline: 2px solid currentColor; outline-offset: -1px; }
   .mk:hover { filter: brightness(1.12); }
@@ -120,6 +122,13 @@ export function cancelPopupClose(): void {
   clearTimeout(hideTimer);
 }
 
+export interface CardDraft {
+  expression: string;
+  reading: string;
+  meaning: string;
+  sentence: string;
+}
+
 interface Context {
   token: Token;
   /** The whole line, for copy-sentence. */
@@ -127,6 +136,10 @@ interface Context {
   /** Current status, so the matching control reads as pressed. */
   status: Status;
   onMark: (word: string, status: Status | null) => void;
+  /** Resolves to a message for the toast, or throws with one. */
+  onAddCard: (draft: CardDraft) => Promise<string>;
+  /** Whether a card already exists, so the control can say so. */
+  hasCard: boolean;
 }
 
 export function showPopup(
@@ -243,6 +256,35 @@ export function showPopup(
         b.replaceChildren(icon('volume'));
       });
   });
+  /*
+   * Adding a card is the point of the whole tool, so it is the widest control
+   * and it states its outcome. A silent success is indistinguishable from a
+   * silent failure, and mining is a decision the learner should see land.
+   */
+  const addBtn = button(ctx.hasCard ? 'check' : 'plus',
+    ctx.hasCard ? 'Already in Anki — add another' : 'Add to Anki', (b) => {
+      b.classList.add('busy');
+      b.replaceChildren(icon('loader'));
+      void ctx
+        .onAddCard({
+          expression: word,
+          reading: reading ?? '',
+          meaning: entries[0]?.senses.flatMap((x) => x.glosses).slice(0, 4).join('; ') ?? '',
+          sentence: ctx.sentence,
+        })
+        .then((msg) => {
+          say(msg);
+          b.replaceChildren(icon('check'));
+        })
+        .catch((e: unknown) => {
+          say(e instanceof Error ? e.message : String(e));
+          b.replaceChildren(icon('plus'));
+        })
+        .finally(() => b.classList.remove('busy'));
+    });
+  addBtn.classList.add('add');
+  if (ctx.hasCard) addBtn.classList.add('has');
+
   button('copy', 'Copy word', () => void navigator.clipboard.writeText(word).then(() => say('word copied')));
   button('quote', 'Copy sentence', () => void navigator.clipboard.writeText(ctx.sentence).then(() => say('sentence copied')));
   /*
@@ -324,7 +366,7 @@ export function showPopup(
   };
 
   mark('known', 'Known', 'known');
-  mark('card', 'Learning', 'learning');
+  mark('track', 'Track', 'tracking');
   mark('ignore', 'Ignore', 'ignored');
   card.appendChild(marks);
 

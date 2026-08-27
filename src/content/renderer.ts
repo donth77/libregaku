@@ -62,8 +62,16 @@ const STYLE = `
   .wrap.ruby-off rt { display: none; }
   .t[data-s="unknown"]  { box-shadow: inset 0 -2.5px 0 #E5806C; }
   .t[data-s="learning"] { box-shadow: inset 0 -1.5px 0 #D9A64A; }
-  /* known and ignored carry no marking at all — see the note above. */
-  .t[data-s="known"], .t[data-s="ignored"] { box-shadow: none; }
+  .t[data-s="tracking"] { box-shadow: inset 0 -2px 0 #A78BFA; }
+  .t[data-s="ignored"]  { box-shadow: none; }
+  /*
+   * Known is unmarked by default, which is where this parts company with
+   * Migaku's green. The reward for progress is the screen growing quieter, and
+   * that only reads if the baseline is bare. Some people would rather see the
+   * system confirm what it thinks they know, so mark-known restores it.
+   */
+  .t[data-s="known"] { box-shadow: none; }
+  .wrap.mark-known .t[data-s="known"] { box-shadow: inset 0 -1.5px 0 #63AF97; }
   .hidden { display: none; }
   /* Hug the text. The wrapper is a full-width flex column, so outlining it
      drew a box across the whole player. */
@@ -161,6 +169,11 @@ export class Overlay {
   }
 
   /** always | unknown | never */
+  /** Whether known words carry a green underline, as Migaku does. */
+  setMarkKnown(on: boolean): void {
+    this.#primary.parentElement?.classList.toggle('mark-known', on);
+  }
+
   setRubyMode(mode: 'always' | 'unknown' | 'never'): void {
     const wrap = this.#primary.parentElement;
     wrap?.classList.toggle('ruby-all', mode === 'always');

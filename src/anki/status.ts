@@ -13,7 +13,20 @@ import { MODEL_NAME, ROOT_TAG } from './model';
  * cards we made would report someone fluent as a beginner.
  */
 
-export type Status = 'known' | 'learning' | 'unknown' | 'ignored';
+/**
+ * Word statuses, following Migaku's five.
+ *
+ *   unknown   never carded, never marked
+ *   learning  a card exists and is still being drilled
+ *   known     the card is mature — Anki's own 21-day threshold, which is also
+ *             where Migaku draws the line
+ *   tracking  the learner wants this word to stand out: not new, not learned,
+ *             just watched. Nothing in Anki expresses this, which is exactly
+ *             why it is worth having
+ *   ignored   never mark this again — names, particles, words already known
+ *             long before this extension existed
+ */
+export type Status = 'known' | 'learning' | 'tracking' | 'unknown' | 'ignored';
 
 /** Anki's own threshold for a mature card. */
 export const MATURE_DAYS = 21;
@@ -104,7 +117,7 @@ export async function buildStatusMap(deck: string): Promise<StatusMap> {
           ? 'known'
           : 'learning';
     // Never downgrade: a word known in one note stays known.
-    const rank = { unknown: 0, ignored: 1, learning: 2, known: 3 } as const;
+    const rank = { unknown: 0, ignored: 1, tracking: 2, learning: 3, known: 4 } as const;
     const prev = map.get(word);
     if (!prev || rank[status] > rank[prev]) map.set(word, status);
   }
