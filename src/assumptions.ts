@@ -40,6 +40,13 @@ export const ASSUMPTIONS: Assumption[] = [
     fallback: null,
   },
   {
+    id: 'audio.jpod101',
+    site: 'youtube',
+    claim: 'assets.languagepod101.com/dictionary/japanese/audiomp3.php serves human recordings, keyed by kanji + hiragana, returning a fixed 52,288-byte placeholder for words it lacks',
+    breaks: 'Every pronunciation silently degrades to synthesis — and silently is the problem: nothing looks broken',
+    fallback: 'speechSynthesis, which flattens pitch accent',
+  },
+  {
     id: 'nf.timedtexttracks',
     site: 'netflix',
     claim: 'The player manifest is JSON containing a timedtexttracks array',
