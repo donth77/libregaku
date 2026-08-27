@@ -81,6 +81,8 @@ export function toTokens(text: string, analysed: Analysed[]): Token[] {
       reading: t.reading,
       pos: t.pos,
       content: t.content,
+      // IPADIC files punctuation under 記号.
+      punct: t.pos === '記号',
       parts: t.parts.length > 1 ? t.parts : undefined,
     });
   }

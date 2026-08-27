@@ -24,12 +24,14 @@ export class IntlSegmenter implements Segmenter {
   segment(text: string): Token[] {
     const out: Token[] = [];
     for (const part of this.#seg.segment(text)) {
-      if (!part.isWordLike) continue;
+      // Non-word segments are kept, not dropped: discarding them loses the
+      // punctuation and the spaces, and the line no longer reads as written.
       out.push({
         surface: part.segment,
         start: part.index,
         end: part.index + part.segment.length,
-        content: true, // tier 0 cannot tell content from function words
+        content: part.isWordLike, // tier 0 cannot tell content from function words
+        punct: !part.isWordLike,
       });
     }
     return out;

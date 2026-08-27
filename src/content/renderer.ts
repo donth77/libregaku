@@ -51,6 +51,7 @@ const STYLE = `
   }
   .secondary { font-size: calc(var(--size, 2.1vw) * .68); color: #B9C3D8; user-select: text; }
   .t { position: relative; padding: 0 1px 3px; border-radius: 2px; cursor: pointer; }
+  .p { padding: 0 1px 3px; white-space: pre-wrap; }
   .t:hover { background: rgba(255,255,255,.15); }
   .t rt {
     font-size: .48em; font-weight: 400; color: #9FB4E8;
@@ -172,6 +173,15 @@ export class Overlay {
     }
     this.#primary.replaceChildren();
     for (const tok of tokens) {
+      // Punctuation is text, not a word: rendered, never hoverable.
+      if (tok.punct) {
+        const plain = document.createElement('span');
+        plain.className = 'p';
+        plain.textContent = tok.surface;
+        this.#primary.appendChild(plain);
+        continue;
+      }
+
       const segs = furigana(tok.surface, tok.reading);
       const annotated = segs.some((x) => x.ruby);
 

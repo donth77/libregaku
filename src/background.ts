@@ -9,6 +9,16 @@
 
 const OFFSCREEN_PATH = 'offscreen.html';
 
+/*
+ * Show setup once on install. The language pair is the one thing that cannot
+ * be guessed — everything else has a defensible default — and discovering it
+ * was wrong by watching nothing happen is a bad first run.
+ */
+chrome.runtime.onInstalled.addListener((details) => {
+  if (details.reason !== 'install') return;
+  void chrome.runtime.openOptionsPage();
+});
+
 let creating: Promise<void> | null = null;
 
 async function hasOffscreen(): Promise<boolean> {

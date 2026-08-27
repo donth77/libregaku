@@ -6,7 +6,41 @@
  * back to its default rather than delaying a frame.
  */
 
+/** Languages the segmenter can do more than find boundaries for. */
+export const TIER2_LANGS: Record<string, string> = {
+  ja: 'ipadic',
+  ko: 'ko-dic',
+  zh: 'cc-cedict',
+};
+
+export const TARGET_LANGUAGES: Array<{ code: string; label: string; tier: 0 | 1 | 2 }> = [
+  { code: 'ja', label: 'Japanese', tier: 2 },
+  { code: 'ko', label: 'Korean', tier: 2 },
+  { code: 'zh', label: 'Chinese', tier: 2 },
+  { code: 'es', label: 'Spanish', tier: 1 },
+  { code: 'fr', label: 'French', tier: 1 },
+  { code: 'de', label: 'German', tier: 1 },
+  { code: 'it', label: 'Italian', tier: 1 },
+  { code: 'pt', label: 'Portuguese', tier: 1 },
+  { code: 'th', label: 'Thai', tier: 0 },
+];
+
+export const NATIVE_LANGUAGES: Array<{ code: string; label: string }> = [
+  { code: 'en', label: 'English' },
+  { code: 'es', label: 'Spanish' },
+  { code: 'fr', label: 'French' },
+  { code: 'de', label: 'German' },
+  { code: 'pt', label: 'Portuguese' },
+  { code: 'ja', label: 'Japanese' },
+];
+
 export interface Settings {
+  /** BCP-47 of the language being learned. */
+  target: string;
+  /** BCP-47 of the language to show translations in. */
+  native: string;
+  /** False until the user has been through setup once. */
+  configured: boolean;
   /** How the lookup card opens. */
   interaction: 'hover' | 'click';
   /** Grace period before a hover opens a card, in ms. */
@@ -20,6 +54,9 @@ export interface Settings {
 }
 
 export const DEFAULTS: Settings = {
+  target: 'ja',
+  native: 'en',
+  configured: false,
   interaction: 'hover',
   hoverDelay: 220,
   hoverPause: true,

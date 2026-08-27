@@ -21,8 +21,29 @@ describe('IntlSegmenter', () => {
     }
   });
 
-  it('drops punctuation and whitespace', () => {
+  it('marks punctuation and whitespace rather than dropping them', () => {
+    // Dropping them loses the text: "え？ はい" rendered as "えはい".
     const toks = new IntlSegmenter('en').segment('hello, world!');
-    expect(toks.map((t) => t.surface)).toEqual(['hello', 'world']);
+    expect(toks.filter((t) => t.content).map((t) => t.surface)).toEqual(['hello', 'world']);
+    expect(toks.map((t) => t.surface).join('')).toBe('hello, world!');
+  });
+});
+
+describe('IntlSegmenter punctuation', () => {
+  it('keeps punctuation so the line still reads as written', () => {
+    const toks = new IntlSegmenter('ja').segment('え？ はい');
+    expect(toks.map((t) => t.surface).join('')).toBe('え？ はい');
+  });
+
+  it('marks punctuation and whitespace as non-interactive', () => {
+    const toks = new IntlSegmenter('ja').segment('え？ はい');
+    const punct = toks.filter((t) => t.punct).map((t) => t.surface);
+    expect(punct).toContain('？');
+    expect(toks.find((t) => t.surface === 'え')?.punct).toBeFalsy();
+  });
+
+  it('preserves spaces for space-delimited languages', () => {
+    const toks = new IntlSegmenter('en').segment('hello, world!');
+    expect(toks.map((t) => t.surface).join('')).toBe('hello, world!');
   });
 });

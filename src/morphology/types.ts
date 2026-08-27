@@ -20,6 +20,11 @@ export interface Token {
   content?: boolean;
   /** Morphemes this token was merged from — 来た is ["来", "た"]. */
   parts?: string[];
+  /**
+   * Punctuation and whitespace. Rendered so the line reads correctly, but
+   * never interactive — nobody looks up a question mark.
+   */
+  punct?: boolean;
 }
 
 export interface Segmenter {

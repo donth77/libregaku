@@ -7,7 +7,7 @@ import type { Segmenter, Token } from '../morphology/types';
 import { DomCaptionSource } from '../adapters/dom-captions';
 import { clearLookupCache, ensureDictionary, lookupWord } from '../dict/client';
 import { DEFAULT_BOTTOM, bottomOffset, namedMatches, occupiedBands } from './coexist';
-import { loadSettings, onSettingsChange, settings } from '../settings';
+import { TIER2_LANGS, loadSettings, onSettingsChange, settings } from '../settings';
 import { cancelPopupClose, closePopup, closePopupSoon, popupKey, showPopup } from './popup';
 import { Sidebar } from './sidebar';
 import { Transcript } from './transcript';
@@ -22,7 +22,8 @@ import { Overlay } from './renderer';
  * enter the picture. M2 swaps the segmenter with no change above this file.
  */
 
-const TARGET_LANG = 'ja'; // M-later: from the active profile
+/** The language being learned, from settings. Never hardcode this again. */
+const targetLang = (): string => settings().target;
 
 /** Loud by default while the adapters are young. */
 const log = (...a: unknown[]) => console.log('%c[libregaku]', 'color:#8AA2E8', ...a);
@@ -68,7 +69,7 @@ async function makeSegmenter(): Promise<Segmenter | null> {
     log('Intl.Segmenter unavailable — cannot segment at all');
     return null;
   }
-  segmenter = new IntlSegmenter(TARGET_LANG);
+  segmenter = new IntlSegmenter(targetLang());
 
   // The dictionary is independent of the analyser: a failure to load lindera
   // must not also cost us definitions.
@@ -92,7 +93,12 @@ async function makeSegmenter(): Promise<Segmenter | null> {
       const status = await LinderaSegmenter.status();
       if (!status.ready) log('downloading the Japanese dictionary (~10 MB, once)…');
 
-      const r = await LinderaSegmenter.ensure('ipadic');
+      const dictName = TIER2_LANGS[targetLang()];
+      if (!dictName) {
+        log(`no analyser for "${targetLang()}" — staying on tier 0 (boundaries only)`);
+        return;
+      }
+      const r = await LinderaSegmenter.ensure(dictName);
       if (!r.ok) {
         log('staying on tier 0 — analyser unavailable:', r.error);
         return;
@@ -264,10 +270,10 @@ async function run(): Promise<boolean> {
   );
 
   // M0: first track matching the target language; a picker arrives with the UI.
-  const track = tracks.find((t) => t.lang.startsWith(TARGET_LANG));
+  const track = tracks.find((t) => t.lang.startsWith(targetLang()));
   if (!track) {
     const have = tracks.map((t) => t.lang).join(', ');
-    log(`no "${TARGET_LANG}" track here — available:`, have);
+    log(`no "${targetLang()}" track here — available:`, have);
     showNotice(mount, 'no-target-track', `Available here: ${have || 'none'}`);
     return true;   // the list is known and lacks our language; retrying is pointless
   }
