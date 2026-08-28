@@ -16,39 +16,75 @@ import {
  */
 
 export const PANEL_STYLE = `
-  .settings { overflow-y: auto; flex: 1; padding: 4px 0 20px; }
+  /*
+   * One row shape for every setting.
+   *
+   * The first version mixed two — labels above selects, labels beside
+   * checkboxes — which is why nothing lined up. A single grid handles both:
+   * label left, control right, explanation spanning underneath.
+   */
+  .settings { overflow-y: auto; flex: 1; padding-bottom: 24px; }
+
   .grp {
-    font: 600 10px/1.4 ui-monospace, monospace; letter-spacing: .13em;
+    font: 600 10px/1 ui-monospace, monospace; letter-spacing: .14em;
     text-transform: uppercase; color: #6B7490;
-    padding: 16px 13px 6px;
+    padding: 20px 14px 8px;
   }
-  .field { padding: 7px 13px; }
-  .field label { display: block; font-size: 12px; color: #C7CFE2; margin-bottom: 4px; }
-  .field small { display: block; color: #6B7490; font-size: 11px; margin-top: 3px; line-height: 1.45; }
-  .field select, .field input[type=text] {
-    width: 100%; box-sizing: border-box; padding: 6px 8px; font: inherit; font-size: 12px;
-    background: #12172A; color: #E8ECF6; border: 1px solid #2A3348; border-radius: 5px;
+  .grp:first-child { padding-top: 14px; }
+
+  .set {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 14px; row-gap: 3px;
+    padding: 11px 14px;
+    border-top: 1px solid #171E2C;
   }
-  .check { display: flex; align-items: flex-start; gap: 9px; padding: 8px 13px; cursor: pointer; }
-  .check input { margin-top: 2px; accent-color: #8AA2E8; }
-  .check span { font-size: 12px; color: #C7CFE2; }
-  .check small { display: block; color: #6B7490; font-size: 11px; margin-top: 2px; }
-  .anki { padding: 8px 13px; font-size: 12px; }
-  .anki .state { color: #838DA8; margin-bottom: 8px; line-height: 1.5; }
-  .anki .state.ok { color: #63AF97; }
-  .anki .state.bad { color: #E5806C; }
-  .btnrow { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  label.set { cursor: pointer; }
+  .set > .name { font-size: 12.5px; color: #DDE3F0; min-width: 0; }
+  .set > .hint {
+    grid-column: 1 / -1;
+    font-size: 11px; line-height: 1.5; color: #6B7490;
+  }
+
+  .set select {
+    justify-self: end; max-width: 168px;
+    padding: 5px 7px; font: inherit; font-size: 12px;
+    background: #12172A; color: #E8ECF6;
+    border: 1px solid #2A3348; border-radius: 5px;
+  }
+  .set select:focus-visible { outline: 2px solid #8AA2E8; outline-offset: 1px; }
+
+  /* Sized and reset explicitly — a shadow root inherits none of the page's
+     form styling, and the browser default floated out of the grid cell. */
+  .set input[type=checkbox] {
+    justify-self: end; margin: 0; width: 15px; height: 15px;
+    accent-color: #8AA2E8; flex: none;
+  }
+
+  .anki { padding: 11px 14px; }
+  .anki .state {
+    font-size: 11.5px; line-height: 1.55; color: #838DA8;
+    padding: 9px 11px; border-radius: 6px;
+    background: #12172A; border: 1px solid #212939;
+  }
+  .anki .state.ok  { color: #63AF97; border-color: #2A5245; background: #101F19; }
+  .anki .state.bad { color: #E5806C; border-color: #4A2A24; background: #1F1412; }
+  .btnrow { display: flex; gap: 6px; margin-top: 9px; flex-wrap: wrap; }
   .btnrow button {
-    font: 600 10px/1 ui-monospace, monospace; letter-spacing: .06em; text-transform: uppercase;
-    padding: 7px 10px; border-radius: 5px; border: 1px solid #2A3348;
-    background: #12172A; color: #B4BDD4; cursor: pointer;
+    font: 600 10px/1 ui-monospace, monospace; letter-spacing: .07em;
+    text-transform: uppercase; padding: 7px 11px; border-radius: 5px;
+    border: 1px solid #2A3348; background: #12172A; color: #B4BDD4; cursor: pointer;
   }
-  .btnrow button:hover { border-color: #8AA2E8; color: #E8ECF6; }
-  .btnrow button:disabled { opacity: .45; cursor: default; }
-  .credits { padding: 6px 13px 0; font-size: 11px; color: #6B7490; line-height: 1.6; }
-  .credits a { color: #838DA8; }
-  .credits dt { color: #B4BDD4; margin-top: 8px; font-size: 11px; }
-  .credits dd { margin: 1px 0 0; }
+  .btnrow button:hover:not(:disabled) { border-color: #8AA2E8; color: #E8ECF6; }
+  .btnrow button:disabled { opacity: .4; cursor: default; }
+
+  .credits { padding: 4px 14px 0; margin: 0; }
+  .credits dt { margin-top: 11px; font-size: 11.5px; }
+  .credits dt:first-child { margin-top: 4px; }
+  .credits dt a { color: #B4BDD4; text-decoration: none; }
+  .credits dt a:hover { color: #8AA2E8; text-decoration: underline; }
+  .credits dd { margin: 2px 0 0; font-size: 11px; line-height: 1.55; color: #6B7490; }
 `;
 
 type Rerender = () => void;
@@ -56,6 +92,13 @@ type Rerender = () => void;
 export function buildSettings(onChange: Rerender): HTMLElement {
   const root = document.createElement('div');
   root.className = 'settings';
+
+  const hintEl = (text: string): HTMLElement => {
+    const el = document.createElement('span');
+    el.className = 'hint';
+    el.textContent = text;
+    return el;
+  };
 
   const group = (title: string): void => {
     const h = document.createElement('div');
@@ -65,12 +108,15 @@ export function buildSettings(onChange: Rerender): HTMLElement {
   };
 
   const select = <K extends keyof Settings>(
-    key: K, label: string, options: Array<[string, string]>, hint?: string,
-  ): HTMLSelectElement => {
-    const wrap = document.createElement('div');
-    wrap.className = 'field';
-    const l = document.createElement('label');
-    l.textContent = label;
+    key: K, name: string, options: Array<[string, string]>, hint?: string,
+  ): void => {
+    const row = document.createElement('label');
+    row.className = 'set';
+
+    const label = document.createElement('span');
+    label.className = 'name';
+    label.textContent = name;
+
     const sel = document.createElement('select');
     for (const [value, text] of options) {
       const o = document.createElement('option');
@@ -83,20 +129,20 @@ export function buildSettings(onChange: Rerender): HTMLElement {
       void setSetting(key, sel.value as Settings[K]);
       onChange();
     });
-    l.appendChild(sel);
-    wrap.appendChild(l);
-    if (hint) {
-      const s = document.createElement('small');
-      s.textContent = hint;
-      wrap.appendChild(s);
-    }
-    root.appendChild(wrap);
-    return sel;
+
+    row.append(label, sel);
+    if (hint) row.appendChild(hintEl(hint));
+    root.appendChild(row);
   };
 
-  const check = <K extends keyof Settings>(key: K, label: string, hint?: string): void => {
-    const wrap = document.createElement('label');
-    wrap.className = 'check';
+  const check = <K extends keyof Settings>(key: K, name: string, hint?: string): void => {
+    const row = document.createElement('label');
+    row.className = 'set';
+
+    const label = document.createElement('span');
+    label.className = 'name';
+    label.textContent = name;
+
     const input = document.createElement('input');
     input.type = 'checkbox';
     input.checked = Boolean(settings()[key]);
@@ -104,15 +150,10 @@ export function buildSettings(onChange: Rerender): HTMLElement {
       void setSetting(key, input.checked as Settings[K]);
       onChange();
     });
-    const text = document.createElement('span');
-    text.textContent = label;
-    if (hint) {
-      const s = document.createElement('small');
-      s.textContent = hint;
-      text.appendChild(s);
-    }
-    wrap.append(input, text);
-    root.appendChild(wrap);
+
+    row.append(label, input);
+    if (hint) row.appendChild(hintEl(hint));
+    root.appendChild(row);
   };
 
   group('Languages');

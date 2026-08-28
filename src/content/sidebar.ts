@@ -1,4 +1,5 @@
 import { lookupWord } from '../dict/client';
+import { icon } from './icons';
 import { readablePos } from '../dict/pos';
 import type { Segmenter, Token } from '../morphology/types';
 import { setSetting, settings } from '../settings';
@@ -59,6 +60,17 @@ const STYLE = `
   }
   button:hover { color: #E8ECF6; }
   button:focus-visible { outline: 2px solid #8AA2E8; outline-offset: 2px; border-radius: 3px; }
+  /* Header controls are icons: three text buttons crowded a 340px column and
+     read as a toolbar rather than as chrome. */
+  header { gap: 10px; }
+  header > span:last-child { display: flex; align-items: center; gap: 2px; }
+  .ico {
+    display: flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; padding: 0; border-radius: 5px;
+  }
+  .ico:hover { background: #212939; color: #E8ECF6; }
+  .ico[aria-pressed="false"] { color: #5A6480; }
+  .ico svg { display: block; }
   .search { padding: 9px 12px; border-bottom: 1px solid #212939; flex: none; }
   input {
     width: 100%; box-sizing: border-box; padding: 6px 9px;
@@ -175,18 +187,31 @@ export class Sidebar {
     title.textContent = 'Transcript';
     const controls = document.createElement('span');
     const hoverBtn = document.createElement('button');
-    hoverBtn.textContent = 'Hover ✓';
+    hoverBtn.className = 'ico';
+    const paintHover = (): void => {
+      hoverBtn.replaceChildren(icon(this.#hoverOn ? 'eye' : 'eyeOff', 15));
+      hoverBtn.title = this.#hoverOn ? 'Definitions on hover' : 'Hover previews off';
+      hoverBtn.setAttribute('aria-label', hoverBtn.title);
+      hoverBtn.setAttribute('aria-pressed', String(this.#hoverOn));
+    };
+    paintHover();
     hoverBtn.addEventListener('click', () => {
       this.#hoverOn = !this.#hoverOn;
-      hoverBtn.textContent = this.#hoverOn ? 'Hover ✓' : 'Hover ✗';
+      paintHover();
       if (!this.#hoverOn) this.#hideHover();
     });
     const gear = document.createElement('button');
-    gear.textContent = 'Settings';
+    gear.className = 'ico';
+    gear.replaceChildren(icon('settings', 15));
+    gear.title = 'Settings';
+    gear.setAttribute('aria-label', 'Settings');
     gear.addEventListener('click', () => this.setMode(this.#mode === 'settings' ? 'transcript' : 'settings'));
 
     const close = document.createElement('button');
-    close.textContent = 'Close';
+    close.className = 'ico';
+    close.replaceChildren(icon('x', 16));
+    close.title = 'Hide the panel — press S to bring it back';
+    close.setAttribute('aria-label', 'Hide the panel');
     close.addEventListener('click', () => this.toggle(false));
     controls.append(hoverBtn, gear, close);
     head.append(title, controls);
@@ -307,7 +332,9 @@ export class Sidebar {
     const showing = mode === 'settings';
 
     this.#title.textContent = showing ? 'Settings' : 'Transcript';
-    this.#gear.textContent = showing ? 'Done' : 'Settings';
+    this.#gear.replaceChildren(icon(showing ? 'back' : 'settings', showing ? 17 : 15));
+    this.#gear.title = showing ? 'Back to the transcript' : 'Settings';
+    this.#gear.setAttribute('aria-label', this.#gear.title);
     this.#hoverBtn.style.display = showing ? 'none' : '';
     if (this.#search) this.#search.style.display = showing ? 'none' : '';
 
