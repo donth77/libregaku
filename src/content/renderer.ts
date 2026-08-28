@@ -46,16 +46,32 @@ const STYLE = `
   .primary:empty, .secondary:empty { display: none; }
   .primary {
     font-size: var(--size, 2.1vw); line-height: 1.85; color: #F2F5FC;
-    display: flex; flex-wrap: wrap; justify-content: center; gap: 0 2px;
+    display: flex; flex-wrap: wrap; justify-content: center;
+    align-items: flex-end;      /* every token sits on one baseline */
+    gap: 0 2px;
+    /* Room for the annotations, reserved once rather than per token. */
+    padding-top: .62em;
     user-select: text;
   }
   .secondary { font-size: calc(var(--size, 2.1vw) * .68); color: #B9C3D8; user-select: text; }
   .t { position: relative; padding: 0 1px 3px; border-radius: 2px; cursor: pointer; }
   .p { padding: 0 1px 3px; white-space: pre-wrap; }
   .t:hover { background: rgba(255,255,255,.15); }
+  /*
+   * Furigana is taken out of flow.
+   *
+   * A native <ruby> is taller than a bare token because its annotation sits in
+   * the line box, so a line mixing 外国[がいこく] with a plain に had the two
+   * sitting at different heights. Positioning rt absolutely gives every token
+   * an identical box, and the row reserves the space once instead.
+   */
+  .t ruby { display: inline-block; position: relative; }
   .t rt {
-    font-size: .48em; font-weight: 400; color: #9FB4E8;
-    letter-spacing: .02em; user-select: none;
+    position: absolute; left: 50%; bottom: 100%;
+    transform: translateX(-50%);
+    font-size: .48em; font-weight: 400; line-height: 1.15;
+    color: #9FB4E8; letter-spacing: .02em;
+    white-space: nowrap; user-select: none; pointer-events: none;
   }
   /* Ruby only where it earns its place: words you have not learned yet. */
   .wrap:not(.ruby-all) .t:not([data-s="unknown"]):not([data-s="learning"]) rt { visibility: hidden; }

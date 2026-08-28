@@ -209,25 +209,29 @@ function cueAt(t: number): number {
 function paint(i: number): void {
   const cue = cues[i];
   if (!cue) return;
+
+  // Set once, before any branch. This used to be set inside the two
+  // segmenting branches and missed by the cached one, so replaying or seeking
+  // back to an already-analysed line left copy-sentence holding the previous
+  // one — which on a fetched track is most lines.
+  currentLine = cue.text;
+
   const cached = segmented.get(i);
   if (cached) {
     overlay?.render(cached, cue.secondary);
     return;
   }
+
   const result = (segmenter ?? { segment: () => [] as Token[] }).segment(cue.text);
   if (Array.isArray(result)) {
     segmented.set(i, result);
-    currentLine = cue.text;
     overlay?.render(result, cue.secondary);
     return;
   }
   void result.then((toks) => {
     segmented.set(i, toks);
     // The cue may have moved on while we were analysing.
-    if (active === i) {
-      currentLine = cue.text;
-      overlay?.render(toks, cue.secondary);
-    }
+    if (active === i) overlay?.render(toks, cue.secondary);
   });
 }
 
