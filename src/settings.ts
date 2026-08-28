@@ -73,6 +73,14 @@ export interface Settings {
   sidebarStats: boolean;
   /** Underline known words too, rather than leaving them bare. */
   markKnown: boolean;
+  /**
+   * Whether the transcript panel is showing.
+   *
+   * Both the default and the remembered state, deliberately as one value: it
+   * opens on arrival, S toggles it, and the toggle sticks. Two settings — a
+   * default and a last-used — would only disagree with each other.
+   */
+  sidebarOpen: boolean;
 }
 
 export const DEFAULTS: Settings = {
@@ -88,6 +96,7 @@ export const DEFAULTS: Settings = {
   statusScope: '',
   sidebarStats: true,
   markKnown: false,
+  sidebarOpen: true,
 };
 
 const KEY = 'libregaku.settings';

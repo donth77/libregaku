@@ -1,7 +1,7 @@
 import { lookupWord } from '../dict/client';
 import { readablePos } from '../dict/pos';
 import type { Segmenter, Token } from '../morphology/types';
-import { settings } from '../settings';
+import { setSetting, settings } from '../settings';
 import { PANEL_STYLE, buildSettings } from './settings-panel';
 import type { Transcript } from './transcript';
 
@@ -23,7 +23,6 @@ import type { Transcript } from './transcript';
  */
 
 const WIDTH_KEY = 'libregaku.sidebar.width';
-const OPEN_KEY = 'libregaku.sidebar.open';
 const HOVER_DELAY = 180;
 
 const STYLE = `
@@ -259,12 +258,15 @@ export class Sidebar {
 
   async #restore(): Promise<void> {
     try {
-      const got = await chrome.storage.sync.get([WIDTH_KEY, OPEN_KEY]);
+      const got = await chrome.storage.sync.get(WIDTH_KEY);
       this.#width = Number(got[WIDTH_KEY]) || 340;
-      this.toggle(Boolean(got[OPEN_KEY]));
     } catch {
-      this.toggle(false);
+      /* keep the default width */
     }
+    // Open unless the learner has closed it before. The transcript is the
+    // reason the panel exists; hiding it until a keypress is discovered means
+    // most people never see it.
+    this.toggle(settings().sidebarOpen);
     this.#applyWidth();
   }
 
@@ -331,8 +333,8 @@ export class Sidebar {
   toggle(open?: boolean): void {
     this.#open = open ?? !this.#open;
     this.#host.style.display = this.#open ? '' : 'none';
-    void chrome.storage.sync.set({ [OPEN_KEY]: this.#open }).catch(() => {});
     if (this.#open) this.render();
+    if (this.#open !== settings().sidebarOpen) void setSetting('sidebarOpen', this.#open);
   }
 
   get isOpen(): boolean {
