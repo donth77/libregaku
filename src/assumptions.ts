@@ -85,7 +85,10 @@ export const HUMAN: Record<string, string> = {
   'nf.caption-dom': "Couldn't find Netflix's subtitle text on the page.",
   'nf.main-world-csp': "Netflix blocked the part of Libregaku that reads subtitles.",
   'no-subtitles-on': 'Turn subtitles on in the player and Libregaku will pick them up.',
-  'no-target-track': 'This title has no subtitles in your target language.',
+  'no-target-track': 'No subtitles here in the language you are learning.',
+  'no-second-track': 'No subtitles here in your own language, so there is no second line.',
+  'only-one-track': 'This video has only one subtitle track, so there is no second line.',
+  'auto-generated': 'These subtitles are auto-generated, so the wording and word breaks will be rough.',
 };
 
 export function describeFailure(id: string): string {

@@ -349,14 +349,27 @@ async function run(): Promise<boolean> {
   );
 
   // M0: first track matching the target language; a picker arrives with the UI.
-  const track = tracks.find((t) => t.lang.startsWith(targetLang()));
+  /*
+   * Prefer a human track over an auto-generated one in the same language.
+   * ASR output has no punctuation and invents words, so segmenting it teaches
+   * a learner nothing about the language and quite a lot about speech
+   * recognition. Taking the first match regardless meant silently studying
+   * ASR whenever it happened to be listed first.
+   */
+  const inTarget = tracks.filter((t) => t.lang.startsWith(targetLang()));
+  const track = inTarget.find((t) => !t.generated) ?? inTarget[0];
+
   if (!track) {
-    const have = tracks.map((t) => t.lang).join(', ');
+    const have = tracks.map((t) => t.lang).join(', ') || 'none';
     log(`no "${targetLang()}" track here — available:`, have);
-    showNotice(mount, 'no-target-track', `Available here: ${have || 'none'}`);
+    showNotice(mount, 'no-target-track',
+      `This video has: ${have}. Change what you're learning in settings, or pick another video.`);
     return true;   // the list is known and lacks our language; retrying is pointless
   }
-  if (track.generated) log('note: this track is auto-generated; segmentation will look rough');
+  if (track.generated) {
+    log('note: this track is auto-generated; segmentation will look rough');
+    showNotice(mount, 'auto-generated', 'No human-written track was available for this video.');
+  }
 
   try {
     cues = await adapter.loadTrack(track.id);
@@ -402,8 +415,21 @@ async function run(): Promise<boolean> {
         // A missing second track is not a failure of the first.
         log('no second subtitle track:', e);
       }
-    } else if (tracks.length > 1) {
-      log(`no "${want}" track for the second line — available:`, tracks.map((t) => t.lang).join(', '));
+    } else {
+      /*
+       * Say so on screen rather than only in the console. A second line that
+       * simply never appears is indistinguishable from a broken setting, and
+       * the learner is the only one who can fix it — by changing the language
+       * or accepting that this video does not carry it.
+       */
+      const have = tracks.map((t) => t.lang).join(', ');
+      if (tracks.length <= 1) {
+        log('only one subtitle track on this video — no second line possible');
+        showNotice(mount, 'only-one-track');
+      } else {
+        log(`no "${want}" track for the second line — available:`, have);
+        showNotice(mount, 'no-second-track', `This video has: ${have}.`);
+      }
     }
   }
 
