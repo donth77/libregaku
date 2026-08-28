@@ -34,6 +34,34 @@ const STYLE = `
     z-index: 2147483646 !important;
     pointer-events: none !important;
   }
+
+  /*
+   * Collapsed state.
+   *
+   * A tab rather than nothing, because closing the panel used to be a one-way
+   * door — the only way back was a keyboard shortcut with no visible trace.
+   * Anything reversible needs a visible way to reverse it.
+   *
+   * Deliberately not a full-height rail: this sits over someone's video, and a
+   * strip down the whole edge is a permanent intrusion where a small tab is
+   * not. It also fades while the cursor is still, following the player's own
+   * chrome rather than competing with it.
+   */
+  .tab {
+    pointer-events: auto;
+    position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+    width: 26px; height: 76px; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(13,17,28,.82); color: #8AA2E8;
+    border: 1px solid #2A3348; border-right: 0;
+    border-radius: 8px 0 0 8px;
+    cursor: pointer; backdrop-filter: blur(6px);
+    opacity: .35; transition: opacity .18s, background .18s, color .18s;
+  }
+  .tab:hover, .tab:focus-visible { opacity: 1; background: #141A2A; color: #E8ECF6; }
+  :host(.active) .tab { opacity: .9; }
+  .tab svg { display: block; }
+  @media (prefers-reduced-motion: reduce) { .tab { transition: none; } }
   .panel {
     pointer-events: auto;
     position: absolute; top: 0; right: 0; bottom: 0;
@@ -239,6 +267,7 @@ export class Sidebar {
   #mode: 'transcript' | 'settings' = 'transcript';
   #settingsEl: HTMLElement | null = null;
   #fab!: HTMLButtonElement;
+  #tab!: HTMLButtonElement;
   #filterMenu!: HTMLElement;
 
   constructor(mount: HTMLElement, deps: SidebarDeps) {
@@ -272,8 +301,8 @@ export class Sidebar {
     const close = document.createElement('button');
     close.className = 'ico';
     close.replaceChildren(icon('x', 16));
-    close.title = 'Hide the panel — press S to bring it back';
-    close.setAttribute('aria-label', 'Hide the panel');
+    close.title = 'Collapse the panel';
+    close.setAttribute('aria-label', 'Collapse the panel');
     close.addEventListener('click', () => this.toggle(false));
     controls.append(gear, close);
     head.append(title, controls);
@@ -345,9 +374,16 @@ export class Sidebar {
     this.#hover = document.createElement('div');
     this.#hover.className = 'hover';
 
+    this.#tab = document.createElement('button');
+    this.#tab.className = 'tab';
+    this.#tab.replaceChildren(icon('back', 16));
+    this.#tab.title = 'Show the transcript (S)';
+    this.#tab.setAttribute('aria-label', 'Show the transcript');
+    this.#tab.addEventListener('click', () => this.toggle(true));
+
     this.#search = search;
     this.#panel.append(grip, head, search, summary, this.#note, this.#list, filters, fab);
-    this.#root.append(style, this.#panel, this.#hover);
+    this.#root.append(style, this.#panel, this.#tab, this.#hover);
     mount.appendChild(this.#host);
 
     void this.#restore();
@@ -366,6 +402,7 @@ export class Sidebar {
     // reason the panel exists; hiding it until a keypress is discovered means
     // most people never see it.
     this.toggle(settings().sidebarOpen);
+    this.#followPlayerChrome();
     this.#applyWidth();
   }
 
@@ -432,7 +469,9 @@ export class Sidebar {
 
   toggle(open?: boolean): void {
     this.#open = open ?? !this.#open;
-    this.#host.style.display = this.#open ? '' : 'none';
+    // The host always stays in the DOM: collapsed means the tab, never nothing.
+    this.#panel.style.display = this.#open ? '' : 'none';
+    this.#tab.style.display = this.#open ? 'none' : '';
     if (this.#open) this.render();
     if (this.#open !== settings().sidebarOpen) void setSetting('sidebarOpen', this.#open);
   }
@@ -716,6 +755,26 @@ export class Sidebar {
 
   #hideHover(): void {
     this.#hover.classList.remove('on');
+  }
+
+  /**
+   * Brighten the tab while the player's own controls are up.
+   *
+   * Sitting at a low opacity keeps it out of the way during a scene, but
+   * something that never responds reads as a rendering artefact rather than a
+   * control — so it wakes with the same gesture that wakes the player.
+   */
+  #followPlayerChrome(): void {
+    let idle = 0;
+    const wake = (): void => {
+      this.#host.classList.add('active');
+      clearTimeout(idle);
+      idle = window.setTimeout(() => this.#host.classList.remove('active'), 2600);
+    };
+    for (const ev of ['mousemove', 'keydown'] as const) {
+      document.addEventListener(ev, wake, { passive: true });
+    }
+    wake();
   }
 
   destroy(): void {
