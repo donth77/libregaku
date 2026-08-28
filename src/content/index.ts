@@ -580,6 +580,7 @@ function mountSidebar(mount: HTMLElement, video: HTMLVideoElement): void {
   sidebar = new Sidebar(mount, {
     transcript,
     segmenter: () => segmenter,
+    statusOf,
     measure: async (text) => {
       const seg = segmenter;
       if (!seg) return { unknown: 0, words: 0 };

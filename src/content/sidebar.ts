@@ -3,6 +3,7 @@ import { icon } from './icons';
 import { readablePos } from '../dict/pos';
 import type { Segmenter, Token } from '../morphology/types';
 import { setSetting, settings } from '../settings';
+import { furigana } from '../morphology/furigana';
 import { PANEL_STYLE, buildSettings } from './settings-panel';
 import type { Transcript } from './transcript';
 
@@ -97,24 +98,94 @@ const STYLE = `
     padding: 8px 12px; font-size: 11px; color: #D9A64A;
     background: #2C2314; border-bottom: 1px solid #212939; flex: none;
   }
-  .lines { overflow-y: auto; flex: 1; overscroll-behavior: contain; }
+  .lines { overflow-y: auto; flex: 1; overscroll-behavior: contain; padding: 8px 10px 72px; }
+
+  /*
+   * A card per line rather than a table row.
+   *
+   * Subtitles are variable-length prose, not tabular data. Rows forced the
+   * text into a narrow column beside a timestamp gutter and gave long lines
+   * nowhere to go; a card lets the text use the full width and puts the timing
+   * underneath, where it is reference rather than structure.
+   */
   .line {
-    display: grid; grid-template-columns: 44px 1fr; gap: 9px;
-    padding: 8px 12px; border-bottom: 1px solid #171E2C;
-    cursor: pointer; border-left: 2px solid transparent;
+    display: block; width: 100%; box-sizing: border-box;
+    padding: 11px 13px 9px; margin-bottom: 7px;
+    background: #141A2A; border: 1px solid #232C42; border-radius: 9px;
+    cursor: pointer;
   }
-  .line:hover { background: #161B2E; }
-  .line.cur { border-left-color: #8AA2E8; background: #1A2138; }
-  .line.hit { background: #2C2314; }
-  .t {
-    font: 10px/1.6 ui-monospace, monospace; color: #6B7490;
+  .line:hover { border-color: #33405C; background: #171E30; }
+  .line.cur {
+    border-color: #8AA2E8;
+    box-shadow: 0 0 0 1px #8AA2E8, 0 4px 18px -6px rgba(138,162,232,.5);
+    background: #1A2138;
+  }
+  .line.hit { border-color: #D9A64A; }
+  .line.hide { display: none; }
+
+  .tx {
+    display: block; font-size: 17px; line-height: 2.5;
+    color: #E8ECF6; word-break: normal; overflow-wrap: anywhere;
+  }
+  /* Space for the readings is reserved by line-height, not per token, so
+     annotated and bare words sit on the same baseline. */
+  .tx ruby { display: inline-block; position: relative; line-height: 1; }
+  .tx rt {
+    position: absolute; left: 50%; bottom: calc(100% + .04em);
+    transform: translateX(-50%);
+    font-size: .46em; line-height: 1; color: #8AA2E8;
+    white-space: nowrap; user-select: none; pointer-events: none;
+  }
+
+  .w { cursor: pointer; border-radius: 2px; padding: 0 1px 2px; }
+  .w:hover { background: #2A3550; }
+  .w[data-s="unknown"]  { box-shadow: inset 0 -2px 0 #E5806C; }
+  .w[data-s="learning"] { box-shadow: inset 0 -1.5px 0 #D9A64A; }
+  .w[data-s="tracking"] { box-shadow: inset 0 -2px 0 #A78BFA; }
+
+  .meta {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    margin-top: 5px;
+    font: 10px/1.4 ui-monospace, monospace; color: #5A6480;
     font-variant-numeric: tabular-nums;
   }
-  .tx { font-size: 14px; line-height: 1.75; }
-  .w { cursor: pointer; border-radius: 2px; padding: 0 1px; }
-  .w:hover { background: #242E44; }
-  .sec { display: block; font-size: 12px; color: #838DA8; margin-top: 2px; }
+  .x { font: inherit; }
+  .x.hot { color: #E5806C; font-weight: 600; }
+  .x.one { color: #D9A64A; font-weight: 600; }
+
+  .sec { display: block; font-size: 12.5px; line-height: 1.6; color: #838DA8; margin-top: 4px; }
   .empty { padding: 18px 12px; color: #6B7490; font-size: 12px; }
+
+  /*
+   * Filters float rather than occupying a permanent strip. They matter while
+   * mining and never while reading, and the transcript is what the panel is
+   * for.
+   */
+  .fab {
+    position: absolute; right: 16px; bottom: 16px; z-index: 3;
+    width: 40px; height: 40px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: #1A2138; border: 1px solid #3B4A6B; color: #8AA2E8;
+    box-shadow: 0 6px 20px -6px rgba(0,0,0,.7); cursor: pointer; padding: 0;
+  }
+  .fab:hover { background: #232D4A; color: #E8ECF6; }
+  .fab.on { background: #8AA2E8; color: #0D111C; border-color: #8AA2E8; }
+  .filters {
+    position: absolute; right: 16px; bottom: 64px; z-index: 3;
+    display: none; flex-direction: column; gap: 4px;
+    background: #141A2A; border: 1px solid #2A3348; border-radius: 8px;
+    padding: 6px; box-shadow: 0 8px 28px -8px rgba(0,0,0,.75);
+  }
+  .filters.open { display: flex; }
+  .f {
+    font: 600 10px/1 ui-monospace, monospace; letter-spacing: .07em;
+    text-transform: uppercase; padding: 8px 12px; border-radius: 5px;
+    border: 1px solid transparent; background: none; color: #838DA8;
+    cursor: pointer; text-align: left; white-space: nowrap;
+  }
+  .f:hover { background: #1B2234; color: #E8ECF6; }
+  .f[aria-pressed="true"] { background: #1A2138; color: #8AA2E8; border-color: #3B4A6B; }
+
   .hover {
     position: fixed; z-index: 2147483647; width: 230px;
     background: #12172A; border: 1px solid #2A3348; border-radius: 8px;
@@ -135,6 +206,8 @@ export interface SidebarDeps {
   segmenter: () => Segmenter | null;
   /** Unknown content words in a line, and how many words it has. */
   measure: (text: string) => Promise<{ unknown: number; words: number }>;
+  /** Status of a token, so the transcript matches the overlay. */
+  statusOf: (t: Token) => string;
   seek: (t: number) => void;
   currentTime: () => number;
   onWordClick: (token: Token, el: HTMLElement, sentence: string) => void;
@@ -142,7 +215,6 @@ export interface SidebarDeps {
 
 export class Sidebar {
   #title!: HTMLElement;
-  #hoverBtn!: HTMLButtonElement;
   #gear!: HTMLButtonElement;
   #search: HTMLElement | null = null;
   #host: HTMLElement;
@@ -161,9 +233,10 @@ export class Sidebar {
   #counts = new Map<number, { unknown: number; words: number }>();
   #userScrolled = false;
   #hoverTimer = 0;
-  #hoverOn = true;
   #mode: 'transcript' | 'settings' = 'transcript';
   #settingsEl: HTMLElement | null = null;
+  #fab!: HTMLButtonElement;
+  #filterMenu!: HTMLElement;
 
   constructor(mount: HTMLElement, deps: SidebarDeps) {
     this.#deps = deps;
@@ -186,20 +259,6 @@ export class Sidebar {
     const title = document.createElement('span');
     title.textContent = 'Transcript';
     const controls = document.createElement('span');
-    const hoverBtn = document.createElement('button');
-    hoverBtn.className = 'ico';
-    const paintHover = (): void => {
-      hoverBtn.replaceChildren(icon(this.#hoverOn ? 'eye' : 'eyeOff', 15));
-      hoverBtn.title = this.#hoverOn ? 'Definitions on hover' : 'Hover previews off';
-      hoverBtn.setAttribute('aria-label', hoverBtn.title);
-      hoverBtn.setAttribute('aria-pressed', String(this.#hoverOn));
-    };
-    paintHover();
-    hoverBtn.addEventListener('click', () => {
-      this.#hoverOn = !this.#hoverOn;
-      paintHover();
-      if (!this.#hoverOn) this.#hideHover();
-    });
     const gear = document.createElement('button');
     gear.className = 'ico';
     gear.replaceChildren(icon('settings', 15));
@@ -213,20 +272,28 @@ export class Sidebar {
     close.title = 'Hide the panel — press S to bring it back';
     close.setAttribute('aria-label', 'Hide the panel');
     close.addEventListener('click', () => this.toggle(false));
-    controls.append(hoverBtn, gear, close);
+    controls.append(gear, close);
     head.append(title, controls);
     this.#title = title;
-    this.#hoverBtn = hoverBtn;
     this.#gear = gear;
     this.#search = null;
 
     const filters = document.createElement('div');
     filters.className = 'filters';
-    if (!settings().sidebarStats) filters.style.display = 'none';
+    const fab = document.createElement('button');
+    fab.className = 'fab';
+    fab.replaceChildren(icon('filter', 17));
+    fab.title = 'Filter lines';
+    fab.setAttribute('aria-label', 'Filter lines');
+    fab.addEventListener('click', () => {
+      const open = filters.classList.toggle('open');
+      fab.setAttribute('aria-expanded', String(open));
+    });
+
     for (const [key, label, title] of [
-      ['all', 'All', 'Every line'],
-      ['unknown', 'Has new', 'Lines containing a word you have no card for'],
-      ['i1', 'i+1', 'Exactly one unknown word — the highest-value lines to mine'],
+      ['all', 'All lines', 'Every line'],
+      ['unknown', 'Has new words', 'Lines containing a word you have no card for'],
+      ['i1', 'i+1 only', 'Exactly one unknown word — the highest-value lines to mine'],
     ] as const) {
       const b = document.createElement('button');
       b.className = 'f';
@@ -238,10 +305,14 @@ export class Sidebar {
         filters.querySelectorAll('button').forEach((x) =>
           x.setAttribute('aria-pressed', String(x === b)),
         );
+        fab.classList.toggle('on', key !== 'all');
+        filters.classList.remove('open');
         this.render();
       });
       filters.appendChild(b);
     }
+    this.#fab = fab;
+    this.#filterMenu = filters;
 
     const summary = document.createElement('div');
     summary.className = 'summary';
@@ -272,7 +343,7 @@ export class Sidebar {
     this.#hover.className = 'hover';
 
     this.#search = search;
-    this.#panel.append(grip, head, search, summary, filters, this.#note, this.#list);
+    this.#panel.append(grip, head, search, summary, this.#note, this.#list, filters, fab);
     this.#root.append(style, this.#panel, this.#hover);
     mount.appendChild(this.#host);
 
@@ -335,7 +406,6 @@ export class Sidebar {
     this.#gear.replaceChildren(icon(showing ? 'back' : 'settings', showing ? 17 : 15));
     this.#gear.title = showing ? 'Back to the transcript' : 'Settings';
     this.#gear.setAttribute('aria-label', this.#gear.title);
-    this.#hoverBtn.style.display = showing ? 'none' : '';
     if (this.#search) this.#search.style.display = showing ? 'none' : '';
 
     this.#settingsEl?.remove();
@@ -404,7 +474,8 @@ export class Sidebar {
     }
 
     transcript.lines.forEach((line, i) => {
-      const stats = settings().sidebarStats;
+      this.#fab.style.display = settings().sidebarStats ? '' : 'none';
+    const stats = settings().sidebarStats;
       const c = stats ? this.#counts.get(i) : undefined;
       if (this.#filter === 'unknown' && (c?.unknown ?? 0) === 0) return;
       if (this.#filter === 'i1' && c?.unknown !== 1) return;
@@ -418,25 +489,28 @@ export class Sidebar {
         this.#deps.seek(line.start);
       });
 
-      const t = document.createElement('span');
-      t.className = 't';
-      t.textContent = stamp(line.start);
-
       const tx = document.createElement('span');
       tx.className = 'tx';
       this.#fillLine(tx, line.text);
+      row.appendChild(tx);
 
       if (line.secondary) {
-        const s = document.createElement('span');
-        s.className = 'sec';
-        s.textContent = line.secondary;
-        tx.appendChild(s);
+        const sec = document.createElement('span');
+        sec.className = 'sec';
+        sec.textContent = line.secondary;
+        row.appendChild(sec);
       }
 
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      const time = document.createElement('span');
+      time.textContent = `${stamp(line.start)} – ${stamp(line.end)}`;
       const x = document.createElement('span');
       x.className = 'x' + (c ? (c.unknown === 1 ? ' one' : c.unknown ? ' hot' : '') : '');
-      x.textContent = c ? String(c.unknown) : '';
-      row.append(t, tx, x);
+      x.textContent = c?.unknown ? `${c.unknown} new` : '';
+      meta.append(time, x);
+      row.appendChild(meta);
+
       this.#list.appendChild(row);
     });
 
@@ -520,11 +594,36 @@ export class Sidebar {
     const paint = (tokens: Token[]): void => {
       into.replaceChildren();
       for (const tok of tokens) {
+        if (tok.punct) {
+          into.appendChild(document.createTextNode(tok.surface));
+          continue;
+        }
+
         const w = document.createElement('span');
         w.className = 'w';
-        w.textContent = tok.surface;
         w.dataset.tok = JSON.stringify(tok);
         w.dataset.line = text;
+        w.dataset.s = this.#deps.statusOf(tok);
+
+        // Readings and status belong here too: a transcript that renders the
+        // same words differently from the overlay is two tools, not one.
+        const segs = furigana(tok.surface, tok.reading);
+        if (!segs.some((x) => x.ruby)) {
+          w.textContent = tok.surface;
+        } else {
+          for (const seg of segs) {
+            if (!seg.ruby) {
+              w.appendChild(document.createTextNode(seg.text));
+              continue;
+            }
+            const ruby = document.createElement('ruby');
+            ruby.appendChild(document.createTextNode(seg.text));
+            const rt = document.createElement('rt');
+            rt.textContent = seg.ruby;
+            ruby.appendChild(rt);
+            w.appendChild(ruby);
+          }
+        }
         into.appendChild(w);
       }
     };
@@ -537,7 +636,7 @@ export class Sidebar {
 
   #installHover(): void {
     this.#list.addEventListener('mouseover', (e) => {
-      if (!this.#hoverOn) return;
+      if (!settings().sidebarHover) return;
       const w = (e.target as HTMLElement).closest('.w') as HTMLElement | null;
       if (!w) return;
       clearTimeout(this.#hoverTimer);
