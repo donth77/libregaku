@@ -1,4 +1,5 @@
 import type { Cue, SubtitleSource, TrackInfo } from './types';
+import { fetchViaTranscriptPanel } from './yt-transcript';
 
 /**
  * YouTube. Captions come from `/api/timedtext`, which YouTube signs — so we use
@@ -198,6 +199,11 @@ export class YouTubeAdapter implements SubtitleSource {
     }
     // No exact match, but any signed URL can be re-pointed by `lang`.
     return this.#liveUrls.get(lang) ?? null;
+  }
+
+  /** Read YouTube's own transcript panel — no token, no player internals. */
+  async fallbackTrack(): Promise<Cue[]> {
+    return fetchViaTranscriptPanel();
   }
 
   onNavigate(cb: () => void): void {

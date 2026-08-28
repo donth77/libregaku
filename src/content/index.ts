@@ -361,7 +361,15 @@ async function run(): Promise<boolean> {
     cues = await adapter.loadTrack(track.id);
   } catch (err) {
     log('could not fetch the track:', err);
-    return startDomFallback(mount, seg, adapter);
+    // Before settling for the current line only, ask the adapter whether it
+    // knows another way to the whole transcript.
+    const alt = (await adapter.fallbackTrack?.().catch(() => [])) ?? [];
+    if (alt.length) {
+      log(`recovered ${alt.length} cues from the page's own transcript`);
+      cues = alt;
+    } else {
+      return startDomFallback(mount, seg, adapter);
+    }
   }
   if (!cues.length) {
     log('track loaded but contained no cues');

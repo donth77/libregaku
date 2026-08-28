@@ -39,6 +39,15 @@ export interface SubtitleSource {
   video(): HTMLVideoElement | null;
   listTracks(): Promise<TrackInfo[]>;
   loadTrack(id: string): Promise<Cue[]>;
+  /**
+   * A second route to the full transcript, tried when loadTrack fails.
+   *
+   * On YouTube the signed-URL path is unreliable, but the site's own transcript
+   * panel holds the whole script with timestamps — and unlike reading rendered
+   * captions, it yields every line rather than the current one.
+   */
+  fallbackTrack?(): Promise<Cue[]>;
+
   /** Hide the site's own subtitle rendering so ours is the only one. */
   hideNative(): void;
   /** SPA route changes — the video changed under us. */

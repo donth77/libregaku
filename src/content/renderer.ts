@@ -50,7 +50,7 @@ const STYLE = `
     align-items: flex-end;      /* every token sits on one baseline */
     gap: 0 2px;
     /* Room for the annotations, reserved once rather than per token. */
-    padding-top: .62em;
+    padding-top: .5em;
     user-select: text;
   }
   .secondary { font-size: calc(var(--size, 2.1vw) * .68); color: #B9C3D8; user-select: text; }
@@ -65,11 +65,13 @@ const STYLE = `
    * sitting at different heights. Positioning rt absolutely gives every token
    * an identical box, and the row reserves the space once instead.
    */
-  .t ruby { display: inline-block; position: relative; }
+  /* line-height 1 so the box hugs the glyphs; otherwise bottom:100% is
+     measured against the row's 1.85 line-height and the reading floats. */
+  .t ruby { display: inline-block; position: relative; line-height: 1; }
   .t rt {
-    position: absolute; left: 50%; bottom: 100%;
+    position: absolute; left: 50%; bottom: calc(100% + .04em);
     transform: translateX(-50%);
-    font-size: .48em; font-weight: 400; line-height: 1.15;
+    font-size: .46em; font-weight: 400; line-height: 1;
     color: #9FB4E8; letter-spacing: .02em;
     white-space: nowrap; user-select: none; pointer-events: none;
   }

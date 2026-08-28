@@ -40,6 +40,13 @@ export const ASSUMPTIONS: Assumption[] = [
     fallback: null,
   },
   {
+    id: 'yt.transcript-panel',
+    site: 'youtube',
+    claim: 'A watch page can open a transcript panel rendering every line as ytd-transcript-segment-renderer with .segment-timestamp and .segment-text',
+    breaks: 'Full-transcript recovery on YouTube — the sidebar drops back to accumulating one line at a time',
+    fallback: 'Reading rendered captions, current line only',
+  },
+  {
     id: 'audio.jpod101',
     site: 'youtube',
     claim: 'assets.languagepod101.com/dictionary/japanese/audiomp3.php serves human recordings, keyed by kanji + hiragana, returning a fixed 52,288-byte placeholder for words it lacks',
