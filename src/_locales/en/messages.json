@@ -1,0 +1,10 @@
+{
+  "extName": {
+    "message": "Libregaku",
+    "description": "Extension name"
+  },
+  "extDescription": {
+    "message": "Tokenized dual subtitles, a clickable transcript, and a real dictionary \u2014 with Anki as the backend.",
+    "description": "Store description"
+  }
+}

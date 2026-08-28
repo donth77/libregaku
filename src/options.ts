@@ -42,10 +42,6 @@ async function main(): Promise<void> {
     0: 'Word boundaries only. Lookups match exactly what is on screen.',
   };
 
-  // Seeing the page at all means the pair has been reviewed; a learner whose
-  // pair happens to be the default should not be nagged forever.
-  if (!s.configured) void setSetting('configured', true);
-
   const target = document.getElementById('target') as HTMLSelectElement;
   const note = document.getElementById('tierNote') as HTMLElement;
   for (const l of TARGET_LANGUAGES) {
@@ -90,6 +86,14 @@ async function main(): Promise<void> {
   const setup = document.getElementById('setup') as HTMLElement;
   const stepLang = document.getElementById('step-lang') as HTMLElement;
   const stepAnki = document.getElementById('step-anki') as HTMLElement;
+  const confirm = document.getElementById('confirmLang') as HTMLButtonElement;
+
+  // An explicit confirmation, so a learner whose pair happens to match the
+  // defaults has still made the choice rather than merely not noticed it.
+  confirm.addEventListener('click', () => {
+    void setSetting('configured', true);
+    refreshSetup();
+  });
 
   const refreshSetup = (): void => {
     const cur = { ...s, ...settingsSnapshot() };

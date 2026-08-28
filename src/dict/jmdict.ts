@@ -35,11 +35,16 @@ export function keysFor(w: RawWord): string[] {
   return [...keys];
 }
 
-export function toEntry(w: RawWord): Entry | null {
+/**
+ * `lang` is the JMdict three-letter code of the edition being read. A
+ * single-language edition tags its glosses with it, so filtering on the wrong
+ * one silently produces entries with no definitions at all.
+ */
+export function toEntry(w: RawWord, lang = 'eng'): Entry | null {
   const senses = (w.sense ?? [])
     .map((s) => ({
       pos: s.partOfSpeech ?? [],
-      glosses: (s.gloss ?? []).filter((g) => !g.lang || g.lang === 'eng').map((g) => g.text),
+      glosses: (s.gloss ?? []).filter((g) => !g.lang || g.lang === lang).map((g) => g.text),
       misc: s.misc?.length ? s.misc : undefined,
     }))
     .filter((s) => s.glosses.length);

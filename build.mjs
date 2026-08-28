@@ -27,6 +27,8 @@ await cp('src/offscreen.html', `${outdir}/offscreen.html`);
 await cp('src/content/subs.css', `${outdir}/subs.css`);
 await cp('src/options.html', `${outdir}/options.html`);
 await cp('src/options.css', `${outdir}/options.css`);
+// _locales must sit beside the manifest for Chrome to find it.
+await cp('src/_locales', `${outdir}/_locales`, { recursive: true });
 
 // lindera ships the wasm binary beside its JS glue; the offscreen page loads
 // it by extension URL, so it has to sit in dist/ as a real file.

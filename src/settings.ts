@@ -25,14 +25,29 @@ export const TARGET_LANGUAGES: Array<{ code: string; label: string; tier: 0 | 1 
   { code: 'th', label: 'Thai', tier: 0 },
 ];
 
-export const NATIVE_LANGUAGES: Array<{ code: string; label: string }> = [
-  { code: 'en', label: 'English' },
-  { code: 'es', label: 'Spanish' },
-  { code: 'fr', label: 'French' },
-  { code: 'de', label: 'German' },
-  { code: 'pt', label: 'Portuguese' },
-  { code: 'ja', label: 'Japanese' },
+/**
+ * Languages definitions can appear in.
+ *
+ * Constrained by what JMdict actually publishes rather than by what would be
+ * nice: these are the editions that exist. Offering a language with no edition
+ * behind it would mean silently serving English while claiming otherwise.
+ */
+export const NATIVE_LANGUAGES: Array<{ code: string; label: string; jmdict: string }> = [
+  { code: 'en', label: 'English', jmdict: 'eng' },
+  { code: 'nl', label: 'Dutch', jmdict: 'dut' },
+  { code: 'fr', label: 'French', jmdict: 'fre' },
+  { code: 'de', label: 'German', jmdict: 'ger' },
+  { code: 'hu', label: 'Hungarian', jmdict: 'hun' },
+  { code: 'ru', label: 'Russian', jmdict: 'rus' },
+  { code: 'sl', label: 'Slovenian', jmdict: 'slv' },
+  { code: 'es', label: 'Spanish', jmdict: 'spa' },
+  { code: 'sv', label: 'Swedish', jmdict: 'swe' },
 ];
+
+/** JMdict's three-letter code for a native language, or English. */
+export function jmdictEditionFor(code: string): string {
+  return NATIVE_LANGUAGES.find((l) => l.code === code)?.jmdict ?? 'eng';
+}
 
 export interface Settings {
   /** BCP-47 of the language being learned. */

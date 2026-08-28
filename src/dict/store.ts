@@ -10,12 +10,19 @@ import { keysFor, rank, toEntry, type Entry, type RawWord } from './jmdict';
  */
 
 const DB = 'libregaku-dict';
-const VERSION = 1;
+const VERSION = 2;
 const ENTRIES = 'entries';
 const FORMS = 'forms';
+const META = 'meta';
 
-export const JMDICT_URL =
-  'https://github.com/scriptin/jmdict-simplified/releases/latest/download/jmdict-eng-3.6.2+20260824122934.json.tgz';
+const RELEASE = '3.6.2+20260824122934';
+
+export function jmdictUrl(edition: string): string {
+  return (
+    'https://github.com/scriptin/jmdict-simplified/releases/latest/download/' +
+    `jmdict-${edition}-${RELEASE}.json.tgz`
+  );
+}
 
 function open(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -27,6 +34,7 @@ function open(): Promise<IDBDatabase> {
         // One row per (form, entry) pair; many entries share a form.
         db.createObjectStore(FORMS, { keyPath: ['form', 'id'] }).createIndex('form', 'form');
       }
+      if (!db.objectStoreNames.contains(META)) db.createObjectStore(META);
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -41,9 +49,26 @@ function done(tx: IDBTransaction): Promise<void> {
   });
 }
 
-export async function isPopulated(): Promise<boolean> {
+/** Which edition the store currently holds, if any. */
+async function storedEdition(db: IDBDatabase): Promise<string | null> {
+  return new Promise((resolve) => {
+    const req = db.transaction(META).objectStore(META).get('edition');
+    req.onsuccess = () => resolve((req.result as string | undefined) ?? null);
+    req.onerror = () => resolve(null);
+  });
+}
+
+/**
+ * Populated *and* in the language the user asked for.
+ *
+ * Without the edition check, switching from English to Spanish would leave the
+ * English data in place and keep serving it — a setting that appears to work
+ * and does not.
+ */
+export async function isPopulated(edition: string): Promise<boolean> {
   const db = await open();
   try {
+    if ((await storedEdition(db)) !== edition) return false;
     return await new Promise<boolean>((resolve, reject) => {
       const req = db.transaction(ENTRIES).objectStore(ENTRIES).count();
       req.onsuccess = () => resolve(req.result > 1000);
@@ -55,10 +80,11 @@ export async function isPopulated(): Promise<boolean> {
 }
 
 export async function build(
+  edition: string,
   onProgress?: (phase: string, percent: number) => void,
 ): Promise<number> {
   onProgress?.('downloading', 0);
-  const data = (await fetchJsonTgz(JMDICT_URL, (loaded, total) => {
+  const data = (await fetchJsonTgz(jmdictUrl(edition), (loaded, total) => {
     onProgress?.('downloading', total ? Math.round((loaded / total) * 100) : 0);
   })) as { words?: RawWord[] };
 
@@ -67,6 +93,16 @@ export async function build(
 
   const db = await open();
   try {
+    // A language change replaces the contents rather than merging into them.
+    await done(
+      (() => {
+        const tx = db.transaction([ENTRIES, FORMS, META], 'readwrite');
+        tx.objectStore(ENTRIES).clear();
+        tx.objectStore(FORMS).clear();
+        return tx;
+      })(),
+    );
+
     // Batched so one transaction does not hold ~200k writes open at once.
     const BATCH = 5000;
     let written = 0;
@@ -77,7 +113,7 @@ export async function build(
       const forms = tx.objectStore(FORMS);
 
       for (const w of words.slice(i, i + BATCH)) {
-        const entry = toEntry(w);
+        const entry = toEntry(w, edition);
         if (!entry) continue;
         entries.put(entry);
         for (const form of keysFor(w)) forms.put({ form, id: entry.id });
@@ -87,6 +123,11 @@ export async function build(
       await done(tx);
       onProgress?.('indexing', Math.round((Math.min(i + BATCH, words.length) / words.length) * 100));
     }
+
+    const mark = db.transaction(META, 'readwrite');
+    mark.objectStore(META).put(edition, 'edition');
+    await done(mark);
+
     return written;
   } finally {
     db.close();

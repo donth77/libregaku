@@ -12,7 +12,7 @@ import { tagsFor, toAnkiFurigana } from '../anki/model';
 import { sourceField } from '../anki/source';
 import { buildStatusMap, loadOverrides, setOverride, type Status, type StatusMap } from '../anki/status';
 import { furigana } from '../morphology/furigana';
-import { TIER2_LANGS, loadSettings, onSettingsChange, settings } from '../settings';
+import { TIER2_LANGS, jmdictEditionFor, loadSettings, onSettingsChange, settings } from '../settings';
 import {
   cancelPopupClose, closePopup, closePopupSoon, popupKey, showPopup, type CardDraft,
 } from './popup';
@@ -149,7 +149,7 @@ async function makeSegmenter(): Promise<Segmenter | null> {
   // must not also cost us definitions.
   void (async () => {
     try {
-      const d = await ensureDictionary();
+      const d = await ensureDictionary(jmdictEditionFor(settings().native));
       log(
         d.ready
           ? 'JMdict ready — click a word to look it up'

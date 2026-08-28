@@ -122,20 +122,29 @@ function analyse(text: string): Array<{ surface: string; lemma?: string; reading
 
 /* ── JMdict ─────────────────────────────────────────────────────── */
 
-const dict = { ready: false, loading: false, phase: 'idle', percent: 0, error: null as string | null };
+const dict = {
+  ready: false, loading: false, phase: 'idle', percent: 0,
+  error: null as string | null, edition: 'eng',
+};
 
-async function ensureDict(): Promise<void> {
-  if (dict.ready || dict.loading) return;
+async function ensureDict(edition: string): Promise<void> {
+  // A different edition is a different dictionary, so a language change has to
+  // rebuild rather than be treated as already loaded.
+  if (dict.loading) return;
+  if (dict.ready && dict.edition === edition) return;
+
   dict.loading = true;
   dict.error = null;
+  dict.edition = edition;
   try {
-    if (await isPopulated()) {
+    if (await isPopulated(edition)) {
       dict.ready = true;
       dict.phase = 'ready';
       dict.percent = 100;
       return;
     }
-    const n = await buildDict((phase, percent) => {
+    dict.ready = false;
+    const n = await buildDict(edition, (phase, percent) => {
       dict.phase = phase;
       dict.percent = percent;
     });
@@ -152,7 +161,7 @@ async function ensureDict(): Promise<void> {
   }
 }
 
-chrome.runtime.onMessage.addListener((msg: { target?: string; type?: string; text?: string; dict?: string; key?: string }, _s, respond) => {
+chrome.runtime.onMessage.addListener((msg: { target?: string; type?: string; text?: string; dict?: string; key?: string; edition?: string }, _s, respond) => {
   if (msg?.target !== 'offscreen') return false;
 
   switch (msg.type) {
@@ -181,7 +190,7 @@ chrome.runtime.onMessage.addListener((msg: { target?: string; type?: string; tex
       return true;
 
     case 'dict-load':
-      void ensureDict().then(() => respond({ ok: !dict.error, ...dict }));
+      void ensureDict(msg.edition ?? 'eng').then(() => respond({ ok: !dict.error, ...dict }));
       return true;
 
     case 'dict-status':

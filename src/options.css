@@ -58,3 +58,10 @@ button[type=button]:disabled { opacity: .5; cursor: default; }
 .setup .tick { font-family: ui-monospace, monospace; color: var(--faint); }
 .setup li.done .tick { color: #63AF97; text-decoration: none; }
 .setup .fine { margin-top: 12px; margin-bottom: 0; }
+
+#confirmLang {
+  margin-top: 14px; background: var(--accent); color: #0D111C;
+  border: 0; border-radius: 6px; padding: 9px 16px; cursor: pointer;
+  font: 600 12px system-ui, sans-serif;
+}
+#confirmLang:hover { filter: brightness(1.08); }

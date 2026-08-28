@@ -17,11 +17,13 @@ export type LookupResult =
   | { state: 'loading'; percent: number }
   | { state: 'error'; error: string };
 
-export async function ensureDictionary(): Promise<DictStatus> {
+export async function ensureDictionary(edition: string): Promise<DictStatus> {
   await chrome.runtime.sendMessage({ type: 'ensure-offscreen' });
-  const res = (await chrome.runtime.sendMessage({ target: 'offscreen', type: 'dict-load' })) as
-    | DictStatus
-    | undefined;
+  const res = (await chrome.runtime.sendMessage({
+    target: 'offscreen',
+    type: 'dict-load',
+    edition,
+  })) as DictStatus | undefined;
   return res ?? { ready: false, phase: 'unavailable', percent: 0, error: null };
 }
 
