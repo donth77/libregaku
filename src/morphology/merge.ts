@@ -29,7 +29,46 @@ export interface MergedToken {
   pos?: string;
   /** The morphemes this was built from, for the inflection trace. */
   parts: string[];
+  /** What the endings do, in order — "conditional", "past", "polite". */
+  inflections: string[];
   content: boolean;
+}
+
+/**
+ * What each ending contributes.
+ *
+ * The merge pass already decides which morphemes are endings; naming them is
+ * nearly free from there, and it is the difference between showing a learner
+ * 行け + ば and telling them it is a conditional. Keyed by dictionary form,
+ * since that is what the analyser reports regardless of how it is written.
+ */
+const GRAMMAR: Record<string, string> = {
+  // endings
+  た: 'past', だ: 'past',
+  ます: 'polite', ん: 'negative', ない: 'negative', ぬ: 'negative',
+  ば: 'conditional', たら: 'conditional',
+  たい: 'want to', がる: 'shows signs of',
+  れる: 'passive or potential', られる: 'passive or potential',
+  せる: 'causative', させる: 'causative',
+  そう: 'seems', よう: 'seems', らしい: 'apparently', まい: 'will not',
+  て: 'te-form', で: 'te-form', たり: 'listing', だり: 'listing',
+  // helper verbs
+  いる: 'ongoing', ある: 'resulting state',
+  しまう: 'completely, or regrettably',
+  おく: 'in advance', みる: 'try doing',
+  いく: 'going forward', くる: 'coming to be',
+  もらう: 'receive the favour', くれる: 'someone does for me',
+  あげる: 'do for someone',
+};
+
+function grammarOf(morphemes: Morpheme[]): string[] {
+  const out: string[] = [];
+  // Skip the head: it is the word, not an ending.
+  for (const m of morphemes.slice(1)) {
+    const label = GRAMMAR[m.lemma ?? m.surface];
+    if (label && !out.includes(label)) out.push(label);
+  }
+  return out;
 }
 
 const AUX_VERBS = new Set(['いる', 'ある', 'おく', 'しまう', 'みる', 'いく', 'くる', 'もらう', 'くれる', 'あげる']);
@@ -83,8 +122,19 @@ function attaches(group: Morpheme[], cur: Morpheme): boolean {
     return true;
   }
 
-  // …て + いる, …て + しまう
-  if (cur.pos === '動詞' && (cur.pos1 === '非自立' || AUX_VERBS.has(cur.lemma ?? ''))) return true;
+  /*
+   * 補助動詞 — helper verbs — only ever follow the て-form: 持って+いく,
+   * して+しまう. Without that requirement いく attached to anything before it,
+   * so うまく + いけ merged and the group took the adjective's dictionary form:
+   * hovering うまくいけば produced 上手い.
+   */
+  if (
+    cur.pos === '動詞' &&
+    (cur.pos1 === '非自立' || AUX_VERBS.has(cur.lemma ?? '')) &&
+    (prev.surface === 'て' || prev.surface === 'で')
+  ) {
+    return true;
+  }
 
   // 先生 + 方, 私 + たち
   if (cur.pos1 === '接尾') return true;
@@ -118,6 +168,7 @@ export function mergeMorphemes(morphemes: Morpheme[]): MergedToken[] {
       reading,
       pos: head.pos,
       parts: group.map((m) => m.surface),
+      inflections: grammarOf(group),
       // A group is vocabulary if its head is, even when the tail is grammar.
       content: head.pos ? !FUNCTION_POS.has(head.pos) : true,
     });

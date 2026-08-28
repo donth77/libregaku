@@ -73,6 +73,11 @@ const STYLE = `
     font: 11px/1.6 ui-monospace, monospace; color: #838DA8;
   }
   .trace b { color: #8AA2E8; font-weight: 600; }
+  .grammar {
+    margin-top: 4px; color: #D9A64A;
+    font: 500 10px/1.5 ui-monospace, monospace; letter-spacing: .06em;
+    text-transform: uppercase;
+  }
   .empty { padding: 14px; color: #838DA8; }
   .toast {
     position: absolute; left: 50%; bottom: -26px; transform: translateX(-50%);
@@ -326,15 +331,27 @@ export function showPopup(
   }
 
   // The inflection trace: what this token was built from, and where it leads.
-  const { parts, lemma, surface } = ctx.token;
+  const { parts, lemma, surface, inflections } = ctx.token;
   if (parts?.length && lemma && lemma !== surface) {
     const tr = document.createElement('div');
     tr.className = 'trace';
-    tr.innerHTML = '';
-    tr.append(document.createTextNode(parts.join(' + ') + '  →  '));
+    tr.append(document.createTextNode(`${parts.join(' + ')}  →  `));
     const b = document.createElement('b');
     b.textContent = lemma;
     tr.appendChild(b);
+
+    /*
+     * Name what the endings do. The merge pass already decided which morphemes
+     * are endings and why, so labelling them is nearly free — and it is the
+     * difference between showing someone いけ + ば and telling them it is a
+     * conditional.
+     */
+    if (inflections?.length) {
+      const g = document.createElement('div');
+      g.className = 'grammar';
+      g.textContent = inflections.join(' · ');
+      tr.appendChild(g);
+    }
     card.appendChild(tr);
   }
 

@@ -196,3 +196,61 @@ describe('conjunctive particles', () => {
     expect(out[0]?.surface).toBe('している');
   });
 });
+
+describe('helper verbs need the te-form', () => {
+  it('does not merge a helper verb straight onto an adjective', () => {
+    // うまく + いけ + ば used to become one token headed by the adjective, so
+    // hovering うまくいけば produced 上手い.
+    const out = mergeMorphemes([
+      m('うまく', '形容詞', '自立', '上手い', 'ウマク'),
+      m('いけ', '動詞', '自立', 'いく', 'イケ'),
+      m('ば', '助詞', '接続助詞', 'ば', 'バ'),
+    ]);
+    expect(out[0]?.surface).toBe('うまく');
+    expect(out[1]?.surface).toBe('いけば');
+    expect(out[1]?.lemma).toBe('いく');
+  });
+
+  it('still merges a helper verb after て', () => {
+    const out = mergeMorphemes([
+      m('持っ', '動詞', '自立', '持つ', 'モッ'),
+      m('て', '助詞', '接続助詞', 'て', 'テ'),
+      m('いく', '動詞', '非自立', 'いく', 'イク'),
+    ]);
+    expect(out).toHaveLength(1);
+    expect(out[0]?.lemma).toBe('持つ');
+  });
+});
+
+describe('grammar labels', () => {
+  it('names the conditional', () => {
+    const out = mergeMorphemes([
+      m('いけ', '動詞', '自立', 'いく', 'イケ'),
+      m('ば', '助詞', '接続助詞', 'ば', 'バ'),
+    ]);
+    expect(out[0]?.inflections).toEqual(['conditional']);
+  });
+
+  it('names a chain in order', () => {
+    const out = mergeMorphemes([
+      m('食べ', '動詞', '自立', '食べる', 'タベ'),
+      m('まし', '助動詞', '*', 'ます', 'マシ'),
+      m('た', '助動詞', '*', 'た', 'タ'),
+    ]);
+    expect(out[0]?.inflections).toEqual(['polite', 'past']);
+  });
+
+  it('names te-form plus a helper verb', () => {
+    const out = mergeMorphemes([
+      m('し', '動詞', '自立', 'する', 'シ'),
+      m('て', '助詞', '接続助詞', 'て', 'テ'),
+      m('いる', '動詞', '非自立', 'いる', 'イル'),
+    ]);
+    expect(out[0]?.inflections).toEqual(['te-form', 'ongoing']);
+  });
+
+  it('leaves an uninflected word unlabelled', () => {
+    const out = mergeMorphemes([m('彼女', '名詞', '代名詞', '彼女', 'カノジョ')]);
+    expect(out[0]?.inflections).toEqual([]);
+  });
+});
