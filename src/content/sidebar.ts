@@ -2,6 +2,7 @@ import { lookupWord } from '../dict/client';
 import { readablePos } from '../dict/pos';
 import type { Segmenter, Token } from '../morphology/types';
 import { settings } from '../settings';
+import { PANEL_STYLE, buildSettings } from './settings-panel';
 import type { Transcript } from './transcript';
 
 /**
@@ -115,6 +116,7 @@ const STYLE = `
   .hp { font: 10px ui-monospace, monospace; color: #6B7490; margin: 2px 0 3px; letter-spacing: .05em; }
   .hd { font-size: 12px; color: #C7CFE2; }
   @media (prefers-reduced-motion: no-preference) { .lines { scroll-behavior: smooth; } }
+${PANEL_STYLE}
 `;
 
 export interface SidebarDeps {
@@ -128,6 +130,10 @@ export interface SidebarDeps {
 }
 
 export class Sidebar {
+  #title!: HTMLElement;
+  #hoverBtn!: HTMLButtonElement;
+  #gear!: HTMLButtonElement;
+  #search: HTMLElement | null = null;
   #host: HTMLElement;
   #root: ShadowRoot;
   #panel: HTMLElement;
@@ -145,6 +151,8 @@ export class Sidebar {
   #userScrolled = false;
   #hoverTimer = 0;
   #hoverOn = true;
+  #mode: 'transcript' | 'settings' = 'transcript';
+  #settingsEl: HTMLElement | null = null;
 
   constructor(mount: HTMLElement, deps: SidebarDeps) {
     this.#deps = deps;
@@ -174,11 +182,19 @@ export class Sidebar {
       hoverBtn.textContent = this.#hoverOn ? 'Hover ✓' : 'Hover ✗';
       if (!this.#hoverOn) this.#hideHover();
     });
+    const gear = document.createElement('button');
+    gear.textContent = 'Settings';
+    gear.addEventListener('click', () => this.setMode(this.#mode === 'settings' ? 'transcript' : 'settings'));
+
     const close = document.createElement('button');
     close.textContent = 'Close';
     close.addEventListener('click', () => this.toggle(false));
-    controls.append(hoverBtn, close);
+    controls.append(hoverBtn, gear, close);
     head.append(title, controls);
+    this.#title = title;
+    this.#hoverBtn = hoverBtn;
+    this.#gear = gear;
+    this.#search = null;
 
     const filters = document.createElement('div');
     filters.className = 'filters';
@@ -231,6 +247,7 @@ export class Sidebar {
     this.#hover = document.createElement('div');
     this.#hover.className = 'hover';
 
+    this.#search = search;
     this.#panel.append(grip, head, search, summary, filters, this.#note, this.#list);
     this.#root.append(style, this.#panel, this.#hover);
     mount.appendChild(this.#host);
@@ -274,6 +291,41 @@ export class Sidebar {
       window.addEventListener('pointermove', move);
       window.addEventListener('pointerup', up);
     });
+  }
+
+  /**
+   * Swap the panel between the transcript and settings.
+   *
+   * Settings are built fresh each time rather than kept around: they are read
+   * from storage, and a stale panel showing values that have since changed
+   * elsewhere is worse than a moment's work rebuilding it.
+   */
+  setMode(mode: 'transcript' | 'settings'): void {
+    this.#mode = mode;
+    const showing = mode === 'settings';
+
+    this.#title.textContent = showing ? 'Settings' : 'Transcript';
+    this.#gear.textContent = showing ? 'Done' : 'Settings';
+    this.#hoverBtn.style.display = showing ? 'none' : '';
+    if (this.#search) this.#search.style.display = showing ? 'none' : '';
+
+    this.#settingsEl?.remove();
+    this.#settingsEl = null;
+
+    for (const el of [this.#note, this.#list] as HTMLElement[]) {
+      el.style.display = showing ? 'none' : '';
+    }
+    const summary = this.#root.querySelector('.summary') as HTMLElement | null;
+    const filters = this.#root.querySelector('.filters') as HTMLElement | null;
+    if (summary) summary.style.display = showing ? 'none' : '';
+    if (filters) filters.style.display = showing || !settings().sidebarStats ? 'none' : '';
+
+    if (showing) {
+      this.#settingsEl = buildSettings(() => this.render());
+      this.#panel.appendChild(this.#settingsEl);
+    } else {
+      this.render();
+    }
   }
 
   toggle(open?: boolean): void {
