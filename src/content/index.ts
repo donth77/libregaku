@@ -1,4 +1,5 @@
 import { NetflixAdapter } from '../adapters/netflix';
+import { pairCues } from '../adapters/pair';
 import { YouTubeAdapter } from '../adapters/youtube';
 import type { Cue, SubtitleSource } from '../adapters/types';
 import { IntlSegmenter } from '../morphology/intl';
@@ -378,6 +379,33 @@ async function run(): Promise<boolean> {
 
   log(`rendering ${cues.length} cues · segmenter tier ${seg.tier}` +
       (seg.hasLemma ? '' : ' (no lemmas — Anki matching would be surface-form only)'));
+
+  /*
+   * The native-language line comes from the source's *own* second track, not
+   * from machine translation. Netflix's English subtitles are a localisation
+   * written by a person; a machine translation of the Japanese would be a
+   * worse guess at the same thing, and seeing where the two genuinely diverge
+   * is most of the value of watching them together.
+   */
+  if (settings().dualSubtitles) {
+    const want = settings().native;
+    const second = tracks.find((t) => t.lang.startsWith(want) && t.id !== track.id);
+    if (second) {
+      try {
+        const other = await adapter.loadTrack(second.id);
+        if (other.length) {
+          cues = pairCues(cues, other);
+          const paired = cues.filter((c) => c.secondary).length;
+          log(`dual subtitles: ${second.lang} on ${paired} of ${cues.length} lines`);
+        }
+      } catch (e) {
+        // A missing second track is not a failure of the first.
+        log('no second subtitle track:', e);
+      }
+    } else if (tracks.length > 1) {
+      log(`no "${want}" track for the second line — available:`, tracks.map((t) => t.lang).join(', '));
+    }
+  }
 
   segmented = new Map();
   active = -1;

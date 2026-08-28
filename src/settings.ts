@@ -89,6 +89,14 @@ export interface Settings {
   /** Underline known words too, rather than leaving them bare. */
   markKnown: boolean;
   /**
+   * Show a native-language line beneath the target one.
+   *
+   * Only possible when a whole second track can be fetched. Reading rendered
+   * captions gives one line at a time and no way to ask for another language,
+   * so this has no effect there.
+   */
+  dualSubtitles: boolean;
+  /**
    * Whether the transcript panel is showing.
    *
    * Both the default and the remembered state, deliberately as one value: it
@@ -111,6 +119,7 @@ export const DEFAULTS: Settings = {
   statusScope: '',
   sidebarStats: true,
   markKnown: false,
+  dualSubtitles: true,
   sidebarOpen: true,
 };
 

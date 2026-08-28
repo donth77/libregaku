@@ -172,6 +172,9 @@ export function buildSettings(onChange: Rerender): HTMLElement {
     ['unknown', 'On unknown words'], ['always', 'Always'], ['never', 'Never'],
   ]);
   check('markKnown', 'Underline known words', 'Off by default: the screen gets quieter as you learn.');
+  check('dualSubtitles', 'Show a second subtitle line',
+    "Your own language, from the source's own track — not machine translation. " +
+    'Needs a full transcript, so it has no effect where only the current line is readable.');
 
   group('Transcript');
   check('sidebarOpen', 'Show the panel', 'Press S while watching to toggle it.');

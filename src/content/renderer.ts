@@ -44,13 +44,15 @@ const STYLE = `
     background: rgba(0,0,0,.72); pointer-events: auto;
   }
   .primary:empty, .secondary:empty { display: none; }
+  .primary.has-ruby { padding-top: .5em; }
   .primary {
     font-size: var(--size, 2.1vw); line-height: 1.85; color: #F2F5FC;
     display: flex; flex-wrap: wrap; justify-content: center;
     align-items: flex-end;      /* every token sits on one baseline */
     gap: 0 2px;
-    /* Room for the annotations, reserved once rather than per token. */
-    padding-top: .5em;
+    /* Space for readings is reserved only when a line actually has any —
+       otherwise every unannotated line carried a blank strip above it. */
+    padding-top: 0;
     user-select: text;
   }
   .secondary { font-size: calc(var(--size, 2.1vw) * .68); color: #B9C3D8; user-select: text; }
@@ -214,6 +216,11 @@ export class Overlay {
       });
     }
     this.#primary.replaceChildren();
+    // Whether this line needs headroom at all.
+    this.#primary.classList.toggle(
+      'has-ruby',
+      tokens.some((t) => !t.punct && furigana(t.surface, t.reading).some((x) => x.ruby)),
+    );
     for (const tok of tokens) {
       // Punctuation is text, not a word: rendered, never hoverable.
       if (tok.punct) {

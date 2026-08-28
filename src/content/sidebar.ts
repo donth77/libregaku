@@ -124,11 +124,14 @@ const STYLE = `
   .line.hide { display: none; }
 
   .tx {
-    display: block; font-size: 17px; line-height: 2.5;
+    display: block; font-size: 17px; line-height: 1.75;
     color: #E8ECF6; word-break: normal; overflow-wrap: anywhere;
   }
   /* Space for the readings is reserved by line-height, not per token, so
      annotated and bare words sit on the same baseline. */
+  /* Only annotated lines get the taller leading, so a card with no readings
+     is no taller than its text. */
+  .tx.has-ruby { line-height: 2.45; }
   .tx ruby { display: inline-block; position: relative; line-height: 1; }
   .tx rt {
     position: absolute; left: 50%; bottom: calc(100% + .04em);
@@ -593,6 +596,10 @@ export class Sidebar {
     const result = seg.segment(text);
     const paint = (tokens: Token[]): void => {
       into.replaceChildren();
+      into.classList.toggle(
+        'has-ruby',
+        tokens.some((t) => !t.punct && furigana(t.surface, t.reading).some((x) => x.ruby)),
+      );
       for (const tok of tokens) {
         if (tok.punct) {
           into.appendChild(document.createTextNode(tok.surface));
