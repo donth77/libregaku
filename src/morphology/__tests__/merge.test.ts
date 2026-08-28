@@ -254,3 +254,58 @@ describe('grammar labels', () => {
     expect(out[0]?.inflections).toEqual([]);
   });
 });
+
+describe('grammar coverage', () => {
+  const withConj = (
+    surface: string, pos: string, pos1: string, lemma: string, conjForm?: string,
+  ): Morpheme => ({ surface, pos, pos1, lemma, reading: surface, conjForm });
+
+  it('labels an imperative, which has no ending to look up', () => {
+    const out = mergeMorphemes([withConj('行け', '動詞', '自立', '行く', '命令ｅ')]);
+    expect(out[0]?.inflections).toEqual(['imperative']);
+  });
+
+  it('labels a volitional', () => {
+    const out = mergeMorphemes([
+      withConj('行こ', '動詞', '自立', '行く', '未然ウ接続'),
+      m('う', '助動詞', '*', 'う', 'ウ'),
+    ]);
+    expect(out[0]?.inflections).toContain('volitional');
+  });
+
+  it('labels negative past as a chain', () => {
+    const out = mergeMorphemes([
+      m('食べ', '動詞', '自立', '食べる', 'タベ'),
+      m('なかっ', '助動詞', '*', 'ない', 'ナカッ'),
+      m('た', '助動詞', '*', 'た', 'タ'),
+    ]);
+    expect(out[0]?.inflections).toEqual(['negative', 'past']);
+  });
+
+  it('labels causative-passive', () => {
+    const out = mergeMorphemes([
+      m('食べ', '動詞', '自立', '食べる', 'タベ'),
+      m('させ', '助動詞', '*', 'させる', 'サセ'),
+      m('られ', '助動詞', '*', 'られる', 'ラレ'),
+      m('た', '助動詞', '*', 'た', 'タ'),
+    ]);
+    expect(out[0]?.inflections).toEqual(['causative', 'passive or potential', 'past']);
+  });
+
+  it('labels spoken contractions, which subtitles are full of', () => {
+    const out = mergeMorphemes([
+      m('食べ', '動詞', '自立', '食べる', 'タベ'),
+      m('て', '助詞', '接続助詞', 'て', 'テ'),
+      m('ちゃう', '動詞', '非自立', 'ちゃう', 'チャウ'),
+    ]);
+    expect(out[0]?.inflections).toContain('completely, or regrettably');
+  });
+
+  it('labels desire', () => {
+    const out = mergeMorphemes([
+      m('行き', '動詞', '自立', '行く', 'イキ'),
+      m('たい', '助動詞', '*', 'たい', 'タイ'),
+    ]);
+    expect(out[0]?.inflections).toEqual(['want to']);
+  });
+});

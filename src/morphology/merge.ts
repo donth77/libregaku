@@ -12,6 +12,8 @@
 
 export interface Morpheme {
   surface: string;
+  /** IPADIC 活用形 — 命令形, 未然ウ接続, 仮定形 … */
+  conjForm?: string;
   /** IPADIC 品詞 — 動詞, 名詞, 助動詞, … */
   pos?: string;
   /** IPADIC 品詞細分類1 — サ変接続, 非自立, 接尾, … */
@@ -43,31 +45,70 @@ export interface MergedToken {
  * since that is what the analyser reports regardless of how it is written.
  */
 const GRAMMAR: Record<string, string> = {
-  // endings
-  た: 'past', だ: 'past',
-  ます: 'polite', ん: 'negative', ない: 'negative', ぬ: 'negative',
-  ば: 'conditional', たら: 'conditional',
-  たい: 'want to', がる: 'shows signs of',
+  // tense and politeness
+  た: 'past', だ: 'past', ます: 'polite', です: 'polite',
+  // negation
+  ない: 'negative', ぬ: 'negative', ん: 'negative', ず: 'negative',
+  まい: 'negative intent',
+  // conditionals
+  ば: 'conditional', たら: 'conditional', なら: 'conditional',
+  と: 'whenever',
+  // voice
   れる: 'passive or potential', られる: 'passive or potential',
   せる: 'causative', させる: 'causative',
-  そう: 'seems', よう: 'seems', らしい: 'apparently', まい: 'will not',
+  // desire and inclination
+  たい: 'want to', たがる: 'seems to want to',
+  // evidentiality
+  そう: 'seems', よう: 'seems', みたい: 'seems like',
+  らしい: 'apparently', べき: 'ought to', はず: 'supposed to',
+  つもり: 'intends to', かもしれない: 'might',
+  // connective
   て: 'te-form', で: 'te-form', たり: 'listing', だり: 'listing',
+  ながら: 'while', つつ: 'while', ので: 'because', のに: 'even though',
+  ため: 'in order to', ように: 'so that',
   // helper verbs
-  いる: 'ongoing', ある: 'resulting state',
+  いる: 'ongoing', おる: 'ongoing', ある: 'resulting state',
   しまう: 'completely, or regrettably',
   おく: 'in advance', みる: 'try doing',
   いく: 'going forward', くる: 'coming to be',
   もらう: 'receive the favour', くれる: 'someone does for me',
-  あげる: 'do for someone',
+  あげる: 'do for someone', やる: 'do for someone',
+  // spoken contractions, which subtitles are full of
+  てる: 'ongoing', でる: 'ongoing', とく: 'in advance', どく: 'in advance',
+  ちゃう: 'completely, or regrettably', じゃう: 'completely, or regrettably',
+  なきゃ: 'must', なくちゃ: 'must', ちゃ: 'must not',
 };
+
+/**
+ * Forms carried by the conjugation itself rather than by a separate morpheme.
+ *
+ * An imperative or a volitional has no ending to look up — 行け and 行こう are
+ * inflections of 行く with nothing appended — so they are invisible to a table
+ * keyed on morphemes. IPADIC records them in 活用形, which is why that column
+ * is now read.
+ */
+function fromConjugation(m: Morpheme): string | null {
+  const f = m.conjForm ?? '';
+  if (f.startsWith('命令')) return 'imperative';
+  if (f === '未然ウ接続') return 'volitional';
+  if (f === '仮定形') return null;   // the ば that follows already says so
+  return null;
+}
 
 function grammarOf(morphemes: Morpheme[]): string[] {
   const out: string[] = [];
-  // Skip the head: it is the word, not an ending.
-  for (const m of morphemes.slice(1)) {
-    const label = GRAMMAR[m.lemma ?? m.surface];
-    if (label && !out.includes(label)) out.push(label);
+
+  for (const [i, m] of morphemes.entries()) {
+    // The head is the word itself, not an ending — but its own conjugation
+    // still carries meaning when nothing follows it.
+    if (i > 0) {
+      const label = GRAMMAR[m.lemma ?? m.surface] ?? GRAMMAR[m.surface];
+      if (label && !out.includes(label)) out.push(label);
+    }
+    const conj = fromConjugation(m);
+    if (conj && !out.includes(conj)) out.push(conj);
   }
+
   return out;
 }
 
