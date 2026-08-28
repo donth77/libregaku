@@ -1,4 +1,5 @@
-import { MODEL_NAME, ROOT_TAG } from './model';
+import { ROOT_TAG } from './model';
+import { ankiCall as call } from './rpc';
 
 /**
  * What the learner knows, derived from their Anki collection.
@@ -30,20 +31,6 @@ export type Status = 'known' | 'learning' | 'tracking' | 'unknown' | 'ignored';
 
 /** Anki's own threshold for a mature card. */
 export const MATURE_DAYS = 21;
-
-const ENDPOINT = 'http://127.0.0.1:8765';
-
-async function call<T>(action: string, params: Record<string, unknown> = {}): Promise<T> {
-  const res = await fetch(ENDPOINT, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action, version: 6, params }),
-  });
-  if (!res.ok) throw new Error(`AnkiConnect returned HTTP ${res.status}`);
-  const body = (await res.json()) as { result?: T; error?: string | null };
-  if (body.error) throw new Error(body.error);
-  return body.result as T;
-}
 
 interface NoteInfo {
   noteId: number;

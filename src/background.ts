@@ -7,6 +7,8 @@
  * The offscreen document is the only correct home, and this file creates it.
  */
 
+import { ankiDirect } from './anki/direct';
+
 const OFFSCREEN_PATH = 'offscreen.html';
 
 /*
@@ -62,7 +64,13 @@ async function injectMainWorld(tabId: number, file: string): Promise<void> {
   });
 }
 
-chrome.runtime.onMessage.addListener((msg: { type?: string; file?: string }, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((msg: { type?: string; file?: string; action?: string; params?: Record<string, unknown> }, sender, sendResponse) => {
+  // All AnkiConnect traffic funnels through here, so it presents one origin.
+  if (msg?.type === 'anki' && msg.action) {
+    void ankiDirect(msg.action, msg.params ?? {}).then(sendResponse);
+    return true;
+  }
+
   if (msg?.type === 'inject-main-world') {
     const tabId = sender.tab?.id;
     if (tabId == null || !msg.file) {

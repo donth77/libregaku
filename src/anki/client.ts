@@ -1,4 +1,5 @@
 import { MODEL, MODEL_NAME, ROOT_TAG } from './model';
+import { ankiCall as call } from './rpc';
 
 /**
  * AnkiConnect, spoken to over HTTP.
@@ -7,31 +8,6 @@ import { MODEL, MODEL_NAME, ROOT_TAG } from './model';
  * AGPL-3.0, and talking to it over the network keeps that licence off this
  * codebase. It also means Anki can be closed without anything here breaking.
  */
-
-const ENDPOINT = 'http://127.0.0.1:8765';
-const VERSION = 6;
-
-export class AnkiError extends Error {}
-
-async function call<T>(action: string, params: Record<string, unknown> = {}): Promise<T> {
-  let res: Response;
-  try {
-    res = await fetch(ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, version: VERSION, params }),
-    });
-  } catch {
-    // The usual cause is Anki not running, which is normal and not an error
-    // worth shouting about — but it must be distinguishable from a real fault.
-    throw new AnkiError('Anki is not reachable. Is it running with AnkiConnect installed?');
-  }
-  if (!res.ok) throw new AnkiError(`AnkiConnect returned HTTP ${res.status}`);
-
-  const body = (await res.json()) as { result?: T; error?: string | null };
-  if (body.error) throw new AnkiError(body.error);
-  return body.result as T;
-}
 
 export async function isAvailable(): Promise<boolean> {
   try {
