@@ -104,6 +104,13 @@ export interface Settings {
    * default and a last-used — would only disagree with each other.
    */
   sidebarOpen: boolean;
+  /**
+   * The bar across the top of the player. Hidden until the cursor nears the
+   * top, so it costs no screen while watching.
+   */
+  headerBar: boolean;
+  /** Keep that bar down instead of letting it hide — the lock in the bar. */
+  headerPinned: boolean;
 }
 
 export const DEFAULTS: Settings = {
@@ -121,6 +128,8 @@ export const DEFAULTS: Settings = {
   markKnown: false,
   dualSubtitles: true,
   sidebarOpen: true,
+  headerBar: true,
+  headerPinned: false,
 };
 
 const KEY = 'libregaku.settings';

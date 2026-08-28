@@ -17,6 +17,7 @@ const targets = [
   { entry: 'src/content/inject-netflix.ts', out: 'inject-netflix', format: 'iife' },
   { entry: 'src/offscreen.ts',       out: 'offscreen',       format: 'esm'  },
   { entry: 'src/options.ts',         out: 'options',         format: 'esm'  },
+  { entry: 'src/action.ts',          out: 'action',          format: 'esm'  },
 ];
 
 await mkdir(outdir, { recursive: true });
@@ -27,6 +28,8 @@ await cp('src/offscreen.html', `${outdir}/offscreen.html`);
 await cp('src/content/subs.css', `${outdir}/subs.css`);
 await cp('src/options.html', `${outdir}/options.html`);
 await cp('src/options.css', `${outdir}/options.css`);
+await cp('src/action.html', `${outdir}/action.html`);
+await cp('src/action.css', `${outdir}/action.css`);
 // _locales must sit beside the manifest for Chrome to find it.
 await cp('src/_locales', `${outdir}/_locales`, { recursive: true });
 

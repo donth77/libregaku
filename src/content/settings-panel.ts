@@ -178,6 +178,7 @@ export function buildSettings(onChange: Rerender): HTMLElement {
 
   group('Transcript');
   check('sidebarOpen', 'Show the panel', 'Press S while watching to toggle it.');
+  check('headerBar', 'Show the top bar', 'Appears when the cursor nears the top of the player.');
   check('sidebarStats', 'Show progress', 'Comprehension, per-line counts, and the i+1 filter.');
 
   group('Anki');

@@ -1,7 +1,7 @@
 import { NetflixAdapter } from '../adapters/netflix';
 import { pairCues } from '../adapters/pair';
 import { YouTubeAdapter } from '../adapters/youtube';
-import type { Cue, SubtitleSource } from '../adapters/types';
+import type { Cue, SubtitleSource, TrackInfo } from '../adapters/types';
 import { IntlSegmenter } from '../morphology/intl';
 import { LinderaSegmenter } from '../morphology/lindera';
 import type { Segmenter, Token } from '../morphology/types';
@@ -18,6 +18,7 @@ import {
   cancelPopupClose, closePopup, closePopupSoon, popupKey, showPopup, type CardDraft,
 } from './popup';
 import { Sidebar } from './sidebar';
+import { Header } from './header';
 import { Transcript } from './transcript';
 import { clearNotice, showNotice } from './notice';
 import { Overlay } from './renderer';
@@ -56,6 +57,7 @@ let active = -1;
 let raf = 0;
 let domSource: DomCaptionSource | null = null;
 let sidebar: Sidebar | null = null;
+let header: Header | null = null;
 const transcript = new Transcript();
 let activeVideo: HTMLVideoElement | null = null;
 let status: StatusMap | null = null;
@@ -356,8 +358,14 @@ async function run(): Promise<boolean> {
    * recognition. Taking the first match regardless meant silently studying
    * ASR whenever it happened to be listed first.
    */
+  knownTracks = tracks;
+
   const inTarget = tracks.filter((t) => t.lang.startsWith(targetLang()));
-  const track = inTarget.find((t) => !t.generated) ?? inTarget[0];
+  // An explicit pick from the toolbar wins over the automatic one.
+  const track =
+    (chosenTrack ? tracks.find((t) => t.id === chosenTrack) : undefined) ??
+    inTarget.find((t) => !t.generated) ??
+    inTarget[0];
 
   if (!track) {
     const have = tracks.map((t) => t.lang).join(', ') || 'none';
@@ -402,7 +410,9 @@ async function run(): Promise<boolean> {
    */
   if (settings().dualSubtitles) {
     const want = settings().native;
-    const second = tracks.find((t) => t.lang.startsWith(want) && t.id !== track.id);
+    const second =
+      (chosenSecond ? tracks.find((t) => t.id === chosenSecond) : undefined) ??
+      tracks.find((t) => t.lang.startsWith(want) && t.id !== track.id);
     if (second) {
       try {
         const other = await adapter.loadTrack(second.id);
@@ -628,6 +638,25 @@ async function openLookup(mount: HTMLElement, el: HTMLElement, token: Token): Pr
   }
 }
 
+/**
+ * Where a saved line came from. YouTube takes a timestamp in the URL and will
+ * open at the right second; Netflix ignores one and resumes where the profile
+ * left off, so the link is only ever "this episode" there.
+ */
+function videoContext(): { site: string; video: string; title: string; url: string; lang: string } {
+  const adapter = pickAdapter();
+  const at = Math.floor(activeVideo?.currentTime ?? 0);
+  const base = location.href.split(/[?#]/)[0]!;
+  const video = adapter?.videoId() ?? location.pathname;
+  return {
+    site: adapter?.id ?? 'unknown',
+    video,
+    title: adapter?.title() ?? document.title,
+    url: adapter?.id === 'youtube' ? `${base}?v=${video}&t=${at}s` : location.href,
+    lang: targetLang(),
+  };
+}
+
 function mountSidebar(mount: HTMLElement, video: HTMLVideoElement): void {
   activeVideo = video;
   if (sidebar) return;
@@ -649,6 +678,7 @@ function mountSidebar(mount: HTMLElement, video: HTMLVideoElement): void {
       if (activeVideo) activeVideo.currentTime = t;
     },
     currentTime: () => activeVideo?.currentTime ?? 0,
+    context: videoContext,
     onWordClick: (token, el, sentence) => {
       void lookupWord(token.lemma, token.surface).then((result) => {
         const host = el.getRootNode() as ShadowRoot;
@@ -663,7 +693,33 @@ function mountSidebar(mount: HTMLElement, video: HTMLVideoElement): void {
       });
     },
   });
+  header = new Header(mount, {
+    stats: () => sidebar?.stats ?? null,
+    savedCount: () => sidebar?.savedCount ?? 0,
+    sidebarOpen: () => sidebar?.isOpen ?? false,
+    onToggleSidebar: () => sidebar?.toggle(),
+    onOpenSettings: () => {
+      sidebar?.toggle(true);
+      sidebar?.setMode('settings');
+    },
+    onShowSaved: () => {
+      sidebar?.toggle(true);
+      sidebar?.setMode('saved');
+    },
+  });
+  sidebar.onSavedChange(() => header?.update());
+  void sidebar.refreshSaved();
+  onSettingsChange(() => header?.update());
+
   log('sidebar ready — press S to open it');
+}
+
+/** Save the line on screen right now. The keyboard path to the bookmark. */
+async function saveCurrentLine(): Promise<void> {
+  const i = transcript.activeAt(activeVideo?.currentTime ?? 0);
+  const line = transcript.lines[i];
+  if (!line || !sidebar) return;
+  await sidebar.saveLine(line);
 }
 
 function reset(): void {
@@ -715,7 +771,15 @@ document.addEventListener(
   'keydown',
   (e) => {
     if (e.key === 'Escape') closePopup();
-    if (e.key.toLowerCase() !== 's' || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key.toLowerCase() === 'b') {
+      // Netflix and YouTube both treat stray letters as player shortcuts.
+      e.preventDefault();
+      e.stopPropagation();
+      void saveCurrentLine();
+      return;
+    }
+    if (e.key.toLowerCase() !== 's') return;
     const t = e.target as HTMLElement | null;
     if (t && (t.isContentEditable || /^(input|textarea|select)$/i.test(t.tagName))) return;
     if (!sidebar) return;
@@ -742,6 +806,54 @@ void loadSettings().then(async (s) => {
 onSettingsChange(() => void refreshStatus());
 onSettingsChange((s) => {
   if (s.interaction !== 'hover') closePopup();
+});
+
+/**
+ * State and control for the toolbar popup.
+ *
+ * The popup runs in its own document with no access to any of this, so the
+ * content script answers for the page it is on. It is also the only place that
+ * knows which tracks a video actually has, which is why the picker lives there
+ * rather than in settings — track choice is per-video, not a preference.
+ */
+let chosenTrack: string | null = null;
+let chosenSecond: string | null = null;
+let knownTracks: TrackInfo[] = [];
+
+chrome.runtime.onMessage.addListener((msg: { type?: string; track?: string; second?: string }, _s, respond) => {
+  if (msg?.type === 'lg-state') {
+    const adapter = pickAdapter();
+    respond({
+      supported: Boolean(adapter),
+      site: adapter?.id ?? null,
+      title: adapter?.title() ?? null,
+      rendering,
+      tracks: knownTracks,
+      track: chosenTrack,
+      second: chosenSecond,
+      sidebarOpen: sidebar?.isOpen ?? false,
+    });
+    return true;
+  }
+
+  if (msg?.type === 'lg-set-tracks') {
+    chosenTrack = msg.track ?? null;
+    chosenSecond = msg.second ?? null;
+    // Re-run from the top so the change takes effect on the current video.
+    reset();
+    rendering = false;
+    retries = 0;
+    void start().then(() => respond({ ok: true }));
+    return true;
+  }
+
+  if (msg?.type === 'lg-toggle-sidebar') {
+    sidebar?.toggle();
+    respond({ ok: true, open: sidebar?.isOpen ?? false });
+    return true;
+  }
+
+  return false;
 });
 
 log('content script loaded on', location.href);

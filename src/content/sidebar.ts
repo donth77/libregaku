@@ -1,11 +1,13 @@
 import { lookupWord } from '../dict/client';
 import { icon } from './icons';
+import * as bookmarks from './bookmarks';
+import type { Bookmark } from './bookmarks';
 import { readablePos } from '../dict/pos';
 import type { Segmenter, Token } from '../morphology/types';
 import { setSetting, settings } from '../settings';
 import { furigana } from '../morphology/furigana';
 import { PANEL_STYLE, buildSettings } from './settings-panel';
-import type { Transcript } from './transcript';
+import type { Transcript, Line } from './transcript';
 
 /**
  * The transcript panel.
@@ -228,6 +230,31 @@ const STYLE = `
   .hr { font: 500 10px ui-monospace, monospace; color: #8AA2E8; margin-left: 6px; }
   .hp { font: 10px ui-monospace, monospace; color: #6B7490; margin: 2px 0 3px; letter-spacing: .05em; }
   .hd { font-size: 12px; color: #C7CFE2; }
+  .save {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; padding: 0; margin: -3px -4px -3px 0;
+    background: none; border: 0; border-radius: 4px;
+    color: #5F6982; cursor: pointer; opacity: 0; transition: opacity .12s ease;
+  }
+  .line:hover .save, .save.on, .save:focus-visible { opacity: 1; }
+  .save:hover { background: rgba(255,255,255,.08); color: #C7CFE2; }
+  .save.on { color: #8AA2E8; }
+  .save.on svg { fill: currentColor; }
+  .savedview { overflow-y: auto; padding: 4px 0 14px; flex: 1; }
+  .savedview .empty { margin: 14px 14px 0; font-size: 12.5px; line-height: 1.55; color: #8992AD; }
+  .gh {
+    display: flex; align-items: baseline; gap: 8px;
+    padding: 13px 14px 5px; font-size: 11px; font-weight: 600;
+    color: #9AA4BF; text-transform: uppercase; letter-spacing: .06em;
+  }
+  .gh span {
+    font-size: 9px; letter-spacing: .07em; padding: 2px 5px; border-radius: 3px;
+    background: #2A3348; color: #A9B3CC; text-transform: none;
+  }
+  .sv { padding: 8px 14px; cursor: pointer; border-left: 2px solid transparent; }
+  .sv:hover { background: rgba(255,255,255,.045); border-left-color: #8AA2E8; }
+  .sv .tx { display: block; font-size: 14px; line-height: 1.5; color: #E8ECF6; }
+  .sv .sec { display: block; margin-top: 2px; font-size: 12px; color: #97A0BA; }
   @media (prefers-reduced-motion: no-preference) { .lines { scroll-behavior: smooth; } }
 ${PANEL_STYLE}
 `;
@@ -242,6 +269,8 @@ export interface SidebarDeps {
   seek: (t: number) => void;
   currentTime: () => number;
   onWordClick: (token: Token, el: HTMLElement, sentence: string) => void;
+  /** Enough about this video to find a saved line again months later. */
+  context: () => { site: string; video: string; title: string; url: string; lang: string };
 }
 
 export class Sidebar {
@@ -260,11 +289,13 @@ export class Sidebar {
   #width = 340;
   #active = -1;
   #hits = new Set<number>();
-  #filter: 'all' | 'unknown' | 'i1' = 'all';
+  #filter: 'all' | 'unknown' | 'i1' | 'saved' = 'all';
+  /** Ids saved on *this* video, so a row can paint itself without a round trip. */
+  #saved = new Set<string>();
   #counts = new Map<number, { unknown: number; words: number }>();
   #userScrolled = false;
   #hoverTimer = 0;
-  #mode: 'transcript' | 'settings' = 'transcript';
+  #mode: 'transcript' | 'settings' | 'saved' = 'transcript';
   #settingsEl: HTMLElement | null = null;
   #fab!: HTMLButtonElement;
   #tab!: HTMLButtonElement;
@@ -326,6 +357,7 @@ export class Sidebar {
       ['all', 'All lines', 'Every line'],
       ['unknown', 'Has new words', 'Lines containing a word you have no card for'],
       ['i1', 'i+1 only', 'Exactly one unknown word — the highest-value lines to mine'],
+      ['saved', 'Saved', 'Lines you kept for later'],
     ] as const) {
       const b = document.createElement('button');
       b.className = 'f';
@@ -438,11 +470,180 @@ export class Sidebar {
    * from storage, and a stale panel showing values that have since changed
    * elsewhere is worse than a moment's work rebuilding it.
    */
-  setMode(mode: 'transcript' | 'settings'): void {
-    this.#mode = mode;
-    const showing = mode === 'settings';
 
-    this.#title.textContent = showing ? 'Settings' : 'Transcript';
+  // ---- saved lines ----------------------------------------------------
+
+  /**
+   * The same aggregate the summary line shows, for the header bar. Null until
+   * enough lines are measured for a percentage to mean anything.
+   */
+  get stats(): { known: number; unknown: number; i1: number } | null {
+    let words = 0;
+    let unknown = 0;
+    let i1 = 0;
+    for (const c of this.#counts.values()) {
+      words += c.words;
+      unknown += c.unknown;
+      if (c.unknown === 1) i1++;
+    }
+    if (!words) return null;
+    return { known: Math.round(((words - unknown) / words) * 100), unknown, i1 };
+  }
+
+  #idFor(start: number): string {
+    const c = this.#deps.context();
+    return bookmarks.idFor(c.site, c.video, start);
+  }
+
+  /** How many lines are saved on this video — the header shows this. */
+  get savedCount(): number {
+    return this.#saved.size;
+  }
+
+  /** Pull this video's saves out of storage and repaint if anything changed. */
+  async refreshSaved(): Promise<void> {
+    const c = this.#deps.context();
+    const mine = await bookmarks.forVideo(c.site, c.video);
+    const next = new Set(mine.map((b) => b.id));
+    const same = next.size === this.#saved.size && [...next].every((id) => this.#saved.has(id));
+    this.#saved = next;
+    if (!same && this.#mode === 'transcript') this.render();
+  }
+
+  /** Save or unsave a line from outside the panel — the B key uses this. */
+  async saveLine(line: Line): Promise<void> {
+    await this.#toggleSave(line);
+  }
+
+  async #toggleSave(line: Line): Promise<void> {
+    const c = this.#deps.context();
+    const on = await bookmarks.toggle({
+      id: this.#idFor(line.start),
+      site: c.site,
+      video: c.video,
+      title: c.title,
+      url: c.url,
+      text: line.text,
+      secondary: line.secondary,
+      start: line.start,
+      end: line.end,
+      lang: c.lang,
+      savedAt: Date.now(),
+    });
+    if (on) this.#saved.add(this.#idFor(line.start));
+    else this.#saved.delete(this.#idFor(line.start));
+    // Repaint just this row rather than the list: re-rendering while the
+    // cursor is on a button makes the button jump out from under it.
+    for (const el of Array.from(this.#list.children)) {
+      const row = el as HTMLElement;
+      if (Number(row.dataset.i) !== this.#deps.transcript.lines.indexOf(line)) continue;
+      const b = row.querySelector('.save');
+      if (!b) continue;
+      b.classList.toggle('on', on);
+      const title = on ? 'Saved — click to remove' : 'Save this line';
+      b.setAttribute('title', title);
+      b.setAttribute('aria-label', title);
+      b.setAttribute('aria-pressed', String(on));
+    }
+    this.#onSavedChange?.();
+    if (this.#filter === 'saved') this.render();
+  }
+
+  #onSavedChange: (() => void) | null = null;
+
+  /** The header keeps a count; let it know when the count moves. */
+  onSavedChange(fn: () => void): void {
+    this.#onSavedChange = fn;
+  }
+
+  /**
+   * Every saved line, newest video first. Lines from the video on screen seek;
+   * lines from elsewhere open that video at the right second, which is the
+   * whole reason the url is stored alongside the text.
+   */
+  async #renderSaved(): Promise<void> {
+    const host = this.#settingsEl;
+    if (!host) return;
+    const groups = await bookmarks.grouped();
+    host.replaceChildren();
+
+    if (!groups.length) {
+      const empty = document.createElement('p');
+      empty.className = 'empty';
+      empty.textContent =
+        'Nothing saved yet. Use the bookmark on any transcript line — or press B — to keep a sentence you want to come back to.';
+      host.appendChild(empty);
+      return;
+    }
+
+    const here = this.#deps.context();
+    for (const g of groups) {
+      const head = document.createElement('div');
+      head.className = 'gh';
+      head.textContent = g.title || g.video;
+      if (g.site === here.site && g.video === here.video) {
+        const badge = document.createElement('span');
+        badge.textContent = 'this video';
+        head.appendChild(badge);
+      }
+      host.appendChild(head);
+
+      for (const b of g.lines) {
+        const row = document.createElement('div');
+        row.className = 'sv';
+
+        const tx = document.createElement('span');
+        tx.className = 'tx';
+        tx.textContent = b.text;
+        row.appendChild(tx);
+
+        if (b.secondary) {
+          const sec = document.createElement('span');
+          sec.className = 'sec';
+          sec.textContent = b.secondary;
+          row.appendChild(sec);
+        }
+
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        const time = document.createElement('span');
+        time.textContent = stamp(b.start);
+        const del = document.createElement('button');
+        del.className = 'save on';
+        del.replaceChildren(icon('x', 13));
+        del.title = 'Remove from saved';
+        del.setAttribute('aria-label', del.title);
+        del.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          await bookmarks.remove(b.id);
+          this.#saved.delete(b.id);
+          this.#onSavedChange?.();
+          void this.#renderSaved();
+        });
+        meta.append(time, del);
+        row.appendChild(meta);
+
+        row.addEventListener('click', () => {
+          if (b.site === here.site && b.video === here.video) {
+            this.#userScrolled = false;
+            this.#deps.seek(b.start);
+            this.setMode('transcript');
+          } else {
+            window.open(b.url, '_blank', 'noopener');
+          }
+        });
+
+        host.appendChild(row);
+      }
+    }
+  }
+
+  setMode(mode: 'transcript' | 'settings' | 'saved'): void {
+    this.#mode = mode;
+    const showing = mode !== 'transcript';
+
+    this.#title.textContent =
+      mode === 'settings' ? 'Settings' : mode === 'saved' ? 'Saved lines' : 'Transcript';
     this.#gear.replaceChildren(icon(showing ? 'back' : 'settings', showing ? 17 : 15));
     this.#gear.title = showing ? 'Back to the transcript' : 'Settings';
     this.#gear.setAttribute('aria-label', this.#gear.title);
@@ -459,9 +660,14 @@ export class Sidebar {
     if (summary) summary.style.display = showing ? 'none' : '';
     if (filters) filters.style.display = showing || !settings().sidebarStats ? 'none' : '';
 
-    if (showing) {
+    if (mode === 'settings') {
       this.#settingsEl = buildSettings(() => this.render());
       this.#panel.appendChild(this.#settingsEl);
+    } else if (mode === 'saved') {
+      this.#settingsEl = document.createElement('div');
+      this.#settingsEl.className = 'savedview';
+      this.#panel.appendChild(this.#settingsEl);
+      void this.#renderSaved();
     } else {
       this.render();
     }
@@ -521,6 +727,8 @@ export class Sidebar {
       const c = stats ? this.#counts.get(i) : undefined;
       if (this.#filter === 'unknown' && (c?.unknown ?? 0) === 0) return;
       if (this.#filter === 'i1' && c?.unknown !== 1) return;
+      const savedId = this.#idFor(line.start);
+      if (this.#filter === 'saved' && !this.#saved.has(savedId)) return;
 
       const row = document.createElement('div');
       row.className = 'line' + (i === this.#active ? ' cur' : '') + (this.#hits.has(i) ? ' hit' : '');
@@ -550,7 +758,19 @@ export class Sidebar {
       const x = document.createElement('span');
       x.className = 'x' + (c ? (c.unknown === 1 ? ' one' : c.unknown ? ' hot' : '') : '');
       x.textContent = c?.unknown ? `${c.unknown} new` : '';
-      meta.append(time, x);
+
+      const save = document.createElement('button');
+      save.className = 'save' + (this.#saved.has(savedId) ? ' on' : '');
+      save.replaceChildren(icon('bookmark', 13));
+      save.title = this.#saved.has(savedId) ? 'Saved — click to remove' : 'Save this line';
+      save.setAttribute('aria-label', save.title);
+      save.setAttribute('aria-pressed', String(this.#saved.has(savedId)));
+      save.addEventListener('click', (e) => {
+        e.stopPropagation();     // saving a line is not a request to seek to it
+        void this.#toggleSave(line);
+      });
+
+      meta.append(time, x, save);
       row.appendChild(meta);
 
       this.#list.appendChild(row);
@@ -615,6 +835,7 @@ export class Sidebar {
       return;
     }
     const known = Math.round(((words - unknown) / words) * 100);
+    this.#onSavedChange?.();   // the header shows these numbers too
     el.replaceChildren();
     for (const [n, label] of [[`${known}%`, 'known'], [unknown, 'new'], [i1, 'at i+1']] as const) {
       const span = document.createElement('span');
