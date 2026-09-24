@@ -27,6 +27,8 @@ const STYLE = `
     z-index: 2147483647 !important;
     pointer-events: none !important;
     contain: none !important;
+    /* A query container, so text can be sized against the player's own box. */
+    container-type: size !important;
     visibility: visible !important;
     opacity: 1 !important;
     transform: none !important;
@@ -35,18 +37,27 @@ const STYLE = `
   }
   .wrap {
     position: absolute; left: 0; right: 0;
-    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    /*
+     * Sized against the player, not the window: the same line should not be
+     * a third larger in the default view than it is in theatre mode, and a
+     * pillarboxed fullscreen should follow the picture's height rather than
+     * the screen's width. cqmin takes the smaller side, so a 16:9 player
+     * follows its height and a portrait one its width. The floor keeps
+     * readings legible in a small embed; --scale is the learner's setting.
+     */
+    --size: calc(max(20px, 4.2cqmin) * var(--scale, 1));
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
     font-family: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic", sans-serif;
     text-align: center; pointer-events: none;
   }
   .primary, .secondary {
-    max-width: 88%; padding: 4px 12px; border-radius: 5px;
+    max-width: 88%; padding: 5px 14px; border-radius: 6px;
     background: rgba(0,0,0,.72); pointer-events: auto;
   }
   .primary:empty, .secondary:empty { display: none; }
   .primary.has-ruby { padding-top: .5em; }
   .primary {
-    font-size: var(--size, 2.1vw); line-height: 1.85; color: #F2F5FC;
+    font-size: var(--size); line-height: 1.8; color: #F2F5FC;
     display: flex; flex-wrap: wrap; justify-content: center;
     align-items: flex-end;      /* every token sits on one baseline */
     gap: 0 2px;
@@ -55,9 +66,9 @@ const STYLE = `
     padding-top: 0;
     user-select: text;
   }
-  .secondary { font-size: calc(var(--size, 2.1vw) * .68); color: #B9C3D8; user-select: text; }
-  .t { position: relative; padding: 0 1px 3px; border-radius: 2px; cursor: pointer; }
-  .p { padding: 0 1px 3px; white-space: pre-wrap; }
+  .secondary { font-size: calc(var(--size) * .66); font-weight: 500; color: #D5DCEC; user-select: text; }
+  .t { position: relative; padding: 0 1px 4px; border-radius: 2px; cursor: pointer; }
+  .p { padding: 0 1px 4px; white-space: pre-wrap; }
   .t:hover { background: rgba(255,255,255,.15); }
   /*
    * Furigana is taken out of flow.
@@ -117,6 +128,8 @@ export class Overlay {
   #onToken?: (t: Token, el: HTMLElement) => void;
   #onHover?: (t: Token | null, el: HTMLElement | null) => void;
   #statusOf: (t: Token) => string = () => 'unknown';
+  #bottomPercent = 12;
+  #bottomInset = 0;
 
   constructor(mount: HTMLElement) {
     this.#host = document.createElement('div');
@@ -171,6 +184,11 @@ export class Overlay {
    */
   setStatusSource(fn: (t: Token) => string): void {
     this.#statusOf = fn;
+    // Update the current line too, including paused and DOM-fallback captions.
+    // Keeping the elements preserves focus and the popup's word anchor.
+    for (const el of this.#primary.querySelectorAll<HTMLElement>('.t')) {
+      if (el.dataset.tok) el.dataset.s = fn(JSON.parse(el.dataset.tok) as Token);
+    }
   }
 
   /** Fires with a token on enter and with null on leave. */
@@ -183,9 +201,40 @@ export class Overlay {
    * There is deliberately no top anchor: subtitles belong in the lower frame.
    */
   setBottom(percent: number): void {
+    this.#bottomPercent = percent;
+    this.#applyBottom();
+  }
+
+  /**
+   * Extra height to clear, in pixels.
+   *
+   * When the panel shrinks the picture to sit beside it, the frame no longer
+   * reaches the bottom of the player. A subtitle placed against the player
+   * would sit on the letterbox below the picture instead of on it.
+   */
+  setBottomInset(px: number): void {
+    this.#bottomInset = px;
+    this.#applyBottom();
+  }
+
+  #applyBottom(): void {
     const wrap = this.#primary.parentElement;
     if (!wrap) return;
-    wrap.style.bottom = `${percent}%`;
+    wrap.style.bottom = this.#bottomInset
+      ? `calc(${this.#bottomPercent}% + ${this.#bottomInset}px)`
+      : `${this.#bottomPercent}%`;
+  }
+
+  /** Keep clear of the transcript panel while it is open over the player. */
+  setRightInset(px: number): void {
+    const wrap = this.#primary.parentElement;
+    if (!wrap) return;
+    wrap.style.right = `${px}px`;
+  }
+
+  /** Text size as a percentage of the default. Readings scale with it. */
+  setSize(percent: number): void {
+    this.#primary.parentElement?.style.setProperty('--scale', String(percent / 100));
   }
 
   /** always | unknown | never */

@@ -72,6 +72,25 @@ export function jpodQuery(word: string, reading?: string): string {
   }).toString();
 }
 
+/**
+ * Recordings are fetched by the service worker, not from here. A content
+ * script's fetch is bound by the host page's CORS policy, and neither jpod101
+ * nor the CDN it redirects to allows cross-origin reads — so from a content
+ * script every recording failed as "Failed to fetch", and synthesis quietly
+ * took its place. Host permissions apply in the worker; CORS does not.
+ */
+async function fetchBlob(url: string): Promise<{ ok: true; blob: Blob } | { ok: false; reason: string }> {
+  const r = (await chrome.runtime.sendMessage({ type: 'fetch-audio', url })) as
+    | { ok: boolean; status?: number; type?: string; bytes?: string; error?: string }
+    | undefined;
+  if (!r) return { ok: false, reason: 'no reply from the service worker' };
+  if (!r.ok || !r.bytes) return { ok: false, reason: r.error ?? `HTTP ${r.status}` };
+  const bin = atob(r.bytes);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return { ok: true, blob: new Blob([bytes], { type: r.type ?? 'audio/mpeg' }) };
+}
+
 /** Fetch as a blob so the body can be inspected before anything is played. */
 async function tryJpod(word: string, reading?: string): Promise<string | null> {
   const q = jpodQuery(word, reading);
@@ -79,12 +98,12 @@ async function tryJpod(word: string, reading?: string): Promise<string | null> {
     console.log(`%c[libregaku]%c audio ${verdict} · ${q}`, 'color:#8AA2E8', '');
 
   try {
-    const res = await fetch(`${JPOD}?${q}`);
-    if (!res.ok) {
-      say(`HTTP ${res.status}`);
+    const got = await fetchBlob(`${JPOD}?${q}`);
+    if (!got.ok) {
+      say(got.reason);
       return null;
     }
-    const blob = await res.blob();
+    const blob = got.blob;
     if (blob.size === JPOD_MISSING_BYTES) {
       say('not in jpod101');
       return null;
@@ -113,9 +132,9 @@ async function tryTemplate(template: string, word: string, reading?: string): Pr
     const url = template
       .replaceAll('{word}', encodeURIComponent(word))
       .replaceAll('{reading}', encodeURIComponent(reading ?? word));
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const blob = await res.blob();
+    const got = await fetchBlob(url);
+    if (!got.ok) return null;
+    const blob = got.blob;
     if (blob.size < 512) return null;
     return URL.createObjectURL(blob);
   } catch {

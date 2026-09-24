@@ -70,19 +70,27 @@ describe('netflix contract', () => {
     }
   }, 90_000);
 
-  it('nf.timedtexttracks — the manifest fields we read still exist', async () => {
+  /**
+   * A weak canary, and worth saying why. It asserts these names appear in the
+   * player bundle, which is not the same as the manifest still using them:
+   * Netflix moved the track array from `timedtexttracks` to
+   * `result.textTracks` while both names stayed in the bundle, so this stayed
+   * green through an outage. Shape handling is pinned properly by the unit
+   * tests over recorded manifests in src/adapters/__tests__; this only catches
+   * a name disappearing outright.
+   */
+  it('nf.textTracks — the manifest fields we read still exist', async () => {
     const { body } = await playerCore();
     for (const field of [
-      'timedtexttracks',
-      'ttDownloadables',
-      'downloadUrls',
+      'textTracks',
+      'downloadables',
       'isNoneTrack',
       'isForcedNarrative',
       'languageDescription',
     ]) {
       expect(
         body.includes(field),
-        `"${field}" is gone from Netflix's player.\n${describeFailure('nf.timedtexttracks')}`,
+        `"${field}" is gone from Netflix's player.\n${describeFailure('nf.textTracks')}`,
       ).toBe(true);
     }
   }, 90_000);

@@ -8,7 +8,8 @@
 
 export interface Assumption {
   id: string;
-  site: 'youtube' | 'netflix';
+  /** 'external' is a third-party service we borrow, not a site we render on. */
+  site: 'youtube' | 'netflix' | 'external';
   /** What we rely on. */
   claim: string;
   /** What stops working when it stops being true. */
@@ -48,15 +49,22 @@ export const ASSUMPTIONS: Assumption[] = [
   },
   {
     id: 'audio.jpod101',
-    site: 'youtube',
-    claim: 'assets.languagepod101.com/dictionary/japanese/audiomp3.php serves human recordings, keyed by kanji + hiragana, returning a fixed 52,288-byte placeholder for words it lacks',
-    breaks: 'Every pronunciation silently degrades to synthesis — and silently is the problem: nothing looks broken',
+    site: 'external',
+    claim: 'assets.languagepod101.com/dictionary/japanese/audiomp3.php serves human recordings, keyed by kanji + hiragana, returning a fixed 52,288-byte placeholder for words it lacks — and every host it redirects through (currently cdn.innovativelanguage.com) is listed in host_permissions',
+    breaks: 'Every pronunciation silently degrades to synthesis — and silently is the problem: nothing looks broken. A redirect to an unlisted host fails the same way, as "Failed to fetch"',
     fallback: 'speechSynthesis, which flattens pitch accent',
   },
   {
-    id: 'nf.timedtexttracks',
+    id: 'dict.jmdict-release',
+    site: 'external',
+    claim: 'The pinned jmdict-simplified release still serves jmdict-<edition>-<release>.json.tgz, and every redirect hop is a host in host_permissions',
+    breaks: 'The dictionary download 404s on first run, so local lookups never work and every word goes to a remote API',
+    fallback: 'Jotoba, then Jisho — remote, rate-limited, and needing connectivity',
+  },
+  {
+    id: 'nf.textTracks',
     site: 'netflix',
-    claim: 'The player manifest is JSON containing a timedtexttracks array',
+    claim: 'The player manifest is decrypted and JSON.parse-d in the page, and carries the subtitle tracks as result.textTracks (formerly timedtexttracks), each with a downloadables map of fetchable URLs',
     breaks: 'Full-transcript access on Netflix',
     fallback: 'DOM reading, but current line only',
   },

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { describeFailure } from '../../src/assumptions';
+import { fetchCheckingHops } from './hosts';
 
 /**
  * The pronunciation endpoint is unofficial. It has served Yomitan, Anki
@@ -20,6 +21,18 @@ async function size(kanji: string, kana: string): Promise<number> {
 }
 
 describe('audio contract', () => {
+  it('audio.jpod101 — every redirect hop is a host the manifest permits', async () => {
+    // The endpoint 301s to a CDN. If that CDN is not in host_permissions the
+    // content script's fetch fails outright, and the card falls back to
+    // synthesis without a word about it.
+    const res = await fetchCheckingHops(
+      `${JPOD}?${new URLSearchParams({ kanji: '勉強', kana: 'べんきょう' })}`,
+      {},
+      describeFailure('audio.jpod101'),
+    );
+    expect(res.ok, `jpod101 returned HTTP ${res.status}`).toBe(true);
+  }, 60_000);
+
   it('audio.jpod101 — still returns recordings for common vocabulary', async () => {
     for (const [k, r] of [['食べる', 'たべる'], ['勉強', 'べんきょう']] as const) {
       const n = await size(k, r);

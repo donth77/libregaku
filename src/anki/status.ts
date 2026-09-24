@@ -29,6 +29,9 @@ import { ankiCall as call } from './rpc';
  */
 export type Status = 'known' | 'learning' | 'tracking' | 'unknown' | 'ignored';
 
+/** Learning is a fact about an Anki card, never a manual override. */
+export type OverrideStatus = Exclude<Status, 'learning'>;
+
 /** Anki's own threshold for a mature card. */
 export const MATURE_DAYS = 21;
 
@@ -116,17 +119,21 @@ export async function buildStatusMap(scope: string): Promise<StatusMap> {
 }
 
 /** Words marked by hand, which Anki has no way to express on its own. */
-export async function loadOverrides(): Promise<Map<string, Status>> {
+export async function loadOverrides(): Promise<Map<string, OverrideStatus>> {
   try {
     const got = await chrome.storage.sync.get('libregaku.overrides');
-    const raw = (got['libregaku.overrides'] ?? {}) as Record<string, Status>;
-    return new Map(Object.entries(raw));
+    const raw = (got['libregaku.overrides'] ?? {}) as Record<string, unknown>;
+    // Older versions persisted every mined word as "learning", masking Anki
+    // forever. Ignore those values now; the next manual write removes them.
+    return new Map(Object.entries(raw).filter((entry): entry is [string, OverrideStatus] =>
+      entry[1] === 'known' || entry[1] === 'tracking' || entry[1] === 'unknown' || entry[1] === 'ignored',
+    ));
   } catch {
     return new Map();
   }
 }
 
-export async function setOverride(word: string, status: Status | null): Promise<void> {
+export async function setOverride(word: string, status: OverrideStatus | null): Promise<void> {
   const map = await loadOverrides();
   if (status) map.set(word, status);
   else map.delete(word);

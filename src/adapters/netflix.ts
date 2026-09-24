@@ -15,6 +15,7 @@ interface NfTrack {
   language: string;
   label: string;
   forced: boolean;
+  cc: boolean;
 }
 
 export class NetflixAdapter implements SubtitleSource {
@@ -89,6 +90,8 @@ export class NetflixAdapter implements SubtitleSource {
       lang: t.language,
       label: t.label + (t.forced ? ' (forced)' : ''),
       generated: false,
+      forced: t.forced,
+      cc: t.cc,
     }));
   }
 

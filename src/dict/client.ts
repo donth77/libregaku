@@ -24,7 +24,14 @@ export async function ensureDictionary(edition: string): Promise<DictStatus> {
     type: 'dict-load',
     edition,
   })) as DictStatus | undefined;
-  return res ?? { ready: false, phase: 'unavailable', percent: 0, error: null };
+  return (
+    res ?? {
+      ready: false,
+      phase: 'unavailable',
+      percent: 0,
+      error: 'the offscreen document did not answer',
+    }
+  );
 }
 
 export async function dictStatus(): Promise<DictStatus> {

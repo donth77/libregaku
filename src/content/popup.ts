@@ -1,4 +1,4 @@
-import type { Status } from '../anki/status';
+import type { OverrideStatus, Status } from '../anki/status';
 import { pronounce } from '../audio/pronounce';
 import type { LookupResult } from '../dict/client';
 import { readablePos } from '../dict/pos';
@@ -22,24 +22,24 @@ const STYLE = `
   }
   .card {
     pointer-events: auto;
-    width: min(340px, 80vw);
+    width: min(400px, 86vw);
     background: #12172A; color: #E8ECF6;
-    border: 1px solid #2A3348; border-radius: 10px;
+    border: 1px solid #2A3348; border-radius: 12px;
     box-shadow: 0 10px 40px -8px rgba(0,0,0,.75);
-    font: 13px/1.5 system-ui, -apple-system, "Hiragino Sans", sans-serif;
+    font: 15px/1.5 system-ui, -apple-system, "Hiragino Sans", sans-serif;
     overflow: hidden;
   }
-  .head { padding: 11px 14px 0; }
-  .reading { font: 500 11px/1.4 ui-monospace, monospace; color: #8AA2E8; letter-spacing: .04em; }
-  .word { font-size: 22px; font-weight: 600; line-height: 1.2; margin-top: 1px; }
+  .head { padding: 14px 16px 0; }
+  .reading { font: 500 12px/1.4 ui-monospace, monospace; color: #8AA2E8; letter-spacing: .04em; }
+  .word { font-size: 27px; font-weight: 600; line-height: 1.2; margin-top: 1px; }
   .meta {
     display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-    padding: 7px 14px 0; font: 500 11px/1.4 ui-monospace, monospace; color: #838DA8;
+    padding: 8px 16px 0; font: 500 12px/1.4 ui-monospace, monospace; color: #838DA8;
   }
-  .badge { padding: 2px 7px; border-radius: 4px; background: #16281F; color: #63AF97; letter-spacing: .05em; }
-  .tools { display: flex; gap: 5px; padding: 10px 14px; border-bottom: 1px solid #212939; }
+  .badge { padding: 3px 8px; border-radius: 5px; background: #16281F; color: #63AF97; letter-spacing: .05em; }
+  .tools { display: flex; gap: 7px; padding: 12px 16px; border-bottom: 1px solid #212939; }
   .tb {
-    width: 28px; height: 28px; border-radius: 50%;
+    width: 34px; height: 34px; border-radius: 50%;
     border: 1px solid #2A3348; background: #1B2234; color: #B4BDD4;
     cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0;
   }
@@ -50,11 +50,11 @@ const STYLE = `
   .tb.busy svg { animation: spin 1s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   @media (prefers-reduced-motion: reduce) { .tb.busy svg { animation: none; } }
-  .loading { padding: 14px; color: #D9A64A; font-size: 12px; }
-  .marks { display: flex; gap: 6px; padding: 10px 14px; border-top: 1px solid #212939; }
+  .loading { padding: 16px; color: #D9A64A; font-size: 13.5px; }
+  .marks { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid #212939; }
   .mk {
-    flex: 1; padding: 7px 8px; border-radius: 6px; cursor: pointer;
-    font: 600 10px/1.2 ui-monospace, monospace; letter-spacing: .07em;
+    flex: 1; padding: 9px 10px; border-radius: 7px; cursor: pointer;
+    font: 600 11.5px/1.2 ui-monospace, monospace; letter-spacing: .07em;
     text-transform: uppercase; border: 1px solid transparent;
   }
   .mk.known   { background: #16281F; color: #63AF97; border-color: #2A5245; }
@@ -64,21 +64,21 @@ const STYLE = `
   .mk:hover { filter: brightness(1.12); }
   .tb:hover { border-color: #8AA2E8; color: #E8ECF6; }
   .tb:focus-visible { outline: 2px solid #8AA2E8; outline-offset: 2px; }
-  ol { margin: 0; padding: 10px 14px 10px 30px; }
-  li { margin-bottom: 3px; color: #C7CFE2; }
+  ol { margin: 0; padding: 12px 16px 12px 34px; }
+  li { margin-bottom: 5px; color: #C7CFE2; }
   li:last-child { margin-bottom: 0; }
-  .sense-pos { font: 500 10px/1.4 ui-monospace, monospace; color: #6B7490; letter-spacing: .05em; }
+  .sense-pos { font: 500 11px/1.4 ui-monospace, monospace; color: #6B7490; letter-spacing: .05em; }
   .trace {
-    padding: 9px 14px; border-top: 1px solid #212939;
-    font: 11px/1.6 ui-monospace, monospace; color: #838DA8;
+    padding: 11px 16px; border-top: 1px solid #212939;
+    font: 12px/1.6 ui-monospace, monospace; color: #838DA8;
   }
   .trace b { color: #8AA2E8; font-weight: 600; }
   .grammar {
     margin-top: 4px; color: #D9A64A;
-    font: 500 10px/1.5 ui-monospace, monospace; letter-spacing: .06em;
+    font: 500 11px/1.5 ui-monospace, monospace; letter-spacing: .06em;
     text-transform: uppercase;
   }
-  .empty { padding: 14px; color: #838DA8; }
+  .empty { padding: 16px; color: #838DA8; }
   .toast {
     position: absolute; left: 50%; bottom: -26px; transform: translateX(-50%);
     background: #E8ECF6; color: #12172A; font: 600 10px/1 ui-monospace, monospace;
@@ -140,7 +140,7 @@ interface Context {
   sentence: string;
   /** Current status, so the matching control reads as pressed. */
   status: Status;
-  onMark: (word: string, status: Status | null) => void;
+  onMark: (word: string, status: OverrideStatus | null) => void;
   /** Resolves to a message for the toast, or throws with one. */
   onAddCard: (draft: CardDraft) => Promise<string>;
   /** Whether a card already exists, so the control can say so. */
@@ -232,7 +232,7 @@ export function showPopup(
   const button = (name: string, title: string, fn: (b: HTMLButtonElement) => void): HTMLButtonElement => {
     const b = document.createElement('button');
     b.className = 'tb';
-    b.appendChild(icon(name));
+    b.appendChild(icon(name, 16));
     b.title = title;
     b.setAttribute('aria-label', title);
     b.addEventListener('click', () => fn(b));
@@ -248,7 +248,7 @@ export function showPopup(
 
   button('volume', 'Pronounce', (b) => {
     b.classList.add('busy');
-    b.replaceChildren(icon('loader'));
+    b.replaceChildren(icon('loader', 16));
     void pronounce(sayWord, sayReading)
       .then((spoken) => {
         // Say which source was used: a human recording and a synthesised one
@@ -258,7 +258,7 @@ export function showPopup(
       .catch(() => say('could not play audio'))
       .finally(() => {
         b.classList.remove('busy');
-        b.replaceChildren(icon('volume'));
+        b.replaceChildren(icon('volume', 16));
       });
   });
   /*
@@ -269,7 +269,7 @@ export function showPopup(
   const addBtn = button(ctx.hasCard ? 'check' : 'plus',
     ctx.hasCard ? 'Already in Anki — add another' : 'Add to Anki', (b) => {
       b.classList.add('busy');
-      b.replaceChildren(icon('loader'));
+      b.replaceChildren(icon('loader', 16));
       void ctx
         .onAddCard({
           expression: word,
@@ -279,11 +279,11 @@ export function showPopup(
         })
         .then((msg) => {
           say(msg);
-          b.replaceChildren(icon('check'));
+          b.replaceChildren(icon('check', 16));
         })
         .catch((e: unknown) => {
           say(e instanceof Error ? e.message : String(e));
-          b.replaceChildren(icon('plus'));
+          b.replaceChildren(icon('plus', 16));
         })
         .finally(() => b.classList.remove('busy'));
     });
@@ -368,7 +368,7 @@ export function showPopup(
   marks.className = 'marks';
   const markKey = ctx.token.lemma ?? ctx.token.surface;
 
-  const mark = (cls: string, label: string, next: Status | null): void => {
+  const mark = (cls: string, label: string, next: OverrideStatus): void => {
     const b = document.createElement('button');
     b.className = `mk ${cls}`;
     b.textContent = label;

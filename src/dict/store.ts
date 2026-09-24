@@ -15,11 +15,17 @@ const ENTRIES = 'entries';
 const FORMS = 'forms';
 const META = 'meta';
 
-const RELEASE = '3.6.2+20260824122934';
+const RELEASE = '3.6.2+20260914172325';
 
+/**
+ * Pinned to one release, as the lindera dictionaries are. This used to point
+ * at "latest" with a pinned filename, which broke the moment a newer release
+ * shipped: the asset name changed under it and every download went 404 while
+ * nothing else looked wrong. A bump here is a deliberate data update.
+ */
 export function jmdictUrl(edition: string): string {
   return (
-    'https://github.com/scriptin/jmdict-simplified/releases/latest/download/' +
+    `https://github.com/scriptin/jmdict-simplified/releases/download/${RELEASE}/` +
     `jmdict-${edition}-${RELEASE}.json.tgz`
   );
 }

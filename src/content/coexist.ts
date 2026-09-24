@@ -124,6 +124,9 @@ export function mergeBands(bands: Array<[number, number]>): Array<[number, numbe
  * with another extension means *stacking* above its line, never jumping to the
  * opposite edge — an earlier version anchored to the top and put Japanese
  * above the video, which is worse than overlapping.
+ *
+ * The learner's own height is a floor beneath all of this: stacking lifts the
+ * line above it and never lets it sink below.
  */
 export const DEFAULT_BOTTOM = 12;
 
@@ -145,18 +148,18 @@ const GAP = 2;
  */
 const MAX_BAND = 0.3;
 
-export function bottomOffset(raw: Array<[number, number]>): number {
+export function bottomOffset(raw: Array<[number, number]>, floor = DEFAULT_BOTTOM): number {
   // Drop container-shaped bands before merging, or one wrapper swallows
   // everything it contains.
   const real = raw.filter(([t, b]) => b - t <= MAX_BAND);
   const bands = mergeBands(real);
   // Only lines in the lower half compete with us for space.
   const lower = bands.filter(([, b]) => b > 0.55);
-  if (!lower.length) return DEFAULT_BOTTOM;
+  if (!lower.length) return floor;
 
   // Sit above the highest of them.
   const highestTop = Math.min(...lower.map(([t]) => t));
   const offset = (1 - highestTop) * 100 + GAP;
 
-  return Math.min(Math.max(offset, DEFAULT_BOTTOM), CEILING);
+  return Math.min(Math.max(offset, floor), Math.max(CEILING, floor));
 }

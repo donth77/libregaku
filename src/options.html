@@ -3,137 +3,24 @@
 <title>Libregaku</title>
 <link rel="stylesheet" href="options.css">
 <main>
-  <h1>Libregaku</h1>
+  <header class="top">
+    <h1>Libregaku</h1>
+    <p class="tag">Changes apply straight away, here and in the transcript panel while you watch.</p>
+  </header>
 
-  <div id="setup" class="setup" hidden>
-    <h2>Two things to set up</h2>
+  <section id="setup" class="setup" aria-labelledby="setup-title" hidden>
+    <h2 id="setup-title">Two things to set up</h2>
     <ol>
-      <li id="step-lang"><span class="tick">○</span> Choose what you're learning</li>
-      <li id="step-anki"><span class="tick">○</span> Connect Anki and pick a deck for new cards</li>
+      <li id="step-lang"><span class="tick" aria-hidden="true">○</span> Choose what you're learning</li>
+      <li id="step-anki"><span class="tick" aria-hidden="true">○</span> Connect Anki and pick a deck for new cards</li>
     </ol>
     <p class="fine">
       Anki is optional — subtitles, lookups and furigana all work without it.
       It is what remembers which words you already know.
     </p>
     <button type="button" id="confirmLang">These languages are right</button>
-  </div>
-
-  <section>
-    <h2>Languages</h2>
-    <label class="row">
-      <span><b>I'm learning</b><small id="tierNote">&nbsp;</small></span>
-      <select id="target"></select>
-    </label>
-    <label class="row">
-      <span><b>Show translations in</b><small>Used for the second subtitle line.</small></span>
-      <select id="native"></select>
-    </label>
   </section>
 
-  <section>
-    <h2>Looking words up</h2>
-    <label class="row">
-      <span>
-        <b>Open the card on</b>
-        <small>Hover pauses playback while you read, and resumes when you leave.</small>
-      </span>
-      <select id="interaction">
-        <option value="hover">Hover</option>
-        <option value="click">Click</option>
-      </select>
-    </label>
-    <label class="row">
-      <span><b>Pause while hovering</b><small>Stops the subtitle moving on mid-lookup.</small></span>
-      <input type="checkbox" id="hoverPause">
-    </label>
-    <label class="row">
-      <span><b>Preview in the transcript</b><small>Hovering a word in the panel shows a short definition.</small></span>
-      <input type="checkbox" id="sidebarHover">
-    </label>
-    <label class="row">
-      <span>
-        <b>Progress in the transcript</b>
-        <small>Comprehension, per-line new-word counts, and the i+1 filter.</small>
-      </span>
-      <input type="checkbox" id="sidebarStats">
-    </label>
-  </section>
-
-  <section>
-    <h2>Subtitles</h2>
-    <label class="row">
-      <span>
-        <b>Underline known words</b>
-        <small>Off by default: the screen gets quieter as you learn.</small>
-      </span>
-      <input type="checkbox" id="markKnown">
-    </label>
-    <label class="row">
-      <span><b>Furigana</b><small>Unknown-only keeps the screen quiet as you improve.</small></span>
-      <select id="ruby">
-        <option value="unknown">On unknown words</option>
-        <option value="always">Always</option>
-        <option value="never">Never</option>
-      </select>
-    </label>
-  </section>
-
-  <section>
-    <h2>Anki</h2>
-    <div class="row" id="ankiRow">
-      <span><b>Connection</b><small id="ankiStatus">Checking…</small></span>
-      <button type="button" id="ankiCheck">Check</button>
-    </div>
-    <label class="row">
-      <span><b>New cards go to</b><small>One deck, for everything Libregaku creates.</small></span>
-      <span class="pair">
-        <select id="deck"><option value="">—</option></select>
-        <button type="button" id="newDeck">New…</button>
-      </span>
-    </label>
-    <label class="row">
-      <span>
-        <b>Words you already know</b>
-        <small>Read from here to decide what to underline. Includes subdecks.</small>
-      </span>
-      <select id="statusScope"><option value="">Whole collection</option></select>
-    </label>
-    <div class="row">
-      <span><b>Cards from Libregaku</b><small id="cardCount">—</small></span>
-      <button type="button" id="browse">Open in Anki</button>
-    </div>
-  </section>
-
-  <section>
-    <h2>Data and licences</h2>
-    <p class="lede">
-      Libregaku is built on freely licensed data. Credit where it is due, and
-      the terms it is used under.
-    </p>
-    <dl>
-      <dt><a href="https://www.edrdg.org/jmdict/j_jmdict.html" target="_blank" rel="noopener">JMdict</a></dt>
-      <dd>
-        Japanese–English dictionary data, © the
-        <a href="https://www.edrdg.org/" target="_blank" rel="noopener">Electronic Dictionary
-        Research and Development Group</a>, used under
-        <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a>.
-        Repackaged as JSON by
-        <a href="https://github.com/scriptin/jmdict-simplified" target="_blank" rel="noopener">jmdict-simplified</a>.
-      </dd>
-
-      <dt><a href="https://github.com/lindera/lindera" target="_blank" rel="noopener">Lindera</a> · IPADIC</dt>
-      <dd>Morphological analysis. Lindera is MIT; IPADIC carries its own terms.</dd>
-
-      <dt><a href="https://jotoba.de/" target="_blank" rel="noopener">Jotoba</a> · <a href="https://jisho.org/" target="_blank" rel="noopener">Jisho</a></dt>
-      <dd>Consulted when the local dictionary is still downloading. Both serve JMdict.</dd>
-
-      <dt><a href="https://lucide.dev/" target="_blank" rel="noopener">Lucide</a></dt>
-      <dd>Interface icons, ISC licence.</dd>
-    </dl>
-    <p class="fine">
-      Libregaku itself is MIT licensed. Dictionary data is downloaded at
-      runtime and is not redistributed by this extension.
-    </p>
-  </section>
+  <section id="settings" class="card" aria-label="Settings"></section>
 </main>
 <script type="module" src="options.js"></script>

@@ -86,6 +86,13 @@ export interface Settings {
   statusScope: string;
   /** Show comprehension and per-line counts in the transcript panel. */
   sidebarStats: boolean;
+  /**
+   * Keep the line being spoken in view as the video plays.
+   *
+   * Scrolling the transcript yourself pauses this — reading ahead is the
+   * point of having the script — and a button brings the current line back.
+   */
+  sidebarFollow: boolean;
   /** Underline known words too, rather than leaving them bare. */
   markKnown: boolean;
   /**
@@ -96,6 +103,17 @@ export interface Settings {
    * so this has no effect there.
    */
   dualSubtitles: boolean;
+  /**
+   * Subtitle text size, as a percentage of the default. The default is
+   * relative to the viewport, so both hold their proportion in fullscreen.
+   */
+  subtitleSize: number;
+  /**
+   * How far up from the bottom of the player the line sits, as a percentage
+   * of its height. A floor rather than a fixed place: sharing the player with
+   * another subtitle extension still stacks our line above theirs.
+   */
+  subtitleBottom: number;
   /**
    * Whether the transcript panel is showing.
    *
@@ -125,8 +143,11 @@ export const DEFAULTS: Settings = {
   deck: '',
   statusScope: '',
   sidebarStats: true,
+  sidebarFollow: true,
   markKnown: false,
   dualSubtitles: true,
+  subtitleSize: 100,
+  subtitleBottom: 12,
   sidebarOpen: true,
   headerBar: true,
   headerPinned: false,

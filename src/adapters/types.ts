@@ -21,6 +21,14 @@ export interface TrackInfo {
   label: string;
   /** True for auto-generated captions, which are lower quality. */
   generated?: boolean;
+  /**
+   * A forced-narrative track: the handful of lines that translate on-screen
+   * text, not the dialogue. Useless as either subtitle line, and picking one
+   * by accident looks like the track simply has no subtitles.
+   */
+  forced?: boolean;
+  /** Closed captions, which describe sound as well as speech. */
+  cc?: boolean;
 }
 
 export interface SubtitleSource {

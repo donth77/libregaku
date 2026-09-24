@@ -13,16 +13,33 @@
  * the same for every site.
  */
 
-const ENDPOINT = 'http://127.0.0.1:8765';
+import { ANKI_PORT, ENDPOINT, extensionOrigin } from './endpoint';
+
 const VERSION = 6;
+
+/**
+ * Why a call did not go through. Four failures that look identical to a
+ * caller and need four different things done about them:
+ *
+ *   offline   nothing is listening — Anki is closed, or has no add-on
+ *   blocked   AnkiConnect is there and refused this extension's origin
+ *   occupied  something answered, but it is not AnkiConnect
+ *   refused   AnkiConnect ran the call and said no
+ *
+ * Collapsing these into one boolean is how "open Anki" ends up on screen
+ * while Anki is already open.
+ */
+export type AnkiFailure = 'offline' | 'blocked' | 'occupied' | 'refused';
 
 export interface AnkiResult<T> {
   ok: boolean;
   result?: T;
   error?: string;
+  kind?: AnkiFailure;
   /** True when Anki simply is not running, which is normal rather than a fault. */
   offline?: boolean;
 }
+
 
 export async function ankiDirect<T>(
   action: string,
@@ -38,8 +55,9 @@ export async function ankiDirect<T>(
   } catch {
     return {
       ok: false,
+      kind: 'offline',
       offline: true,
-      error: 'Anki is not reachable. Open Anki and make sure the AnkiConnect add-on is installed.',
+      error: `Nothing is listening on port ${ANKI_PORT}.`,
     };
   }
 
@@ -48,15 +66,36 @@ export async function ankiDirect<T>(
     // change, because the message it returns does not.
     return {
       ok: false,
+      kind: 'blocked',
       error:
-        `AnkiConnect refused this origin. In Anki: Tools → Add-ons → AnkiConnect → ` +
-        `Config, and add "${chrome.runtime.getURL('').replace(/\/$/, '')}" to ` +
-        `webCorsOriginList.`,
+        `AnkiConnect refused ${extensionOrigin()}. In Anki: Tools → Add-ons → ` +
+        `AnkiConnect → Config, and add that line to webCorsOriginList.`,
     };
   }
-  if (!res.ok) return { ok: false, error: `AnkiConnect returned HTTP ${res.status}` };
+  if (!res.ok) {
+    return {
+      ok: false,
+      kind: 'occupied',
+      error: `Something on port ${ANKI_PORT} answered with HTTP ${res.status}. AnkiConnect does not.`,
+    };
+  }
 
-  const body = (await res.json()) as { result?: T; error?: string | null };
-  if (body.error) return { ok: false, error: body.error };
+  // A reply that is not AnkiConnect's JSON means another program has the
+  // port. Anki will not get it back until that program lets go.
+  let body: { result?: T; error?: string | null } | null = null;
+  try {
+    body = (await res.json()) as { result?: T; error?: string | null };
+  } catch {
+    body = null;
+  }
+  if (!body || typeof body !== 'object' || !('result' in body || 'error' in body)) {
+    return {
+      ok: false,
+      kind: 'occupied',
+      error: `Something other than AnkiConnect is using port ${ANKI_PORT}.`,
+    };
+  }
+
+  if (body.error) return { ok: false, kind: 'refused', error: body.error };
   return { ok: true, result: body.result };
 }

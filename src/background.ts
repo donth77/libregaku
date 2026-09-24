@@ -30,21 +30,54 @@ async function hasOffscreen(): Promise<boolean> {
   return ctxs.length > 0;
 }
 
+/**
+ * Wait until the offscreen document can actually answer.
+ *
+ * Both createDocument() and getContexts() report the document as present the
+ * moment it exists, which is before its module has run and registered a
+ * message listener. Anything sent in that window reaches no receiver and
+ * resolves to undefined, which every caller reads as "unavailable" — so the
+ * analyser silently stayed on tier 0, with no readings and no furigana, while
+ * the dictionary, racing it for the same document, loaded fine.
+ *
+ * The offscreen document answers 'ping' as soon as it is listening, so wait
+ * for that rather than for the document's existence.
+ */
+async function offscreenReady(timeoutMs = 10_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    try {
+      const r = (await chrome.runtime.sendMessage({ target: 'offscreen', type: 'ping' })) as
+        | { ok?: boolean }
+        | undefined;
+      if (r?.ok) return;
+    } catch {
+      // No receiver yet. That is exactly the window this loop covers.
+    }
+    // Out of patience: return anyway and let the caller report its own
+    // failure, which names what it was trying to do.
+    if (Date.now() >= deadline) return;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+}
+
 export async function ensureOffscreen(): Promise<void> {
-  if (await hasOffscreen()) return;
-  if (creating) return creating;
-
-  creating = chrome.offscreen
-    .createDocument({
-      url: OFFSCREEN_PATH,
-      reasons: [chrome.offscreen.Reason.WORKERS],
-      justification: 'Runs the morphological analyser (WASM) with OPFS-backed dictionaries.',
-    })
-    .finally(() => {
-      creating = null;
-    });
-
-  return creating;
+  if (!creating && !(await hasOffscreen())) {
+    creating = chrome.offscreen
+      .createDocument({
+        url: OFFSCREEN_PATH,
+        reasons: [chrome.offscreen.Reason.WORKERS],
+        justification: 'Runs the morphological analyser (WASM) with OPFS-backed dictionaries.',
+      })
+      // Two callers can arrive together and both miss hasOffscreen(); the
+      // loser is told a document already exists, which is what it wanted.
+      .catch(() => undefined)
+      .finally(() => {
+        creating = null;
+      });
+  }
+  await creating;
+  await offscreenReady();
 }
 
 /**
@@ -64,7 +97,32 @@ async function injectMainWorld(tabId: number, file: string): Promise<void> {
   });
 }
 
-chrome.runtime.onMessage.addListener((msg: { type?: string; file?: string; action?: string; params?: Record<string, unknown> }, sender, sendResponse) => {
+/**
+ * Fetch a recording on a content script's behalf.
+ *
+ * A content script's fetch is bound by the host page's CORS policy, and
+ * neither jpod101 nor the CDN it now redirects to sends
+ * Access-Control-Allow-Origin — so from a content script every recording
+ * failed as "Failed to fetch" and the card fell back to synthesis without
+ * saying why. Host permissions apply here and CORS does not. Bytes travel
+ * back as base64 because messages are JSON.
+ */
+async function fetchAudio(url: string): Promise<{ ok: boolean; status?: number; type?: string; bytes?: string; error?: string }> {
+  if (!/^https:\/\//.test(url)) return { ok: false, error: 'only https URLs are fetched' };
+  const res = await fetch(url);
+  if (!res.ok) return { ok: false, status: res.status };
+  const view = new Uint8Array(await res.arrayBuffer());
+  let bin = '';
+  for (let i = 0; i < view.length; i += 0x8000) bin += String.fromCharCode(...view.subarray(i, i + 0x8000));
+  return { ok: true, status: res.status, type: res.headers.get('content-type') ?? 'audio/mpeg', bytes: btoa(bin) };
+}
+
+chrome.runtime.onMessage.addListener((msg: { type?: string; file?: string; action?: string; params?: Record<string, unknown>; url?: string }, sender, sendResponse) => {
+  if (msg?.type === 'fetch-audio' && typeof msg.url === 'string') {
+    fetchAudio(msg.url).then(sendResponse, (e: unknown) => sendResponse({ ok: false, error: String(e) }));
+    return true;
+  }
+
   // All AnkiConnect traffic funnels through here, so it presents one origin.
   if (msg?.type === 'anki' && msg.action) {
     void ankiDirect(msg.action, msg.params ?? {}).then(sendResponse);

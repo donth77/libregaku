@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
  */
 
 let area: Record<string, unknown> = {};
+const changeListeners: Array<(changes: Record<string, { newValue?: unknown }>, area: string) => void> = [];
 
 vi.stubGlobal('chrome', {
   storage: {
@@ -16,7 +17,11 @@ vi.stubGlobal('chrome', {
         Object.assign(area, patch);
       },
     },
-    onChanged: { addListener: () => {} },
+    onChanged: {
+      addListener: (fn: (changes: Record<string, { newValue?: unknown }>, area: string) => void) => {
+        changeListeners.push(fn);
+      },
+    },
   },
 });
 
@@ -99,5 +104,37 @@ describe('saved lines', () => {
 
     const second = await load();      // fresh module, cold cache
     expect((await second.list()).map((b) => b.text)).toEqual(['kept']);
+  });
+});
+
+describe('watch', () => {
+  it('drops the cached list when another tab writes, so a later save keeps their line', async () => {
+    const bm = await load();
+    await bm.add({ ...line(1, 'mine, earlier'), id: bm.idFor('netflix', '81234', 1) });
+
+    let notified = 0;
+    bm.watch(() => notified++);
+
+    // Another tab saved a line: storage changed underneath this one's cache.
+    const theirs = [{ ...line(5, 'theirs'), id: bm.idFor('netflix', '81234', 5) }];
+    area['libregaku:saved'] = theirs;
+    for (const fn of changeListeners) fn({ 'libregaku:saved': { newValue: theirs } }, 'local');
+
+    expect(notified).toBe(1);
+    expect((await bm.list()).map((b) => b.text)).toEqual(['theirs']);
+
+    await bm.add({ ...line(9, 'mine, later'), id: bm.idFor('netflix', '81234', 9) });
+    expect((await bm.list()).map((b) => b.text)).toEqual(['theirs', 'mine, later']);
+  });
+
+  it('ignores changes to other keys and other areas', async () => {
+    const bm = await load();
+    await bm.add({ ...line(1, 'kept'), id: bm.idFor('netflix', '81234', 1) });
+    bm.watch(() => { throw new Error('should not fire'); });
+    for (const fn of changeListeners) {
+      fn({ 'libregaku.settings': { newValue: {} } }, 'local');
+      fn({ 'libregaku:saved': { newValue: [] } }, 'sync');
+    }
+    expect((await bm.list()).map((b) => b.text)).toEqual(['kept']);
   });
 });

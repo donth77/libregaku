@@ -75,3 +75,22 @@ describe('bottomOffset ignores container-shaped bands', () => {
     expect(off).toBeLessThan(20);
   });
 });
+
+describe('bottomOffset with a chosen floor', () => {
+  it('sits at the floor when nothing else is on screen', () => {
+    expect(bottomOffset([], 25)).toBe(25);
+  });
+
+  it('a low floor still rises above another line', () => {
+    expect(bottomOffset([[0.78, 0.9]], 4)).toBeCloseTo(24, 0);
+  });
+
+  it('a high floor wins over a line it already clears', () => {
+    expect(bottomOffset([[0.86, 0.92]], 25)).toBe(25);
+  });
+
+  it('never sinks below the floor, even against the ceiling', () => {
+    expect(bottomOffset([[0.6, 0.7]], 33)).toBeGreaterThanOrEqual(33);
+    expect(bottomOffset([[0.5, 0.7]], 33)).toBeGreaterThanOrEqual(33);
+  });
+});

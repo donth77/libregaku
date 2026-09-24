@@ -7,17 +7,19 @@ import { LinderaSegmenter } from '../morphology/lindera';
 import type { Segmenter, Token } from '../morphology/types';
 import { DomCaptionSource } from '../adapters/dom-captions';
 import { clearLookupCache, ensureDictionary, lookupWord } from '../dict/client';
-import { DEFAULT_BOTTOM, bottomOffset, namedMatches, occupiedBands } from './coexist';
+import { bottomOffset, namedMatches, occupiedBands } from './coexist';
 import { addNote, ensureModel } from '../anki/client';
 import { tagsFor, toAnkiFurigana } from '../anki/model';
 import { sourceField } from '../anki/source';
-import { buildStatusMap, loadOverrides, setOverride, type Status, type StatusMap } from '../anki/status';
+import { buildStatusMap, loadOverrides, setOverride, type OverrideStatus, type Status, type StatusMap } from '../anki/status';
 import { furigana } from '../morphology/furigana';
 import { TIER2_LANGS, jmdictEditionFor, loadSettings, onSettingsChange, settings } from '../settings';
 import {
   cancelPopupClose, closePopup, closePopupSoon, popupKey, showPopup, type CardDraft,
 } from './popup';
 import { Sidebar } from './sidebar';
+import { PlayerInset } from './player-inset';
+import * as bookmarks from './bookmarks';
 import { Header } from './header';
 import { Transcript } from './transcript';
 import { clearNotice, showNotice } from './notice';
@@ -57,11 +59,16 @@ let active = -1;
 let raf = 0;
 let domSource: DomCaptionSource | null = null;
 let sidebar: Sidebar | null = null;
+let playerInset: PlayerInset | null = null;
 let header: Header | null = null;
 const transcript = new Transcript();
 let activeVideo: HTMLVideoElement | null = null;
 let status: StatusMap | null = null;
-let overrides = new Map<string, Status>();
+let overrides = new Map<string, OverrideStatus>();
+/** Successful additions awaiting the next Anki snapshot; never persisted. */
+const addedCards = new Set<string>();
+let statusRequest = 0;
+let manualRevision = 0;
 
 /**
  * A token's status, by dictionary form.
@@ -72,7 +79,10 @@ let overrides = new Map<string, Status>();
 function statusOf(tok: Token): Status {
   if (tok.punct || !tok.content) return 'ignored';
   const key = tok.lemma ?? tok.surface;
-  return overrides.get(key) ?? status?.get(key) ?? 'unknown';
+  const manual = overrides.get(key);
+  if (manual) return manual;
+  const fromAnki = status?.get(key) ?? 'unknown';
+  return addedCards.has(key) && fromAnki !== 'known' ? 'learning' : fromAnki;
 }
 
 /** Share of content words already known, for the sidebar. */
@@ -90,7 +100,8 @@ export function comprehension(tokens: Token[]): number {
  * to storage. The optimistic update matters: a status change that takes a
  * round-trip to appear reads as broken.
  */
-async function mark(word: string, next: Status | null): Promise<void> {
+async function mark(word: string, next: OverrideStatus | null): Promise<void> {
+  manualRevision++;
   if (next) overrides.set(word, next);
   else overrides.delete(word);
   repaint();
@@ -99,33 +110,34 @@ async function mark(word: string, next: Status | null): Promise<void> {
 
 /** Re-render the current line so a status change is visible at once. */
 function repaint(): void {
-  if (active >= 0) {
-    segmented.delete(active);
-    const i = active;
-    active = -1;
-    paint(i);
-    active = i;
-  }
-  sidebar?.render();
+  overlay?.setStatusSource(statusOf);
+  sidebar?.refreshAnalysis();
 }
 
 async function refreshStatus(): Promise<void> {
-  overrides = await loadOverrides();
+  const request = ++statusRequest;
+  const revision = manualRevision;
+  const nextOverrides = await loadOverrides();
   const scope = settings().statusScope;
   try {
-    status = await buildStatusMap(scope);
+    const next = await buildStatusMap(scope);
+    if (request !== statusRequest) return;
+    status = next;
+    addedCards.clear();
     log(
       status.size
         ? `Anki: ${status.size} words known or learning in ${scope || 'the whole collection'}`
         : 'Anki reachable but nothing found in that scope — everything reads as unknown',
     );
   } catch {
+    if (request !== statusRequest) return;
     // Anki being closed is normal, not a fault. Everything simply reads unknown.
     status = null;
     log('Anki not reachable — words will show as unknown until it is running');
   }
-  segmented = new Map();
-  active = -1;
+  // A manual mark made during the fetch is newer than the storage read.
+  if (revision === manualRevision) overrides = nextOverrides;
+  repaint();
 }
 
 function pickAdapter(): SubtitleSource | null {
@@ -183,8 +195,7 @@ async function makeSegmenter(): Promise<Segmenter | null> {
       segmenter = new LinderaSegmenter();
       segmented = new Map();   // re-segment with lemmas and readings
       active = -1;
-      log('upgraded to tier 2 — lemmas, readings and furigana are live');
-
+      sidebar?.refreshAnalysis();
       log('upgraded to tier 2 — lemmas, readings and furigana are live');
     } catch (e) {
       log('staying on tier 0 —', e);
@@ -221,20 +232,20 @@ function paint(i: number): void {
 
   const cached = segmented.get(i);
   if (cached) {
-    overlay?.render(cached, cue.secondary);
+    overlay?.render(cached, secondLine(cue));
     return;
   }
 
   const result = (segmenter ?? { segment: () => [] as Token[] }).segment(cue.text);
   if (Array.isArray(result)) {
     segmented.set(i, result);
-    overlay?.render(result, cue.secondary);
+    overlay?.render(result, secondLine(cue));
     return;
   }
   void result.then((toks) => {
     segmented.set(i, toks);
     // The cue may have moved on while we were analysing.
-    if (active === i) overlay?.render(toks, cue.secondary);
+    if (active === i) overlay?.render(toks, secondLine(cue));
   });
 }
 
@@ -360,10 +371,27 @@ async function run(): Promise<boolean> {
    */
   knownTracks = tracks;
 
-  const inTarget = tracks.filter((t) => t.lang.startsWith(targetLang()));
+  // A pick from the toolbar is for this video only. Track ids are positions
+  // in the list, so carrying one over would land on whatever sits at that
+  // index in the next video — a different language, on Netflix as often as not.
+  const videoId = adapter.videoId();
+  if (videoId !== chosenForVideo) {
+    chosenTrack = null;
+    chosenSecond = null;
+    chosenForVideo = videoId;
+  }
+
+  /*
+   * Forced-narrative tracks carry only the lines that translate on-screen
+   * text, so a whole episode may hold three of them. Netflix lists one before
+   * the real subtitles in several languages, and taking the first match meant
+   * choosing it — which reads as a video whose subtitles barely exist.
+   */
+  const inTarget = tracks.filter((t) => t.lang.startsWith(targetLang()) && !t.forced);
   // An explicit pick from the toolbar wins over the automatic one.
   const track =
     (chosenTrack ? tracks.find((t) => t.id === chosenTrack) : undefined) ??
+    inTarget.find((t) => !t.generated && !t.cc) ??
     inTarget.find((t) => !t.generated) ??
     inTarget[0];
 
@@ -374,6 +402,7 @@ async function run(): Promise<boolean> {
       `This video has: ${have}. Change what you're learning in settings, or pick another video.`);
     return true;   // the list is known and lacks our language; retrying is pointless
   }
+  activeTrack = track.id;
   if (track.generated) {
     log('note: this track is auto-generated; segmentation will look rough');
     showNotice(mount, 'auto-generated', 'No human-written track was available for this video.');
@@ -408,16 +437,24 @@ async function run(): Promise<boolean> {
    * worse guess at the same thing, and seeing where the two genuinely diverge
    * is most of the value of watching them together.
    */
-  if (settings().dualSubtitles) {
+  // '' is an explicit "no second line" from the toolbar; null means pick one.
+  if (settings().dualSubtitles && chosenSecond !== '') {
     const want = settings().native;
+    // Same trap as above, plus a preference for plain subtitles over closed
+    // captions: a translation line reading "[door creaks]" helps nobody.
+    const inNative = tracks.filter(
+      (t) => t.lang.startsWith(want) && t.id !== track.id && !t.forced,
+    );
     const second =
       (chosenSecond ? tracks.find((t) => t.id === chosenSecond) : undefined) ??
-      tracks.find((t) => t.lang.startsWith(want) && t.id !== track.id);
+      inNative.find((t) => !t.cc) ??
+      inNative[0];
     if (second) {
       try {
         const other = await adapter.loadTrack(second.id);
         if (other.length) {
           cues = pairCues(cues, other);
+          activeSecond = second.id;
           const paired = cues.filter((c) => c.secondary).length;
           log(`dual subtitles: ${second.lang} on ${paired} of ${cues.length} lines`);
         }
@@ -509,19 +546,32 @@ function startDomFallback(mount: HTMLElement, seg: Segmenter, adapter: SubtitleS
  */
 function applyAnchor(o: Overlay, mount: HTMLElement, adapter: SubtitleSource): void {
   const place = (): void => {
+    const floor = settings().subtitleBottom;
     const bands = occupiedBands(mount, adapter.domCaptions.container);
-    const offset = bottomOffset(bands);
+    const offset = bottomOffset(bands, floor);
     o.setBottom(offset);
-    if (offset !== DEFAULT_BOTTOM) {
+    if (offset !== floor) {
       const names = namedMatches().map((n) => n.name).join(', ');
       log(`sharing the player${names ? ` with ${names}` : ''} — stacking our line above theirs`);
     }
   };
 
   place();
+  replace = place;
   // Extension load order is not deterministic, so re-measure a couple of times.
   setTimeout(place, 2000);
   setTimeout(place, 6000);
+}
+
+/** Re-run placement for the current overlay, when the chosen height changes. */
+let replace: (() => void) | null = null;
+
+/** What the overlay was last told, so a settings change applies only what moved. */
+let appearance = { size: 0, bottom: 0, dual: true };
+
+/** The second line only while it is wanted — the switch can flip mid-video. */
+function secondLine(cue: { secondary?: string }): string | undefined {
+  return settings().dualSubtitles ? cue.secondary : undefined;
 }
 
 /** Current line, for copy-sentence in the popup. */
@@ -546,7 +596,9 @@ let pausedForHover = false;
  */
 function makeOverlay(mount: HTMLElement, adapter: SubtitleSource): Overlay {
   const o = new Overlay(mount);
+  o.setRightInset(sidebar?.inset ?? 0);
   applyAnchor(o, mount, adapter);
+  o.setSize(settings().subtitleSize);
   o.setRubyMode(settings().ruby);
   o.setMarkKnown(settings().markKnown);
   o.setStatusSource(statusOf);
@@ -615,9 +667,16 @@ async function addCard(draft: CardDraft, token: Token): Promise<string> {
     tags: tagsFor({ source: adapter?.id ?? 'unknown', lang: targetLang() }),
   });
 
-  // A new card means the word is being learned; reflect it without waiting for
-  // the next status refresh.
-  await mark(token.lemma ?? token.surface, 'learning');
+  // Show the successful addition immediately, then let Anki's next snapshot
+  // replace it. A stored "learning" override would hide maturity or deletion.
+  const word = token.lemma ?? token.surface;
+  statusRequest++;   // an older query may have started before this card existed
+  manualRevision++;
+  overrides.delete(word);
+  addedCards.add(word);
+  repaint();
+  await setOverride(word, null);
+  void refreshStatus();
   return `added to ${deck}`;
 }
 
@@ -639,20 +698,23 @@ async function openLookup(mount: HTMLElement, el: HTMLElement, token: Token): Pr
 }
 
 /**
- * Where a saved line came from. YouTube takes a timestamp in the URL and will
- * open at the right second; Netflix ignores one and resumes where the profile
- * left off, so the link is only ever "this episode" there.
+ * Where a saved line came from.
+ *
+ * The link is the adapter's, not one rebuilt here. Both sites take a
+ * timestamp and each spells it differently, and the adapter is the only
+ * place that knows which — the same call the Anki card already uses. Naming
+ * YouTube here instead meant every Netflix save fell back to the bare page
+ * URL, so reopening it resumed wherever the profile had left off rather than
+ * at the line that was saved.
  */
-function videoContext(): { site: string; video: string; title: string; url: string; lang: string } {
+function videoContext(atSeconds?: number): { site: string; video: string; title: string; url: string; lang: string } {
   const adapter = pickAdapter();
-  const at = Math.floor(activeVideo?.currentTime ?? 0);
-  const base = location.href.split(/[?#]/)[0]!;
-  const video = adapter?.videoId() ?? location.pathname;
+  const at = Math.floor(atSeconds ?? activeVideo?.currentTime ?? 0);
   return {
     site: adapter?.id ?? 'unknown',
-    video,
+    video: adapter?.videoId() ?? location.pathname,
     title: adapter?.title() ?? document.title,
-    url: adapter?.id === 'youtube' ? `${base}?v=${video}&t=${at}s` : location.href,
+    url: adapter?.deepLink(at) ?? location.href,
     lang: targetLang(),
   };
 }
@@ -697,6 +759,7 @@ function mountSidebar(mount: HTMLElement, video: HTMLVideoElement): void {
     stats: () => sidebar?.stats ?? null,
     savedCount: () => sidebar?.savedCount ?? 0,
     sidebarOpen: () => sidebar?.isOpen ?? false,
+    inset: () => sidebar?.inset ?? 0,
     onToggleSidebar: () => sidebar?.toggle(),
     onOpenSettings: () => {
       sidebar?.toggle(true);
@@ -707,9 +770,19 @@ function mountSidebar(mount: HTMLElement, video: HTMLVideoElement): void {
       sidebar?.setMode('saved');
     },
   });
+  // The panel sits over the player, so making room for it means moving three
+  // things: the picture, the subtitle over it, and the top bar.
+  playerInset = new PlayerInset(video, mount, (lift) => overlay?.setBottomInset(lift));
   sidebar.onSavedChange(() => header?.update());
+  sidebar.onLayoutChange(() => {
+    const px = sidebar?.inset ?? 0;
+    overlay?.setRightInset(px);
+    playerInset?.set(px);
+    header?.update();
+  });
+  overlay?.setRightInset(sidebar.inset);
+  playerInset.set(sidebar.inset);
   void sidebar.refreshSaved();
-  onSettingsChange(() => header?.update());
 
   log('sidebar ready — press S to open it');
 }
@@ -726,12 +799,19 @@ function reset(): void {
   closePopup();
   sidebar?.destroy();
   sidebar = null;
+  header?.destroy();
+  header = null;
+  playerInset?.destroy();
+  playerInset = null;
+  activeTrack = null;
+  activeSecond = null;
   transcript.clear();
   domSource?.stop();
   domSource = null;
   cancelAnimationFrame(raf);
   overlay?.destroy();
   overlay = null;
+  replace = null;
   cues = [];
   segmented = new Map();
   active = -1;
@@ -740,6 +820,11 @@ function reset(): void {
 for (const a of ADAPTERS) {
   a.onNavigate(() => {
     reset();
+    // The toolbar's picks and track list were for the video we just left.
+    knownTracks = [];
+    chosenTrack = null;
+    chosenSecond = null;
+    chosenForVideo = null;
     rendering = false;
     retries = 0;
     lastQuiet = '';
@@ -772,16 +857,20 @@ document.addEventListener(
   (e) => {
     if (e.key === 'Escape') closePopup();
     if (e.metaKey || e.ctrlKey || e.altKey) return;
-    if (e.key.toLowerCase() === 'b') {
+    const key = e.key.toLowerCase();
+    if (key !== 'b' && key !== 's') return;
+    // Someone typing in a field gets their letter. composedPath() sees through
+    // shadow roots, so the search box inside our own panel counts as a field
+    // too — e.target would only ever show the panel's host.
+    const t = (e.composedPath()[0] ?? e.target) as HTMLElement | null;
+    if (t && (t.isContentEditable || /^(input|textarea|select)$/i.test(t.tagName))) return;
+    if (key === 'b') {
       // Netflix and YouTube both treat stray letters as player shortcuts.
       e.preventDefault();
       e.stopPropagation();
       void saveCurrentLine();
       return;
     }
-    if (e.key.toLowerCase() !== 's') return;
-    const t = e.target as HTMLElement | null;
-    if (t && (t.isContentEditable || /^(input|textarea|select)$/i.test(t.tagName))) return;
     if (!sidebar) return;
     e.preventDefault();
     e.stopPropagation();
@@ -801,11 +890,36 @@ document.addEventListener(
 
 void loadSettings().then(async (s) => {
   log(`lookup opens on ${s.interaction}`);
+  appearance = { size: s.subtitleSize, bottom: s.subtitleBottom, dual: s.dualSubtitles };
   await refreshStatus();
 });
 onSettingsChange(() => void refreshStatus());
 onSettingsChange((s) => {
   if (s.interaction !== 'hover') closePopup();
+});
+onSettingsChange(() => header?.update());
+// Appearance applies to the line on screen, not only to the next overlay built.
+// The top bar's furigana and second-line buttons depend on this: they used to
+// change the setting and nothing else.
+onSettingsChange((s) => {
+  if (s.subtitleSize !== appearance.size) overlay?.setSize(s.subtitleSize);
+  if (s.subtitleBottom !== appearance.bottom) replace?.();
+  overlay?.setRubyMode(s.ruby);
+  overlay?.setMarkKnown(s.markKnown);
+  // Turning the second line on needs its track, which is only fetched at
+  // load. Re-run from the top, exactly as the toolbar's track picker does.
+  if (s.dualSubtitles && !appearance.dual && activeTrack && !activeSecond) {
+    log('second line turned on — reloading to fetch its track');
+    reset();
+    rendering = false;
+    retries = 0;
+    void start();
+  }
+  appearance = { size: s.subtitleSize, bottom: s.subtitleBottom, dual: s.dualSubtitles };
+});
+// Another tab saving a line must not be overwritten by this one's stale copy.
+bookmarks.watch(() => {
+  void sidebar?.refreshSaved().then(() => header?.update());
 });
 
 /**
@@ -817,7 +931,13 @@ onSettingsChange((s) => {
  * rather than in settings — track choice is per-video, not a preference.
  */
 let chosenTrack: string | null = null;
+/** '' means "none", chosen deliberately; null means nothing was chosen. */
 let chosenSecond: string | null = null;
+/** The video the picks above belong to. */
+let chosenForVideo: string | null = null;
+/** What the current run actually loaded, so the popup shows the truth. */
+let activeTrack: string | null = null;
+let activeSecond: string | null = null;
 let knownTracks: TrackInfo[] = [];
 
 chrome.runtime.onMessage.addListener((msg: { type?: string; track?: string; second?: string }, _s, respond) => {
@@ -829,8 +949,8 @@ chrome.runtime.onMessage.addListener((msg: { type?: string; track?: string; seco
       title: adapter?.title() ?? null,
       rendering,
       tracks: knownTracks,
-      track: chosenTrack,
-      second: chosenSecond,
+      track: activeTrack ?? chosenTrack,
+      second: activeSecond ?? '',
       sidebarOpen: sidebar?.isOpen ?? false,
     });
     return true;
@@ -839,6 +959,7 @@ chrome.runtime.onMessage.addListener((msg: { type?: string; track?: string; seco
   if (msg?.type === 'lg-set-tracks') {
     chosenTrack = msg.track ?? null;
     chosenSecond = msg.second ?? null;
+    chosenForVideo = pickAdapter()?.videoId() ?? null;
     // Re-run from the top so the change takes effect on the current video.
     reset();
     rendering = false;

@@ -1,5 +1,5 @@
 import { MODEL, MODEL_NAME, ROOT_TAG } from './model';
-import { ankiCall as call } from './rpc';
+import { ankiCall as call, ankiTry } from './rpc';
 
 /**
  * AnkiConnect, spoken to over HTTP.
@@ -15,6 +15,39 @@ export async function isAvailable(): Promise<boolean> {
     return true;
   } catch {
     return false;
+  }
+}
+
+/**
+ * Everything the settings panel needs to say in one round trip: whether Anki
+ * answered, and if not, which of the four things is wrong.
+ *
+ * A boolean cannot carry that, which is why "Open Anki" used to appear while
+ * Anki was open and something else held its port.
+ */
+export type AnkiState =
+  | { kind: 'connected'; decks: string[]; cards: number; installed: 'created' | 'present' }
+  | { kind: 'offline' }
+  | { kind: 'blocked' }
+  | { kind: 'occupied'; detail: string }
+  | { kind: 'refused'; detail: string };
+
+export async function probe(): Promise<AnkiState> {
+  const hello = await ankiTry<number>('version');
+  if (!hello.ok) {
+    if (hello.kind === 'blocked') return { kind: 'blocked' };
+    if (hello.kind === 'occupied') return { kind: 'occupied', detail: hello.error ?? '' };
+    if (hello.kind === 'refused') return { kind: 'refused', detail: hello.error ?? '' };
+    return { kind: 'offline' };
+  }
+
+  try {
+    const installed = await ensureModel();
+    const decks = await deckNames();
+    const cards = await countOurCards();
+    return { kind: 'connected', decks, cards, installed };
+  } catch (e) {
+    return { kind: 'refused', detail: e instanceof Error ? e.message : String(e) };
   }
 }
 
@@ -43,6 +76,49 @@ export interface NewCard {
 
 export async function createDeck(name: string): Promise<void> {
   await call('createDeck', { deck: name });
+}
+
+export interface SavedSentence {
+  deck: string;
+  text: string;
+  translation?: string;
+  source?: string;
+  tags: string[];
+}
+
+/**
+ * A saved line as a card: the sentence on the front, its translation behind.
+ *
+ * Reading carries the sentence as well as Expression does, because the front
+ * template renders `{{furigana:Reading}}` — leaving it empty would produce a
+ * card with no front, which Anki refuses to create. Plain text there renders
+ * as plain text, so a line with no readings is simply itself.
+ */
+export async function addSentence(s: SavedSentence): Promise<number> {
+  return call<number>('addNote', {
+    note: {
+      deckName: s.deck,
+      modelName: MODEL_NAME,
+      fields: {
+        Expression: s.text,
+        Reading: s.text,
+        Meaning: s.translation ?? '',
+        Sentence: '',
+        SentenceMeaning: '',
+        Source: s.source ?? '',
+        Audio: '',
+        Image: '',
+      },
+      tags: s.tags,
+      // Saving the same line twice is the same card; Anki says so and we count it.
+      options: { allowDuplicate: false, duplicateScope: 'deck' },
+    },
+  });
+}
+
+/** Anki's own words for "you already have this one". */
+export function isDuplicate(e: unknown): boolean {
+  return e instanceof Error && /duplicate/i.test(e.message);
 }
 
 export async function addNote(card: NewCard): Promise<number> {

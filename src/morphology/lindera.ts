@@ -25,7 +25,10 @@ export class LinderaSegmenter implements Segmenter {
       type: 'load',
       dict,
     })) as { ok?: boolean; error?: string } | undefined;
-    return { ok: Boolean(res?.ok), error: res?.error };
+    // No reply at all is a different fault from a refusal, and reporting it as
+    // `undefined` is how it went unread for so long.
+    if (!res) return { ok: false, error: 'the offscreen document did not answer' };
+    return { ok: Boolean(res.ok), error: res.error };
   }
 
   static async status(): Promise<{ ready: boolean; phase: string; percent: number; error: string | null }> {

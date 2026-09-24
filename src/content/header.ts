@@ -19,7 +19,7 @@ import { settings, setSetting } from '../settings';
  * bad trade.
  */
 
-const REVEAL_ZONE = 72;   // px from the top of the player that count as "near the top"
+const REVEAL_ZONE = 84;   // px from the top of the player that count as "near the top"
 
 export interface HeaderStats {
   known: number;
@@ -32,6 +32,8 @@ export interface HeaderDeps {
   stats: () => HeaderStats | null;
   savedCount: () => number;
   sidebarOpen: () => boolean;
+  /** Width of the open transcript panel, so the bar stops short of it. */
+  inset: () => number;
   onToggleSidebar: () => void;
   onOpenSettings: () => void;
   onShowSaved: () => void;
@@ -40,20 +42,23 @@ export interface HeaderDeps {
 const STYLE = `
 :host {
   position: absolute !important;
-  top: 0 !important; left: 0 !important; right: 0 !important;
+  top: 0 !important; left: 0 !important; right: var(--lg-inset, 0px) !important;
   z-index: 2147483000 !important;
   display: block !important;
   pointer-events: none !important;
   font-family: system-ui, -apple-system, "Helvetica Neue", sans-serif !important;
 }
+/* Off means off: the host's own important rule beats an inline display, so
+   the switch has to be a rule in here, where specificity can settle it. */
+:host(.off) { display: none !important; }
 * { box-sizing: border-box; }
 
 .bar {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 16px; padding: 0 14px; height: 44px;
+  gap: 18px; padding: 0 16px; height: 56px;
   background: rgba(17, 20, 33, .94);
   border-bottom: 1px solid rgba(255, 255, 255, .07);
-  color: #E8ECF6; font-size: 13px;
+  color: #E8ECF6; font-size: 15px;
   transform: translateY(-100%);
   transition: transform .16s ease;
   pointer-events: auto;
@@ -61,23 +66,23 @@ const STYLE = `
 .bar.show { transform: translateY(0); }
 @media (prefers-reduced-motion: reduce) { .bar, .tab { transition: none; } }
 
-.left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.left { display: flex; align-items: center; gap: 12px; min-width: 0; overflow: hidden; }
 .badge {
-  display: inline-flex; align-items: center; height: 21px; padding: 0 8px;
+  display: inline-flex; align-items: center; height: 24px; padding: 0 10px;
   border-radius: 999px; background: #2A3348; color: #C7CFE2;
-  font: 600 10px/1 ui-monospace, monospace; letter-spacing: .09em; text-transform: uppercase;
+  font: 600 11px/1 ui-monospace, monospace; letter-spacing: .09em; text-transform: uppercase;
 }
-.stat { color: #9AA4BF; white-space: nowrap; font-size: 12.5px; }
-.stat b { color: #E8ECF6; font-weight: 600; font-variant-numeric: tabular-nums; }
+.stat { color: #9AA4BF; white-space: nowrap; font-size: 14px; }
+.stat b { color: #E8ECF6; font-weight: 700; font-variant-numeric: tabular-nums; }
 .stat.good b { color: #63AF97; }
 .stat.i1 b { color: #E8B45C; }
-.sep { width: 1px; height: 15px; background: rgba(255,255,255,.12); flex: none; }
+.sep { width: 1px; height: 18px; background: rgba(255,255,255,.12); flex: none; }
 
-.right { display: flex; align-items: center; gap: 2px; flex: none; }
+.right { display: flex; align-items: center; gap: 4px; flex: none; }
 button {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 30px; height: 30px; padding: 0;
-  background: none; border: 0; border-radius: 6px;
+  width: 34px; height: 34px; padding: 0;
+  background: none; border: 0; border-radius: 8px;
   color: #9AA4BF; cursor: pointer;
 }
 button:hover { background: rgba(255,255,255,.09); color: #E8ECF6; }
@@ -86,10 +91,10 @@ button:focus-visible { outline: 2px solid #8AA2E8; outline-offset: -2px; }
 button svg { display: block; }
 
 .count {
-  position: absolute; transform: translate(9px, -9px);
-  min-width: 14px; height: 14px; padding: 0 3px; border-radius: 7px;
+  position: absolute; transform: translate(11px, -11px);
+  min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px;
   background: #8AA2E8; color: #11141F;
-  font: 700 9px/14px ui-monospace, monospace; text-align: center;
+  font: 700 10px/16px ui-monospace, monospace; text-align: center;
   pointer-events: none;
 }
 
@@ -97,7 +102,7 @@ button svg { display: block; }
 .tab {
   position: absolute; top: 0; left: 50%; transform: translateX(-50%);
   display: flex; align-items: center; justify-content: center;
-  width: 42px; height: 17px; padding: 0;
+  width: 48px; height: 18px; padding: 0;
   background: rgba(17, 20, 33, .82);
   border: 0; border-radius: 0 0 8px 8px;
   color: #7E88A6; cursor: pointer;
@@ -148,7 +153,7 @@ export class Header {
       onClick: () => void,
     ): HTMLButtonElement => {
       const b = document.createElement('button');
-      b.replaceChildren(icon(name, 16));
+      b.replaceChildren(icon(name, 20));
       b.title = title;
       b.setAttribute('aria-label', title);
       b.addEventListener('click', onClick);
@@ -185,7 +190,7 @@ export class Header {
 
     this.#tab = document.createElement('button');
     this.#tab.className = 'tab';
-    this.#tab.replaceChildren(icon('chevronsUp', 14));
+    this.#tab.replaceChildren(icon('chevronsUp', 16));
     this.#tab.title = 'Libregaku';
     this.#tab.setAttribute('aria-label', 'Show the Libregaku bar');
     this.#tab.addEventListener('click', () => this.#reveal(!this.#shown));
@@ -223,7 +228,11 @@ export class Header {
   /** Repaint the numbers and the on/off state of every switch. */
   update(): void {
     const s = settings();
-    this.#host.style.display = s.headerBar ? '' : 'none';
+    this.#host.classList.toggle('off', !s.headerBar);
+    if (!s.headerBar) this.#reveal(false);
+    // The host's edges are pinned with !important against the page's CSS, so
+    // the inset travels as a custom property rather than an inline right.
+    this.#host.style.setProperty('--lg-inset', `${this.#deps.inset()}px`);
 
     const stats = this.#deps.stats();
     this.#left.replaceChildren();
@@ -237,10 +246,11 @@ export class Header {
       const sep = document.createElement('span');
       sep.className = 'sep';
       this.#left.appendChild(sep);
-      this.#left.appendChild(stat('good', `${stats.known}%`, 'comprehension'));
-      this.#left.appendChild(
-        stat('i1', String(stats.i1), stats.i1 === 1 ? 'sentence to mine' : 'sentences to mine'),
-      );
+      // The same words the panel uses for the same numbers: one number, one name.
+      this.#left.appendChild(stat('good', `${stats.known}%`, 'known',
+        'Share of the words in this video you already have a card for'));
+      this.#left.appendChild(stat('i1', String(stats.i1), 'ready to learn',
+        'Lines where only one word is new to you — the easiest to learn from'));
     }
 
     const setOn = (key: string, on: boolean, title: string): void => {
@@ -258,14 +268,14 @@ export class Header {
 
     const pin = this.#buttons.get('pin');
     if (pin) {
-      pin.replaceChildren(icon(s.headerPinned ? 'lock' : 'unlock', 16));
+      pin.replaceChildren(icon(s.headerPinned ? 'lock' : 'unlock', 20));
       setOn('pin', s.headerPinned, s.headerPinned ? 'Let this bar hide again' : 'Keep this bar open');
     }
 
     const saved = this.#buttons.get('saved');
     if (saved) {
       const n = this.#deps.savedCount();
-      saved.replaceChildren(icon('bookmark', 16));
+      saved.replaceChildren(icon('bookmark', 20));
       if (n) {
         const c = document.createElement('span');
         c.className = 'count';
@@ -283,9 +293,10 @@ export class Header {
   }
 }
 
-function stat(cls: string, value: string, label: string): HTMLElement {
+function stat(cls: string, value: string, label: string, title: string): HTMLElement {
   const el = document.createElement('span');
   el.className = `stat ${cls}`;
+  el.title = title;
   const b = document.createElement('b');
   b.textContent = value;
   el.append(b, document.createTextNode(` ${label}`));
