@@ -13,6 +13,7 @@ import { furigana } from '../morphology/furigana';
 import { PANEL_STYLE, buildSettings, syncSettingsControls } from './settings-panel';
 import { popupIsOpen } from './popup';
 import type { Transcript, Line } from './transcript';
+import { TokenCache, countWords, estimateRowHeight, nextFrame, now, whenIdle, type Count } from './transcript-work';
 
 /**
  * The transcript panel.
@@ -40,7 +41,45 @@ const HOVER_WIDTH = 298;
 /** Keys that scroll a list from the keyboard. */
 const NAV_KEYS = new Set(['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ']);
 
+/*
+ * The list's budget. A film is 1,500–5,000 lines; the panel shows six or so.
+ *
+ * Every line gets a row, but a cheap one, and rows are grouped in blocks the
+ * browser lays out only near the screen. Words, readings and buttons are
+ * built for the blocks within a screen's height of what is showing, a few
+ * rows at a time per frame, and kept once built. Counting — which needs every
+ * line — runs behind all of that with a handful of requests in flight.
+ */
+/** Rows per block: the unit the browser skips, and the unit that is built. */
+const BLOCK = 10;
+/** Rows built at once when the list opens, around what it opens on. */
+const PRIME = 24;
+/** Rows built either side of a line the list jumps to. */
+const AROUND = 6;
+/** How far beyond the visible list a block counts as near: a screen each way. */
+const NEAR = '100% 0px';
+/** Analyser requests the counter keeps open; the rest wait their turn. */
+const COUNT_IN_FLIGHT = 8;
+/** Main-thread time one slice of counting or building may take, in ms. */
+const SLICE_MS = 8;
+/** How long a jump keeps its line centred while estimated heights settle, in ms. */
+const PIN_MS = 1200;
+/** Frames a jump is checked for after it lands, while the blocks around it are first drawn. */
+const HOLD_FRAMES = 4;
+/** How often a count in progress repaints its progress, in ms. */
+const PROGRESS_MS = 250;
+
 type Filter = 'all' | 'unknown' | 'i1' | 'saved';
+
+/** Ten lines of the transcript, and their rows once they have been made. */
+interface Block {
+  el: HTMLElement;
+  lines: Line[];
+  /** Whether its rows exist. An unfilled block is a placeholder of its estimated height. */
+  filled: boolean;
+  /** The estimated height of all its rows. */
+  height: number;
+}
 
 /** Where a transcript word came from, for a card mined from it. */
 export interface WordContext {
@@ -219,14 +258,32 @@ const STYLE = `
     cursor: pointer;
   }
   .line:hover { border-color: #33405C; background: #171E30; }
+  /* Rings drawn inside the card: a block clips what its rows paint outside
+     it, so an outer glow was cut off on the first and last row of each. */
   .line.cur {
     border-color: #8AA2E8;
-    box-shadow: 0 0 0 1px #8AA2E8, 0 4px 18px -6px rgba(138,162,232,.5);
+    box-shadow: inset 0 0 0 1px #8AA2E8;
     background: #1A2138;
   }
   .line.hit { border-color: #D9A64A; }
-  .line.hit-cur { border-color: #D9A64A; box-shadow: 0 0 0 1px #D9A64A; }
+  .line.hit-cur { border-color: #D9A64A; box-shadow: inset 0 0 0 1px #D9A64A; }
   .line.hide { display: none; }
+
+  /*
+   * Rows in blocks the browser lays out and paints only near the screen. Off
+   * it, a block is a box of its estimated height, then of the height it last
+   * had once it has been shown. Per block rather than per row: the browser
+   * watches each one for visibility, and ten times fewer is ten times cheaper
+   * on every scrolled frame.
+   */
+  .blk { content-visibility: auto; contain-intrinsic-size: auto 1150px; }
+  .blk.hide { display: none; }
+  .wait {
+    padding: 9px 14px; font-size: 12px; color: #8A94AF; flex: none;
+    border-bottom: 1px solid #212939;
+  }
+  .wait[hidden] { display: none; }
+  .summary .pending { color: #838DA8; }
 
   .tx {
     display: block; font-size: 21px; line-height: 1.7;
@@ -432,9 +489,6 @@ export class Sidebar {
   #filter: Filter = 'all';
   /** Ids saved on *this* video, so a row can paint itself without a round trip. */
   #saved = new Set<string>();
-  #counts = new Map<Line, { unknown: number; words: number }>();
-  #analysisRevision = 0;
-  #measuringRevision: number | null = null;
   #destroyed = false;
   /** Until the stored width and open state are read, settings do not move the panel. */
   #restored = false;
@@ -464,6 +518,83 @@ export class Sidebar {
   /** Every document and window listener, removed together on destroy. */
   #abort = new AbortController();
   #unwatch: () => void = () => {};
+
+  // ---- the list: blocks of rows, made and built near the screen ---------
+  /**
+   * The list is blocks of ten lines. Every block exists from the start,
+   * sized by an estimate; its rows are made only when something needs them —
+   * the block comes near the screen, a jump lands in it, or the background
+   * gets to it soon after opening — and a row's words only near enough to read.
+   * Inserting every row at once was a third of a second of style and layout.
+   */
+  #blocks: Block[] = [];
+  #blockOf = new Map<Line, Block>();
+  #blockByEl = new WeakMap<HTMLElement, Block>();
+  /** Where each line sits in the transcript, for its row's number. */
+  #indexOf = new Map<Line, number>();
+  /** Each line's estimated card height, for rows not yet drawn. */
+  #height = new Map<Line, number>();
+  /** The background has made every block before this one. */
+  #fillAt = 0;
+  #cancelFill: (() => void) | null = null;
+  /** The transcript changed since the blocks were last put in step with it. */
+  #rowsStale = true;
+  #rowOf = new Map<Line, HTMLElement>();
+  #lineOf = new WeakMap<HTMLElement, Line>();
+  /** The lines of the transcript, for asking cheaply whether one is still in it. */
+  #lineSet = new Set<Line>();
+  /** What was last written to each block's size, so an unchanged one is not written again. */
+  #sized = new WeakMap<HTMLElement, string>();
+  /**
+   * Rows that have words, and the analysis they were built from. A pending
+   * build is stored as -1 - revision, so it is neither built nor started twice.
+   */
+  #built = new Map<HTMLElement, number>();
+  /** The token each word was drawn from, so a status change repaints it in place. */
+  #wordTok = new WeakMap<HTMLElement, Token>();
+  /** Words that carry a reading. */
+  #annotated = new WeakSet<HTMLElement>();
+  /** Rows that have their count and bookmark — every row ever built. */
+  #dressed = new Set<HTMLElement>();
+  /** Site and video for bookmark ids: constant for a transcript, and a page read to find. */
+  #where: { site: string; video: string } | null = null;
+  #tokens = new TokenCache();
+  #io: IntersectionObserver | null = null;
+  /** Whether visibility has ever been reported; without it, built rows count as near. */
+  #ioSeen = false;
+  #nearBlocks = new Set<HTMLElement>();
+  #toBuild = new Set<HTMLElement>();
+  /** Calls off the frame the waiting rows are due to be built in. */
+  #cancelBuild: (() => void) | null = null;
+  #curRow: HTMLElement | null = null;
+  #hitRows = new Set<HTMLElement>();
+  #hitCurRow: HTMLElement | null = null;
+  /** A row the list jumped to, held centred while the rows around it settle. */
+  #pin: HTMLElement | null = null;
+  #pinUntil = 0;
+  /** Frames left in which to check a held jump, and whether one is booked. */
+  #holdFrames = 0;
+  #holdQueued = false;
+  #wait!: HTMLElement;
+
+  // ---- counting: every line, in the background --------------------------
+  /** Counts for the statuses of this revision; a status change starts over. */
+  #counts = new Map<Line, Count>();
+  #statusRev = 0;
+  #countQueue: Line[] = [];
+  #countAt = 0;
+  /** Lines this revision is waiting on the analyser for. */
+  #counting = new Set<Line>();
+  #countTimer = 0;
+  #countFailed = false;
+  #progressAt = 0;
+  /**
+   * The totals from the last time every line was counted, kept while lines
+   * are only being added — a caption observed during playback. They are true
+   * of the lines they cover, where "counting…" every few seconds would be
+   * noise. Any change to what is known, or to the words, drops them.
+   */
+  #lastStats: { known: number; unknown: number; i1: number } | null = null;
 
   constructor(mount: HTMLElement, deps: SidebarDeps) {
     this.#deps = deps;
@@ -572,9 +703,22 @@ export class Sidebar {
     this.#note.className = 'note';
     this.#note.style.display = 'none';
 
+    // What a count filter shows while the counts it needs are still arriving:
+    // a statement of progress, never a partial answer.
+    this.#wait = document.createElement('div');
+    this.#wait.className = 'wait';
+    this.#wait.setAttribute('role', 'status');
+    this.#wait.hidden = true;
+
     this.#list = document.createElement('div');
     this.#list.className = 'lines';
     this.#installFollow();
+    if (typeof IntersectionObserver === 'function') {
+      this.#io = new IntersectionObserver((entries) => this.#onNear(entries), {
+        root: this.#list,
+        rootMargin: NEAR,
+      });
+    }
 
     const now = document.createElement('button');
     now.className = 'now';
@@ -594,16 +738,47 @@ export class Sidebar {
     this.#tab.addEventListener('click', () => this.toggle(true));
 
     this.#search = search;
-    this.#panel.append(grip, head, search, summary, this.#note, this.#list, filters, fab, now);
+    this.#panel.append(grip, head, search, summary, this.#note, this.#wait, this.#list, filters, fab, now);
     this.#root.append(style, this.#panel, this.#tab, this.#hover);
     mount.appendChild(this.#host);
 
     this.#installKeys();
     this.#applyAppearance(settings());
     this.#unwatch = watchSettings((s, here) => this.#settingsChanged(s, here));
+    this.#tokens.reset(deps.segmenter());
+    this.#lineSet = new Set(deps.transcript.lines);
     void this.#restore();
     deps.transcript.onChange(() => this.#refreshTranscript());
     this.#installHover();
+    this.#installClicks();
+    // Counting starts once construction is over: the header wants the numbers
+    // even while the panel is closed, but not at the cost of the first frame.
+    this.#countTimer = window.setTimeout(() => this.#countAll(), 0);
+  }
+
+  /**
+   * One listener for every row: a bookmark saves, a word looks up, anywhere
+   * else on a card seeks. A listener per row was thousands of them.
+   */
+  #installClicks(): void {
+    this.#list.addEventListener('click', (e) => {
+      const target = e.target as Element | null;
+      const row = target?.closest?.('.line') as HTMLElement | null;
+      const line = row ? this.#lineOf.get(row) : undefined;
+      if (!line) return;
+      if (target?.closest('.save')) {
+        void this.#toggleSave(line);
+        return;
+      }
+      const w = target?.closest('.w') as HTMLElement | null;
+      if (w?.dataset.tok) {
+        this.#hideHover();
+        this.#deps.onWordClick(JSON.parse(w.dataset.tok) as Token, w, w.dataset.line ?? '', this.#contextOf(w));
+        return;
+      }
+      this.#userScrolled = false;
+      this.#deps.seek(line.start);
+    });
   }
 
   /**
@@ -667,7 +842,11 @@ export class Sidebar {
         if (this.#countFilter()) this.#setFilter('all');
         this.#closeFilters();
       }
-      this.#refreshTranscript();
+      // Counting stops with progress switched off and picks up where it left
+      // off when it comes back; the rows themselves have not changed.
+      this.#countAll();
+      for (const row of this.#dressed) this.#label(row);
+      this.render();
     }
     if (here && this.#restored && s.sidebarOpen !== this.#open) this.toggle(s.sidebarOpen);
     if (this.#mode === 'settings' && this.#settingsEl) syncSettingsControls(this.#settingsEl);
@@ -765,34 +944,78 @@ export class Sidebar {
 
   // ---- saved lines ----------------------------------------------------
 
-  /** Word status or the segmenter changed: counts and filters must follow. */
+  /**
+   * The words themselves may have changed: a better analyser, or the same one
+   * with its dictionary now loaded. Tokens are dropped and every line is
+   * counted again. Built rows keep what they show until they are rebuilt —
+   * the ones near the screen straight away, the rest as they come near.
+   *
+   * For a change of status alone, `refreshStatus` does the same job without
+   * analysing anything again.
+   */
   refreshAnalysis(): void {
-    this.#counts.clear();
-    this.#refreshTranscript();
+    if (this.#destroyed) return;
+    this.#tokens.reset(this.#deps.segmenter());
+    for (const row of this.#built.keys()) {
+      if (!this.#ioSeen || this.#nearBlocks.has(row.parentElement as HTMLElement)) this.#toBuild.add(row);
+    }
+    this.#pumpBuild();
+    for (const row of this.#built.keys()) this.#repaintStatus(row);
+    this.#recount();
   }
 
+  /**
+   * Word statuses changed — a mark, a new card, a fresh read of Anki — but not
+   * the words. Rows already built repaint their underlines where they stand
+   * and the counts are redone from tokens already in hand: nothing is rebuilt
+   * and nothing goes back to the analyser.
+   */
+  refreshStatus(): void {
+    if (this.#destroyed) return;
+    // A different analyser means different words, which this cannot cover.
+    if (this.#deps.segmenter() !== this.#tokens.segmenter) {
+      this.refreshAnalysis();
+      return;
+    }
+    for (const row of this.#built.keys()) this.#repaintStatus(row);
+    this.#recount();
+  }
+
+  /** The transcript changed: a new track, a line observed, or cleared. */
   #refreshTranscript(): void {
     if (this.#destroyed) return;
-    this.#analysisRevision++;
-    // A backward seek can insert a line before existing ones. Keep counts by
-    // line identity, and retain them only while that line is in the transcript.
-    const lines = new Set(this.#deps.transcript.lines);
+    const lines = this.#deps.transcript.lines;
+    const before = this.#lineSet;
+    this.#lineSet = new Set(lines);
+    this.#rowsStale = true;
+    this.#where = null;
+    // Lines only added keep the last totals standing until they are counted;
+    // any line gone means a different transcript, and different totals.
+    for (const line of before) {
+      if (!this.#lineSet.has(line)) {
+        this.#lastStats = null;
+        break;
+      }
+    }
+    // A backward seek can insert a line before existing ones. Counts are held
+    // by line identity, and kept only while that line is in the transcript.
     for (const line of this.#counts.keys()) {
-      if (!lines.has(line)) this.#counts.delete(line);
+      if (!this.#lineSet.has(line)) this.#counts.delete(line);
     }
     // Matches are line positions, and a line arriving earlier moves them.
     if (this.#query) this.#findHits();
-    this.#paintSummary();
+    this.#countAll();
     this.render();
-    // The player header still shows statistics when the panel is closed.
-    if (settings().sidebarStats) void this.#measure();
   }
 
   /**
    * The same aggregate the summary line shows, for the header bar. Null until
-   * enough lines are measured for a percentage to mean anything.
+   * every line is counted: a percentage over the lines counted so far would
+   * be a different number, shown as though it were this one.
    */
   get stats(): { known: number; unknown: number; i1: number } | null {
+    if (this.#countFailed) return null;
+    if (!this.#countsReady()) return this.#lastStats;
     let words = 0;
     let unknown = 0;
     let i1 = 0;
@@ -801,13 +1024,22 @@ export class Sidebar {
       unknown += c.unknown;
       if (c.unknown === 1) i1++;
     }
-    if (!words) return null;
-    return { known: Math.round(((words - unknown) / words) * 100), unknown, i1 };
+    this.#lastStats = words ? { known: Math.round(((words - unknown) / words) * 100), unknown, i1 } : null;
+    return this.#lastStats;
   }
 
+  #countsReady(): boolean {
+    const n = this.#lineSet.size;
+    return n > 0 && !this.#countFailed && this.#counts.size >= n;
+  }
+
+  /**
+   * A line's bookmark id. Site and video are read from the page once per
+   * transcript: asked per row, that read was a DOM query for every line.
+   */
   #idFor(start: number): string {
-    const c = this.#deps.context();
-    return bookmarks.idFor(c.site, c.video, start);
+    this.#where ??= this.#deps.context();
+    return bookmarks.idFor(this.#where.site, this.#where.video, start);
   }
 
   /** How many lines are saved on this video — the header shows this. */
@@ -822,7 +1054,9 @@ export class Sidebar {
     const next = new Set(mine.map((b) => b.id));
     const same = next.size === this.#saved.size && [...next].every((id) => this.#saved.has(id));
     this.#saved = next;
-    if (!same && this.#mode === 'transcript') this.render();
+    if (same) return;
+    for (const row of this.#dressed) this.#paintSave(row);
+    if (this.#filter === 'saved') this.render();
   }
 
   /** Save or unsave a line from outside the panel — the B key uses this. */
@@ -849,16 +1083,23 @@ export class Sidebar {
     else this.#saved.delete(this.#idFor(line.start));
     // Repaint just this row rather than the list: re-rendering while the
     // cursor is on a button makes the button jump out from under it.
-    const b = this.#row(this.#deps.transcript.lines.indexOf(line))?.querySelector('.save');
-    if (b) {
-      b.classList.toggle('on', on);
-      const title = on ? 'Saved — click to remove' : 'Save this line';
-      b.setAttribute('title', title);
-      b.setAttribute('aria-label', title);
-      b.setAttribute('aria-pressed', String(on));
-    }
+    const row = this.#rowOf.get(line);
+    if (row) this.#paintSave(row);
     this.#onSavedChange?.();
     if (this.#filter === 'saved') this.render();
+  }
+
+  /** A row's bookmark, drawn to match whether its line is saved. */
+  #paintSave(row: HTMLElement): void {
+    const b = row.querySelector('.save');
+    const line = this.#lineOf.get(row);
+    if (!b || !line) return;
+    const on = this.#saved.has(this.#idFor(line.start));
+    b.classList.toggle('on', on);
+    const title = on ? 'Saved — click to remove' : 'Save this line';
+    b.setAttribute('title', title);
+    b.setAttribute('aria-label', title);
+    b.setAttribute('aria-pressed', String(on));
   }
 
   #onSavedChange: (() => void) | null = null;
@@ -1077,6 +1318,7 @@ export class Sidebar {
     for (const el of [this.#note, this.#list] as HTMLElement[]) {
       el.style.display = showing ? 'none' : '';
     }
+    if (showing) this.#wait.hidden = true;
     const summary = this.#root.querySelector('.summary') as HTMLElement | null;
     const filters = this.#root.querySelector('.filters') as HTMLElement | null;
     if (summary) summary.style.display = showing ? 'none' : '';
@@ -1136,19 +1378,33 @@ export class Sidebar {
     this.#onLayout = fn;
   }
 
-  /** Follow playback, unless the viewer has scrolled away. */
+  /**
+   * Follow playback, unless the viewer has scrolled away.
+   *
+   * A step measures once, before it writes anything, then scrolls; the rows
+   * around the new line are built on the next frame. Building first and
+   * measuring after made each step lay out everything it had just built —
+   * steps of 60–130ms near the top of a long film, where rows were still
+   * arriving.
+   */
   setActive(index: number): void {
     if (index === this.#active) return;
     this.#active = index;
-    if (!this.#open) return;
+    if (!this.#open || this.#rowsStale) return;
 
-    this.#list.querySelector('.line.cur')?.classList.remove('cur');
-    const el = this.#row(index);
-    if (el) {
-      el.classList.add('cur');
-      if (this.#following()) this.#reveal(el);
-    }
+    const el = this.#shownRow(index);
+    if (el && this.#following()) this.#reveal(el);
+    this.#markCurrent();
     this.#paintNow();
+  }
+
+  /** Move the current-line mark, by reference rather than a search of every row. */
+  #markCurrent(): void {
+    const el = this.#row(this.#active);
+    if (el === this.#curRow) return;
+    this.#curRow?.classList.remove('cur');
+    el?.classList.add('cur');
+    this.#curRow = el;
   }
 
   /**
@@ -1163,6 +1419,7 @@ export class Sidebar {
     const list = this.#list;
     const away = (): void => {
       this.#userScrolled = true;
+      this.#pin = null;     // never pull the list back from under someone scrolling it
     };
     list.addEventListener('wheel', away, { passive: true });
     list.addEventListener('touchmove', away, { passive: true });
@@ -1216,10 +1473,16 @@ export class Sidebar {
     }
   }
 
-  /** Matches on rows actually shown: a filter can hide some, and those cannot be gone to. */
+  /**
+   * Matches on lines a filter shows: a hidden one cannot be gone to. Read from
+   * the lines, not the rows — most rows of a long film may not exist yet.
+   */
   #shownHits(): number[] {
-    const shown = new Set(Array.from(this.#list.children, (el) => Number((el as HTMLElement).dataset.i)));
-    return this.#hits.filter((i) => shown.has(i));
+    const lines = this.#deps.transcript.lines;
+    return this.#hits.filter((i) => {
+      const line = lines[i];
+      return line !== undefined && this.#isShown(line);
+    });
   }
 
   /** Go to the next (1) or previous (-1) match, wrapping at either end. */
@@ -1235,20 +1498,34 @@ export class Sidebar {
     const next = at < 0 ? (dir > 0 ? 0 : shown.length - 1) : (at + dir + shown.length) % shown.length;
     const i = shown[next]!;
     this.#hitLine = lines[i] ?? null;
-    this.#paintHits();
+    // Made here if its block is not yet, and measured before the marks are
+    // moved, so the measurement lays out only what the jump itself needed.
     const row = this.#row(i);
     if (row) this.#reveal(row);
+    this.#paintHits();
   }
 
-  /** Mark matches on the rows already built — a query is no reason to rebuild the list. */
+  /**
+   * Mark matches in place on the rows that exist, touching only those whose
+   * state changed. Rows made later are marked as they are made.
+   */
   #paintHits(): void {
-    const cur = this.#hitLine ? this.#deps.transcript.lines.indexOf(this.#hitLine) : -1;
-    for (const el of Array.from(this.#list.children)) {
-      const row = el as HTMLElement;
-      if (!row.classList.contains('line')) continue;
-      const i = Number(row.dataset.i);
-      row.classList.toggle('hit', this.#hitSet.has(i));
-      row.classList.toggle('hit-cur', i === cur);
+    if (this.#rowsStale) return;   // the next render marks them on rows in step
+    const lines = this.#deps.transcript.lines;
+    const want = new Set<HTMLElement>();
+    for (const i of this.#hits) {
+      const line = lines[i];
+      const row = line && this.#rowOf.get(line);
+      if (row) want.add(row);
+    }
+    for (const row of this.#hitRows) if (!want.has(row)) row.classList.remove('hit');
+    for (const row of want) if (!this.#hitRows.has(row)) row.classList.add('hit');
+    this.#hitRows = want;
+    const cur = this.#hitLine ? this.#rowOf.get(this.#hitLine) ?? null : null;
+    if (cur !== this.#hitCurRow) {
+      this.#hitCurRow?.classList.remove('hit-cur');
+      cur?.classList.add('hit-cur');
+      this.#hitCurRow = cur;
     }
     this.#paintCount();
   }
@@ -1265,28 +1542,99 @@ export class Sidebar {
       : at >= 0 ? `${at + 1} of ${shown.length}` : `${shown.length} found`;
   }
 
-  /** The card for a transcript line. Not `children[i]`: filters hide rows. */
+  /**
+   * The card for a transcript line — made now, with the rest of its block, if
+   * nothing has needed it before. Null while the blocks are out of step with
+   * the transcript.
+   */
   #row(index: number): HTMLElement | null {
-    if (index < 0) return null;
-    return this.#list.querySelector<HTMLElement>(`.line[data-i="${index}"]`);
+    if (index < 0 || this.#rowsStale) return null;
+    const line = this.#deps.transcript.lines[index];
+    if (!line) return null;
+    const made = this.#rowOf.get(line);
+    if (made) return made;
+    const block = this.#blockOf.get(line);
+    if (!block) return null;
+    this.#fill(block);
+    return this.#rowOf.get(line) ?? null;
+  }
+
+  /** The card for a line, if a filter is not hiding it. */
+  #shownRow(index: number): HTMLElement | null {
+    const line = this.#deps.transcript.lines[index];
+    return line && this.#isShown(line) ? this.#row(index) : null;
   }
 
   /**
    * Centre a card by scrolling the list and nothing else. `scrollIntoView`
    * scrolls every scrollable ancestor too, and the page under the player is
    * one of them.
+   *
+   * Measured before anything is written, so the measurement finds layout
+   * already done, and the rows around the card are built afterwards, on the
+   * next frame. A far jump lands among rows whose heights were estimates, so
+   * it is made at once rather than animated through thousands of lines, and
+   * held centred for a moment while real heights replace the estimates. Any
+   * other move lets go of a jump still being held.
    */
   #reveal(el: HTMLElement, behavior?: ScrollBehavior): void {
     const list = this.#list;
+    const target = this.#centreFor(el);
+    const far = Math.abs(target - list.scrollTop) > list.clientHeight * 1.5;
+    const instant = far || behavior === 'instant';
+    list.scrollTo({ top: target, behavior: instant ? 'instant' : behavior });
+    if (instant) {
+      this.#pin = el;
+      this.#pinUntil = now() + PIN_MS;
+      this.#requestHold(HOLD_FRAMES);
+    } else {
+      this.#pin = null;
+    }
+    this.#queueAround(el);
+  }
+
+  /** The scroll position that centres this card. */
+  #centreFor(el: HTMLElement): number {
+    const list = this.#list;
     const top = el.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop;
-    const target = top - (list.clientHeight - el.offsetHeight) / 2;
-    list.scrollTo({ top: Math.max(0, target), behavior });
+    return Math.max(0, top - (list.clientHeight - el.offsetHeight) / 2);
+  }
+
+  /** Put a jumped-to card back in the centre if the rows around it moved it. */
+  #holdPin(): void {
+    const el = this.#pin;
+    if (!el) return;
+    if (!el.isConnected || now() > this.#pinUntil) {
+      this.#pin = null;
+      return;
+    }
+    const target = this.#centreFor(el);
+    if (Math.abs(target - this.#list.scrollTop) > 2) this.#list.scrollTo({ top: target, behavior: 'instant' });
+  }
+
+  /**
+   * Check a held jump on a coming frame: never straight after a write, and
+   * never more than once a frame however many rows were built meanwhile.
+   * Measuring after every row built was a layout per row.
+   */
+  #requestHold(frames = 1): void {
+    if (!this.#pin || this.#destroyed) return;
+    this.#holdFrames = Math.max(this.#holdFrames, frames);
+    if (this.#holdQueued) return;
+    this.#holdQueued = true;
+    nextFrame(() => {
+      this.#holdQueued = false;
+      if (this.#destroyed) return;
+      this.#holdPin();
+      this.#holdFrames--;
+      if (this.#holdFrames > 0) this.#requestHold(this.#holdFrames);
+    });
   }
 
   /** Back to the current line, and following again. */
   #resume(): void {
     this.#userScrolled = false;
-    const el = this.#row(this.#active);
+    const el = this.#shownRow(this.#active);
     if (el) this.#reveal(el);
     this.#paintNow();
   }
@@ -1294,9 +1642,13 @@ export class Sidebar {
   /**
    * Offer the way back only while the current line is out of sight and
    * nothing is bringing it back — while following, it is merely on its way.
+   * A current line whose row is not made yet is placed by its block.
    */
   #paintNow(): void {
-    const el = this.#open && this.#mode === 'transcript' ? this.#row(this.#active) : null;
+    const line = this.#deps.transcript.lines[this.#active];
+    const el = this.#open && this.#mode === 'transcript' && !this.#rowsStale && line && this.#isShown(line)
+      ? this.#rowOf.get(line) ?? this.#blockOf.get(line)?.el
+      : undefined;
     if (!el || this.#following()) {
       this.#now.classList.remove('on');
       return;
@@ -1322,7 +1674,7 @@ export class Sidebar {
       ? 'Building as you watch — this player only exposes the current line.'
       : '';
 
-    this.#list.replaceChildren();
+    this.#syncRows();
 
     if (!transcript.lines.length) {
       const e = document.createElement('div');
@@ -1330,7 +1682,8 @@ export class Sidebar {
       e.textContent = partial
         ? 'Nothing yet. Lines appear here as they are spoken.'
         : 'No transcript loaded.';
-      this.#list.appendChild(e);
+      this.#list.replaceChildren(e);
+      this.#wait.hidden = true;
       this.#paintCount();
       return;
     }
@@ -1341,140 +1694,459 @@ export class Sidebar {
     if (!stats && this.#countFilter()) this.#setFilter('all');
     this.#fab.style.display = stats ? '' : 'none';
     this.#filterMenu.style.display = stats ? '' : 'none';
-    // One context for the whole list. It reads the page, and asking once per
-    // row was a DOM query per line of the transcript.
-    const here = this.#deps.context();
-    const hitAt = this.#hitLine ? transcript.lines.indexOf(this.#hitLine) : -1;
-    transcript.lines.forEach((line, i) => {
-      const c = stats ? this.#counts.get(line) : undefined;
-      if (this.#filter === 'unknown' && (c?.unknown ?? 0) === 0) return;
-      if (this.#filter === 'i1' && c?.unknown !== 1) return;
-      const savedId = bookmarks.idFor(here.site, here.video, line.start);
-      if (this.#filter === 'saved' && !this.#saved.has(savedId)) return;
+    this.#applyFilter();
 
-      const row = document.createElement('div');
-      row.className = 'line' + (i === this.#active ? ' cur' : '') +
-        (this.#hitSet.has(i) ? ' hit' : '') + (i === hitAt ? ' hit-cur' : '');
-      row.dataset.i = String(i);
-      row.addEventListener('click', (e) => {
-        if ((e.target as HTMLElement).closest('.w')) return;   // word clicks are not seeks
-        this.#userScrolled = false;
-        this.#deps.seek(line.start);
-      });
-
-      const tx = document.createElement('span');
-      tx.className = 'tx';
-      this.#fillLine(tx, line.text);
-      row.appendChild(tx);
-
-      if (line.secondary) {
-        const sec = document.createElement('span');
-        sec.className = 'sec';
-        sec.textContent = line.secondary;
-        row.appendChild(sec);
-      }
-
-      const meta = document.createElement('div');
-      meta.className = 'meta';
-      const time = document.createElement('span');
-      time.textContent = `${stamp(line.start)} – ${stamp(line.end)}`;
-      const x = document.createElement('span');
-      x.className = 'x' + (c ? (c.unknown === 1 ? ' one' : c.unknown ? ' hot' : '') : '');
-      x.textContent = c?.unknown ? `${c.unknown} new` : '';
-
-      const save = document.createElement('button');
-      save.className = 'save' + (this.#saved.has(savedId) ? ' on' : '');
-      save.replaceChildren(icon('bookmark', 15));
-      save.title = this.#saved.has(savedId) ? 'Saved — click to remove' : 'Save this line';
-      save.setAttribute('aria-label', save.title);
-      save.setAttribute('aria-pressed', String(this.#saved.has(savedId)));
-      save.addEventListener('click', (e) => {
-        e.stopPropagation();     // saving a line is not a request to seek to it
-        void this.#toggleSave(line);
-      });
-
-      meta.append(time, x, save);
-      row.appendChild(meta);
-
-      this.#list.appendChild(row);
-    });
-
-    if (settings().sidebarStats) void this.#measure();
-
-    // A rebuilt list has lost its place. Put it back without animating there:
-    // this is a repaint, not playback moving on.
-    const cur = this.#row(this.#active);
-    if (cur && this.#following()) this.#reveal(cur, 'instant');
+    // The list may have lost its place — it was hidden, or has only just
+    // been laid out. Put it back without animating: this is a repaint, not
+    // playback moving on. Measured before the rows around it are built.
+    const cur = this.#following() ? this.#shownRow(this.#active) : null;
+    if (cur) this.#reveal(cur, 'instant');
+    this.#markCurrent();
+    this.#paintHits();
+    this.#prime();
     this.#paintNow();
     this.#paintCount();
   }
 
   /**
-   * Count after rendering. Only one batch per revision can publish results;
-   * changing status or transcript invalidates any measurements still in flight.
+   * Put the blocks in step with the transcript.
+   *
+   * A new transcript gets every block at once — a few hundred empty, sized
+   * placeholders — and no rows at all; rows are made as blocks are needed. A
+   * line observed while playing joins the block of the line before it, and
+   * gets a row at once only if that block already has its rows.
    */
-  async #measure(): Promise<void> {
-    const revision = this.#analysisRevision;
-    if (this.#destroyed || this.#measuringRevision === revision) return;
-    const { transcript } = this.#deps;
-    if (this.#counts.size >= transcript.lines.length) {
+  #syncRows(): void {
+    if (!this.#rowsStale) return;
+    this.#rowsStale = false;
+    const lines = this.#deps.transcript.lines;
+    this.#indexOf = new Map();
+    lines.forEach((line, i) => this.#indexOf.set(line, i));
+    let kept = 0;
+    for (const line of lines) if (this.#blockOf.has(line)) kept++;
+    // A new track, a cleared one, or lines gone from the middle: start afresh.
+    if (!kept || kept < this.#blockOf.size) {
+      this.#dropRows();
+      this.#makeBlocks(lines);
+    } else if (kept < lines.length) {
+      this.#insertLines(lines);
+    }
+    // Rows already made take their new numbers; the rest get theirs when made.
+    for (const [line, row] of this.#rowOf) {
+      const n = String(this.#indexOf.get(line) ?? -1);
+      if (row.dataset.i !== n) row.dataset.i = n;
+    }
+    this.#scheduleFill();
+  }
+
+  /** A whole transcript's blocks: empty, sized, and inserted at once. */
+  #makeBlocks(lines: readonly Line[]): void {
+    const width = this.#list.clientWidth || this.#width;
+    const frag = document.createDocumentFragment();
+    for (let at = 0; at < lines.length; at += BLOCK) {
+      frag.appendChild(this.#newBlock(lines.slice(at, at + BLOCK), width).el);
+    }
+    this.#list.replaceChildren(frag);
+  }
+
+  /** A block for these lines, at the end of the list, empty until filled. */
+  #newBlock(lines: Line[], width: number): Block {
+    const el = document.createElement('div');
+    el.className = 'blk';
+    const block: Block = { el, lines, filled: false, height: 0 };
+    for (const line of lines) {
+      const h = estimateRowHeight(line, width);
+      this.#height.set(line, h);
+      block.height += h;
+      this.#blockOf.set(line, block);
+    }
+    this.#blocks.push(block);
+    this.#blockByEl.set(el, block);
+    this.#sizeBlock(block);
+    this.#io?.observe(el);
+    return block;
+  }
+
+  /**
+   * Lines observed while playing, each put straight after the line before it.
+   * A block may grow past its usual size; nothing is reshuffled to stop it.
+   */
+  #insertLines(lines: readonly Line[]): void {
+    const width = this.#list.clientWidth || this.#width;
+    lines.forEach((line, i) => {
+      if (this.#blockOf.has(line)) return;
+      const prev = i > 0 ? lines[i - 1] : undefined;
+      let block = (prev && this.#blockOf.get(prev)) || this.#blocks[0]!;
+      const last = block === this.#blocks[this.#blocks.length - 1] &&
+        prev !== undefined && prev === block.lines[block.lines.length - 1];
+      if (last && block.lines.length >= BLOCK) {
+        block = this.#newBlock([], width);
+        this.#list.appendChild(block.el);
+      }
+      const after = prev ? block.lines.indexOf(prev) : -1;
+      block.lines.splice(after + 1, 0, line);
+      this.#blockOf.set(line, block);
+      const h = estimateRowHeight(line, width);
+      this.#height.set(line, h);
+      block.height += h;
+      if (block.filled) {
+        const row = this.#shell(line);
+        const next = block.lines[after + 2];
+        block.el.insertBefore(row, (next && this.#rowOf.get(next)) ?? null);
+        if (this.#nearBlocks.has(block.el)) this.#toBuild.add(row);
+      }
+      this.#sizeBlock(block);
+    });
+    this.#pumpBuild();
+  }
+
+  /**
+   * Make a block's rows: plain rows for its lines, brought in line with what
+   * the list shows — the filter, the current line, the matches — and queued
+   * for their words if the block is near the screen.
+   */
+  #fill(block: Block): void {
+    // Blocks out of step with the transcript wait for the next sync, which
+    // may drop them and which starts the background filling again anyway.
+    if (block.filled || this.#rowsStale) return;
+    block.filled = true;
+    const lines = this.#deps.transcript.lines;
+    const current = lines[this.#active];
+    const frag = document.createDocumentFragment();
+    for (const line of block.lines) {
+      const row = this.#shell(line);
+      if (!this.#isShown(line)) row.classList.add('hide');
+      if (this.#hitSet.has(this.#indexOf.get(line) ?? -1)) {
+        row.classList.add('hit');
+        this.#hitRows.add(row);
+      }
+      if (line === this.#hitLine) {
+        row.classList.add('hit-cur');
+        this.#hitCurRow = row;
+      }
+      if (line === current) {
+        this.#curRow?.classList.remove('cur');
+        row.classList.add('cur');
+        this.#curRow = row;
+      }
+      frag.appendChild(row);
+    }
+    block.el.appendChild(frag);
+    this.#sizeBlock(block);
+    if (this.#nearBlocks.has(block.el)) {
+      for (const line of block.lines) {
+        const row = this.#rowOf.get(line)!;
+        if (!row.classList.contains('hide')) this.#toBuild.add(row);
+      }
+      this.#scheduleBuild();
+    }
+  }
+
+  /**
+   * Make the blocks nothing has needed yet, a slice at a time while the page
+   * is idle, so every row exists soon after opening without the opening
+   * paying for all of them at once. Blocks off screen are skipped by the
+   * browser, so filling one costs its rows' creation and nothing more.
+   */
+  #scheduleFill(): void {
+    if (this.#cancelFill || this.#destroyed || this.#fillAt >= this.#blocks.length) return;
+    this.#cancelFill = whenIdle(() => {
+      this.#cancelFill = null;
+      this.#fillSome();
+    });
+  }
+
+  #fillSome(): void {
+    if (this.#destroyed || this.#rowsStale) return;
+    const started = now();
+    while (this.#fillAt < this.#blocks.length && now() - started < SLICE_MS) {
+      this.#fill(this.#blocks[this.#fillAt++]!);
+    }
+    this.#scheduleFill();
+  }
+
+  /** One line's row as it starts out: readable, and nothing more yet. */
+  #shell(line: Line): HTMLElement {
+    const row = document.createElement('div');
+    row.className = 'line';
+    row.dataset.i = String(this.#indexOf.get(line) ?? -1);
+    const tx = document.createElement('span');
+    tx.className = 'tx';
+    tx.textContent = line.text;
+    row.appendChild(tx);
+    if (line.secondary) {
+      const sec = document.createElement('span');
+      sec.className = 'sec';
+      sec.textContent = line.secondary;
+      row.appendChild(sec);
+    }
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.textContent = `${stamp(line.start)} – ${stamp(line.end)}`;
+    row.appendChild(meta);
+    this.#rowOf.set(line, row);
+    this.#lineOf.set(row, line);
+    return row;
+  }
+
+  /**
+   * Size a block for the lines it shows, and hide it if it shows none.
+   *
+   * An empty block holds its place with a fixed height, whether or not the
+   * browser has drawn it. A filled one is sized only for when it is skipped:
+   * unfiltered, `auto` lets it keep the height it was last drawn at; under a
+   * filter that remembered height would belong to rows now hidden, so the
+   * estimate for its visible rows stands alone.
+   */
+  #sizeBlock(block: Block): void {
+    const all = this.#filter === 'all';
+    let shown = block.lines.length;
+    let height = block.height;
+    if (!all) {
+      shown = 0;
+      height = 0;
+      for (const line of block.lines) {
+        if (!this.#isShown(line)) continue;
+        shown++;
+        height += this.#height.get(line) ?? 0;
+      }
+    }
+    block.el.classList.toggle('hide', shown === 0);
+    const px = `${Math.max(1, Math.round(height))}px`;
+    const size = block.filled ? `${all ? 'auto ' : ''}${px}|` : `${px}|${px}`;
+    // Written only when it changes: a render re-applies the filter, and five
+    // hundred identical style writes would each still invalidate a block.
+    if (this.#sized.get(block.el) === size) return;
+    this.#sized.set(block.el, size);
+    const [intrinsic, fixed] = size.split('|') as [string, string];
+    block.el.style.setProperty('contain-intrinsic-size', intrinsic);
+    if (fixed) block.el.style.setProperty('height', fixed);
+    else block.el.style.removeProperty('height');
+  }
+
+  #dropRows(): void {
+    this.#io?.disconnect();
+    this.#cancelFill?.();
+    this.#cancelFill = null;
+    this.#blocks = [];
+    this.#blockOf.clear();
+    this.#height.clear();
+    this.#fillAt = 0;
+    this.#rowOf.clear();
+    this.#built.clear();
+    this.#dressed.clear();
+    this.#toBuild.clear();
+    this.#nearBlocks.clear();
+    this.#hitRows.clear();
+    this.#hitCurRow = null;
+    this.#curRow = null;
+    this.#pin = null;
+    this.#list.replaceChildren();
+  }
+
+  /** A count filter with no counts yet to answer from. */
+  #countWaiting(): boolean {
+    return this.#countFilter() && !this.#countsReady() && !this.#lastStats;
+  }
+
+  /** Whether the filter shows this line — answered from the line, row or no row. */
+  #isShown(line: Line): boolean {
+    const f = this.#filter;
+    if (f === 'all') return true;
+    if (f === 'saved') return this.#saved.has(this.#idFor(line.start));
+    if (this.#countWaiting()) return false;
+    const c = this.#counts.get(line);
+    return f === 'unknown' ? (c?.unknown ?? 0) > 0 : c?.unknown === 1;
+  }
+
+  /**
+   * Show the lines the filter wants, by hiding the rest in place.
+   *
+   * A count filter needs every line counted; until then it says how far the
+   * count has got and shows nothing, rather than a partial list that would
+   * grow under the reader. Rows that exist are hidden or shown; every block
+   * is sized for what it shows, and hidden if that is nothing.
+   */
+  #applyFilter(): void {
+    const waiting = this.#countWaiting();
+    this.#wait.hidden = !waiting;
+    if (waiting) this.#wait.textContent = this.#progressText();
+    for (const block of this.#blocks) {
+      if (block.filled) {
+        for (const line of block.lines) {
+          const row = this.#rowOf.get(line);
+          if (!row) continue;
+          const show = this.#isShown(line);
+          if (row.classList.contains('hide') === show) row.classList.toggle('hide', !show);
+        }
+      }
+      this.#sizeBlock(block);
+    }
+  }
+
+  // ---- counting ----------------------------------------------------------
+
+  /**
+   * Statuses changed, so every count is out of date. The numbers on screen are
+   * blanked rather than left standing, and counted again at once from tokens
+   * already in hand — which for a status change is all of them, so the new
+   * numbers usually replace the old before anything is painted.
+   */
+  #recount(): void {
+    this.#statusRev++;
+    this.#counts.clear();
+    this.#counting.clear();
+    this.#countFailed = false;
+    this.#lastStats = null;
+    for (const row of this.#dressed) this.#label(row);
+    this.#countAll();
+    // Not finished in one go: take the old totals down now rather than at the
+    // next progress repaint, and stop a count filter showing old answers.
+    if (!this.#countsReady()) {
+      this.#paintSummary();
+      if (this.#countFilter() && this.#open && this.#mode === 'transcript' && !this.#rowsStale) this.#applyFilter();
+    }
+  }
+
+  /**
+   * Count every line not yet counted for the current statuses, in slices.
+   *
+   * Each line is analysed once for the analysis in force, the same request
+   * that builds its row if both want it at once, and no more than a handful
+   * are waiting on the analyser at any moment — so the words on screen are
+   * never queued behind a whole film's worth of counting.
+   */
+  #countAll(): void {
+    clearTimeout(this.#countTimer);
+    this.#countTimer = 0;
+    if (this.#destroyed) return;
+    if (!settings().sidebarStats) {
+      this.#countQueue = [];
+      this.#countAt = 0;
       this.#paintSummary();
       return;
     }
+    this.#countQueue = this.#deps.transcript.lines.filter((line) => !this.#counts.has(line));
+    this.#countAt = 0;
+    this.#pumpCounts();
+  }
 
-    this.#measuringRevision = revision;
-    try {
-      const measured = await Promise.all(
-        transcript.lines.filter((line) => !this.#counts.has(line)).map(async (line) =>
-          [line, await this.#deps.measure(line.text)] as const,
-        ),
-      );
-      if (this.#destroyed || revision !== this.#analysisRevision) return;
-      for (const [line, counts] of measured) this.#counts.set(line, counts);
-
-      for (const el of Array.from(this.#list.children)) {
-        const line = transcript.lines[Number((el as HTMLElement).dataset.i)];
-        const c = line && this.#counts.get(line);
-        const x = el.querySelector('.x');
-        if (!c || !x) continue;
-        x.textContent = c.unknown ? `${c.unknown} new` : '';
-        x.className = 'x' + (c.unknown === 1 ? ' one' : c.unknown ? ' hot' : '');
-      }
-      this.#paintSummary();
-      // Counts can add or remove rows from the selected filter, including
-      // when the filter was selected before the first measurements finished.
-      if (this.#filter === 'unknown' || this.#filter === 'i1') this.render();
-    } catch (e) {
-      if (!this.#destroyed && revision === this.#analysisRevision) {
-        console.warn('[libregaku] could not count transcript words:', e);
-      }
-    } finally {
-      if (this.#measuringRevision === revision) this.#measuringRevision = null;
+  #pumpCounts(): void {
+    clearTimeout(this.#countTimer);
+    this.#countTimer = 0;
+    if (this.#destroyed) return;
+    const rev = this.#statusRev;
+    const started = now();
+    while (this.#countAt < this.#countQueue.length && this.#counting.size < COUNT_IN_FLIGHT) {
+      if (now() - started > SLICE_MS) break;
+      const line = this.#countQueue[this.#countAt++]!;
+      if (this.#counts.has(line) || this.#counting.has(line) || !this.#lineSet.has(line)) continue;
+      this.#countOne(line, rev);
     }
+    const more = this.#countAt < this.#countQueue.length;
+    // Yield before the next slice, unless it is the analyser that is holding things up.
+    if (more && this.#counting.size < COUNT_IN_FLIGHT) {
+      this.#countTimer = window.setTimeout(() => this.#pumpCounts(), 0);
+    }
+    this.#countProgress(!more && !this.#counting.size);
+  }
+
+  #countOne(line: Line, rev: number): void {
+    const seg = this.#analyser();
+    const tokens = seg ? this.#tokens.get(line.text) : null;
+    if (Array.isArray(tokens)) {
+      this.#record(line, countWords(tokens, this.#deps.statusOf));
+      return;
+    }
+    this.#counting.add(line);
+    const done = (count: Count | null): void => {
+      // A newer revision has queued this line again; its own request covers it.
+      if (this.#destroyed || rev !== this.#statusRev) return;
+      this.#counting.delete(line);
+      if (count) this.#record(line, count);
+      else this.#countFailed = true;
+      this.#pumpCounts();
+    };
+    // Without an analyser — or when it fails on this line — the player
+    // counts, the way it always did.
+    const measure = (): void => {
+      this.#deps.measure(line.text).then(done, () => done(null));
+    };
+    if (tokens) tokens.then((t) => done(countWords(t, this.#deps.statusOf)), measure);
+    else measure();
+  }
+
+  #record(line: Line, count: Count): void {
+    this.#counts.set(line, count);
+    const row = this.#rowOf.get(line);
+    if (row && this.#dressed.has(row)) this.#label(row);
+  }
+
+  /**
+   * Say how counting is going: the real numbers once every line is counted,
+   * a neutral "counting" until then — never a total over some of the lines.
+   * Progress repaints a few times a second at most; the finish, at once.
+   */
+  #countProgress(finished: boolean): void {
+    if (!finished) {
+      const t = now();
+      if (t - this.#progressAt < PROGRESS_MS) return;
+      this.#progressAt = t;
+    }
+    this.#paintSummary();
+    if (this.#countFilter() && this.#open && this.#mode === 'transcript' && !this.#rowsStale) this.#applyFilter();
+  }
+
+  #progressText(): string {
+    const total = this.#lineSet.size;
+    if (this.#countFailed) return 'Some lines could not be counted, so there are no totals.';
+    const pct = total ? Math.floor((Math.min(this.#counts.size, total) / total) * 100) : 0;
+    return `Counting new words… ${pct}%`;
+  }
+
+  /** A row's "2 new", or nothing while its line is uncounted. */
+  #label(row: HTMLElement): void {
+    const x = row.querySelector<HTMLElement>('.x');
+    const line = this.#lineOf.get(row);
+    if (!x || !line) return;
+    const c = settings().sidebarStats ? this.#counts.get(line) : undefined;
+    x.textContent = c?.unknown ? `${c.unknown} new` : '';
+    x.className = 'x' + (c ? (c.unknown === 1 ? ' one' : c.unknown ? ' hot' : '') : '');
+  }
+
+  /**
+   * The analyser the tokens belong to. The player swaps it for a better one
+   * as it loads; if that happened without anyone saying so, the tokens in
+   * hand are for the old one and are dropped here.
+   */
+  #analyser(): Segmenter | null {
+    const seg = this.#deps.segmenter();
+    if (seg !== this.#tokens.segmenter) this.#tokens.reset(seg);
+    return seg;
   }
 
   #paintSummary(): void {
     this.#onSavedChange?.();   // the header must also clear stale statistics
     const el = this.#root.querySelector('.summary');
     if (!el) return;
-    if (!settings().sidebarStats) {
+    if (!settings().sidebarStats || !this.#lineSet.size) {
       el.textContent = '';
       return;
     }
-
-    let words = 0;
-    let unknown = 0;
-    let i1 = 0;
-    for (const c of this.#counts.values()) {
-      words += c.words;
-      unknown += c.unknown;
-      if (c.unknown === 1) i1++;
-    }
-    if (!words) {
-      el.textContent = '';
+    const stats = this.stats;
+    if (!stats) {
+      // Counting, or a line could not be counted: say so, and show no number.
+      if (this.#countsReady()) {
+        el.textContent = '';   // counted, and there are no words to count
+        return;
+      }
+      const pending = document.createElement('span');
+      pending.className = 'pending';
+      pending.textContent = this.#progressText();
+      el.replaceChildren(pending);
       return;
     }
-    const known = Math.round(((words - unknown) / words) * 100);
+    const { known, unknown, i1 } = stats;
     el.replaceChildren();
     for (const [n, label] of [[`${known}%`, 'known'], [unknown, 'new'], [i1, 'ready to learn']] as const) {
       const span = document.createElement('span');
@@ -1485,68 +2157,236 @@ export class Sidebar {
     }
   }
 
-  /** Tokenize lazily — a long transcript should not analyse every line up front. */
-  #fillLine(into: HTMLElement, text: string): void {
-    const seg = this.#deps.segmenter();
-    if (!seg) {
-      into.textContent = text;
+  // ---- building rows near the screen ------------------------------------
+
+  /**
+   * Build the rows the list opens on, straight away.
+   *
+   * Visibility is reported a frame later, and a list that opened on plain
+   * text for a frame would flicker. So the rows around the line being spoken
+   * — or the top, when nothing is — are made and built now. Where visibility
+   * is never reported at all, this is also what keeps the rows in view built.
+   */
+  #prime(): void {
+    const lines = this.#deps.transcript.lines;
+    const anchor = this.#active >= 0 && this.#following() ? this.#active : 0;
+    const from = Math.max(0, anchor - PRIME / 2);
+    for (let i = from; i < Math.min(lines.length, from + PRIME); i++) {
+      if (!this.#isShown(lines[i]!)) continue;
+      const row = this.#row(i);
+      if (row) this.#build(row);
+    }
+  }
+
+  /**
+   * Queue the rows either side of one the list has just moved to. They are
+   * built on the next frame, after the move — not before it, where building
+   * them would make the move's own measurement lay them all out.
+   */
+  #queueAround(el: HTMLElement): void {
+    const i = Number(el.dataset.i);
+    if (!Number.isInteger(i)) return;
+    const lines = this.#deps.transcript.lines;
+    for (let j = Math.max(0, i - AROUND); j <= Math.min(lines.length - 1, i + AROUND); j++) {
+      if (!this.#isShown(lines[j]!)) continue;
+      const row = this.#row(j);
+      if (row && !this.#isBuilt(row)) this.#toBuild.add(row);
+    }
+    this.#scheduleBuild();
+  }
+
+  /** Blocks came within a screen of the visible list, or left it. */
+  #onNear(entries: IntersectionObserverEntry[]): void {
+    this.#ioSeen = true;
+    for (const e of entries) {
+      const block = this.#blockByEl.get(e.target as HTMLElement);
+      if (!block) continue;
+      if (e.isIntersecting) {
+        this.#nearBlocks.add(block.el);
+        this.#fill(block);
+        for (const line of block.lines) {
+          const row = this.#rowOf.get(line);
+          if (row && !row.classList.contains('hide') && !this.#isBuilt(row)) this.#toBuild.add(row);
+        }
+      } else {
+        // Passed by on the way somewhere else: not worth building after all.
+        this.#nearBlocks.delete(block.el);
+        for (const line of block.lines) {
+          const row = this.#rowOf.get(line);
+          if (row) this.#toBuild.delete(row);
+        }
+      }
+    }
+    this.#pumpBuild();
+  }
+
+  /** Build what is waiting on the next frame, unless that is already booked. */
+  #scheduleBuild(): void {
+    if (this.#cancelBuild || !this.#toBuild.size || this.#destroyed) return;
+    this.#cancelBuild = nextFrame(() => {
+      this.#cancelBuild = null;
+      this.#pumpBuild();
+    });
+  }
+
+  /**
+   * Build waiting rows for a slice of a frame, and carry on next frame. A
+   * scrollbar dragged through the whole film queues and unqueues blocks as
+   * it passes; only what is still near when its turn comes is built. Nothing
+   * here measures: a held jump is checked on the next frame instead.
+   */
+  #pumpBuild(): void {
+    this.#cancelBuild?.();
+    this.#cancelBuild = null;
+    if (this.#destroyed) return;
+    const started = now();
+    for (const row of this.#toBuild) {
+      if (now() - started > SLICE_MS) break;
+      this.#toBuild.delete(row);
+      if (row.isConnected) this.#build(row);
+    }
+    this.#scheduleBuild();
+    this.#requestHold();
+  }
+
+  #isBuilt(row: HTMLElement): boolean {
+    return this.#built.get(row) === this.#tokens.revision;
+  }
+
+  /**
+   * Give a row its words, readings and buttons, for the analysis in force.
+   *
+   * Tokens already in hand paint at once. Otherwise the row keeps its plain
+   * text until they arrive — from the one request for that line, which the
+   * counter may well have made already.
+   */
+  #build(row: HTMLElement): void {
+    const line = this.#lineOf.get(row);
+    if (!line) return;
+    this.#dress(row);
+    const seg = this.#analyser();
+    const rev = this.#tokens.revision;
+    const state = this.#built.get(row);
+    if (state === rev || state === -1 - rev) return;
+    const tokens = seg ? this.#tokens.get(line.text) : null;
+    if (!tokens) {
+      this.#built.set(row, rev);   // no analyser: plain text is the finished row
       return;
     }
-    const result = seg.segment(text);
-    const paint = (tokens: Token[]): void => {
-      into.replaceChildren();
-      // Whether any reading exists, and whether one sits on a word the
-      // "new words only" setting would show it for — the second decides
-      // whether this line needs the taller leading in that mode.
-      let ruby = false;
-      let fresh = false;
-      for (const tok of tokens) {
-        if (tok.punct) {
-          into.appendChild(document.createTextNode(tok.surface));
-          continue;
-        }
-
-        const w = document.createElement('span');
-        w.className = 'w';
-        w.dataset.tok = JSON.stringify(tok);
-        w.dataset.line = text;
-        const status = this.#deps.statusOf(tok);
-        w.dataset.s = status;
-
-        // Readings and status belong here too: a transcript that renders the
-        // same words differently from the overlay is two tools, not one.
-        const segs = furigana(tok.surface, tok.reading);
-        const annotated = segs.some((x) => x.ruby);
-        if (annotated) {
-          ruby = true;
-          if (status === 'unknown' || status === 'learning') fresh = true;
-        }
-        if (!annotated) {
-          w.textContent = tok.surface;
-        } else {
-          for (const seg of segs) {
-            if (!seg.ruby) {
-              w.appendChild(document.createTextNode(seg.text));
-              continue;
-            }
-            const ruby = document.createElement('ruby');
-            ruby.appendChild(document.createTextNode(seg.text));
-            const rt = document.createElement('rt');
-            rt.textContent = seg.ruby;
-            ruby.appendChild(rt);
-            w.appendChild(ruby);
-          }
-        }
-        into.appendChild(w);
-      }
-      into.classList.toggle('has-ruby', ruby);
-      into.classList.toggle('has-new-ruby', fresh);
-    };
-    if (Array.isArray(result)) paint(result);
-    else {
-      into.textContent = text;
-      void result.then(paint).catch(() => {});
+    if (Array.isArray(tokens)) {
+      this.#paintWords(row, line, tokens);
+      this.#built.set(row, rev);
+      return;
     }
+    this.#built.set(row, -1 - rev);
+    // Answered for an older analysis, or for a row a new transcript replaced:
+    // nothing to paint, and nothing to keep track of.
+    const current = (): boolean =>
+      !this.#destroyed && this.#tokens.revision === rev && row.isConnected && this.#built.has(row);
+    tokens.then(
+      (t) => {
+        if (!current()) return;
+        this.#paintWords(row, line, t);
+        this.#built.set(row, rev);
+        this.#requestHold();
+      },
+      () => {
+        // The analyser failed on this line; it stays readable as plain text.
+        if (current()) this.#built.set(row, rev);
+      },
+    );
+  }
+
+  /**
+   * The parts of a row that do not depend on its words — its count and its
+   * bookmark — added the first time it is built and kept from then on.
+   */
+  #dress(row: HTMLElement): void {
+    if (this.#dressed.has(row)) return;
+    const meta = row.querySelector('.meta');
+    if (!meta) return;
+    const x = document.createElement('span');
+    x.className = 'x';
+    const save = document.createElement('button');
+    save.className = 'save';
+    save.replaceChildren(icon('bookmark', 15));
+    meta.append(x, save);
+    this.#dressed.add(row);
+    this.#label(row);
+    this.#paintSave(row);
+  }
+
+  /** A line's words, each carrying its status and reading, in place of its plain text. */
+  #paintWords(row: HTMLElement, line: Line, tokens: readonly Token[]): void {
+    const into = row.querySelector<HTMLElement>('.tx');
+    if (!into) return;
+    const text = line.text;
+    const frag = document.createDocumentFragment();
+    // Whether any reading exists, and whether one sits on a word the "new
+    // words only" setting would show it for — the second decides whether
+    // this line needs the taller leading in that mode.
+    let ruby = false;
+    let fresh = false;
+    for (const tok of tokens) {
+      if (tok.punct) {
+        frag.appendChild(document.createTextNode(tok.surface));
+        continue;
+      }
+
+      const w = document.createElement('span');
+      w.className = 'w';
+      w.dataset.tok = JSON.stringify(tok);
+      w.dataset.line = text;
+      const status = this.#deps.statusOf(tok);
+      w.dataset.s = status;
+      this.#wordTok.set(w, tok);
+
+      // Readings and status belong here too: a transcript that renders the
+      // same words differently from the overlay is two tools, not one.
+      const segs = furigana(tok.surface, tok.reading);
+      const annotated = segs.some((x) => x.ruby);
+      if (annotated) {
+        this.#annotated.add(w);
+        ruby = true;
+        if (status === 'unknown' || status === 'learning') fresh = true;
+        for (const seg of segs) {
+          if (!seg.ruby) {
+            w.appendChild(document.createTextNode(seg.text));
+            continue;
+          }
+          const r = document.createElement('ruby');
+          r.appendChild(document.createTextNode(seg.text));
+          const rt = document.createElement('rt');
+          rt.textContent = seg.ruby;
+          r.appendChild(rt);
+          w.appendChild(r);
+        }
+      } else {
+        w.textContent = tok.surface;
+      }
+      frag.appendChild(w);
+    }
+    into.replaceChildren(frag);
+    into.classList.toggle('has-ruby', ruby);
+    into.classList.toggle('has-new-ruby', fresh);
+  }
+
+  /**
+   * A status change, applied to a built row where it stands: each word's
+   * underline, and whether the line still needs room for a reading.
+   */
+  #repaintStatus(row: HTMLElement): void {
+    const into = row.querySelector<HTMLElement>('.tx');
+    if (!into) return;
+    let fresh = false;
+    for (const w of Array.from(into.children) as HTMLElement[]) {
+      const tok = this.#wordTok.get(w);
+      if (!tok) continue;
+      const status = this.#deps.statusOf(tok);
+      if (w.dataset.s !== status) w.dataset.s = status;
+      if (this.#annotated.has(w) && (status === 'unknown' || status === 'learning')) fresh = true;
+    }
+    into.classList.toggle('has-new-ruby', fresh);
   }
 
   #installHover(): void {
@@ -1568,12 +2408,6 @@ export class Sidebar {
       if (to && w.contains(to)) return;
       this.#hideHover();
     });
-    this.#list.addEventListener('click', (e) => {
-      const w = (e.target as HTMLElement).closest('.w') as HTMLElement | null;
-      if (!w?.dataset.tok) return;
-      this.#hideHover();
-      this.#deps.onWordClick(JSON.parse(w.dataset.tok) as Token, w, w.dataset.line ?? '', this.#contextOf(w));
-    });
   }
 
   /**
@@ -1582,7 +2416,7 @@ export class Sidebar {
    */
   #contextOf(w: HTMLElement): WordContext {
     const row = w.closest<HTMLElement>('.line');
-    const line = row ? this.#deps.transcript.lines[Number(row.dataset.i)] : undefined;
+    const line = row ? this.#lineOf.get(row) : undefined;
     if (!line || line.text !== w.dataset.line) return {};
     return { start: line.start, translation: line.secondary };
   }
@@ -1683,9 +2517,15 @@ export class Sidebar {
 
   destroy(): void {
     this.#destroyed = true;
-    this.#analysisRevision++;
+    this.#statusRev++;
     this.#abort.abort();
     this.#unwatch();
+    this.#io?.disconnect();
+    this.#cancelBuild?.();
+    this.#cancelFill?.();
+    this.#toBuild.clear();
+    this.#countQueue = [];
+    clearTimeout(this.#countTimer);
     clearTimeout(this.#hoverTimer);
     clearTimeout(this.#idle);
     this.#host.remove();

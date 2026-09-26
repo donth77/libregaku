@@ -103,6 +103,9 @@ async function build(overrides: Partial<SidebarDeps> = {}): Promise<{
 const filterButton = (root: ShadowRoot, label: string): HTMLElement =>
   Array.from(root.querySelectorAll<HTMLElement>('.filters .f')).find((b) => b.textContent === label)!;
 
+/** Rows a filter leaves showing. Filtered rows are hidden in place, not removed. */
+const shown = (root: ShadowRoot): NodeListOf<HTMLElement> => root.querySelectorAll('.line:not(.hide)');
+
 beforeEach(() => {
   scrollTo = vi.fn();
   scrollIntoView = vi.fn();
@@ -130,7 +133,7 @@ describe('Sidebar vocabulary counts', () => {
       measure: async (text) => ({ unknown: text.includes('new') ? unknown : 0, words: 2 }),
     });
     filterButton(root, 'Ready to learn').click();
-    expect(root.querySelectorAll('.line')).toHaveLength(1);
+    expect(shown(root)).toHaveLength(1);
     expect(sidebar.stats?.unknown).toBe(1);
 
     unknown = 0;
@@ -138,14 +141,14 @@ describe('Sidebar vocabulary counts', () => {
     await flush();
     expect(sidebar.stats).toEqual({ known: 100, unknown: 0, i1: 0 });
     expect(root.querySelector('.summary')?.textContent).toContain('100% known');
-    expect(root.querySelectorAll('.line')).toHaveLength(0);
+    expect(shown(root)).toHaveLength(0);
 
     unknown = 1;
     sidebar.refreshAnalysis();
     await flush();
     expect(sidebar.stats?.i1).toBe(1);
-    expect(root.querySelectorAll('.line')).toHaveLength(1);
-    expect(root.querySelector('.line .x')?.textContent).toBe('1 new');
+    expect(shown(root)).toHaveLength(1);
+    expect(root.querySelector('.line:not(.hide) .x')?.textContent).toBe('1 new');
   });
 
   it('discards old background measurements after a newer status change', async () => {
@@ -200,10 +203,10 @@ describe('Sidebar vocabulary counts', () => {
   it('drops a count filter when progress is switched off, rather than hiding every line', async () => {
     const { root } = await build();
     filterButton(root, 'Has new words').click();
-    expect(root.querySelectorAll('.line')).toHaveLength(1);
+    expect(shown(root)).toHaveLength(1);
 
     await setSetting('sidebarStats', false);
-    expect(root.querySelectorAll('.line')).toHaveLength(LINES.length);
+    expect(shown(root)).toHaveLength(LINES.length);
     expect(filterButton(root, 'All lines').getAttribute('aria-pressed')).toBe('true');
     expect(filterButton(root, 'Has new words').getAttribute('aria-pressed')).toBe('false');
     expect(root.querySelector('.fab')!.classList.contains('on')).toBe(false);
@@ -321,7 +324,7 @@ describe('Sidebar following playback', () => {
   it('marks the right card when a filter hides rows', async () => {
     const { sidebar, root } = await build();
     filterButton(root, 'Has new words').click();
-    expect(root.querySelectorAll('.line')).toHaveLength(1);
+    expect(shown(root)).toHaveLength(1);
     sidebar.setActive(1);
     expect(root.querySelector('.line.cur')?.getAttribute('data-i')).toBe('1');
   });
@@ -663,5 +666,399 @@ describe('Sidebar hover card', () => {
     await wait(200);
     expect(dict.pending).toHaveLength(0);
     expect(root.querySelector('.hover')!.classList.contains('on')).toBe(false);
+  });
+});
+
+/*
+ * A whole film. These pin the panel's cost to what is on screen: every line
+ * gets a row, but words, readings and buttons only near the screen; each line
+ * is analysed once per analysis however many parts of the panel want it; the
+ * counter keeps only a few requests open; and a status change repaints rows
+ * where they stand instead of building them again.
+ */
+describe('Sidebar at the length of a film', () => {
+  /** Visibility, reported when the test says so rather than by layout. */
+  class FakeIO {
+    static current: FakeIO | null = null;
+    readonly targets = new Set<Element>();
+    constructor(readonly callback: IntersectionObserverCallback, readonly options?: IntersectionObserverInit) {
+      FakeIO.current = this;
+    }
+    observe(el: Element): void { this.targets.add(el); }
+    unobserve(el: Element): void { this.targets.delete(el); }
+    disconnect(): void { this.targets.clear(); }
+    takeRecords(): IntersectionObserverEntry[] { return []; }
+    report(els: Element[], near: boolean): void {
+      this.callback(
+        els.map((target) => ({ target, isIntersecting: near }) as unknown as IntersectionObserverEntry),
+        this as unknown as IntersectionObserver,
+      );
+    }
+  }
+
+  const realIO = globalThis.IntersectionObserver;
+  beforeEach(() => {
+    FakeIO.current = null;
+    vi.stubGlobal('IntersectionObserver', FakeIO);
+  });
+  afterEach(() => {
+    vi.stubGlobal('IntersectionObserver', realIO);
+  });
+
+  const LENGTH = 3000;
+  const film = (n = LENGTH): Transcript => {
+    const t = new Transcript();
+    t.setFull(Array.from({ length: n }, (_, i) => ({ start: i * 4, end: i * 4 + 3, text: `line ${i} w${i}` })));
+    return t;
+  };
+
+  /** The words analyser, counting what it is asked for. */
+  function counted(): Segmenter & { calls: Map<string, number>; total: () => number } {
+    const calls = new Map<string, number>();
+    return {
+      tier: 2,
+      hasLemma: true,
+      calls,
+      total: () => [...calls.values()].reduce((a, b) => a + b, 0),
+      segment(text: string): Token[] {
+        calls.set(text, (calls.get(text) ?? 0) + 1);
+        return segmenter.segment(text) as Token[];
+      },
+    };
+  }
+
+  /**
+   * An analyser that answers only when the test lets it — the offscreen
+   * document, slowed down enough to see how much is asked of it at once.
+   */
+  function queued(): {
+    seg: Segmenter; calls: Map<string, number>; waiting: Array<() => void>;
+    most: () => number; drain: () => Promise<void>;
+  } {
+    const calls = new Map<string, number>();
+    const waiting: Array<() => void> = [];
+    let most = 0;
+    return {
+      calls,
+      waiting,
+      most: () => most,
+      seg: {
+        tier: 2,
+        hasLemma: true,
+        segment(text: string): Promise<Token[]> {
+          calls.set(text, (calls.get(text) ?? 0) + 1);
+          return new Promise((resolve) => {
+            waiting.push(() => resolve(segmenter.segment(text) as Token[]));
+            most = Math.max(most, waiting.length);
+          });
+        },
+      },
+      async drain(): Promise<void> {
+        for (let round = 0; round < 20000; round++) {
+          if (!waiting.length) {
+            await flush();
+            if (!waiting.length) return;
+          }
+          waiting.splice(0).forEach((answer) => answer());
+          for (let tick = 0; tick < 6; tick++) await Promise.resolve();
+        }
+      },
+    };
+  }
+
+  const builtRows = (root: ShadowRoot): HTMLElement[] =>
+    Array.from(root.querySelectorAll<HTMLElement>('.line')).filter((row) => row.querySelector('.w'));
+  const blocks = (root: ShadowRoot, from: number, to: number): HTMLElement[] =>
+    Array.from(root.querySelectorAll<HTMLElement>('.blk')).slice(from, to);
+
+  async function counts(sidebar: Sidebar): Promise<void> {
+    for (let i = 0; i < 400 && !sidebar.stats; i++) await flush();
+  }
+
+  /** Building is sliced across frames; wait until these rows have their words. */
+  async function builtBy(rows: Element[]): Promise<void> {
+    for (let i = 0; i < 100 && rows.some((row) => !row.querySelector('.w')); i++) await wait(16);
+  }
+
+  /** Rows are made block by block in the background; wait until there are this many. */
+  async function rowsBy(root: ShadowRoot, n: number): Promise<void> {
+    for (let i = 0; i < 400 && root.querySelectorAll('.line').length < n; i++) await flush();
+  }
+
+  /** Mount and open at once, as the player does, and look before any timer has run. */
+  function openNow(overrides: Partial<SidebarDeps> = {}): { sidebar: Sidebar; root: ShadowRoot } {
+    const mount = document.createElement('div');
+    document.body.appendChild(mount);
+    const sidebar = new Sidebar(mount, {
+      transcript: film(),
+      segmenter: () => null,
+      measure: async () => ({ unknown: 0, words: 1 }),
+      statusOf: () => 'known',
+      seek,
+      currentTime: () => 0,
+      onWordClick: () => {},
+      context: () => ({ site: 'test', video: 'v', title: 't', url: 'u', lang: 'ja' }),
+      ...overrides,
+    });
+    sidebars.push(sidebar);
+    sidebar.toggle(true);
+    return { sidebar, root: mount.querySelector('.libregaku-sidebar')!.shadowRoot! };
+  }
+
+  it('opens with every block but rows only near the screen, and makes the rest in the background', async () => {
+    await setSetting('sidebarStats', false);   // rendering alone, no counting
+    seek = vi.fn<(t: number) => void>();
+    const seg = counted();
+    const { root } = openNow({ segmenter: () => seg });
+    const io = FakeIO.current!;
+
+    // Opening: every block, sized and empty, and rows for the first few only.
+    expect(root.querySelectorAll('.blk')).toHaveLength(LENGTH / 10);
+    expect(root.querySelectorAll('.line').length).toBeLessThanOrEqual(30);
+    expect(builtRows(root).length).toBeGreaterThan(0);
+    expect(builtRows(root).length).toBeLessThanOrEqual(24);
+    expect(seg.total()).toBeLessThanOrEqual(24);
+    // Watched block by block from the list itself, a screen's height either side.
+    expect(io.targets.size).toBe(LENGTH / 10);
+    expect(io.options?.root).toBe(root.querySelector('.lines'));
+    expect(io.options?.rootMargin).toBe('100% 0px');
+
+    // The rest are made a slice at a time, and ask the analyser for nothing.
+    await flush();
+    expect(root.querySelectorAll('.line').length).toBeLessThan(LENGTH);
+    await rowsBy(root, LENGTH);
+    expect(root.querySelectorAll('.line')).toHaveLength(LENGTH);
+    expect(Array.from(root.querySelectorAll<HTMLElement>('.line')).map((r) => r.dataset.i))
+      .toEqual(Array.from({ length: LENGTH }, (_, i) => String(i)));
+    expect(builtRows(root).length).toBeLessThanOrEqual(24);
+    expect(seg.total()).toBeLessThanOrEqual(24);
+
+    // Scrolled deep: the blocks that come near are built, and only those.
+    io.report(blocks(root, 150, 153), true);
+    await builtBy(blocks(root, 150, 153).flatMap((b) => Array.from(b.children)));
+    expect(builtRows(root).length).toBeLessThanOrEqual(60);
+    expect(seg.total()).toBeLessThanOrEqual(60);
+    for (const row of blocks(root, 150, 153).flatMap((b) => Array.from(b.children))) {
+      expect(row.querySelector('.w')).not.toBeNull();
+      expect(row.querySelector('.save')).not.toBeNull();
+    }
+
+    // Blocks passed on the way are dropped before their turn; nothing asked twice.
+    const asked = seg.total();
+    io.report(blocks(root, 150, 153), false);
+    io.report(blocks(root, 150, 153), true);
+    expect(seg.total()).toBe(asked);
+    expect([...seg.calls.values()].every((n) => n === 1)).toBe(true);
+  });
+
+  it('counts every line exactly once per analysis, a few requests at a time', async () => {
+    const q = queued();
+    const { sidebar, root } = await build({ transcript: film(), segmenter: () => q.seg });
+
+    // Nothing counted yet: no numbers, and a neutral word instead of wrong ones.
+    expect(sidebar.stats).toBeNull();
+    expect(root.querySelector('.summary')?.textContent).toMatch(/^Counting new words/);
+    expect(q.waiting.length).toBeLessThanOrEqual(40);
+
+    await q.drain();
+    expect(q.calls.size).toBe(LENGTH);
+    expect([...q.calls.values()].every((n) => n === 1)).toBe(true);
+    // The rows being read and a handful for counting — never the whole film.
+    expect(q.most()).toBeLessThanOrEqual(24 + 8);
+    expect(sidebar.stats).toEqual({ known: 100, unknown: 0, i1: 0 });
+    expect(root.querySelector('.summary')?.textContent).toContain('100% known');
+
+    // A status change counts again from tokens in hand: no requests at all.
+    sidebar.refreshStatus();
+    expect(q.waiting).toHaveLength(0);
+    expect(sidebar.stats).toEqual({ known: 100, unknown: 0, i1: 0 });
+
+    // A new analysis asks for every line once more, and once only.
+    sidebar.refreshAnalysis();
+    expect(sidebar.stats).toBeNull();
+    await q.drain();
+    expect([...q.calls.values()].every((n) => n === 2)).toBe(true);
+    expect(q.most()).toBeLessThanOrEqual(24 + 8);
+    expect(sidebar.stats).not.toBeNull();
+  });
+
+  it('keeps a count filter waiting for the counts instead of showing a partial list', async () => {
+    const q = queued();
+    const { root } = await build({
+      transcript: film(300),
+      segmenter: () => q.seg,
+      statusOf: (t) => (t.surface.startsWith('w1') ? 'unknown' : 'known'),
+    });
+    filterButton(root, 'Has new words').click();
+    const wait = root.querySelector<HTMLElement>('.wait')!;
+    expect(shown(root)).toHaveLength(0);
+    expect(wait.hidden).toBe(false);
+    expect(wait.textContent).toMatch(/^Counting new words/);
+
+    await q.drain();
+    await rowsBy(root, 300);
+    expect(wait.hidden).toBe(true);
+    // w1, w10–w19, w100–w199: the lines with a word marked unknown.
+    expect(shown(root)).toHaveLength(1 + 10 + 100);
+  });
+
+  it('goes to a match or a line anywhere in the film, building it on arrival', async () => {
+    const seg = counted();
+    const { sidebar, root } = await build({ transcript: film(), segmenter: () => seg });
+    const input = root.querySelector<HTMLInputElement>('.search input')!;
+
+    input.value = 'w2500';
+    input.dispatchEvent(new Event('input'));
+    const hit = root.querySelector<HTMLElement>('.line.hit-cur')!;
+    expect(hit.dataset.i).toBe('2500');
+    expect(root.querySelector('.search .count')?.textContent).toBe('1 of 1');
+    expect(scrollTo).toHaveBeenCalled();
+    await builtBy([hit]);
+    expect(hit.querySelector('.w')).not.toBeNull();
+
+    await rowsBy(root, LENGTH);
+    root.querySelector<HTMLElement>('.line[data-i="2900"]')!.click();
+    expect(seek).toHaveBeenCalledWith(2900 * 4);
+
+    input.value = '';
+    input.dispatchEvent(new Event('input'));
+    scrollTo.mockClear();
+    sidebar.setActive(1200);
+    const cur = root.querySelector<HTMLElement>('.line.cur')!;
+    expect(cur.dataset.i).toBe('1200');
+    expect(scrollTo).toHaveBeenCalledTimes(1);
+    await builtBy([cur]);
+    expect(cur.querySelector('.w')).not.toBeNull();
+  });
+
+  it('repaints a status change in place, building nothing again and asking nothing', async () => {
+    let status = 'unknown';
+    const seg = counted();
+    const { sidebar, root } = await build({ transcript: film(), segmenter: () => seg, statusOf: () => status });
+    await counts(sidebar);
+    expect(sidebar.stats).toEqual({ known: 0, unknown: 3 * LENGTH, i1: 0 });
+
+    const row = root.querySelector<HTMLElement>('.line[data-i="3"]')!;
+    const word = row.querySelector<HTMLElement>('.w')!;
+    expect(word.dataset.s).toBe('unknown');
+    expect(row.querySelector('.x')?.textContent).toBe('3 new');
+    const asked = seg.total();
+
+    status = 'known';
+    sidebar.refreshStatus();
+    expect(root.querySelector('.line[data-i="3"] .w')).toBe(word);
+    expect(word.dataset.s).toBe('known');
+    expect(row.querySelector('.x')?.textContent).toBe('');
+    expect(sidebar.stats).toEqual({ known: 100, unknown: 0, i1: 0 });
+    expect(seg.total()).toBe(asked);
+
+    // Readings and filters change classes, not rows.
+    await setSetting('ruby', 'never');
+    filterButton(root, 'Has new words').click();
+    expect(shown(root)).toHaveLength(0);
+    filterButton(root, 'All lines').click();
+    expect(root.querySelector('.line[data-i="3"] .w')).toBe(word);
+    expect(seg.total()).toBe(asked);
+  });
+
+  it('rebuilds for a new analyser only the rows near the screen', async () => {
+    await setSetting('sidebarStats', false);
+    let seg: Segmenter = counted();
+    const { sidebar, root } = await build({ transcript: film(), segmenter: () => seg });
+    await rowsBy(root, LENGTH);
+    const near = root.querySelector<HTMLElement>('.line[data-i="0"]')!;
+    const far = root.querySelector<HTMLElement>('.line[data-i="2000"]')!;
+    expect(near.querySelectorAll('.w')).toHaveLength(3);
+    expect(far.querySelector('.w')).toBeNull();
+
+    // The better analyser reads each line as one word.
+    const whole = counted();
+    seg = { ...whole, segment: (text: string) => [{ surface: text, start: 0, end: text.length, content: true }] };
+    sidebar.refreshAnalysis();
+    expect(near.querySelectorAll('.w')).toHaveLength(1);
+    expect(far.querySelector('.w')).toBeNull();
+    expect(root.querySelector('.line[data-i="0"]')).toBe(near);
+  });
+
+  it('makes the block a jump lands in, and lands on the row', async () => {
+    seek = vi.fn<(t: number) => void>();
+    const seg = counted();
+    const { sidebar, root } = openNow({ segmenter: () => seg });
+    expect(root.querySelector('.line[data-i="2500"]')).toBeNull();
+
+    const input = root.querySelector<HTMLInputElement>('.search input')!;
+    input.value = 'w2500';
+    input.dispatchEvent(new Event('input'));
+    const hit = root.querySelector<HTMLElement>('.line.hit-cur')!;
+    expect(hit.dataset.i).toBe('2500');
+    expect(hit.parentElement!.children).toHaveLength(10);        // its whole block, made
+    expect(root.querySelector('.line[data-i="2000"]')).toBeNull(); // and nothing between
+    expect(scrollTo).toHaveBeenCalledTimes(1);
+    await builtBy([hit]);
+    expect(hit.querySelector('.w')).not.toBeNull();
+
+    // Playback far ahead of anything made yet: its block is made to mark it.
+    sidebar.setActive(1805);
+    expect(root.querySelector<HTMLElement>('.line.cur')?.dataset.i).toBe('1805');
+  });
+
+  it('measures once per follow step, before building, and not again while it builds', async () => {
+    const seg = counted();
+    const { sidebar, root } = await build({ transcript: film(), segmenter: () => seg });
+    await rowsBy(root, 100);
+    const after = root.querySelector('.line[data-i="46"]')!;
+    expect(after.querySelector('.w')).toBeNull();
+    // What the rows around the line looked like at the moment of measuring.
+    const builtWhenMeasured: boolean[] = [];
+    const measure = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(() => {
+      builtWhenMeasured.push(after.querySelector('.w') !== null);
+      return { top: 0, bottom: 0, left: 0, right: 0, width: 0, height: 0, x: 0, y: 0, toJSON: () => ({}) } as DOMRect;
+    });
+    try {
+      sidebar.setActive(40);
+      // The line and the list, once each — and before a single row was built,
+      // so the measurement never has freshly built rows to lay out.
+      expect(builtWhenMeasured).toEqual([false, false]);
+      measure.mockClear();
+      await builtBy([after]);
+      expect(after.querySelector('.w')).not.toBeNull();
+      expect(measure).not.toHaveBeenCalled();
+    } finally {
+      measure.mockRestore();
+    }
+  });
+
+  it('lets go of a held jump as soon as following moves on', async () => {
+    const { sidebar } = await build({ transcript: film(), segmenter: () => counted() });
+    sidebar.setActive(10);
+    // Reopening puts the list back at once and holds it for a few frames…
+    sidebar.toggle(false);
+    sidebar.toggle(true);
+    // …until the next line takes over; nothing is measured for the old hold.
+    sidebar.setActive(11);
+    const measure = vi.spyOn(Element.prototype, 'getBoundingClientRect');
+    try {
+      await wait(60);
+      expect(measure).not.toHaveBeenCalled();
+    } finally {
+      measure.mockRestore();
+    }
+  });
+
+  it('keeps the totals standing while a line observed during playback is counted', async () => {
+    const q = queued();
+    const transcript = new Transcript();
+    transcript.observe('first line', 10);
+    const { sidebar, root } = await build({ transcript, segmenter: () => q.seg });
+    await q.drain();
+    expect(sidebar.stats).not.toBeNull();
+
+    transcript.observe('second line', 20);
+    expect(q.waiting.length).toBeGreaterThan(0);
+    expect(sidebar.stats).not.toBeNull();
+    expect(root.querySelector('.summary')?.textContent).not.toContain('Counting');
+    await q.drain();
+    expect(root.querySelectorAll('.line')).toHaveLength(2);
+    expect(sidebar.stats).not.toBeNull();
   });
 });

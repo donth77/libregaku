@@ -93,9 +93,13 @@ user's progress consistent across devices with no account and no server. A local
 override store exists only for states Anki can't express ("known, but I don't want a
 card"), and those reconcile back into Anki as tagged suspended notes.
 
-*Not yet built:* the reconciliation. Hand marks currently live only in
-`chrome.storage.local` on one browser. Until they reach Anki they don't follow the
-learner to another device, and they are lost with the extension's storage.
+How that works (`src/anki/marks.ts`): each mark is a note of the "Libregaku Mark"
+type in the `Libregaku::Marks` deck, its card suspended so it never reaches a review,
+its status a tag (`libregaku::mark::known` and so on). Marking writes to the browser
+at once and queues the change; each sync with Anki flushes the queue and reads every
+mark back, so a mark made on one device reaches the others through Anki's own sync.
+The status searches exclude the mark note type, and the service worker lets the page
+delete, retag or suspend only notes of that type.
 
 **2. The tokenizer runs in the offscreen document. Only there.**
 OPFS inside a content script belongs to the *host page's* origin — wrong storage, and
@@ -138,9 +142,12 @@ then stop.
 
 - TypeScript, `strict`, `noUncheckedIndexedAccess`. No `any` in committed code.
 - **Overlay: no framework.** It's a hot path; use direct DOM in the shadow root.
-- **Sidebar and options: plain DOM, for now.** Preact was the plan; the panel was
-  written without it, and its transcript is not virtualized. A transcript long enough
-  to need virtualizing is the moment to revisit both.
+- **Sidebar and options: plain DOM.** Preact was the plan; the panel was written
+  without it. Its transcript does work in proportion to what is on screen: every line
+  has a cheap row, rows sit in blocks the browser skips off screen
+  (`content-visibility`), words and readings are built only for rows near the view,
+  and counting runs in the background, once per line. Keep it that way — anything
+  that walks every row on each update is how a 5,000-line film stalls.
 - Prefer `Intl` built-ins over dependencies. `Intl.Segmenter` costs zero bytes and
   covers every language; only reach for WASM when you need lemmas and readings.
 - Adapters are thin and swappable. A site changing its markup should be one file.

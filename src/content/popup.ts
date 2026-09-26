@@ -439,9 +439,8 @@ export function showPopup(
    * "I know this" and "I have a flashcard for this" are different facts, and
    * conflating them is how a learner ends up carding words they have known for
    * years. Anki can express the second; only the user can express the first,
-   * so it is stored as an override in this browser. Reconciling overrides into
-   * Anki as tagged suspended notes, so they follow the collection, is planned
-   * and not built (AGENTS.md, invariant 1).
+   * so it is kept as a mark: in the browser at once, and in Anki as a tagged,
+   * suspended note that follows the collection (src/anki/marks.ts).
    */
   const marks = document.createElement('div');
   marks.className = 'marks';

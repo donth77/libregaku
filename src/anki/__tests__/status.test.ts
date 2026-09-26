@@ -1,95 +1,47 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ankiCall } from '../rpc';
+import { ankiCall, ankiTry } from '../rpc';
+import { MARK_MODEL_NAME } from '../model';
 import {
   MATURE_DAYS, NOTES_PER_REQUEST, buildStatusMap, deckQuery, lemmaReading, loadOverrides, setOverride,
 } from '../status';
+import { FakeAnki, FakeStorage, type FakeCard } from './fake-anki';
 
-vi.mock('../rpc', () => ({ ankiCall: vi.fn() }));
+vi.mock('../rpc', async () => {
+  const { AnkiUnavailable } = await vi.importActual<typeof import('../rpc')>('../rpc');
+  return { AnkiUnavailable, ankiCall: vi.fn(), ankiTry: vi.fn() };
+});
 
 /*
  * A collection, and an AnkiConnect that answers the searches the status layer
  * sends the way Anki would. The searches are the contract: if the code starts
  * asking something else, the fake refuses rather than guessing.
  */
-interface Card { ivl: number; isNew?: boolean; suspended?: boolean }
-interface Note { id: number; deck: string; tags?: string[]; fields: Record<string, string>; cards: Card[] }
+const fake = new FakeAnki();
+const store = new FakeStorage();
+vi.stubGlobal('chrome', { storage: store.api });
 
-let notes: Note[] = [];
-let notesInfoSizes: number[] = [];
-
-function matches(n: Note, cond: string): boolean {
-  switch (cond) {
-    case '-is:new': return n.cards.some((c) => !c.isNew);
-    case 'is:suspended': return n.cards.some((c) => c.suspended);
-    case `prop:ivl>=${MATURE_DAYS}`: return n.cards.some((c) => c.ivl >= MATURE_DAYS);
-    case 'tag:libregaku': return (n.tags ?? []).some((t) => t === 'libregaku' || t.startsWith('libregaku::'));
-    default: throw new Error(`the fake does not know "${cond}"`);
-  }
-}
-
-async function anki(action: string, params: Record<string, unknown> = {}): Promise<unknown> {
-  if (action === 'findNotes') {
-    const q = String(params.query);
-    const m = /^deck:(\*|"((?:[^"\\]|\\.)*)") (.+)$/.exec(q);
-    if (!m) throw new Error(`unparseable search: ${q}`);
-    const deck = m[1] === '*' ? null : (m[2] ?? '').replace(/\\(.)/g, '$1');
-    return notes
-      .filter((n) => deck === null || n.deck === deck || n.deck.startsWith(`${deck}::`))
-      .filter((n) => matches(n, m[3] ?? ''))
-      .map((n) => n.id);
-  }
-  if (action === 'notesInfo') {
-    const ids = params.notes as number[];
-    notesInfoSizes.push(ids.length);
-    return ids.map((id) => {
-      const n = notes.find((x) => x.id === id);
-      if (!n) return {};
-      const fields = Object.fromEntries(Object.entries(n.fields).map(([k, v], order) => [k, { value: v, order }]));
-      return { noteId: n.id, fields, cards: n.cards.map((_, i) => n.id * 10 + i) };
-    });
-  }
-  throw new Error(`status should not need "${action}"`);
-}
-
-let nextId = 1;
-function note(expression: string, cards: Card[], extra: Partial<Note> & { reading?: string } = {}): Note {
+function note(
+  expression: string,
+  cards: Array<Partial<FakeCard>>,
+  extra: { deck?: string; tags?: string[]; reading?: string; fields?: Record<string, string> } = {},
+) {
   const fields: Record<string, string> = { Expression: expression };
   if (extra.reading !== undefined) fields.Reading = extra.reading;
-  const n: Note = { id: nextId++, deck: 'Japanese', cards, ...extra, fields: extra.fields ?? fields };
-  notes.push(n);
-  return n;
+  return fake.add(extra.fields ?? fields, { deck: extra.deck ?? 'Japanese', tags: extra.tags ?? [], cards });
 }
 
-const reviewed = (ivl: number, more: Partial<Card> = {}): Card => ({ ivl, ...more });
-const fresh = (more: Partial<Card> = {}): Card => ({ ivl: 0, isNew: true, ...more });
-
-/* chrome.storage, asynchronous like the real one and handing out copies. */
-let local: Record<string, unknown> = {};
-let sync: Record<string, unknown> = {};
-const tick = () => new Promise((r) => setTimeout(r, 0));
-const pick = (area: Record<string, unknown>, keys: string | string[]) =>
-  Object.fromEntries((Array.isArray(keys) ? keys : [keys]).filter((k) => k in area).map((k) => [k, structuredClone(area[k])]));
-const storage = {
-  local: {
-    get: vi.fn(async (keys: string | string[]) => { await tick(); return pick(local, keys); }),
-    set: vi.fn(async (patch: Record<string, unknown>) => { await tick(); Object.assign(local, structuredClone(patch)); }),
-  },
-  sync: {
-    get: vi.fn(async (keys: string | string[]) => { await tick(); return pick(sync, keys); }),
-    set: vi.fn(async (patch: Record<string, unknown>) => { Object.assign(sync, patch); }),
-    remove: vi.fn(async (key: string) => { delete sync[key]; }),
-  },
-};
-vi.stubGlobal('chrome', { storage });
+const reviewed = (ivl: number, more: Partial<FakeCard> = {}) => FakeAnki.reviewed(ivl, more);
+const fresh = (more: Partial<FakeCard> = {}): Partial<FakeCard> => ({ ivl: 0, isNew: true, ...more });
+const notesInfoSizes = () =>
+  fake.calls.filter((c) => c.action === 'notesInfo').map((c) => (c.params.notes as number[]).length);
 
 beforeEach(() => {
-  notes = [];
-  notesInfoSizes = [];
-  nextId = 1;
-  local = {};
-  sync = {};
-  vi.mocked(ankiCall).mockReset().mockImplementation(anki as typeof ankiCall);
-  for (const area of [storage.local, storage.sync]) for (const fn of Object.values(area)) fn.mockClear();
+  fake.notes = [];
+  fake.calls = [];
+  fake.onCall = null;
+  store.reset();
+  vi.mocked(ankiCall).mockReset().mockImplementation(fake.call as typeof ankiCall);
+  vi.mocked(ankiTry).mockReset().mockImplementation(fake.try as typeof ankiTry);
 });
 
 describe('MATURE_DAYS', () => {
@@ -102,9 +54,9 @@ describe('Anki-derived status', () => {
   it('follows a card from learning to mature, and forgets a deleted card', async () => {
     const n = note('食べる', [reviewed(1)]);
     expect((await buildStatusMap('')).get('食べる')).toBe('learning');
-    n.cards = [reviewed(MATURE_DAYS)];
+    n.cards[0]!.ivl = MATURE_DAYS;
     expect((await buildStatusMap('')).get('食べる')).toBe('known');
-    notes = [];
+    fake.notes = [];
     expect((await buildStatusMap('')).get('食べる')).toBe('unknown');
   });
 
@@ -113,7 +65,7 @@ describe('Anki-derived status', () => {
     note('猫', [fresh()], { deck: 'Core 6k' });
     const status = await buildStatusMap('');
     expect(status.get('猫')).toBe('unknown');
-    expect(notesInfoSizes).toEqual([]);
+    expect(notesInfoSizes()).toEqual([]);
   });
 
   it('reads a word mined with Libregaku as learning from the moment it is added', async () => {
@@ -145,15 +97,15 @@ describe('Anki-derived status', () => {
   it(`reads notes ${NOTES_PER_REQUEST} at a time rather than all at once`, async () => {
     for (let i = 0; i < 2500; i++) note(`語${i}`, [reviewed(1)]);
     const status = await buildStatusMap('');
-    expect(notesInfoSizes).toEqual([1000, 1000, 500]);
+    expect(notesInfoSizes()).toEqual([1000, 1000, 500]);
     expect(status.size).toBe(2500);
   });
 
   it('skips a note deleted between the search and the read', async () => {
     note('消える', [reviewed(1)]);
-    const real = anki;
-    vi.mocked(ankiCall).mockImplementation((async (action: string, params?: Record<string, unknown>) =>
-      action === 'notesInfo' ? [{}] : real(action, params)) as typeof ankiCall);
+    fake.onCall = (action) => {
+      if (action === 'notesInfo') fake.notes = [];
+    };
     await expect(buildStatusMap('')).resolves.toMatchObject({ size: 0 });
   });
 
@@ -162,6 +114,27 @@ describe('Anki-derived status', () => {
     await buildStatusMap('');
     const actions = vi.mocked(ankiCall).mock.calls.map(([a]) => a);
     expect(new Set(actions)).toEqual(new Set(['findNotes', 'notesInfo']));
+  });
+
+  it('never counts a hand mark as a word being learned', async () => {
+    // Mark notes carry our tag, which reads as "mined"; a mark reviewed by
+    // hand would read as studied. Neither is a card anyone learns from.
+    fake.add({ Word: '猫', Reading: 'ねこ' }, {
+      model: MARK_MODEL_NAME, deck: 'Libregaku::Marks', tags: ['libregaku', 'libregaku::mark::known'],
+      cards: [{ suspended: true }],
+    });
+    fake.add({ Word: '犬', Reading: 'いぬ' }, {
+      model: MARK_MODEL_NAME, deck: 'Libregaku::Marks', tags: ['libregaku', 'libregaku::mark::ignored'],
+      cards: [reviewed(30)],
+    });
+    note('鳥', [fresh()], { tags: ['libregaku'] });
+    const status = await buildStatusMap('');
+    expect(status.get('猫')).toBe('unknown');
+    expect(status.get('犬')).toBe('unknown');
+    expect(status.get('鳥')).toBe('learning');
+    for (const c of fake.calls.filter((x) => x.action === 'findNotes')) {
+      expect(String(c.params.query)).toContain(`-note:"${MARK_MODEL_NAME}"`);
+    }
   });
 });
 
@@ -278,51 +251,51 @@ describe('lemmaReading', () => {
 describe('hand marks', () => {
   it('keeps marks in local storage, not sync, whose 8 KB item limit a few hundred marks exhausted', async () => {
     expect(await setOverride('猫', 'known')).toBe(true);
-    expect(local['libregaku.overrides']).toEqual({ 猫: 'known' });
-    expect(storage.sync.set).not.toHaveBeenCalled();
+    expect(store.local['libregaku.overrides']).toEqual({ 猫: 'known' });
+    expect(store.api.sync.set).not.toHaveBeenCalled();
     expect(await loadOverrides()).toEqual(new Map([['猫', 'known']]));
   });
 
   it('brings the old sync item over once, dropping legacy learning values, then removes it', async () => {
-    sync['libregaku.overrides'] = { 食べる: 'learning', 猫: 'known', 犬: 'ignored' };
+    store.sync['libregaku.overrides'] = { 食べる: 'learning', 猫: 'known', 犬: 'ignored' };
     expect(await loadOverrides()).toEqual(new Map([['猫', 'known'], ['犬', 'ignored']]));
-    expect(local['libregaku.overrides']).toEqual({ 猫: 'known', 犬: 'ignored' });
-    expect(local['libregaku.overrides.migrated']).toBe(true);
-    expect(sync['libregaku.overrides']).toBeUndefined();
+    expect(store.local['libregaku.overrides']).toEqual({ 猫: 'known', 犬: 'ignored' });
+    expect(store.local['libregaku.overrides.migrated']).toBe(true);
+    expect(store.sync['libregaku.overrides']).toBeUndefined();
   });
 
   it('lets a mark written locally win over the sync copy', async () => {
-    sync['libregaku.overrides'] = { 猫: 'known' };
-    local['libregaku.overrides'] = { 猫: 'ignored' };
+    store.sync['libregaku.overrides'] = { 猫: 'known' };
+    store.local['libregaku.overrides'] = { 猫: 'ignored' };
     expect((await loadOverrides()).get('猫')).toBe('ignored');
   });
 
   it('never brings back a cleared mark, even when the sync copy could not be removed', async () => {
-    sync['libregaku.overrides'] = { 猫: 'known' };
-    storage.sync.remove.mockRejectedValueOnce(new Error('sync unavailable'));
+    store.sync['libregaku.overrides'] = { 猫: 'known' };
+    store.api.sync.remove.mockRejectedValueOnce(new Error('sync unavailable'));
     expect(await setOverride('猫', null)).toBe(true);
-    expect(sync['libregaku.overrides']).toEqual({ 猫: 'known' });
+    expect(store.sync['libregaku.overrides']).toEqual({ 猫: 'known' });
     expect(await loadOverrides()).toEqual(new Map());
   });
 
   it('reports a write that failed instead of swallowing it', async () => {
-    storage.local.set.mockRejectedValueOnce(new Error('QUOTA_BYTES quota exceeded'));
+    store.api.local.set.mockRejectedValueOnce(new Error('QUOTA_BYTES quota exceeded'));
     vi.spyOn(console, 'warn').mockImplementation(() => {});
-    local['libregaku.overrides.migrated'] = true;
+    store.local['libregaku.overrides.migrated'] = true;
     expect(await setOverride('猫', 'known')).toBe(false);
   });
 
   it('never writes back a map it failed to read, which would erase every other mark', async () => {
-    local = { 'libregaku.overrides': { 犬: 'ignored' }, 'libregaku.overrides.migrated': true };
-    storage.local.get.mockRejectedValueOnce(new Error('storage unavailable'));
+    store.local = { 'libregaku.overrides': { 犬: 'ignored' }, 'libregaku.overrides.migrated': true };
+    store.api.local.get.mockRejectedValueOnce(new Error('storage unavailable'));
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     expect(await setOverride('猫', 'known')).toBe(false);
-    expect(local['libregaku.overrides']).toEqual({ 犬: 'ignored' });
+    expect(store.local['libregaku.overrides']).toEqual({ 犬: 'ignored' });
   });
 
   it('does not let two quick marks overwrite each other', async () => {
     const both = await Promise.all([setOverride('猫', 'known'), setOverride('犬', 'ignored')]);
     expect(both).toEqual([true, true]);
-    expect(local['libregaku.overrides']).toEqual({ 猫: 'known', 犬: 'ignored' });
+    expect(store.local['libregaku.overrides']).toEqual({ 猫: 'known', 犬: 'ignored' });
   });
 });

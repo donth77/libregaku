@@ -1,5 +1,6 @@
-import { ROOT_TAG } from './model';
+import { MARK_SEARCH, ROOT_TAG } from './model';
 import { ankiCall as call } from './rpc';
+import { fits, phonetic, strip, toKana } from './text';
 
 /**
  * What the learner knows, derived from their Anki collection.
@@ -89,7 +90,9 @@ export function deckQuery(scope: string): string {
  * suspended card is as known as its interval says.
  */
 export async function buildStatusMap(scope: string): Promise<StatusMap> {
-  const deck = deckQuery(scope);
+  // Hand marks are notes too, tagged like everything else we make — so they
+  // would read as mined words. They are read on their own (marks.ts).
+  const deck = `${deckQuery(scope)} -${MARK_SEARCH}`;
   const studied = await call<number[]>('findNotes', { query: `${deck} -is:new` });
   const mined = await call<number[]>('findNotes', { query: `${deck} tag:${ROOT_TAG}` });
   const mature = new Set(
@@ -230,75 +233,6 @@ function readingOf(raw: string, named: Map<string, string>, word: string): strin
   return null;
 }
 
-/** Fields carry HTML and furigana brackets; the key is the bare expression. */
-function strip(html: string): string {
-  return decode(
-    html
-      .replace(/<[^>]*>/g, '')
-      // 勉強[べんきょう] → 勉強, with the space Anki wants before a run dropped.
-      .replace(/ ?([^ >[\]]+?)\[[^\]]*\]/g, '$1')
-      // [sound:…] and anything else bracketed.
-      .replace(/\[[^\]]*\]/g, ''),
-  ).trim();
-}
-
-/** A field as its reading: 分[わ]かる → わかる. Null unless the result is kana. */
-function toKana(html: string): string | null {
-  const text = decode(
-    html
-      .replace(/<[^>]*>/g, '')
-      .replace(/\[sound:[^\]]*\]/g, '')
-      .replace(/ ?([^ >[\]]+?)\[([^\]]*)\]/g, '$2')
-      .replace(/\[[^\]]*\]/g, ''),
-  ).replace(/\s+/g, '');
-  return phonetic(text);
-}
-
-/*
- * The one script-specific piece of the status layer: which characters spell a
- * word by sound. Kana, with katakana folded onto hiragana so ワカル and わかる
- * are one reading. Every other script returns null here, and matching stays
- * by exact spelling, as it always was. If a second language ever needs
- * reading matching, this belongs behind the Segmenter seam instead.
- */
-const KANA = '\\u3041-\\u3096\\u309D\\u309E\\u30A1-\\u30FA\\u30FC-\\u30FE';
-const KANA_ONLY = new RegExp(`^[${KANA}]+$`);
-const NOT_KANA = new RegExp(`[^${KANA}]+`);
-
-function phonetic(s: string): string | null {
-  if (!KANA_ONLY.test(s)) return null;
-  return s.replace(/[ァ-ヶヽヾ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60));
-}
-
-/** Whether the word's own kana — かる in 分かる — appear in the reading, in order. */
-function fits(word: string, reading: string): boolean {
-  let at = 0;
-  for (const run of word.split(NOT_KANA)) {
-    if (!run) continue;
-    const kana = phonetic(run) ?? run;
-    const i = reading.indexOf(kana, at);
-    if (i < 0) return false;
-    at = i + kana.length;
-  }
-  return true;
-}
-
-const NAMED_ENTITIES: Record<string, string> = {
-  amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ',
-};
-
-/** Entities back to text, after brackets are handled: &#91; is text, never furigana. */
-function decode(s: string): string {
-  return s.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (entity, code: string) => {
-    if (code.startsWith('#')) {
-      const hex = code[1] === 'x' || code[1] === 'X';
-      const n = parseInt(code.slice(hex ? 2 : 1), hex ? 16 : 10);
-      return Number.isInteger(n) && n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : entity;
-    }
-    return NAMED_ENTITIES[code.toLowerCase()] ?? entity;
-  });
-}
-
 /**
  * The reading of a dictionary form, from the surface it was found as.
  *
@@ -325,100 +259,10 @@ export function lemmaReading(lemma: string, surface: string, surfaceReading?: st
 }
 
 /*
- * Words marked by hand, which Anki has no way to express on its own.
- *
- * Kept in chrome.storage.local. They were in sync storage, whose 8 KB limit
- * per item a few hundred marks exhausted; past that every write was refused,
- * silently, and each new mark vanished at the next refresh. Saved lines made
- * the same move for the same reason (bookmarks.ts). The cost is the same too:
- * marks stay in this browser profile.
- *
- * Still pending, and a design decision rather than a refactor: reconciling
- * these into Anki as tagged suspended notes (ROADMAP M5), which would make
- * them follow the collection to other devices and survive a reinstall.
+ * Words marked by hand live in marks.ts, which keeps them in this browser and
+ * writes them into Anki as notes of their own. Re-exported so callers that
+ * predate it keep working.
  */
-const OVERRIDES = 'libregaku.overrides';
-/** Set once the old sync item has been brought over on this machine. */
-const MIGRATED = 'libregaku.overrides.migrated';
-
-function clean(raw: unknown): Record<string, OverrideStatus> {
-  const out: Record<string, OverrideStatus> = {};
-  if (!raw || typeof raw !== 'object') return out;
-  // Older versions persisted every mined word as "learning", masking Anki
-  // forever. Drop those values; the next write removes them for good.
-  for (const [word, status] of Object.entries(raw as Record<string, unknown>)) {
-    if (status === 'known' || status === 'tracking' || status === 'unknown' || status === 'ignored') {
-      out[word] = status;
-    }
-  }
-  return out;
-}
-
-/** The marks as stored. Throws when storage cannot be read. */
-async function readOverrides(): Promise<Record<string, OverrideStatus>> {
-  const got = await chrome.storage.local.get([OVERRIDES, MIGRATED]);
-  const local = clean(got[OVERRIDES]);
-  if (got[MIGRATED]) return local;
-  return migrate(local);
-}
-
-/**
- * One time: bring the sync item over, then remove it. The flag, not the
- * removal, is what stops a second import — so a failed removal can never
- * bring back a mark cleared since.
- */
-async function migrate(local: Record<string, OverrideStatus>): Promise<Record<string, OverrideStatus>> {
-  let legacy: Record<string, OverrideStatus>;
-  try {
-    legacy = clean((await chrome.storage.sync.get(OVERRIDES))[OVERRIDES]);
-  } catch {
-    return local;   // sync unreadable just now; try again next time
-  }
-  // Anything already local was written after the sync copy, so it wins.
-  const merged = { ...legacy, ...local };
-  try {
-    await chrome.storage.local.set({ [OVERRIDES]: merged, [MIGRATED]: true });
-  } catch {
-    return merged;   // shown this session; the import is retried next time
-  }
-  try {
-    await chrome.storage.sync.remove(OVERRIDES);
-  } catch {
-    /* the flag already prevents a second import */
-  }
-  return merged;
-}
-
-export async function loadOverrides(): Promise<Map<string, OverrideStatus>> {
-  try {
-    return new Map(Object.entries(await readOverrides()));
-  } catch {
-    return new Map();
-  }
-}
-
-/** Writes from this page, one at a time, each reading the one before it. */
-let writing: Promise<boolean> = Promise.resolve(true);
-
-/**
- * Record a mark, or clear it with null. Resolves false when it could not be
- * stored, so the caller can say the mark will not outlive this page.
- */
-export function setOverride(word: string, status: OverrideStatus | null): Promise<boolean> {
-  const run = writing.then(async () => {
-    // Read strictly: writing back a map that failed to load would erase
-    // every other mark.
-    const marks = await readOverrides();
-    if (status) marks[word] = status;
-    else delete marks[word];
-    await chrome.storage.local.set({ [OVERRIDES]: marks });
-    return true;
-  }).catch((e: unknown) => {
-    console.warn('[libregaku] could not store the mark for', word, e);
-    return false;
-  });
-  writing = run;
-  return run;
-}
+export { loadOverrides, setOverride } from './marks';
 
 export { ROOT_TAG };

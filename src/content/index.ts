@@ -11,9 +11,8 @@ import { bottomOffset, namedMatches, occupiedBands } from './coexist';
 import { addNote, ensureModel, isDuplicate } from '../anki/client';
 import { tagsFor, toAnkiFurigana } from '../anki/model';
 import { sourceField } from '../anki/source';
-import {
-  buildStatusMap, lemmaReading, loadOverrides, setOverride, type OverrideStatus, type Status, type StatusMap,
-} from '../anki/status';
+import { buildStatusMap, lemmaReading, type OverrideStatus, type Status, type StatusMap } from '../anki/status';
+import { loadOverrides, setMark, syncMarks } from '../anki/marks';
 import { furigana } from '../morphology/furigana';
 import {
   DICTIONARIES, TIER2_LANGS, jmdictEditionFor, loadSettings, onSettingsChange, settings,
@@ -138,23 +137,48 @@ export function comprehension(tokens: Token[]): number {
  * Record a hand-marked status.
  *
  * Applied immediately so the underline changes under the cursor, then written
- * to storage. The optimistic update matters: a status change that takes a
- * round-trip to appear reads as broken.
+ * to the browser, then on to Anki — where it follows the collection to every
+ * other device. The optimistic update matters: a status change that takes a
+ * round-trip to appear reads as broken. Anki being closed only delays the last
+ * step; the mark waits in the browser and goes with the next sync.
  */
-async function mark(word: string, next: OverrideStatus | null): Promise<void> {
+async function mark(word: string, next: OverrideStatus | null, reading?: string): Promise<void> {
   manualRevision++;
   if (next) overrides.set(word, next);
   else overrides.delete(word);
   repaint();
   // The mark shows at once either way; a failed write only costs it on reload,
   // which the learner should hear now rather than discover then.
-  if (!(await setOverride(word, next)) && currentMount) showNotice(currentMount, 'mark-not-saved');
+  if (!(await setMark(word, next, reading)) && currentMount) showNotice(currentMount, 'mark-not-saved');
+  void pushMarks();
 }
 
-/** Re-render the current line so a status change is visible at once. */
+/**
+ * Exchange marks with Anki: this browser's waiting changes go in, and every
+ * mark in the collection — some made on other devices — comes back.
+ */
+async function pushMarks(): Promise<void> {
+  const revision = manualRevision;
+  const synced = await syncMarks();
+  if (!synced) return;   // Anki closed: the marks wait in the browser
+  // A mark made while this was in flight is newer than what came back.
+  if (revision === manualRevision) overrides = synced.marks;
+  if (synced.error) {
+    log('marks could not be saved to Anki:', synced.error);
+    if (currentMount) showNotice(currentMount, 'marks-not-synced', synced.error);
+  }
+  repaint();
+}
+
+/**
+ * Show a status change at once: the line on screen, and the transcript's
+ * underlines and counts. Only statuses changed, so the transcript repaints what
+ * it has built and recounts from tokens it already holds — re-analysing every
+ * line of a film for one mark is what refreshAnalysis() would cost.
+ */
 function repaint(): void {
   overlay?.setStatusSource(statusOf);
-  sidebar?.refreshAnalysis();
+  sidebar?.refreshStatus();
 }
 
 async function refreshStatus(): Promise<void> {
@@ -173,6 +197,8 @@ async function refreshStatus(): Promise<void> {
         ? `Anki: ${status.size} words known or learning in ${scope || 'the whole collection'}`
         : 'Anki reachable but nothing found in that scope — everything reads as unknown',
     );
+    // Anki answered, so marks can travel both ways now.
+    void pushMarks();
   } catch {
     if (request !== statusRequest) return;
     // Anki being closed is normal, not a fault. Everything simply reads unknown.
@@ -929,7 +955,8 @@ async function addCard(draft: CardDraft, token: Token, line: LineContext): Promi
   overrides.delete(word);
   addedCards.add(word);
   repaint();
-  await setOverride(word, null);
+  // A card now speaks for the word; a hand mark would hide what it says.
+  await setMark(word, null);
   void refreshStatus();
   return `added to ${deck}`;
 }
@@ -954,7 +981,7 @@ async function openLookup(mount: HTMLElement, el: HTMLElement, token: Token, byH
       token,
       sentence,
       status: statusOf(token),
-      onMark: mark,
+      onMark: (word, next) => mark(word, next, lemmaReading(word, token.surface, token.reading)),
       onAddCard: (draft) => addCard(draft, token, line),
       hasCard: hasCardFor(token),
       onClose: onCardClosed,
@@ -1021,7 +1048,7 @@ function mountSidebar(mount: HTMLElement, video: HTMLVideoElement, adapter: Subt
           token,
           sentence,
           status: statusOf(token),
-          onMark: mark,
+          onMark: (word, next) => mark(word, next, lemmaReading(word, token.surface, token.reading)),
           // The line the word was clicked in, which may be far from the playhead.
           onAddCard: (draft) => addCard(draft, token, { start: context?.start, translation: context?.translation }),
           hasCard: hasCardFor(token),

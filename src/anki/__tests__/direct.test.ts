@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.stubGlobal('chrome', { runtime: { getURL: () => 'chrome-extension://testid/' } });
 
-import { ankiDirect, isRelayed, notRelayed } from '../direct';
+import { ankiDirect, isRelayed, notRelayed, relay } from '../direct';
 
 /** A fresh fetch per case, holding only as much Response as the transport touches. */
 function answers(status: number, body: string): void {
@@ -95,11 +95,40 @@ describe('the relay allowlist', () => {
     }
   });
 
-  it('refuses anything that could change or delete what is already in Anki', () => {
-    for (const a of ['deleteDecks', 'deleteNotes', 'updateNoteFields', 'storeMediaFile', 'multi', 'sync', undefined, 42]) {
+  it('refuses anything else that could change or delete what is already in Anki', () => {
+    for (const a of ['deleteDecks', 'updateNoteFields', 'changeDeck', 'forgetCards', 'storeMediaFile', 'multi', 'sync', undefined, 42]) {
       expect(isRelayed(a)).toBe(false);
     }
     expect(notRelayed('deleteDecks')).toMatchObject({ ok: false, kind: 'refused' });
+  });
+});
+
+describe('relay', () => {
+  /** An AnkiConnect whose only mark notes are 1 and 2, answering one call per request. */
+  function marksAre(...ids: number[]): ReturnType<typeof vi.fn> {
+    const fetch = vi.fn(async (_url: string, init: RequestInit) => {
+      const { action } = JSON.parse(String(init.body)) as { action: string };
+      return { ok: true, status: 200, json: async () => ({ result: action === 'findNotes' ? ids : null, error: null }) };
+    });
+    vi.stubGlobal('fetch', fetch);
+    return fetch;
+  }
+
+  it('deletes only notes that are marks', async () => {
+    marksAre(1, 2);
+    expect(await relay('deleteNotes', { notes: [1, 3] })).toMatchObject({ ok: false, kind: 'refused' });
+    expect(await relay('deleteNotes', { notes: [2] })).toMatchObject({ ok: true });
+  });
+
+  it('refuses what it could not check, when the marks cannot be looked up', async () => {
+    refuses();
+    expect(await relay('deleteNotes', { notes: [1] })).toMatchObject({ ok: false, kind: 'offline' });
+  });
+
+  it('passes the other actions straight through', async () => {
+    const fetch = marksAre();
+    await relay('findNotes', { query: 'deck:*' });
+    expect(fetch).toHaveBeenCalledOnce();
   });
 });
 

@@ -209,6 +209,41 @@ export const ASSUMPTIONS: Assumption[] = [
     fallback: null,
   },
   {
+    id: 'anki.addnotes',
+    site: 'external',
+    claim: 'addNotes returns one note id per note; older AnkiConnect puts null where it refused one, newer raises the refusals after adding the rest',
+    breaks: 'Knowing which marks reached Anki',
+    fallback: 'Marks are confirmed by reading them back, not by this answer',
+  },
+  {
+    id: 'anki.tag-children',
+    site: 'external',
+    claim: 'tag:libregaku also matches libregaku::… child tags, and note:"X" matches a note type by name and can be negated',
+    breaks: 'Mark notes count as mined words, or as cards the extension made',
+    fallback: null,
+  },
+  {
+    id: 'anki.notesinfo-tags-mod',
+    site: 'external',
+    claim: 'notesInfo returns each note\'s tags, and its modification time as mod (seconds)',
+    breaks: 'A mark\'s status, and which of two devices\' marks for one word is newest',
+    fallback: 'The note id, which is its creation time, stands in for mod',
+  },
+  {
+    id: 'anki.note-edit-params',
+    site: 'external',
+    claim: 'deleteNotes takes {notes}, suspend takes {cards}, addTags and removeTags take {notes, tags: "space separated"}',
+    breaks: 'Clearing, changing and hiding marks in Anki',
+    fallback: 'The browser keeps the change queued and retries on the next sync',
+  },
+  {
+    id: 'anki.suspended-search',
+    site: 'external',
+    claim: '-is:suspended finds cards that are not suspended',
+    breaks: 'A mark\'s card could reach the learner\'s reviews',
+    fallback: null,
+  },
+  {
     id: 'anki.cors-default',
     site: 'external',
     claim: 'AnkiConnect\'s default webCorsOriginList admits a chrome-extension:// origin',
@@ -236,6 +271,7 @@ export const HUMAN: Record<string, string> = {
   'analyser-unavailable':
     'Readings and dictionary forms are off: the language analyser didn\'t load. Words match your cards by exact spelling only.',
   'mark-not-saved': "Couldn't save that mark. It applies until you reload, then it's lost.",
+  'marks-not-synced': "Couldn't save your marks to Anki. They're kept in this browser and will be tried again.",
 };
 
 export function describeFailure(id: string): string {

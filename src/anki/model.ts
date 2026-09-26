@@ -79,6 +79,43 @@ export const MODEL = {
   cardTemplates: [{ Name: 'Recognition', Front: FRONT, Back: BACK }],
 };
 
+/*
+ * A hand mark — "I know this", "track this", "ignore this" — as a note.
+ *
+ * Its own note type rather than a flag on a vocabulary card, because a mark
+ * is usually exactly what has no card: marking is not carding. Word is the
+ * key the extension looks words up by, and so also the field Anki's
+ * duplicate check reads, which keeps one note per word. The card exists only
+ * because Anki has no note without one; it is suspended as soon as it is made
+ * and never reviewed.
+ *
+ * The status is a tag, not a field: tags are cheap to change in bulk, visible
+ * in Anki's browser, and searchable — `tag:libregaku::mark::known`.
+ */
+export const MARK_MODEL_NAME = 'Libregaku Mark';
+export const MARK_FIELDS = ['Word', 'Reading'] as const;
+export const MARK_DECK = 'Libregaku::Marks';
+/** Anki's search for every mark note, whatever deck it has been moved to. */
+export const MARK_SEARCH = `note:"${MARK_MODEL_NAME}"`;
+export const MARK_TAG = `${ROOT_TAG}::mark`;
+
+export const MARK_MODEL = {
+  modelName: MARK_MODEL_NAME,
+  inOrderFields: [...MARK_FIELDS],
+  css: '.card { font-family: -apple-system, "Hiragino Sans", "Yu Gothic", sans-serif; font-size: 28px; text-align: center; }',
+  isCloze: false,
+  cardTemplates: [{
+    Name: 'Mark',
+    Front: '{{Word}}',
+    Back: '{{FrontSide}}{{#Reading}}<hr id="answer">{{Reading}}{{/Reading}}',
+  }],
+};
+
+/** The tag that carries a mark's status: libregaku::mark::known. */
+export function markTag(status: string): string {
+  return `${MARK_TAG}::${status}`;
+}
+
 /**
  * Hierarchical, so Anki can filter at any level: `tag:libregaku` for
  * everything, `tag:libregaku::netflix` for one source.

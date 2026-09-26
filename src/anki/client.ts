@@ -1,5 +1,5 @@
 import {
-  FIELDS, MODEL, MODEL_NAME, ROOT_TAG, fieldHtml, furiganaField, keyField, toAnkiFurigana,
+  FIELDS, MARK_SEARCH, MODEL, MODEL_NAME, ROOT_TAG, fieldHtml, furiganaField, keyField, toAnkiFurigana,
 } from './model';
 import { ankiCall as call, ankiTry } from './rpc';
 
@@ -61,34 +61,40 @@ export async function deckNames(): Promise<string[]> {
 }
 
 /**
- * A "Libregaku" note type that cannot hold what we write.
+ * One of our note types, present in the collection but unable to hold what
+ * we write.
  *
  * AnkiConnect matches field names and silently drops any the note type lacks,
  * so an edited or older note type used to produce cards with no definition,
  * or none at all, and nothing said why.
  */
 export class NoteTypeMismatch extends Error {
-  constructor(readonly missing: string[]) {
+  constructor(readonly missing: string[], readonly modelName: string = MODEL_NAME) {
     super(
-      `Your "${MODEL_NAME}" note type in Anki is missing ${missing.length === 1 ? 'the field' : 'the fields'} ` +
-        `${missing.join(', ')}, so cards would lose ${missing.length === 1 ? 'it' : 'them'}. ` +
-        `Libregaku will not change a note type you may have edited: in Anki, Tools → Manage Note Types, ` +
-        `rename "${MODEL_NAME}" (or add the fields back), then check again and a fresh one is installed.`,
+      `Your "${modelName}" note type in Anki is missing ${missing.length === 1 ? 'the field' : 'the fields'} ` +
+        `${missing.join(', ')}, so ${modelName === MODEL_NAME ? 'cards' : 'notes'} would lose ` +
+        `${missing.length === 1 ? 'it' : 'them'}. Libregaku will not change a note type you may have edited: ` +
+        `in Anki, Tools → Manage Note Types, rename "${modelName}" (or add the fields back), then check ` +
+        `again and a fresh one is installed.`,
     );
     this.name = 'NoteTypeMismatch';
   }
 }
 
 /**
- * Create our note type if the collection does not have it yet, and check the
- * one it has can hold every field we write. Never modifies an existing one:
- * adding a field to a note type forces a full sync, and it may be the user's.
+ * Create one of our note types if the collection does not have it yet, and
+ * check the one it has can hold every field we write. Never modifies an
+ * existing one: adding a field to a note type forces a full sync, and it may
+ * be the user's.
  */
-export async function ensureModel(): Promise<'created' | 'present'> {
+export async function ensureNoteType(
+  model: { modelName: string },
+  fields: readonly string[],
+): Promise<'created' | 'present'> {
   const names = await call<string[]>('modelNames');
-  if (!names.includes(MODEL_NAME)) {
+  if (!names.includes(model.modelName)) {
     try {
-      await call('createModel', MODEL);
+      await call('createModel', model);
       return 'created';
     } catch (e) {
       // Two callers on a first run can both miss it; the loser is told it
@@ -96,12 +102,17 @@ export async function ensureModel(): Promise<'created' | 'present'> {
       if (!(e instanceof Error && /already exists/i.test(e.message))) throw e;
     }
   }
-  const have = (await call<string[]>('modelFieldNames', { modelName: MODEL_NAME }))
+  const have = (await call<string[]>('modelFieldNames', { modelName: model.modelName }))
     .map((f) => f.toLowerCase());
   // AnkiConnect matches field names without regard to case, so this does too.
-  const missing = FIELDS.filter((f) => !have.includes(f.toLowerCase()));
-  if (missing.length) throw new NoteTypeMismatch(missing);
+  const missing = fields.filter((f) => !have.includes(f.toLowerCase()));
+  if (missing.length) throw new NoteTypeMismatch(missing, model.modelName);
   return 'present';
+}
+
+/** The vocabulary note type cards are made with. */
+export async function ensureModel(): Promise<'created' | 'present'> {
+  return ensureNoteType(MODEL, FIELDS);
 }
 
 export interface NewCard {
@@ -215,6 +226,12 @@ export async function addNote(card: NewCard): Promise<number> {
 }
 
 /**
+ * The cards we made. Hand marks carry our tag too, but they are notes kept
+ * for the extension's own use, not cards anyone studies or counts.
+ */
+const OURS = `tag:${ROOT_TAG} -${MARK_SEARCH}`;
+
+/**
  * Open Anki's own browser filtered to our cards.
  *
  * This is the answer to "let me see everything the extension made" — Anki
@@ -222,11 +239,11 @@ export async function addNote(card: NewCard): Promise<number> {
  * in a subtitle overlay.
  */
 export async function browseOurCards(extra = ''): Promise<void> {
-  await call('guiBrowse', { query: `tag:${ROOT_TAG}${extra ? ` ${extra}` : ''}` });
+  await call('guiBrowse', { query: `${OURS}${extra ? ` ${extra}` : ''}` });
 }
 
 /** Cards, not notes: what the settings panel and the toolbar both call them. */
 export async function countOurCards(): Promise<number> {
-  const ids = await call<number[]>('findCards', { query: `tag:${ROOT_TAG}` });
+  const ids = await call<number[]>('findCards', { query: OURS });
   return ids.length;
 }

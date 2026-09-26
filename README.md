@@ -24,9 +24,10 @@ become yours.
   definition, timestamp and a link back to that moment. Audio and screenshots are
   planned, not built.
 - **Your word list is your Anki collection.** What you know is read from Anki, so it
-  stays consistent everywhere without an account. Libregaku itself keeps only your
-  settings, saved lines and any words you mark by hand, in the browser. Hand marks
-  don't reach Anki yet.
+  stays consistent everywhere without an account. Words you mark by hand — known,
+  tracked, ignored — are saved into Anki too, as hidden notes that never come up for
+  review, so they follow your collection to every device. Libregaku keeps only your
+  settings and saved lines in the browser.
 
 ## Requirements
 

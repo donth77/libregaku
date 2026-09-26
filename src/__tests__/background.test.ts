@@ -83,6 +83,62 @@ describe('the AnkiConnect relay', () => {
   });
 });
 
+describe('changing notes already in Anki', () => {
+  /*
+   * The relay deletes, suspends and retags only Libregaku's own mark notes.
+   * Here Anki holds two marks — notes 1 and 2, cards 11 and 12 — and one of
+   * the learner's own notes, 99, with card 199.
+   */
+  function collection(): void {
+    fetchMock.mockImplementation(async (_url: string, init: RequestInit) => {
+      const { action, params } = JSON.parse(String(init.body)) as { action: string; params: { query?: string } };
+      const marks = params.query === 'note:"Libregaku Mark"';
+      const result = action === 'findNotes' && marks ? [1, 2] : action === 'findCards' && marks ? [11, 12] : null;
+      return { ok: true, status: 200, json: async () => ({ result, error: null }) };
+    });
+  }
+  const sentActions = (): string[] =>
+    fetchMock.mock.calls.map(([, init]) => (JSON.parse(String((init as RequestInit).body)) as { action: string }).action);
+
+  it('refuses to delete a note that is not a mark, and deletes nothing', async () => {
+    collection();
+    expect(await send({ type: 'anki', action: 'deleteNotes', params: { notes: [1, 99] } }))
+      .toMatchObject({ ok: false, kind: 'refused' });
+    expect(sentActions()).toEqual(['findNotes']);
+  });
+
+  it('refuses to suspend a card that is not a mark', async () => {
+    collection();
+    expect(await send({ type: 'anki', action: 'suspend', params: { cards: [199] } }))
+      .toMatchObject({ ok: false, kind: 'refused' });
+    expect(sentActions()).toEqual(['findCards']);
+  });
+
+  it("refuses to retag the learner's own notes", async () => {
+    collection();
+    for (const action of ['addTags', 'removeTags']) {
+      expect(await send({ type: 'anki', action, params: { notes: [99], tags: 'libregaku::mark::known' } }))
+        .toMatchObject({ ok: false, kind: 'refused' });
+    }
+    expect(sentActions()).toEqual(['findNotes', 'findNotes']);
+  });
+
+  it('deletes and suspends mark notes', async () => {
+    collection();
+    expect(await send({ type: 'anki', action: 'deleteNotes', params: { notes: [1, 2] } })).toMatchObject({ ok: true });
+    expect(await send({ type: 'anki', action: 'suspend', params: { cards: [11] } })).toMatchObject({ ok: true });
+    expect(sentActions()).toEqual(['findNotes', 'deleteNotes', 'findCards', 'suspend']);
+  });
+
+  it('refuses a request that does not name its notes, without asking Anki anything', async () => {
+    collection();
+    for (const notes of ['all', undefined, [1, 'x']]) {
+      expect(await send({ type: 'anki', action: 'deleteNotes', params: { notes } })).toMatchObject({ ok: false });
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
 describe('the audio relay', () => {
   it('fetches jpod101 without cookies', async () => {
     fetchMock.mockResolvedValueOnce(audio(2048, { url: 'https://cdn.innovativelanguage.com/a.mp3' }));

@@ -9,7 +9,7 @@
  * The offscreen document is the only correct home, and this file creates it.
  */
 
-import { ankiDirect, isRelayed, notRelayed } from './anki/direct';
+import { relay } from './anki/direct';
 import { MAX_AUDIO_BYTES, TEMPLATE_KEY, audioUrlAllowed } from './audio/pronounce';
 
 const OFFSCREEN_PATH = 'offscreen.html';
@@ -192,13 +192,10 @@ chrome.runtime.onMessage.addListener((msg: { type?: string; file?: string; actio
   }
 
   // All AnkiConnect traffic funnels through here, so it presents one origin —
-  // and only for the actions the extension itself uses.
+  // and only for the actions the extension itself uses, with the ones that
+  // change existing notes held to its own hand marks.
   if (msg?.type === 'anki') {
-    if (!isRelayed(msg.action)) {
-      sendResponse(notRelayed(msg.action));
-      return false;
-    }
-    void ankiDirect(msg.action, msg.params ?? {}).then(sendResponse);
+    void relay(msg.action, msg.params).then(sendResponse);
     return true;
   }
 

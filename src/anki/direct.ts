@@ -14,6 +14,7 @@
  */
 
 import { ANKI_PORT, ENDPOINT, extensionOrigin } from './endpoint';
+import { MARK_SEARCH } from './model';
 
 const VERSION = 6;
 
@@ -56,10 +57,16 @@ export const RELAYED_ACTIONS: ReadonlySet<string> = new Set([
   'deckNames',
   'createDeck',
   'addNote',
+  'addNotes',
   'findNotes',
   'findCards',
   'notesInfo',
   'guiBrowse',
+  // Hand marks only — see MARKS_ONLY.
+  'addTags',
+  'removeTags',
+  'suspend',
+  'deleteNotes',
 ]);
 
 export function isRelayed(action: unknown): action is string {
@@ -73,6 +80,51 @@ export function notRelayed(action: unknown): AnkiResult<never> {
     kind: 'refused',
     error: `Libregaku does not send "${String(action)}" to AnkiConnect.`,
   };
+}
+
+/**
+ * Actions that change notes or cards already in the collection, and which
+ * ids each one takes. The extension only ever points them at its own hand
+ * marks, so the relay holds them to that: it looks the marks up itself and
+ * refuses a request naming anything else. Whatever reaches the relay, the
+ * learner's real cards cannot be deleted, suspended or retagged through it.
+ */
+const MARKS_ONLY: Record<string, { ids: 'notes' | 'cards'; find: 'findNotes' | 'findCards' }> = {
+  deleteNotes: { ids: 'notes', find: 'findNotes' },
+  suspend: { ids: 'cards', find: 'findCards' },
+  addTags: { ids: 'notes', find: 'findNotes' },
+  removeTags: { ids: 'notes', find: 'findNotes' },
+};
+
+/**
+ * The service worker's side of every AnkiConnect call: only the actions the
+ * extension uses, and the ones that touch existing notes only on mark notes.
+ */
+export async function relay<T>(action: unknown, params: unknown): Promise<AnkiResult<T>> {
+  if (!isRelayed(action)) return notRelayed(action);
+  const p = params && typeof params === 'object' ? (params as Record<string, unknown>) : {};
+  const rule = MARKS_ONLY[action];
+  if (rule) {
+    const raw = p[rule.ids];
+    const ids: unknown[] = Array.isArray(raw) ? (raw as unknown[]) : [];
+    if (!Array.isArray(raw) || !ids.every((id): id is number => Number.isInteger(id))) {
+      return { ok: false, kind: 'refused', error: `${action} needs a list of ${rule.ids}.` };
+    }
+    const own = await ankiDirect<number[]>(rule.find, { query: MARK_SEARCH });
+    if (!own.ok) return { ok: false, kind: own.kind, offline: own.offline, error: own.error };
+    const marks = new Set(own.result ?? []);
+    const foreign = ids.filter((id) => !marks.has(id)).length;
+    if (foreign) {
+      const verb = action === 'deleteNotes' ? 'deletes' : action === 'suspend' ? 'suspends' : 'retags';
+      return {
+        ok: false,
+        kind: 'refused',
+        error: `Refused: ${foreign} of the ${rule.ids} sent ${foreign === 1 ? 'belongs' : 'belong'} to no ` +
+          `Libregaku mark. Libregaku only ${verb} its own marks.`,
+      };
+    }
+  }
+  return ankiDirect<T>(action, p);
 }
 
 /**
