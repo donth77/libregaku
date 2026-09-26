@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { describeFailure } from '../../src/assumptions';
+import { audioUrlAllowed } from '../../src/audio/pronounce';
 import { fetchCheckingHops } from './hosts';
 
 /**
@@ -31,6 +32,13 @@ describe('audio contract', () => {
       describeFailure('audio.jpod101'),
     );
     expect(res.ok, `jpod101 returned HTTP ${res.status}`).toBe(true);
+    // The service worker checks where a redirect lands against its own list,
+    // separately from the manifest. A new CDN has to be on both.
+    expect(
+      audioUrlAllowed(res.url),
+      `${res.url} is not in AUDIO_HOSTS in src/audio/pronounce.ts — the service worker ` +
+        `will refuse the recording.\n${describeFailure('audio.jpod101')}`,
+    ).toBe(true);
   }, 60_000);
 
   it('audio.jpod101 — still returns recordings for common vocabulary', async () => {

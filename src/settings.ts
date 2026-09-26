@@ -6,22 +6,37 @@
  * back to its default rather than delaying a frame.
  */
 
-/** Languages the segmenter can do more than find boundaries for. */
+/**
+ * Languages the segmenter can do more than find boundaries for.
+ *
+ * Japanese only, for now. Lindera also ships ko-dic and cc-cedict, but their
+ * feature columns are laid out differently from IPADIC's and the analyser
+ * reads IPADIC's positions, so Chinese came out with English glosses as its
+ * "readings" and Korean with part-of-speech tags as lemmas. Each needs its own
+ * column mapping before it can be offered as more than boundaries.
+ */
 export const TIER2_LANGS: Record<string, string> = {
   ja: 'ipadic',
-  ko: 'ko-dic',
-  zh: 'cc-cedict',
+};
+
+/**
+ * Languages with a dictionary behind lookups. JMdict is Japanese; offering
+ * lookups in any other language would answer every Spanish word from a
+ * Japanese dictionary.
+ */
+export const DICTIONARIES: Record<string, string> = {
+  ja: 'jmdict',
 };
 
 export const TARGET_LANGUAGES: Array<{ code: string; label: string; tier: 0 | 1 | 2 }> = [
   { code: 'ja', label: 'Japanese', tier: 2 },
-  { code: 'ko', label: 'Korean', tier: 2 },
-  { code: 'zh', label: 'Chinese', tier: 2 },
-  { code: 'es', label: 'Spanish', tier: 1 },
-  { code: 'fr', label: 'French', tier: 1 },
-  { code: 'de', label: 'German', tier: 1 },
-  { code: 'it', label: 'Italian', tier: 1 },
-  { code: 'pt', label: 'Portuguese', tier: 1 },
+  { code: 'ko', label: 'Korean', tier: 0 },
+  { code: 'zh', label: 'Chinese', tier: 0 },
+  { code: 'es', label: 'Spanish', tier: 0 },
+  { code: 'fr', label: 'French', tier: 0 },
+  { code: 'de', label: 'German', tier: 0 },
+  { code: 'it', label: 'Italian', tier: 0 },
+  { code: 'pt', label: 'Portuguese', tier: 0 },
   { code: 'th', label: 'Thai', tier: 0 },
 ];
 
@@ -157,7 +172,14 @@ const KEY = 'libregaku.settings';
 
 let cached: Settings = { ...DEFAULTS };
 let loaded = false;
-const listeners = new Set<(s: Settings) => void>();
+/**
+ * `here` is true when the change was made in this page, false when it arrived
+ * from another tab or the options page. Most listeners ignore it; the panel's
+ * open state uses it so that closing the panel in one tab does not close it
+ * in every other tab too.
+ */
+type Listener = (s: Settings, here: boolean) => void;
+const listeners = new Set<Listener>();
 
 export function settings(): Settings {
   return cached;
@@ -177,7 +199,7 @@ export async function loadSettings(): Promise<Settings> {
 
 export async function setSetting<K extends keyof Settings>(key: K, value: Settings[K]): Promise<void> {
   cached = { ...cached, [key]: value };
-  listeners.forEach((fn) => fn(cached));
+  listeners.forEach((fn) => fn(cached, true));
   try {
     await chrome.storage.sync.set({ [KEY]: cached });
   } catch {
@@ -185,16 +207,27 @@ export async function setSetting<K extends keyof Settings>(key: K, value: Settin
   }
 }
 
-export function onSettingsChange(fn: (s: Settings) => void): void {
+export function onSettingsChange(fn: Listener): void {
   listeners.add(fn);
+}
+
+function same(a: Settings, b: Settings): boolean {
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]) as Set<keyof Settings>;
+  for (const k of keys) if (a[k] !== b[k]) return false;
+  return true;
 }
 
 // Keep every tab in step when a setting changes anywhere.
 try {
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'sync' || !changes[KEY]) return;
-    cached = { ...DEFAULTS, ...(changes[KEY].newValue as Partial<Settings> | undefined) };
-    listeners.forEach((fn) => fn(cached));
+    const next = { ...DEFAULTS, ...(changes[KEY].newValue as Partial<Settings> | undefined) };
+    // This tab's own write echoes back here after setSetting has already
+    // applied and announced it. Announcing it twice ran every listener twice —
+    // including the one that re-reads the whole Anki collection.
+    if (same(next, cached)) return;
+    cached = next;
+    listeners.forEach((fn) => fn(cached, false));
   });
 } catch {
   /* not in an extension context (tests) */

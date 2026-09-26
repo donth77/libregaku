@@ -30,6 +30,48 @@ const JPOD = 'https://assets.languagepod101.com/dictionary/japanese/audiomp3.php
  */
 const JPOD_MISSING_BYTES = 52288;
 
+/** Where a user's own audio source is stored: a URL with {word} and optionally {reading}. */
+export const TEMPLATE_KEY = 'libregaku.audioTemplate';
+
+/**
+ * The hosts recordings come from, and so the only ones the service worker
+ * will fetch for this module: jpod101, and the CDN it redirects to. A fetch
+ * relay that took any URL would be a way to make requests as the extension.
+ */
+export const AUDIO_HOSTS: readonly string[] = ['assets.languagepod101.com', 'cdn.innovativelanguage.com'];
+
+/** No recording of one word comes near this; anything bigger is not one. */
+export const MAX_AUDIO_BYTES = 4 * 1024 * 1024;
+
+/** The host a user's template points at — host and port — or null when it is not usable. */
+export function templateHost(template: unknown): string | null {
+  if (typeof template !== 'string' || !template.includes('{word}')) return null;
+  try {
+    const url = new URL(template.replaceAll('{word}', 'w').replaceAll('{reading}', 'r'));
+    return url.protocol === 'https:' ? url.host : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Whether the service worker may fetch this URL as audio: https, no
+ * credentials in it, and a host this module actually uses — jpod101's, or
+ * the one the user's own template names.
+ */
+export function audioUrlAllowed(url: string, template?: unknown): boolean {
+  let u: URL;
+  try {
+    u = new URL(url);
+  } catch {
+    return false;
+  }
+  if (u.protocol !== 'https:' || u.username || u.password) return false;
+  if (AUDIO_HOSTS.includes(u.host)) return true;
+  const own = templateHost(template);
+  return own !== null && u.host === own;
+}
+
 export type Source = 'jpod101' | 'custom' | 'synthesis';
 
 export interface Spoken {
@@ -162,8 +204,8 @@ export async function pronounce(word: string, reading?: string): Promise<Spoken>
   }
 
   try {
-    const got = await chrome.storage.sync.get('libregaku.audioTemplate');
-    const template = got['libregaku.audioTemplate'];
+    const got = await chrome.storage.sync.get(TEMPLATE_KEY);
+    const template = got[TEMPLATE_KEY];
     if (typeof template === 'string' && template.includes('{word}')) {
       const custom = await tryTemplate(template, word, reading);
       if (custom) {

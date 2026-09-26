@@ -293,11 +293,14 @@ describe('grammar coverage', () => {
   });
 
   it('labels spoken contractions, which subtitles are full of', () => {
+    // What IPADIC really emits for 行っちゃう: no て before ちゃう. The test
+    // this replaces fed 食べ + て + ちゃう, a sequence the analyser never
+    // produces, and so passed while every real contraction split in two.
     const out = mergeMorphemes([
-      m('食べ', '動詞', '自立', '食べる', 'タベ'),
-      m('て', '助詞', '接続助詞', 'て', 'テ'),
-      m('ちゃう', '動詞', '非自立', 'ちゃう', 'チャウ'),
+      { surface: '行っ', lemma: '行く', reading: 'イッ', pos: '動詞', pos1: '自立', conjForm: '連用タ接続' },
+      { surface: 'ちゃう', lemma: 'ちゃう', reading: 'チャウ', pos: '動詞', pos1: '非自立', conjForm: '基本形' },
     ]);
+    expect(out).toHaveLength(1);
     expect(out[0]?.inflections).toContain('completely, or regrettably');
   });
 

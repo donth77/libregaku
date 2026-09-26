@@ -1,5 +1,5 @@
 import { fetchJsonTgz } from './archive';
-import { keysFor, rank, toEntry, type Entry, type RawWord } from './jmdict';
+import { keysFor, rank, readingsOf, toEntry, type Entry, type RankHint, type RawWord } from './jmdict';
 
 /**
  * The dictionary store.
@@ -18,6 +18,18 @@ const META = 'meta';
 const RELEASE = '3.6.2+20260914172325';
 
 /**
+ * The shape of what `build` writes. Bump it whenever `toEntry` or `keysFor`
+ * change what is stored, exactly as RELEASE is bumped for new data: either one
+ * changing means an existing install holds something this code did not write.
+ */
+const FORMAT = 3;
+
+/** What the store records about its contents once, and only once, complete. */
+function mark(edition: string): string {
+  return `${edition}@${RELEASE}#${FORMAT}`;
+}
+
+/**
  * Pinned to one release, as the lindera dictionaries are. This used to point
  * at "latest" with a pinned filename, which broke the moment a newer release
  * shipped: the asset name changed under it and every download went 404 while
@@ -30,8 +42,14 @@ export function jmdictUrl(edition: string): string {
   );
 }
 
+let connection: Promise<IDBDatabase> | null = null;
+
+/**
+ * One connection for the life of the document. Opening per lookup cost a
+ * round trip on every hover, and the tokenizer now asks too.
+ */
 function open(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
+  connection ??= new Promise<IDBDatabase>((resolve, reject) => {
     const req = indexedDB.open(DB, VERSION);
     req.onupgradeneeded = () => {
       const db = req.result;
@@ -42,9 +60,24 @@ function open(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains(META)) db.createObjectStore(META);
     };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    req.onsuccess = () => {
+      const db = req.result;
+      // A newer schema elsewhere must not be blocked by this connection.
+      db.onversionchange = () => {
+        db.close();
+        connection = null;
+      };
+      db.onclose = () => {
+        connection = null;
+      };
+      resolve(db);
+    };
+    req.onerror = () => {
+      connection = null;
+      reject(req.error);
+    };
   });
+  return connection;
 }
 
 function done(tx: IDBTransaction): Promise<void> {
@@ -55,34 +88,48 @@ function done(tx: IDBTransaction): Promise<void> {
   });
 }
 
-/** Which edition the store currently holds, if any. */
-async function storedEdition(db: IDBDatabase): Promise<string | null> {
-  return new Promise((resolve) => {
-    const req = db.transaction(META).objectStore(META).get('edition');
-    req.onsuccess = () => resolve((req.result as string | undefined) ?? null);
-    req.onerror = () => resolve(null);
+function request<T>(req: IDBRequest): Promise<T> {
+  return new Promise((resolve, reject) => {
+    req.onsuccess = () => resolve(req.result as T);
+    req.onerror = () => reject(req.error);
   });
 }
 
+/** What the store currently holds, if anything is marked complete. */
+async function storedMark(db: IDBDatabase): Promise<string | null> {
+  try {
+    return (await request<string | undefined>(db.transaction(META).objectStore(META).get('edition'))) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Populated *and* in the language the user asked for.
+ * Populated, complete, and exactly what this code would build.
  *
- * Without the edition check, switching from English to Spanish would leave the
- * English data in place and keep serving it — a setting that appears to work
- * and does not.
+ * The mark names the edition, the release and the format. Without the edition,
+ * switching from English to Spanish would keep serving English — a setting that
+ * appears to work and does not. Without the release, bumping RELEASE changed
+ * nothing for anyone who had already downloaded the old one.
  */
 export async function isPopulated(edition: string): Promise<boolean> {
   const db = await open();
-  try {
-    if ((await storedEdition(db)) !== edition) return false;
-    return await new Promise<boolean>((resolve, reject) => {
-      const req = db.transaction(ENTRIES).objectStore(ENTRIES).count();
-      req.onsuccess = () => resolve(req.result > 1000);
-      req.onerror = () => reject(req.error);
-    });
-  } finally {
-    db.close();
-  }
+  if ((await storedMark(db)) !== mark(edition)) return false;
+  const n = await request<number>(db.transaction(ENTRIES).objectStore(ENTRIES).count());
+  return n > 1000;
+}
+
+/**
+ * Complete data for this edition from an older release or format, if that is
+ * what the store holds. Good enough to answer lookups while its replacement
+ * downloads, rather than sending every word to a remote API meanwhile.
+ */
+export async function hasStale(edition: string): Promise<boolean> {
+  const db = await open();
+  const stored = await storedMark(db);
+  if (!stored || stored === mark(edition)) return false;
+  // Marks before the release was recorded were the bare edition code.
+  return stored === edition || stored.startsWith(`${edition}@`);
 }
 
 export async function build(
@@ -92,79 +139,117 @@ export async function build(
   onProgress?.('downloading', 0);
   const data = (await fetchJsonTgz(jmdictUrl(edition), (loaded, total) => {
     onProgress?.('downloading', total ? Math.round((loaded / total) * 100) : 0);
-  })) as { words?: RawWord[] };
+  })) as { words?: Array<RawWord | undefined> };
 
   const words = data.words ?? [];
   if (!words.length) throw new Error('libregaku: dictionary contained no words');
 
   const db = await open();
-  try {
-    // A language change replaces the contents rather than merging into them.
-    await done(
-      (() => {
-        const tx = db.transaction([ENTRIES, FORMS, META], 'readwrite');
-        tx.objectStore(ENTRIES).clear();
-        tx.objectStore(FORMS).clear();
-        return tx;
-      })(),
-    );
 
-    // Batched so one transaction does not hold ~200k writes open at once.
-    const BATCH = 5000;
-    let written = 0;
+  // Emptied and unmarked in one transaction. Clearing the data but not the
+  // mark meant a build interrupted half way — a closed browser, a full disk —
+  // left a partial store that still claimed to be complete.
+  onProgress?.('indexing', 0);
+  const reset = db.transaction([ENTRIES, FORMS, META], 'readwrite');
+  reset.objectStore(ENTRIES).clear();
+  reset.objectStore(FORMS).clear();
+  reset.objectStore(META).delete('edition');
+  await done(reset);
 
-    for (let i = 0; i < words.length; i += BATCH) {
-      const tx = db.transaction([ENTRIES, FORMS], 'readwrite');
-      const entries = tx.objectStore(ENTRIES);
-      const forms = tx.objectStore(FORMS);
+  // Batched so one transaction does not hold ~200k writes open at once.
+  const BATCH = 5000;
+  let written = 0;
 
-      for (const w of words.slice(i, i + BATCH)) {
-        const entry = toEntry(w, edition);
-        if (!entry) continue;
-        entries.put(entry);
-        for (const form of keysFor(w)) forms.put({ form, id: entry.id });
-        written++;
-      }
+  for (let i = 0; i < words.length; i += BATCH) {
+    const tx = db.transaction([ENTRIES, FORMS], 'readwrite');
+    const entries = tx.objectStore(ENTRIES);
+    const forms = tx.objectStore(FORMS);
+    const end = Math.min(i + BATCH, words.length);
 
-      await done(tx);
-      onProgress?.('indexing', Math.round((Math.min(i + BATCH, words.length) / words.length) * 100));
+    for (let j = i; j < end; j++) {
+      const w = words[j];
+      // The parsed JSON is the largest thing this document ever holds; let it
+      // go a batch at a time rather than all at the very end.
+      words[j] = undefined;
+      if (!w) continue;
+      const entry = toEntry(w, edition);
+      if (!entry) continue;
+      entries.put(entry);
+      for (const form of keysFor(w)) forms.put({ form, id: entry.id });
+      written++;
     }
 
-    const mark = db.transaction(META, 'readwrite');
-    mark.objectStore(META).put(edition, 'edition');
-    await done(mark);
-
-    return written;
-  } finally {
-    db.close();
+    await done(tx);
+    onProgress?.('indexing', Math.round((end / words.length) * 100));
   }
+
+  const marker = db.transaction(META, 'readwrite');
+  marker.objectStore(META).put(mark(edition), 'edition');
+  await done(marker);
+
+  return written;
 }
 
-export async function lookup(key: string): Promise<Entry[]> {
+/** Every entry filed under one form, unranked. */
+async function candidates(db: IDBDatabase, key: string): Promise<Entry[]> {
+  const tx = db.transaction([ENTRIES, FORMS]);
+  const rows = await request<Array<{ id: string }>>(tx.objectStore(FORMS).index('form').getAll(key));
+  if (!rows.length) return [];
+  const store = tx.objectStore(ENTRIES);
+  const found = await Promise.all(
+    rows.map((r) => request<Entry | undefined>(store.get(r.id)).catch(() => undefined)),
+  );
+  return found.filter((e): e is Entry => Boolean(e));
+}
+
+/** How many ranked entries a lookup returns. */
+const LIMIT = 20;
+
+/**
+ * Entries for one key, best first.
+ *
+ * Every candidate is ranked before any is dropped. Cutting to twenty first,
+ * in id order, is how a common word could lose to rarer entries that merely
+ * had lower sequence numbers.
+ */
+export async function lookup(key: string, hint?: RankHint): Promise<Entry[]> {
   if (!key) return [];
   const db = await open();
-  try {
-    const tx = db.transaction([ENTRIES, FORMS]);
-    const ids = await new Promise<string[]>((resolve, reject) => {
-      const req = tx.objectStore(FORMS).index('form').getAll(key);
-      req.onsuccess = () => resolve((req.result as Array<{ id: string }>).map((r) => r.id));
-      req.onerror = () => reject(req.error);
-    });
-    if (!ids.length) return [];
+  return rank(await candidates(db, key), key, hint).slice(0, LIMIT);
+}
 
-    const store = tx.objectStore(ENTRIES);
-    const found = await Promise.all(
-      ids.slice(0, 20).map(
-        (id) =>
-          new Promise<Entry | undefined>((resolve) => {
-            const req = store.get(id);
-            req.onsuccess = () => resolve(req.result as Entry | undefined);
-            req.onerror = () => resolve(undefined);
-          }),
-      ),
-    );
-    return rank(found.filter((e): e is Entry => Boolean(e)), key);
-  } finally {
-    db.close();
-  }
+/** One dictionary word a written form stands for. */
+export interface Reading {
+  /** The entry's headword. */
+  word: string;
+  /** Its reading, in hiragana. */
+  reading: string;
+  /** The entry's first sense's part-of-speech codes. */
+  pos?: string[];
+}
+
+/**
+ * What each written form reads as, for the tokenizer.
+ *
+ * Merging morphemes needs to know whether 一人 is a word and how it reads —
+ * ひとり, which no concatenation of 一 and 人 produces — and whether お寿司
+ * has its own entry or only 寿司 does. Several readings for one form (一日:
+ * いちにち, ついたち) are all returned so the caller can decline to choose.
+ */
+export async function lexicon(forms: string[]): Promise<Record<string, Reading[]>> {
+  const out: Record<string, Reading[]> = {};
+  if (!forms.length) return out;
+  const db = await open();
+  await Promise.all(
+    [...new Set(forms)].map(async (form) => {
+      const ranked = rank(await candidates(db, form), form);
+      const readings = readingsOf(ranked, form);
+      if (!readings.length) return;
+      out[form] = readings.map((reading) => {
+        const entry = ranked.find((e) => (e.reading ?? (e.uk ? e.word : undefined)) === reading);
+        return { word: entry?.word ?? form, reading, pos: entry?.senses[0]?.pos };
+      });
+    }),
+  );
+  return out;
 }

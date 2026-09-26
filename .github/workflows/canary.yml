@@ -8,6 +8,11 @@ on:
     - cron: '17 6 * * *'
   workflow_dispatch:
 
+# The repository's default token is read-only; opening the issue needs more.
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   contract:
     runs-on: ubuntu-latest
@@ -20,10 +25,23 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
 
+      # `shell: bash` is not the default it looks like: named explicitly, it
+      # runs with -o pipefail, so a failing test fails the step instead of
+      # `tee` reporting success. Without it this canary was red inside and
+      # green outside for a month.
       - name: Check live-site assumptions
         id: contract
+        shell: bash
         run: pnpm test:contract 2>&1 | tee canary.log
         continue-on-error: true
+
+      - name: Keep the log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: canary-log
+          path: canary.log
+          if-no-files-found: ignore
 
       - name: Open or update an issue when an assumption breaks
         if: steps.contract.outcome == 'failure'
@@ -34,7 +52,10 @@ jobs:
           BODY=$(printf 'The daily canary failed. A site likely changed shape.\n\nRun: %s\n\n```\n%s\n```\n' \
             "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
             "$(tail -60 canary.log)")
-          EXISTING=$(gh issue list --state open --search "$TITLE in:title" --json number --jq '.[0].number')
+          # The label is how the open issue is found again; make sure it exists.
+          gh label create canary --color B60205 \
+            --description "The daily canary found a broken site assumption" 2>/dev/null || true
+          EXISTING=$(gh issue list --state open --label canary --json number --jq '.[0].number')
           if [ -n "$EXISTING" ]; then
             gh issue comment "$EXISTING" --body "$BODY"
           else

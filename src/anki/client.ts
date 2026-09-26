@@ -1,4 +1,6 @@
-import { MODEL, MODEL_NAME, ROOT_TAG } from './model';
+import {
+  FIELDS, MODEL, MODEL_NAME, ROOT_TAG, fieldHtml, furiganaField, keyField, toAnkiFurigana,
+} from './model';
 import { ankiCall as call, ankiTry } from './rpc';
 
 /**
@@ -20,7 +22,7 @@ export async function isAvailable(): Promise<boolean> {
 
 /**
  * Everything the settings panel needs to say in one round trip: whether Anki
- * answered, and if not, which of the four things is wrong.
+ * answered, and if not, which of the five things is wrong.
  *
  * A boolean cannot carry that, which is why "Open Anki" used to appear while
  * Anki was open and something else held its port.
@@ -30,6 +32,8 @@ export type AnkiState =
   | { kind: 'offline' }
   | { kind: 'blocked' }
   | { kind: 'occupied'; detail: string }
+  /** Something took the connection and never answered: Anki mid-sync, or a hung program. */
+  | { kind: 'busy'; detail: string }
   | { kind: 'refused'; detail: string };
 
 export async function probe(): Promise<AnkiState> {
@@ -37,6 +41,7 @@ export async function probe(): Promise<AnkiState> {
   if (!hello.ok) {
     if (hello.kind === 'blocked') return { kind: 'blocked' };
     if (hello.kind === 'occupied') return { kind: 'occupied', detail: hello.error ?? '' };
+    if (hello.kind === 'timeout') return { kind: 'busy', detail: hello.error ?? '' };
     if (hello.kind === 'refused') return { kind: 'refused', detail: hello.error ?? '' };
     return { kind: 'offline' };
   }
@@ -55,21 +60,62 @@ export async function deckNames(): Promise<string[]> {
   return call<string[]>('deckNames');
 }
 
-/** Create our note type if the collection does not have it yet. */
+/**
+ * A "Libregaku" note type that cannot hold what we write.
+ *
+ * AnkiConnect matches field names and silently drops any the note type lacks,
+ * so an edited or older note type used to produce cards with no definition,
+ * or none at all, and nothing said why.
+ */
+export class NoteTypeMismatch extends Error {
+  constructor(readonly missing: string[]) {
+    super(
+      `Your "${MODEL_NAME}" note type in Anki is missing ${missing.length === 1 ? 'the field' : 'the fields'} ` +
+        `${missing.join(', ')}, so cards would lose ${missing.length === 1 ? 'it' : 'them'}. ` +
+        `Libregaku will not change a note type you may have edited: in Anki, Tools → Manage Note Types, ` +
+        `rename "${MODEL_NAME}" (or add the fields back), then check again and a fresh one is installed.`,
+    );
+    this.name = 'NoteTypeMismatch';
+  }
+}
+
+/**
+ * Create our note type if the collection does not have it yet, and check the
+ * one it has can hold every field we write. Never modifies an existing one:
+ * adding a field to a note type forces a full sync, and it may be the user's.
+ */
 export async function ensureModel(): Promise<'created' | 'present'> {
   const names = await call<string[]>('modelNames');
-  if (names.includes(MODEL_NAME)) return 'present';
-  await call('createModel', MODEL);
-  return 'created';
+  if (!names.includes(MODEL_NAME)) {
+    try {
+      await call('createModel', MODEL);
+      return 'created';
+    } catch (e) {
+      // Two callers on a first run can both miss it; the loser is told it
+      // exists, which is what it wanted. Anything else is a real failure.
+      if (!(e instanceof Error && /already exists/i.test(e.message))) throw e;
+    }
+  }
+  const have = (await call<string[]>('modelFieldNames', { modelName: MODEL_NAME }))
+    .map((f) => f.toLowerCase());
+  // AnkiConnect matches field names without regard to case, so this does too.
+  const missing = FIELDS.filter((f) => !have.includes(f.toLowerCase()));
+  if (missing.length) throw new NoteTypeMismatch(missing);
+  return 'present';
 }
 
 export interface NewCard {
   deck: string;
   expression: string;
-  reading: string;
+  /**
+   * Anki furigana markup as toAnkiFurigana() builds it — 分[わ]かる — or the
+   * segments to build it from. Its brackets are kept; markup is neutralised.
+   */
+  reading: string | Array<{ text: string; ruby?: string }>;
   meaning: string;
   sentence?: string;
   sentenceMeaning?: string;
+  /** Already HTML: sourceField() escapes it and makes the link. */
   source?: string;
   tags: string[];
 }
@@ -82,8 +128,41 @@ export interface SavedSentence {
   deck: string;
   text: string;
   translation?: string;
+  /** Already HTML: sourceField() escapes it and makes the link. */
   source?: string;
   tags: string[];
+}
+
+/**
+ * Anki already has this note, in the deck it was going to.
+ *
+ * Its own class so a caller can say "already in Anki" rather than show
+ * AnkiConnect's wording as a failure. isDuplicate() recognises it.
+ */
+export class DuplicateNote extends Error {
+  constructor(readonly deck: string, readonly expression: string) {
+    super(`Already in ${deck}.`);
+    this.name = 'DuplicateNote';
+  }
+}
+
+/**
+ * Anki's own words for "you already have this one" — AnkiConnect says
+ * "cannot create note because it is a duplicate" — or our class for it.
+ * Narrower than /duplicate/ so a deck named "Duplicates" that went missing
+ * is not counted as a card already added.
+ */
+export function isDuplicate(e: unknown): boolean {
+  return e instanceof DuplicateNote || (e instanceof Error && /\bis a duplicate\b/i.test(e.message));
+}
+
+async function add(note: Record<string, unknown>, deck: string, expression: string): Promise<number> {
+  try {
+    return await call<number>('addNote', { note });
+  } catch (e) {
+    if (isDuplicate(e)) throw new DuplicateNote(deck, expression);
+    throw e;
+  }
 }
 
 /**
@@ -95,51 +174,44 @@ export interface SavedSentence {
  * as plain text, so a line with no readings is simply itself.
  */
 export async function addSentence(s: SavedSentence): Promise<number> {
-  return call<number>('addNote', {
-    note: {
-      deckName: s.deck,
-      modelName: MODEL_NAME,
-      fields: {
-        Expression: s.text,
-        Reading: s.text,
-        Meaning: s.translation ?? '',
-        Sentence: '',
-        SentenceMeaning: '',
-        Source: s.source ?? '',
-        Audio: '',
-        Image: '',
-      },
-      tags: s.tags,
-      // Saving the same line twice is the same card; Anki says so and we count it.
-      options: { allowDuplicate: false, duplicateScope: 'deck' },
+  return add({
+    deckName: s.deck,
+    modelName: MODEL_NAME,
+    fields: {
+      Expression: keyField(s.text),
+      Reading: fieldHtml(s.text),
+      Meaning: fieldHtml(s.translation ?? ''),
+      Sentence: '',
+      SentenceMeaning: '',
+      Source: s.source ?? '',
+      Audio: '',
+      Image: '',
     },
-  });
+    tags: s.tags,
+    // Saving the same line twice is the same card; Anki says so and we count it.
+    options: { allowDuplicate: false, duplicateScope: 'deck' },
+  }, s.deck, s.text);
 }
 
-/** Anki's own words for "you already have this one". */
-export function isDuplicate(e: unknown): boolean {
-  return e instanceof Error && /duplicate/i.test(e.message);
-}
-
+/** Throws DuplicateNote when the deck already has this word in our note type. */
 export async function addNote(card: NewCard): Promise<number> {
-  return call<number>('addNote', {
-    note: {
-      deckName: card.deck,
-      modelName: MODEL_NAME,
-      fields: {
-        Expression: card.expression,
-        Reading: card.reading,
-        Meaning: card.meaning,
-        Sentence: card.sentence ?? '',
-        SentenceMeaning: card.sentenceMeaning ?? '',
-        Source: card.source ?? '',
-        Audio: '',
-        Image: '',
-      },
-      tags: card.tags,
-      options: { allowDuplicate: false, duplicateScope: 'deck' },
+  const reading = typeof card.reading === 'string' ? card.reading : toAnkiFurigana(card.reading);
+  return add({
+    deckName: card.deck,
+    modelName: MODEL_NAME,
+    fields: {
+      Expression: keyField(card.expression),
+      Reading: furiganaField(reading),
+      Meaning: fieldHtml(card.meaning),
+      Sentence: fieldHtml(card.sentence ?? ''),
+      SentenceMeaning: fieldHtml(card.sentenceMeaning ?? ''),
+      Source: card.source ?? '',
+      Audio: '',
+      Image: '',
     },
-  });
+    tags: card.tags,
+    options: { allowDuplicate: false, duplicateScope: 'deck' },
+  }, card.deck, card.expression);
 }
 
 /**
@@ -153,7 +225,8 @@ export async function browseOurCards(extra = ''): Promise<void> {
   await call('guiBrowse', { query: `tag:${ROOT_TAG}${extra ? ` ${extra}` : ''}` });
 }
 
+/** Cards, not notes: what the settings panel and the toolbar both call them. */
 export async function countOurCards(): Promise<number> {
-  const ids = await call<number[]>('findNotes', { query: `tag:${ROOT_TAG}` });
+  const ids = await call<number[]>('findCards', { query: `tag:${ROOT_TAG}` });
   return ids.length;
 }

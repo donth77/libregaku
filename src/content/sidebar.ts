@@ -1,4 +1,4 @@
-import { lookupWord } from '../dict/client';
+import { lookupToken, type LookupResult } from '../dict/client';
 import { addSentence, isDuplicate, probe } from '../anki/client';
 import { ROOT_TAG, tagsFor } from '../anki/model';
 import { sourceField } from '../anki/source';
@@ -8,9 +8,10 @@ import type { Bookmark } from './bookmarks';
 import { copyText, downloadText, tsvCell } from './share';
 import { readablePos } from '../dict/pos';
 import type { Segmenter, Token } from '../morphology/types';
-import { setSetting, settings } from '../settings';
+import { onSettingsChange, setSetting, settings, type Settings } from '../settings';
 import { furigana } from '../morphology/furigana';
-import { PANEL_STYLE, buildSettings } from './settings-panel';
+import { PANEL_STYLE, buildSettings, syncSettingsControls } from './settings-panel';
+import { popupIsOpen } from './popup';
 import type { Transcript, Line } from './transcript';
 
 /**
@@ -31,14 +32,75 @@ import type { Transcript, Line } from './transcript';
  */
 
 const WIDTH_KEY = 'libregaku.sidebar.width';
+const MIN_WIDTH = 280;
+const MAX_WIDTH = 680;
 const HOVER_DELAY = 180;
+/** The hover card's rendered width, for when layout cannot measure it. */
+const HOVER_WIDTH = 298;
 /** Keys that scroll a list from the keyboard. */
 const NAV_KEYS = new Set(['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ']);
 
+type Filter = 'all' | 'unknown' | 'i1' | 'saved';
+
+/** Where a transcript word came from, for a card mined from it. */
+export interface WordContext {
+  /** When the line starts, in seconds — the card's timestamp and link. */
+  start?: number;
+  /** The line's second-track translation. */
+  translation?: string;
+}
+
+const clampWidth = (w: number): number => Math.min(Math.max(MIN_WIDTH, w), MAX_WIDTH);
+
+/**
+ * Whether the control a key was pressed in uses that key itself.
+ *
+ * Text fields and selects use every key. Buttons and switches use only the
+ * two that press them. Anything else — including a button that merely had
+ * focus — leaves the key to the player.
+ */
+function consumesKey(target: EventTarget | undefined, key: string): boolean {
+  const el = target as HTMLElement | undefined;
+  if (!el || typeof el.tagName !== 'string') return false;
+  if (el.isContentEditable) return true;
+  const tag = el.tagName.toLowerCase();
+  if (tag === 'textarea' || tag === 'select') return true;
+  const presses = key === ' ' || key === 'Enter';
+  if (tag === 'input') {
+    return /^(checkbox|radio|button|submit|reset)$/.test((el as HTMLInputElement).type) ? presses : true;
+  }
+  return (tag === 'button' || el.getAttribute('role') === 'button') && presses;
+}
+
+/**
+ * One subscription for the module, handed on to whichever panels are alive.
+ *
+ * `onSettingsChange` cannot unsubscribe, so a listener per panel would keep
+ * every panel ever built — one per video watched in the tab — alive for good.
+ */
+const watchers = new Set<(s: Settings, here: boolean) => void>();
+let watching = false;
+
+function watchSettings(fn: (s: Settings, here: boolean) => void): () => void {
+  if (!watching) {
+    watching = true;
+    onSettingsChange((s, here) => watchers.forEach((w) => w(s, here)));
+  }
+  watchers.add(fn);
+  return () => watchers.delete(fn);
+}
+
 const STYLE = `
+  /*
+   * The bottom edge stops at the site's own control bar. The panel used to run
+   * to the bottom of the player, over captions, settings, theater and
+   * fullscreen, which could not then be clicked while it was open. The height
+   * arrives as a custom property because every edge here is pinned with
+   * !important, and an inline style cannot beat that.
+   */
   :host {
     position: absolute !important;
-    top: 0 !important; right: 0 !important; bottom: 0 !important;
+    top: 0 !important; right: 0 !important; bottom: var(--lg-bottom, 0px) !important;
     z-index: 2147483646 !important;
     pointer-events: none !important;
   }
@@ -108,7 +170,16 @@ const STYLE = `
   .ico:hover { background: #212939; color: #E8ECF6; }
   .ico[aria-pressed="false"] { color: #5A6480; }
   .ico svg { display: block; }
-  .search { padding: 10px 14px; border-bottom: 1px solid #212939; flex: none; }
+  .search {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px; border-bottom: 1px solid #212939; flex: none;
+  }
+  .search input { flex: 1; min-width: 0; }
+  .search .count {
+    flex: none; white-space: nowrap;
+    font: 12px/1 ui-monospace, monospace; color: #838DA8; font-variant-numeric: tabular-nums;
+  }
+  .search .count:empty { display: none; }
   input {
     width: 100%; box-sizing: border-box; padding: 8px 11px;
     background: #12172A; border: 1px solid #2A3348; border-radius: 6px;
@@ -154,6 +225,7 @@ const STYLE = `
     background: #1A2138;
   }
   .line.hit { border-color: #D9A64A; }
+  .line.hit-cur { border-color: #D9A64A; box-shadow: 0 0 0 1px #D9A64A; }
   .line.hide { display: none; }
 
   .tx {
@@ -178,6 +250,18 @@ const STYLE = `
   .w[data-s="unknown"]  { box-shadow: inset 0 -2.5px 0 #E5806C; }
   .w[data-s="learning"] { box-shadow: inset 0 -1.5px 0 #D9A64A; }
   .w[data-s="tracking"] { box-shadow: inset 0 -2px 0 #A78BFA; }
+  .lines.mark-known .w[data-s="known"] { box-shadow: inset 0 -1.5px 0 #63AF97; }
+
+  /*
+   * Readings follow the overlay's setting, keyed on the same status. The
+   * transcript used to annotate every word while the overlay annotated only new
+   * ones, which put two opinions about what you know side by side.
+   */
+  .lines:not(.ruby-all) .w:not([data-s="unknown"]):not([data-s="learning"]) rt { visibility: hidden; }
+  .lines.ruby-off rt { display: none; }
+  /* The taller leading is only for lines where a reading will actually show. */
+  .lines.ruby-off .tx.has-ruby,
+  .lines:not(.ruby-all) .tx.has-ruby:not(.has-new-ruby) { line-height: 1.7; }
 
   /*
    * Time left, count right, the save button after it.
@@ -309,12 +393,25 @@ export interface SidebarDeps {
   statusOf: (t: Token) => string;
   seek: (t: number) => void;
   currentTime: () => number;
-  onWordClick: (token: Token, el: HTMLElement, sentence: string) => void;
+  /**
+   * A word in the transcript was clicked. The line it sits on is not the one
+   * playing, so its own start time and translation come with it — a card mined
+   * here should point at this line, not wherever playback happens to be.
+   */
+  onWordClick: (token: Token, el: HTMLElement, sentence: string, context?: WordContext) => void;
   /**
    * Enough about this video to find a saved line again months later. Given a
    * time, the link points there rather than at wherever playback happens to be.
    */
   context: (at?: number) => { site: string; video: string; title: string; url: string; lang: string };
+  /** "Check again" in settings reached Anki: word status is worth re-reading. */
+  onAnkiConnected?: () => void;
+  /**
+   * How a word is looked up. Supplied so the transcript and the overlay answer
+   * from the same place — including "no dictionary for this language" — rather
+   * than each deciding for itself.
+   */
+  lookup?: (tok: Token) => Promise<LookupResult>;
 }
 
 export class Sidebar {
@@ -332,22 +429,41 @@ export class Sidebar {
   #open = false;
   #width = 400;
   #active = -1;
-  #hits = new Set<number>();
-  #filter: 'all' | 'unknown' | 'i1' | 'saved' = 'all';
+  #filter: Filter = 'all';
   /** Ids saved on *this* video, so a row can paint itself without a round trip. */
   #saved = new Set<string>();
   #counts = new Map<Line, { unknown: number; words: number }>();
   #analysisRevision = 0;
   #measuringRevision: number | null = null;
   #destroyed = false;
+  /** Until the stored width and open state are read, settings do not move the panel. */
+  #restored = false;
   #userScrolled = false;
   #hoverTimer = 0;
+  /** The word the hover card is for, or waiting to be for. */
+  #hoverFor: HTMLElement | null = null;
+  /** Bumped whenever the card should not appear, so a slow lookup cannot show a stale one. */
+  #hoverSeq = 0;
+  #idle = 0;
   #mode: 'transcript' | 'settings' | 'saved' = 'transcript';
   #settingsEl: HTMLElement | null = null;
   #fab!: HTMLButtonElement;
   #now!: HTMLButtonElement;
   #tab!: HTMLButtonElement;
   #filterMenu!: HTMLElement;
+  #count!: HTMLElement;
+  /** The search, trimmed. While there is one, following playback pauses. */
+  #query = '';
+  /** Lines matching the search, in transcript order. */
+  #hits: number[] = [];
+  #hitSet = new Set<number>();
+  /** The match last jumped to — held by identity, since new lines move indices. */
+  #hitLine: Line | null = null;
+  /** Whether progress was showing, so a change to it can be told from any other. */
+  #stats = settings().sidebarStats;
+  /** Every document and window listener, removed together on destroy. */
+  #abort = new AbortController();
+  #unwatch: () => void = () => {};
 
   constructor(mount: HTMLElement, deps: SidebarDeps) {
     this.#deps = deps;
@@ -396,6 +512,7 @@ export class Sidebar {
     fab.replaceChildren(icon('filter', 19));
     fab.title = 'Filter lines';
     fab.setAttribute('aria-label', 'Filter lines');
+    fab.setAttribute('aria-expanded', 'false');
     fab.addEventListener('click', () => {
       const open = filters.classList.toggle('open');
       fab.setAttribute('aria-expanded', String(open));
@@ -411,14 +528,10 @@ export class Sidebar {
       b.className = 'f';
       b.textContent = label;
       b.title = title;
+      b.dataset.filter = key;
       b.setAttribute('aria-pressed', String(key === 'all'));
       b.addEventListener('click', () => {
-        this.#filter = key;
-        filters.querySelectorAll('button').forEach((x) =>
-          x.setAttribute('aria-pressed', String(x === b)),
-        );
-        fab.classList.toggle('on', key !== 'all');
-        filters.classList.remove('open');
+        this.#setFilter(key);
         this.render();
       });
       filters.appendChild(b);
@@ -434,11 +547,26 @@ export class Sidebar {
     const input = document.createElement('input');
     input.type = 'search';
     input.placeholder = 'Search the transcript…';
-    input.addEventListener('input', () => {
-      this.#hits = new Set(deps.transcript.search(input.value));
-      this.render();
+    input.setAttribute('aria-label', 'Search the transcript');
+    // Mid-composition text is not the query yet: searching every kana on the
+    // way to a kanji would throw the list about under the IME.
+    input.addEventListener('input', (e) => {
+      if (!(e as InputEvent).isComposing) this.#setQuery(input.value);
     });
-    search.appendChild(input);
+    input.addEventListener('compositionend', () => this.#setQuery(input.value));
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.isComposing) {
+        e.preventDefault();
+        if (this.#query) this.#stepHit(e.shiftKey ? -1 : 1);
+      } else if (e.key === 'Escape' && input.value) {
+        input.value = '';
+        this.#setQuery('');
+      }
+    });
+    this.#count = document.createElement('span');
+    this.#count.className = 'count';
+    this.#count.setAttribute('aria-live', 'polite');
+    search.append(input, this.#count);
 
     this.#note = document.createElement('div');
     this.#note.className = 'note';
@@ -470,24 +598,134 @@ export class Sidebar {
     this.#root.append(style, this.#panel, this.#tab, this.#hover);
     mount.appendChild(this.#host);
 
+    this.#installKeys();
+    this.#applyAppearance(settings());
+    this.#unwatch = watchSettings((s, here) => this.#settingsChanged(s, here));
     void this.#restore();
     deps.transcript.onChange(() => this.#refreshTranscript());
     this.#installHover();
   }
 
+  /**
+   * Keys belong to the control that uses them, and a click leaves nothing
+   * holding focus that did not need it.
+   *
+   * The host page sees a key pressed in here as a keydown on our shadow host —
+   * a div, not a field — and treats it as a player shortcut: k pauses, m
+   * mutes, a digit seeks, f goes fullscreen. So a key stops at the host only
+   * when the control it was pressed in consumes it: anything typed into the
+   * search box or a select, and Space or Enter on a focused button, which
+   * would otherwise press the button *and* pause the video.
+   *
+   * Stopping every key used to break the player instead: a clicked button kept
+   * focus, so after bookmarking a line Space pressed the bookmark again and the
+   * player's shortcuts went dead until the video was clicked. A mouse click now
+   * leaves focus where it was. Our own document-level handlers run in the
+   * capture phase and have already had their turn, which is how Escape still
+   * closes the lookup card from in here.
+   */
+  #installKeys(): void {
+    const signal = this.#abort.signal;
+    const stop = (e: Event): void => {
+      if (consumesKey(e.composedPath()[0], (e as KeyboardEvent).key)) e.stopPropagation();
+    };
+    for (const ev of ['keydown', 'keyup', 'keypress'] as const) {
+      this.#host.addEventListener(ev, stop, { signal });
+    }
+    this.#root.addEventListener('mousedown', (e) => {
+      if ((e.target as Element | null)?.closest?.('button')) e.preventDefault();
+    }, { signal });
+    this.#root.addEventListener('keydown', (e) => {
+      if ((e as KeyboardEvent).key !== 'Escape') return;
+      this.#closeFilters();
+      this.#hideHover();
+    }, { signal });
+    // A menu left open over the transcript hides lines; any other click shuts it.
+    this.#panel.addEventListener('click', (e) => {
+      if (!(e.target as Element | null)?.closest?.('.filters, .fab')) this.#closeFilters();
+    }, { signal });
+  }
+
+  /**
+   * Settings changed — here, in the options page, or in another tab.
+   *
+   * Opening and closing follows `sidebarOpen` too, when the change was made
+   * in this page — the panel's own switch. From another tab it only sets how
+   * the next page opens: pressing S in one tab closing the panel in all of
+   * them would be a surprise. `toggle` writes that same setting, but only
+   * when it differs from what is stored, and by the time this runs the store
+   * already holds the new value, so the two cannot chase each other.
+   */
+  #settingsChanged(s: Settings, here = true): void {
+    if (this.#destroyed) return;
+    this.#applyAppearance(s);
+    if (s.sidebarStats !== this.#stats) {
+      this.#stats = s.sidebarStats;
+      if (!s.sidebarStats) {
+        // The count filters read the counts; without them they hide every
+        // line, behind a filter button that is hidden too.
+        if (this.#countFilter()) this.#setFilter('all');
+        this.#closeFilters();
+      }
+      this.#refreshTranscript();
+    }
+    if (here && this.#restored && s.sidebarOpen !== this.#open) this.toggle(s.sidebarOpen);
+    if (this.#mode === 'settings' && this.#settingsEl) syncSettingsControls(this.#settingsEl);
+  }
+
+  /** Readings and known-word marks, the same three ways the overlay offers. */
+  #applyAppearance(s: Settings): void {
+    this.#list.classList.toggle('ruby-all', s.ruby === 'always');
+    this.#list.classList.toggle('ruby-off', s.ruby === 'never');
+    this.#list.classList.toggle('mark-known', s.markKnown);
+  }
+
+  #countFilter(): boolean {
+    return this.#filter === 'unknown' || this.#filter === 'i1';
+  }
+
+  #setFilter(key: Filter): void {
+    this.#filter = key;
+    this.#filterMenu.querySelectorAll<HTMLElement>('button').forEach((x) =>
+      x.setAttribute('aria-pressed', String(x.dataset.filter === key)),
+    );
+    this.#fab.classList.toggle('on', key !== 'all');
+    this.#closeFilters();
+  }
+
+  #closeFilters(): void {
+    this.#filterMenu.classList.remove('open');
+    this.#fab.setAttribute('aria-expanded', 'false');
+  }
+
+  /**
+   * Stop this far above the bottom of the player: the height of the site's
+   * own control bar, so its captions, settings and fullscreen buttons stay
+   * clickable while the panel is open. The edge tab centres in what is left.
+   */
+  setBottomInset(px: number): void {
+    const v = Number.isFinite(px) ? Math.max(0, Math.round(px)) : 0;
+    this.#host.style.setProperty('--lg-bottom', `${v}px`);
+  }
+
   async #restore(): Promise<void> {
     try {
       const got = await chrome.storage.sync.get(WIDTH_KEY);
-      this.#width = Number(got[WIDTH_KEY]) || 400;
+      // Clamped again: older versions allowed widths the drag no longer does.
+      this.#width = clampWidth(Number(got[WIDTH_KEY]) || 400);
     } catch {
       /* keep the default width */
     }
+    // Navigating away before storage answered must not leave page listeners
+    // behind for a panel that no longer exists.
+    if (this.#destroyed) return;
     // Open unless the learner has closed it before. The transcript is the
     // reason the panel exists; hiding it until a keypress is discovered means
     // most people never see it.
     this.toggle(settings().sidebarOpen);
     this.#followPlayerChrome();
     this.#applyWidth();
+    this.#restored = true;
   }
 
   #applyWidth(): void {
@@ -499,7 +737,7 @@ export class Sidebar {
     let startX = 0;
     let startW = 0;
     const move = (e: PointerEvent): void => {
-      this.#width = Math.min(Math.max(280, startW + (startX - e.clientX)), 680);
+      this.#width = clampWidth(startW + (startX - e.clientX));
       this.#applyWidth();
     };
     const up = (): void => {
@@ -511,8 +749,9 @@ export class Sidebar {
       e.preventDefault();
       startX = e.clientX;
       startW = this.#width;
-      window.addEventListener('pointermove', move);
-      window.addEventListener('pointerup', up);
+      const signal = this.#abort.signal;
+      window.addEventListener('pointermove', move, { signal });
+      window.addEventListener('pointerup', up, { signal });
     });
   }
 
@@ -541,6 +780,8 @@ export class Sidebar {
     for (const line of this.#counts.keys()) {
       if (!lines.has(line)) this.#counts.delete(line);
     }
+    // Matches are line positions, and a line arriving earlier moves them.
+    if (this.#query) this.#findHits();
     this.#paintSummary();
     this.render();
     // The player header still shows statistics when the panel is closed.
@@ -608,11 +849,8 @@ export class Sidebar {
     else this.#saved.delete(this.#idFor(line.start));
     // Repaint just this row rather than the list: re-rendering while the
     // cursor is on a button makes the button jump out from under it.
-    for (const el of Array.from(this.#list.children)) {
-      const row = el as HTMLElement;
-      if (Number(row.dataset.i) !== this.#deps.transcript.lines.indexOf(line)) continue;
-      const b = row.querySelector('.save');
-      if (!b) continue;
+    const b = this.#row(this.#deps.transcript.lines.indexOf(line))?.querySelector('.save');
+    if (b) {
       b.classList.toggle('on', on);
       const title = on ? 'Saved — click to remove' : 'Save this line';
       b.setAttribute('title', title);
@@ -833,6 +1071,8 @@ export class Sidebar {
 
     this.#settingsEl?.remove();
     this.#settingsEl = null;
+    this.#hideHover();
+    this.#closeFilters();
 
     for (const el of [this.#note, this.#list] as HTMLElement[]) {
       el.style.display = showing ? 'none' : '';
@@ -845,7 +1085,9 @@ export class Sidebar {
     this.#paintNow();
 
     if (mode === 'settings') {
-      this.#settingsEl = buildSettings(() => this.render());
+      this.#settingsEl = buildSettings(() => this.render(), {
+        onAnkiConnected: () => this.#deps.onAnkiConnected?.(),
+      });
       this.#panel.appendChild(this.#settingsEl);
     } else if (mode === 'saved') {
       this.#settingsEl = document.createElement('div');
@@ -862,6 +1104,12 @@ export class Sidebar {
     // The host always stays in the DOM: collapsed means the tab, never nothing.
     this.#panel.style.display = this.#open ? '' : 'none';
     this.#tab.style.display = this.#open ? 'none' : '';
+    // The hover card sits outside the panel, so hiding the panel left it
+    // floating over the video with nothing under it to point at.
+    if (!this.#open) {
+      this.#hideHover();
+      this.#closeFilters();
+    }
     this.#onLayout?.();
     if (this.#open) this.render();
     if (this.#open !== settings().sidebarOpen) void setSetting('sidebarOpen', this.#open);
@@ -931,8 +1179,90 @@ export class Sidebar {
     });
   }
 
+  /** A search is reading elsewhere on purpose, so it pauses following too. */
   #following(): boolean {
-    return settings().sidebarFollow && !this.#userScrolled;
+    return settings().sidebarFollow && !this.#userScrolled && !this.#query;
+  }
+
+  /**
+   * Search, as something that takes you somewhere.
+   *
+   * Matches used to be outlined and nothing more, while following pulled the
+   * list straight back to the line being spoken — in a long transcript the
+   * outlines were somewhere you were never shown. Now the list goes to the
+   * first match, Enter and Shift+Enter step through the rest, and following
+   * waits until the search is cleared.
+   */
+  #setQuery(query: string): void {
+    const q = query.trim();
+    // Some IMEs announce the same text twice around the end of a composition;
+    // the second must not throw the list back to the first match.
+    if (q === this.#query) return;
+    const had = Boolean(this.#query);
+    this.#query = q;
+    this.#hitLine = null;
+    this.#findHits();
+    this.#paintHits();
+    if (q) this.#stepHit(1);
+    else if (had) this.#resume();
+    this.#paintNow();
+  }
+
+  #findHits(): void {
+    this.#hits = this.#query ? this.#deps.transcript.search(this.#query) : [];
+    this.#hitSet = new Set(this.#hits);
+    if (this.#hitLine && !this.#hitSet.has(this.#deps.transcript.lines.indexOf(this.#hitLine))) {
+      this.#hitLine = null;
+    }
+  }
+
+  /** Matches on rows actually shown: a filter can hide some, and those cannot be gone to. */
+  #shownHits(): number[] {
+    const shown = new Set(Array.from(this.#list.children, (el) => Number((el as HTMLElement).dataset.i)));
+    return this.#hits.filter((i) => shown.has(i));
+  }
+
+  /** Go to the next (1) or previous (-1) match, wrapping at either end. */
+  #stepHit(dir: 1 | -1): void {
+    const lines = this.#deps.transcript.lines;
+    const shown = this.#shownHits();
+    if (!shown.length) {
+      this.#hitLine = null;
+      this.#paintHits();
+      return;
+    }
+    const at = this.#hitLine ? shown.indexOf(lines.indexOf(this.#hitLine)) : -1;
+    const next = at < 0 ? (dir > 0 ? 0 : shown.length - 1) : (at + dir + shown.length) % shown.length;
+    const i = shown[next]!;
+    this.#hitLine = lines[i] ?? null;
+    this.#paintHits();
+    const row = this.#row(i);
+    if (row) this.#reveal(row);
+  }
+
+  /** Mark matches on the rows already built — a query is no reason to rebuild the list. */
+  #paintHits(): void {
+    const cur = this.#hitLine ? this.#deps.transcript.lines.indexOf(this.#hitLine) : -1;
+    for (const el of Array.from(this.#list.children)) {
+      const row = el as HTMLElement;
+      if (!row.classList.contains('line')) continue;
+      const i = Number(row.dataset.i);
+      row.classList.toggle('hit', this.#hitSet.has(i));
+      row.classList.toggle('hit-cur', i === cur);
+    }
+    this.#paintCount();
+  }
+
+  #paintCount(): void {
+    if (!this.#query) {
+      this.#count.textContent = '';
+      return;
+    }
+    const shown = this.#shownHits();
+    const at = this.#hitLine ? shown.indexOf(this.#deps.transcript.lines.indexOf(this.#hitLine)) : -1;
+    this.#count.textContent = !shown.length
+      ? 'No matches'
+      : at >= 0 ? `${at + 1} of ${shown.length}` : `${shown.length} found`;
   }
 
   /** The card for a transcript line. Not `children[i]`: filters hide rows. */
@@ -1001,20 +1331,30 @@ export class Sidebar {
         ? 'Nothing yet. Lines appear here as they are spoken.'
         : 'No transcript loaded.';
       this.#list.appendChild(e);
+      this.#paintCount();
       return;
     }
 
     const stats = settings().sidebarStats;
+    // The count filters read the counts. With progress switched off they hid
+    // every line, behind a filter button that was hidden as well.
+    if (!stats && this.#countFilter()) this.#setFilter('all');
     this.#fab.style.display = stats ? '' : 'none';
+    this.#filterMenu.style.display = stats ? '' : 'none';
+    // One context for the whole list. It reads the page, and asking once per
+    // row was a DOM query per line of the transcript.
+    const here = this.#deps.context();
+    const hitAt = this.#hitLine ? transcript.lines.indexOf(this.#hitLine) : -1;
     transcript.lines.forEach((line, i) => {
       const c = stats ? this.#counts.get(line) : undefined;
       if (this.#filter === 'unknown' && (c?.unknown ?? 0) === 0) return;
       if (this.#filter === 'i1' && c?.unknown !== 1) return;
-      const savedId = this.#idFor(line.start);
+      const savedId = bookmarks.idFor(here.site, here.video, line.start);
       if (this.#filter === 'saved' && !this.#saved.has(savedId)) return;
 
       const row = document.createElement('div');
-      row.className = 'line' + (i === this.#active ? ' cur' : '') + (this.#hits.has(i) ? ' hit' : '');
+      row.className = 'line' + (i === this.#active ? ' cur' : '') +
+        (this.#hitSet.has(i) ? ' hit' : '') + (i === hitAt ? ' hit-cur' : '');
       row.dataset.i = String(i);
       row.addEventListener('click', (e) => {
         if ((e.target as HTMLElement).closest('.w')) return;   // word clicks are not seeks
@@ -1066,6 +1406,7 @@ export class Sidebar {
     const cur = this.#row(this.#active);
     if (cur && this.#following()) this.#reveal(cur, 'instant');
     this.#paintNow();
+    this.#paintCount();
   }
 
   /**
@@ -1154,10 +1495,11 @@ export class Sidebar {
     const result = seg.segment(text);
     const paint = (tokens: Token[]): void => {
       into.replaceChildren();
-      into.classList.toggle(
-        'has-ruby',
-        tokens.some((t) => !t.punct && furigana(t.surface, t.reading).some((x) => x.ruby)),
-      );
+      // Whether any reading exists, and whether one sits on a word the
+      // "new words only" setting would show it for — the second decides
+      // whether this line needs the taller leading in that mode.
+      let ruby = false;
+      let fresh = false;
       for (const tok of tokens) {
         if (tok.punct) {
           into.appendChild(document.createTextNode(tok.surface));
@@ -1168,12 +1510,18 @@ export class Sidebar {
         w.className = 'w';
         w.dataset.tok = JSON.stringify(tok);
         w.dataset.line = text;
-        w.dataset.s = this.#deps.statusOf(tok);
+        const status = this.#deps.statusOf(tok);
+        w.dataset.s = status;
 
         // Readings and status belong here too: a transcript that renders the
         // same words differently from the overlay is two tools, not one.
         const segs = furigana(tok.surface, tok.reading);
-        if (!segs.some((x) => x.ruby)) {
+        const annotated = segs.some((x) => x.ruby);
+        if (annotated) {
+          ruby = true;
+          if (status === 'unknown' || status === 'learning') fresh = true;
+        }
+        if (!annotated) {
           w.textContent = tok.surface;
         } else {
           for (const seg of segs) {
@@ -1191,6 +1539,8 @@ export class Sidebar {
         }
         into.appendChild(w);
       }
+      into.classList.toggle('has-ruby', ruby);
+      into.classList.toggle('has-new-ruby', fresh);
     };
     if (Array.isArray(result)) paint(result);
     else {
@@ -1203,29 +1553,51 @@ export class Sidebar {
     this.#list.addEventListener('mouseover', (e) => {
       if (!settings().sidebarHover) return;
       const w = (e.target as HTMLElement).closest('.w') as HTMLElement | null;
-      if (!w) return;
-      clearTimeout(this.#hoverTimer);
+      // Moving onto a reading inside the same word is not a new hover.
+      if (!w || w === this.#hoverFor) return;
+      this.#hideHover();
+      this.#hoverFor = w;
       this.#hoverTimer = window.setTimeout(() => void this.#showHover(w), HOVER_DELAY);
     });
     this.#list.addEventListener('mouseout', (e) => {
-      if ((e.target as HTMLElement).closest('.w')) {
-        clearTimeout(this.#hoverTimer);
-        this.#hideHover();
-      }
+      const w = (e.target as HTMLElement).closest('.w') as HTMLElement | null;
+      if (!w) return;
+      // Crossing from 食 to べる leaves an element but not the word. Treated
+      // as leaving, the card blinked out and back on every kanji boundary.
+      const to = (e as MouseEvent).relatedTarget as Node | null;
+      if (to && w.contains(to)) return;
+      this.#hideHover();
     });
     this.#list.addEventListener('click', (e) => {
       const w = (e.target as HTMLElement).closest('.w') as HTMLElement | null;
       if (!w?.dataset.tok) return;
       this.#hideHover();
-      this.#deps.onWordClick(JSON.parse(w.dataset.tok) as Token, w, w.dataset.line ?? '');
+      this.#deps.onWordClick(JSON.parse(w.dataset.tok) as Token, w, w.dataset.line ?? '', this.#contextOf(w));
     });
+  }
+
+  /**
+   * The line a transcript word sits on: when it starts and what it means.
+   * Nothing is claimed if the row no longer matches the word's own line.
+   */
+  #contextOf(w: HTMLElement): WordContext {
+    const row = w.closest<HTMLElement>('.line');
+    const line = row ? this.#deps.transcript.lines[Number(row.dataset.i)] : undefined;
+    if (!line || line.text !== w.dataset.line) return {};
+    return { start: line.start, translation: line.secondary };
   }
 
   async #showHover(w: HTMLElement): Promise<void> {
     const tok = w.dataset.tok ? (JSON.parse(w.dataset.tok) as Token) : null;
-    if (!tok) return;
+    // Preview only, and never on top of a card the learner opened on purpose.
+    if (!tok || popupIsOpen()) return;
 
-    const result = await lookupWord(tok.lemma, tok.surface);
+    const seq = ++this.#hoverSeq;
+    const result = await (this.#deps.lookup ?? lookupToken)(tok);
+    // A first lookup can take a while. By the time it answers the pointer may
+    // have moved on, the panel closed or the row been rebuilt — and a card
+    // shown then pointed at nothing, or at the previous word.
+    if (seq !== this.#hoverSeq || this.#hoverFor !== w || !w.isConnected || !this.#open) return;
     const top = result.state === 'ok' ? result.entries[0] : undefined;
 
     this.#hover.replaceChildren();
@@ -1266,13 +1638,22 @@ export class Sidebar {
 
     const r = w.getBoundingClientRect();
     this.#hover.classList.add('on');
+    // Measured, not assumed. The clamp was written for a narrower card and
+    // never followed it when it widened, so up to 54px ran off the right edge
+    // wherever the panel meets the screen's — fullscreen, theater, Netflix.
+    const width = this.#hover.offsetWidth || HOVER_WIDTH;
     const h = this.#hover.offsetHeight;
-    const top_ = r.bottom + 8 + h > window.innerHeight ? r.top - h - 8 : r.bottom + 8;
-    this.#hover.style.top = `${Math.max(8, top_)}px`;
-    this.#hover.style.left = `${Math.max(8, Math.min(r.left, window.innerWidth - 244))}px`;
+    const below = r.bottom + 8;
+    const top_ = below + h > window.innerHeight - 8 ? r.top - h - 8 : below;
+    this.#hover.style.top = `${Math.max(8, Math.min(top_, window.innerHeight - h - 8))}px`;
+    this.#hover.style.left = `${Math.max(8, Math.min(r.left, window.innerWidth - width - 8))}px`;
   }
 
+  /** Hide the card, and make sure no lookup still under way can bring it back. */
   #hideHover(): void {
+    clearTimeout(this.#hoverTimer);
+    this.#hoverSeq++;
+    this.#hoverFor = null;
     this.#hover.classList.remove('on');
   }
 
@@ -1282,33 +1663,31 @@ export class Sidebar {
    * Sitting at a low opacity keeps it out of the way during a scene, but
    * something that never responds reads as a rendering artefact rather than a
    * control — so it wakes with the same gesture that wakes the player.
+   *
+   * These listeners are on the page's document, which outlives this panel:
+   * they go with the panel's abort signal, or every video watched in the tab
+   * kept its whole transcript alive through them.
    */
   #followPlayerChrome(): void {
-    let idle = 0;
+    const signal = this.#abort.signal;
     const wake = (): void => {
       this.#host.classList.add('active');
-      clearTimeout(idle);
-      idle = window.setTimeout(() => this.#host.classList.remove('active'), 2600);
+      clearTimeout(this.#idle);
+      this.#idle = window.setTimeout(() => this.#host.classList.remove('active'), 2600);
     };
     for (const ev of ['mousemove', 'keydown'] as const) {
-      document.addEventListener(ev, wake, { passive: true });
+      document.addEventListener(ev, wake, { passive: true, signal });
     }
     wake();
-
-    // Keys typed inside the panel are ours. The host page only ever sees a
-    // keydown whose target is our shadow host — a div, not a field — and
-    // treats it as a player shortcut: k pauses, m mutes, a digit seeks, f
-    // goes fullscreen. Stop them at the host; our own document-level
-    // handlers run in the capture phase and have already had their turn.
-    for (const ev of ['keydown', 'keyup', 'keypress'] as const) {
-      this.#host.addEventListener(ev, (e) => e.stopPropagation());
-    }
   }
 
   destroy(): void {
     this.#destroyed = true;
     this.#analysisRevision++;
+    this.#abort.abort();
+    this.#unwatch();
     clearTimeout(this.#hoverTimer);
+    clearTimeout(this.#idle);
     this.#host.remove();
   }
 }

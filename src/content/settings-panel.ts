@@ -53,6 +53,7 @@ export const PANEL_STYLE = `
     grid-column: 1 / -1;
     font-size: 12px; line-height: 1.5; color: #8A94AF;
   }
+  .set > .hint.warn { color: #D9A64A; }
 
   /* Native select, own chrome: the platform menu stays, the platform box goes. */
   .set select {
@@ -157,6 +158,36 @@ export const PANEL_STYLE = `
 
 type Rerender = () => void;
 
+export interface SettingsPanelOptions {
+  /**
+   * "Check again" reached Anki. Nothing about the settings changed, so
+   * nothing else would notice — but a collection that was closed a moment ago
+   * is now worth reading word status from.
+   */
+  onAnkiConnected?: () => void;
+}
+
+/**
+ * Put every control back in step with the stored settings.
+ *
+ * A panel can stay open while a setting changes somewhere else — the top
+ * bar's furigana switch, the options page, another tab — and a control still
+ * showing the old value is worse than none: using it writes that old value.
+ * Only the rows built from a setting are touched; the deck lists have their
+ * own rules.
+ */
+export function syncSettingsControls(root: ParentNode): void {
+  const cur = settings();
+  for (const el of Array.from(root.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[data-setting]'))) {
+    const value = cur[el.dataset.setting as keyof Settings];
+    if (el.tagName === 'INPUT' && (el as HTMLInputElement).type === 'checkbox') {
+      (el as HTMLInputElement).checked = Boolean(value);
+    } else if (el.value !== String(value)) {
+      el.value = String(value);
+    }
+  }
+}
+
 /*
  * Say plainly what each language actually gets. Tier 0 finds word boundaries
  * and nothing else, which means lookups match on the surface form — so an
@@ -166,7 +197,7 @@ type Rerender = () => void;
 const TIER_NOTES: Record<0 | 1 | 2, string> = {
   2: 'Full support: dictionary forms, readings and furigana.',
   1: 'Words and lookups. No dictionary forms yet, so inflected words may not match a card.',
-  0: 'Word boundaries only. Lookups match exactly what is on screen.',
+  0: 'Word boundaries only — no dictionary or readings for this language yet.',
 };
 
 export function tierNote(code: string): string {
@@ -176,7 +207,7 @@ export function tierNote(code: string): string {
 
 let seq = 0;
 
-export function buildSettings(onChange: Rerender): HTMLElement {
+export function buildSettings(onChange: Rerender, opts: SettingsPanelOptions = {}): HTMLElement {
   const root = document.createElement('div');
   root.className = 'settings';
 
@@ -215,6 +246,7 @@ export function buildSettings(onChange: Rerender): HTMLElement {
   ): HTMLSelectElement => {
     const sel = document.createElement('select');
     sel.name = key;
+    sel.dataset.setting = key;
     for (const [value, text] of options) {
       const o = document.createElement('option');
       o.value = value;
@@ -239,6 +271,7 @@ export function buildSettings(onChange: Rerender): HTMLElement {
     const input = document.createElement('input');
     input.type = 'checkbox';
     input.name = key;
+    input.dataset.setting = key;
     input.setAttribute('role', 'switch');   // an on/off, and read out as one
     input.checked = Boolean(settings()[key]);
     input.addEventListener('change', () => {
@@ -305,7 +338,7 @@ export function buildSettings(onChange: Rerender): HTMLElement {
 
   const steps = ankiSteps();
   root.appendChild(steps);
-  root.appendChild(ankiControls({ state, deck, deckRow, scope, scopeRow, steps }, onChange));
+  root.appendChild(ankiControls({ state, deck, deckRow, scope, scopeRow, steps }, onChange, opts));
 
   group('Data and licences');
   root.appendChild(credits());
@@ -398,6 +431,9 @@ function chip(value: string): HTMLElement {
   return wrap;
 }
 
+/** A stored deck against Anki's list: fine, never chosen, or gone from Anki. */
+type DeckPick = 'ok' | 'unset' | 'missing';
+
 interface AnkiUi {
   state: HTMLElement;
   deck: HTMLSelectElement;
@@ -413,7 +449,7 @@ interface AnkiUi {
  * names the single thing left to do, because four different failures used to
  * arrive as the same sentence.
  */
-function ankiControls(ui: AnkiUi, onChange: Rerender): HTMLElement {
+function ankiControls(ui: AnkiUi, onChange: Rerender, opts: SettingsPanelOptions): HTMLElement {
   const { state, deck, deckRow, scope, scopeRow, steps } = ui;
 
   const row = document.createElement('div');
@@ -440,22 +476,48 @@ function ankiControls(ui: AnkiUi, onChange: Rerender): HTMLElement {
     }
   };
 
-  const fill = (el: HTMLSelectElement, withAll: boolean, decks: string[], value: string): void => {
+  /**
+   * Fill a deck list without choosing on the learner's behalf.
+   *
+   * What is stored is what is shown, even when Anki no longer has it. The list
+   * used to fall back to whichever deck sorted first and save that, which put
+   * mined cards in a deck nobody picked and ticked the first-run "pick a deck"
+   * step for them. A status scope that had gone missing showed as "Whole
+   * collection" while still reading the missing deck, so every word read as
+   * unknown with nothing on screen to say why.
+   */
+  const fill = (el: HTMLSelectElement, withAll: boolean, decks: string[], value: string): DeckPick => {
     el.replaceChildren();
-    if (withAll) {
+    const add = (v: string, text: string, disabled = false): void => {
       const o = document.createElement('option');
-      o.value = '';
-      o.textContent = 'Whole collection';
+      o.value = v;
+      o.textContent = text;
+      o.disabled = disabled;
       el.appendChild(o);
+    };
+    let pick: DeckPick = 'ok';
+    if (withAll) add('', 'Whole collection');
+    else if (!value) {
+      add('', 'Choose a deck…', true);
+      pick = 'unset';
     }
-    for (const d of decks) {
-      const o = document.createElement('option');
-      o.value = d;
-      o.textContent = withAll ? `${d} (and subdecks)` : d;
-      el.appendChild(o);
+    if (value && !decks.includes(value)) {
+      add(value, `${value} — not in Anki`, true);
+      pick = 'missing';
     }
-    el.value = decks.includes(value) ? value : withAll ? '' : (decks[0] ?? '');
+    for (const d of decks) add(d, withAll ? `${d} (and subdecks)` : d);
+    el.value = value;
     el.disabled = false;
+    return pick;
+  };
+
+  /** Swap a row's explanation for a warning while something needs choosing. */
+  const warn = (setting: HTMLElement, text: string | null): void => {
+    const hint = setting.querySelector<HTMLElement>('.hint');
+    if (!hint) return;
+    hint.dataset.plain ??= hint.textContent ?? '';
+    hint.textContent = text ?? hint.dataset.plain;
+    hint.classList.toggle('warn', text !== null);
   };
 
   const show = (s: AnkiState): void => {
@@ -467,9 +529,18 @@ function ankiControls(ui: AnkiUi, onChange: Rerender): HTMLElement {
 
     if (s.kind === 'connected') {
       const cur = settings();
-      fill(deck, false, s.decks, cur.deck);
-      fill(scope, true, s.decks, cur.statusScope);
-      if (deck.value && deck.value !== cur.deck) void setSetting('deck', deck.value);
+      const pick = fill(deck, false, s.decks, cur.deck);
+      warn(deckRow,
+        pick === 'unset'
+          ? 'Choose one — until you do, new cards have nowhere to go.'
+          : pick === 'missing'
+            ? `Anki has no deck called “${cur.deck}” now. Choose where new cards go.`
+            : null);
+      const scoped = fill(scope, true, s.decks, cur.statusScope);
+      warn(scopeRow,
+        scoped === 'missing'
+          ? `Anki has no deck called “${cur.statusScope}” now, so every word reads as unknown. Choose again.`
+          : null);
       state.className = 'state ok';
       state.textContent =
         (s.installed === 'created' ? 'Connected. Note type installed. ' : 'Connected. ') +
@@ -507,12 +578,14 @@ function ankiControls(ui: AnkiUi, onChange: Rerender): HTMLElement {
     need();
   };
 
-  const refresh = async (): Promise<void> => {
+  const refresh = async (): Promise<AnkiState> => {
     state.className = 'state';
     state.textContent = 'Checking…';
     recheck.disabled = true;
     try {
-      show(await probe());
+      const s = await probe();
+      show(s);
+      return s;
     } finally {
       recheck.disabled = false;
     }
@@ -520,13 +593,19 @@ function ankiControls(ui: AnkiUi, onChange: Rerender): HTMLElement {
 
   deck.addEventListener('change', () => {
     void setSetting('deck', deck.value);
+    warn(deckRow, null);
     onChange();
   });
   scope.addEventListener('change', () => {
     void setSetting('statusScope', scope.value);
+    warn(scopeRow, null);
     onChange();
   });
-  recheck.addEventListener('click', () => void refresh());
+  recheck.addEventListener('click', () => {
+    void refresh().then((s) => {
+      if (s.kind === 'connected') opts.onAnkiConnected?.();
+    });
+  });
   browse.addEventListener('click', () => void browseOurCards());
   newDeck.addEventListener('click', () => {
     const name = prompt('New deck name — use :: for subdecks, e.g. Japanese::Mining');

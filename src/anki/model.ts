@@ -87,13 +87,68 @@ export function tagsFor(opts: { source: string; lang: string }): string[] {
   return [ROOT_TAG, `${ROOT_TAG}::${opts.source}`, `${ROOT_TAG}::lang::${opts.lang}`];
 }
 
-/** Anki's furigana syntax: 勉強[べんきょう]する, with a space before kanji runs. */
+/**
+ * Anki's furigana syntax: 勉強[べんきょう]する, with a space before kanji runs.
+ *
+ * The brackets are ours; everything between them is escaped, so a `[` or a
+ * `<` in the text itself can never become ruby or markup. The result is field
+ * HTML, ready to store — escaping it again would double the entities.
+ */
 export function toAnkiFurigana(segments: Array<{ text: string; ruby?: string }>): string {
   return segments
     .map((s, i) => {
-      if (!s.ruby) return s.text;
+      if (!s.ruby) return escapeText(s.text);
       // Anki needs whitespace before a bracketed run unless it starts the field.
-      return `${i === 0 ? '' : ' '}${s.text}[${s.ruby}]`;
+      return `${i === 0 ? '' : ' '}${escapeText(s.text)}[${escapeText(s.ruby)}]`;
     })
     .join('');
+}
+
+/*
+ * Field values are HTML: Anki renders them, and so does every client that
+ * syncs them. Text from a subtitle or a dictionary is text, so none of it may
+ * arrive as markup — an uploader's caption containing <img onerror> would
+ * otherwise run in the reviewer.
+ *
+ * Brackets are escaped as well as markup. The templates render Reading and
+ * Sentence through {{furigana:}}, which reads any `word[reading]` as ruby, so
+ * a line such as ねえ[笑] put 笑 over ねえ as if it were its reading. An entity
+ * is not a bracket to that filter, and still displays as one.
+ */
+const ENTITIES: Record<string, string> = {
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '[': '&#91;', ']': '&#93;',
+};
+
+function escapeText(text: string): string {
+  return text.replace(/[&<>[\]]/g, (c) => ENTITIES[c] ?? c);
+}
+
+/** Text as a field: nothing in it becomes markup or ruby, and line breaks stay line breaks. */
+export function fieldHtml(text: string): string {
+  return escapeText(text).replace(/\r?\n/g, '<br>');
+}
+
+/**
+ * The first field, which Anki's duplicate check reads.
+ *
+ * Escaped like any other, but a line break stays a raw newline. Anki checksums
+ * the field with tags removed and entities decoded, so escaping leaves the
+ * checksum alone — a `<br>` would not, and every multi-line line saved before
+ * this change would stop being recognised as already added.
+ */
+export function keyField(text: string): string {
+  return escapeText(text);
+}
+
+/**
+ * Furigana markup we built, made safe to store: our brackets kept, any markup
+ * neutralised. Idempotent over toAnkiFurigana's output, which has no raw `<`,
+ * `>` or bare `&` left to find.
+ */
+export function furiganaField(markup: string): string {
+  return markup
+    .replace(/&(?!(?:[a-z][a-z0-9]*|#\d+|#x[0-9a-f]+);)/gi, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\r?\n/g, '<br>');
 }

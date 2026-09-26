@@ -22,8 +22,12 @@ const OPEN_BUTTONS = [
 ];
 
 const PANEL = 'ytd-transcript-renderer, ytd-engagement-panel-section-list-renderer[target-id*="transcript"]';
+/** The engagement panel that holds the transcript — the one whose header has our close button. */
+const TRANSCRIPT_PANEL = 'ytd-engagement-panel-section-list-renderer[target-id*="transcript"]';
 const SEGMENT = 'ytd-transcript-segment-renderer';
 const CLOSE = 'ytd-engagement-panel-title-header-renderer button[aria-label*="Close" i]';
+/** Inside the transcript panel: the header's close button, by id first so a non-English UI works. */
+const CLOSE_IN_PANEL = `#visibility-button button, ${CLOSE}`;
 
 function seconds(stamp: string): number {
   const p = stamp.trim().split(':').map(Number);
@@ -79,10 +83,23 @@ export async function fetchViaTranscriptPanel(timeoutMs = 6000): Promise<Cue[]> 
     await wait(200);
   }
 
-  if (!alreadyOpen && cues.length) {
-    document.querySelector<HTMLElement>(CLOSE)?.click();
-  }
+  if (!alreadyOpen && cues.length) closePanel();
   return cues;
+}
+
+/**
+ * Close the transcript panel — not whichever panel happens to come first.
+ * Several engagement panels sit in the page at once (chapters, description),
+ * and the first close button in document order belongs to one of them, which
+ * left the transcript open after a read. Only when the transcript panel itself
+ * cannot be found does this fall back to the first close button, as before.
+ */
+function closePanel(): void {
+  const panel = document.querySelector(TRANSCRIPT_PANEL);
+  const button = panel
+    ? panel.querySelector<HTMLElement>(CLOSE_IN_PANEL)
+    : document.querySelector<HTMLElement>(CLOSE);
+  button?.click();
 }
 
 export function transcriptPanelPresent(): boolean {

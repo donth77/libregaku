@@ -82,7 +82,13 @@ export class Transcript {
     }
     if (best < 0) return -1;
     const l = this.#lines[best]!;
-    return t <= l.end + 0.5 ? best : -1;
+    if (t <= l.end + 0.5) return best;
+    // Lines can overlap: a long one — a sign, a song — may still be on screen
+    // after a shorter one that started later has ended.
+    for (let i = best - 1; i >= 0 && i >= best - 10; i--) {
+      if (t <= this.#lines[i]!.end + 0.5) return i;
+    }
+    return -1;
   }
 
   search(query: string): number[] {

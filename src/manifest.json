@@ -7,8 +7,7 @@
   "permissions": [
     "offscreen",
     "storage",
-    "scripting",
-    "activeTab"
+    "scripting"
   ],
   "host_permissions": [
     "https://*.youtube.com/*",
@@ -18,7 +17,6 @@
     "https://jotoba.de/*",
     "https://jisho.org/*",
     "https://*.nflxvideo.net/*",
-    "https://*.oca.nflxvideo.net/*",
     "https://github.com/*",
     "https://*.githubusercontent.com/*",
     "http://127.0.0.1/*"

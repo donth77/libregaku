@@ -63,11 +63,25 @@ export function toEntries(words: JotobaWord[], key: string): Entry[] {
   });
 }
 
-export async function jotobaLookup(key: string): Promise<Entry[]> {
+/** Jotoba's language names for the JMdict editions we offer. */
+const LANGUAGES: Record<string, string> = {
+  eng: 'English', dut: 'Dutch', fre: 'French', ger: 'German', hun: 'Hungarian',
+  rus: 'Russian', slv: 'Slovenian', spa: 'Spanish', swe: 'Swedish',
+};
+
+export interface RemoteOptions {
+  /** JMdict edition code, so definitions arrive in the language chosen. */
+  edition?: string;
+  /** Give up after this long. A hung request must not hold a lookup open. */
+  timeoutMs?: number;
+}
+
+export async function jotobaLookup(key: string, opts: RemoteOptions = {}): Promise<Entry[]> {
   const res = await fetch(API, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query: key, language: 'English', no_english: false }),
+    body: JSON.stringify({ query: key, language: LANGUAGES[opts.edition ?? 'eng'] ?? 'English', no_english: false }),
+    signal: AbortSignal.timeout(opts.timeoutMs ?? 8000),
   });
   if (!res.ok) throw new Error(`jotoba returned HTTP ${res.status}`);
   const body = (await res.json()) as { words?: JotobaWord[] };

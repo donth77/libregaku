@@ -56,4 +56,19 @@ describe('Header', () => {
     expect(left).toContain('87% known');
     expect(left).toContain('3 ready to learn');
   });
+
+  // A switch that kept focus after a click took the next Space for itself:
+  // furigana flipped again instead of the video pausing.
+  it('never lets a clicked button keep focus', () => {
+    const { host } = build();
+    const down = (el: Element): boolean => {
+      const e = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+      el.dispatchEvent(e);
+      return e.defaultPrevented;
+    };
+    const root = host.shadowRoot!;
+    expect(down(root.querySelector('.right button svg')!)).toBe(true);
+    expect(down(root.querySelector('.tab')!)).toBe(true);
+    expect(down(root.querySelector('.left')!)).toBe(false);
+  });
 });

@@ -21,6 +21,25 @@ export interface DomCaptionSelectors {
   join?: string;
 }
 
+/**
+ * The text a person sees in `node`. Ruby readings are left out: Netflix draws
+ * Japanese furigana as <ruby><rt>, and textContent glues the reading onto the
+ * word it annotates (漢字かんじ). A <br> is a line break, not nothing.
+ */
+function renderedText(node: Node): string {
+  let out = '';
+  for (const child of Array.from(node.childNodes)) {
+    if (child.nodeType === 3) {
+      out += child.nodeValue ?? '';
+    } else if (child.nodeType === 1) {
+      const tag = (child as Element).tagName.toLowerCase();
+      if (tag === 'rt' || tag === 'rp') continue;
+      out += tag === 'br' ? '\n' : renderedText(child);
+    }
+  }
+  return out;
+}
+
 export class DomCaptionSource {
   #observer: MutationObserver | null = null;
   #last = '';
@@ -35,17 +54,19 @@ export class DomCaptionSource {
     return document.querySelector<HTMLElement>(this.#sel.container);
   }
 
-  /** Current caption text, or '' when nothing is showing. */
+  /** Current caption text, or '' when nothing is showing. Lines stay lines. */
   read(): string {
     const root = this.container();
     if (!root) return '';
     const segs = root.querySelectorAll<HTMLElement>(this.#sel.segment);
     const parts = segs.length ? Array.from(segs) : [root];
     return parts
-      .map((s) => s.textContent ?? '')
+      .map(renderedText)
       .join(this.#sel.join ?? '')
-      .replace(/\s+/g, ' ')
-      .trim();
+      .split('\n')
+      .map((line) => line.replace(/\s+/g, ' ').trim())
+      .filter(Boolean)
+      .join('\n');
   }
 
   start(onCue: (text: string) => void): boolean {

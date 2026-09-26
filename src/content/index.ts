@@ -6,14 +6,18 @@ import { IntlSegmenter } from '../morphology/intl';
 import { LinderaSegmenter } from '../morphology/lindera';
 import type { Segmenter, Token } from '../morphology/types';
 import { DomCaptionSource } from '../adapters/dom-captions';
-import { clearLookupCache, ensureDictionary, lookupWord } from '../dict/client';
+import { clearLookupCache, ensureDictionary, lookupToken, type LookupResult } from '../dict/client';
 import { bottomOffset, namedMatches, occupiedBands } from './coexist';
-import { addNote, ensureModel } from '../anki/client';
+import { addNote, ensureModel, isDuplicate } from '../anki/client';
 import { tagsFor, toAnkiFurigana } from '../anki/model';
 import { sourceField } from '../anki/source';
-import { buildStatusMap, loadOverrides, setOverride, type OverrideStatus, type Status, type StatusMap } from '../anki/status';
+import {
+  buildStatusMap, lemmaReading, loadOverrides, setOverride, type OverrideStatus, type Status, type StatusMap,
+} from '../anki/status';
 import { furigana } from '../morphology/furigana';
-import { TIER2_LANGS, jmdictEditionFor, loadSettings, onSettingsChange, settings } from '../settings';
+import {
+  DICTIONARIES, TIER2_LANGS, jmdictEditionFor, loadSettings, onSettingsChange, settings,
+} from '../settings';
 import {
   cancelPopupClose, closePopup, closePopupSoon, popupKey, showPopup, type CardDraft,
 } from './popup';
@@ -22,6 +26,7 @@ import { PlayerInset } from './player-inset';
 import * as bookmarks from './bookmarks';
 import { Header } from './header';
 import { Transcript } from './transcript';
+import { CueIndex } from './cue-index';
 import { clearNotice, showNotice } from './notice';
 import { Overlay } from './renderer';
 
@@ -54,13 +59,24 @@ const ADAPTERS: SubtitleSource[] = [new YouTubeAdapter(), new NetflixAdapter()];
 
 let overlay: Overlay | null = null;
 let cues: Cue[] = [];
+let cueIndex = new CueIndex([]);
 let segmented = new Map<number, Token[]>();
-let active = -1;
+/** The cues on screen, as their indexes joined — '' when none. */
+let activeKey = '';
+/** An impossible key, to force the next frame to repaint. */
+const STALE = '?';
 let raf = 0;
 let domSource: DomCaptionSource | null = null;
+/** Why captions are being read off the page instead of from a fetched track. */
+let domReason: 'no-tracks' | 'load-failed' | null = null;
 let sidebar: Sidebar | null = null;
+/** Keeps the panel's bottom edge above the site's control bar. */
+let controlsWatch: ResizeObserver | null = null;
+let controlsAbort: AbortController | null = null;
 let playerInset: PlayerInset | null = null;
 let header: Header | null = null;
+/** Where the current video's UI is mounted, for notices raised later. */
+let currentMount: HTMLElement | null = null;
 const transcript = new Transcript();
 let activeVideo: HTMLVideoElement | null = null;
 let status: StatusMap | null = null;
@@ -69,6 +85,8 @@ let overrides = new Map<string, OverrideStatus>();
 const addedCards = new Set<string>();
 let statusRequest = 0;
 let manualRevision = 0;
+/** When word status was last read from Anki, so a returning tab can refresh. */
+let statusReadAt = 0;
 
 /**
  * A token's status, by dictionary form.
@@ -81,8 +99,31 @@ function statusOf(tok: Token): Status {
   const key = tok.lemma ?? tok.surface;
   const manual = overrides.get(key);
   if (manual) return manual;
-  const fromAnki = status?.get(key) ?? 'unknown';
+  const fromAnki = ankiStatus(tok);
   return addedCards.has(key) && fromAnki !== 'known' ? 'learning' : fromAnki;
+}
+
+/**
+ * What Anki says about a token, by its dictionary form and that form's
+ * reading — so わかる in a subtitle finds a card written 分かる, and 分かった
+ * finds one written わかる. The reading is the lemma's, not the surface's:
+ * わかった is not what the card says.
+ */
+function ankiStatus(tok: Token): Status {
+  if (!status) return 'unknown';
+  const key = tok.lemma ?? tok.surface;
+  return status.get(key, lemmaReading(key, tok.surface, tok.reading));
+}
+
+/**
+ * Whether Anki itself holds a card for this word — never a hand mark. A word
+ * marked known by hand has no card, and the lookup card must still offer to
+ * make one.
+ */
+function hasCardFor(tok: Token): boolean {
+  if (addedCards.has(tok.lemma ?? tok.surface)) return true;
+  const fromAnki = ankiStatus(tok);
+  return fromAnki === 'learning' || fromAnki === 'known';
 }
 
 /** Share of content words already known, for the sidebar. */
@@ -105,7 +146,9 @@ async function mark(word: string, next: OverrideStatus | null): Promise<void> {
   if (next) overrides.set(word, next);
   else overrides.delete(word);
   repaint();
-  await setOverride(word, next);
+  // The mark shows at once either way; a failed write only costs it on reload,
+  // which the learner should hear now rather than discover then.
+  if (!(await setOverride(word, next)) && currentMount) showNotice(currentMount, 'mark-not-saved');
 }
 
 /** Re-render the current line so a status change is visible at once. */
@@ -123,6 +166,7 @@ async function refreshStatus(): Promise<void> {
     const next = await buildStatusMap(scope);
     if (request !== statusRequest) return;
     status = next;
+    statusReadAt = Date.now();
     addedCards.clear();
     log(
       status.size
@@ -145,6 +189,8 @@ function pickAdapter(): SubtitleSource | null {
 }
 
 let segmenter: Segmenter | null = null;
+/** The language `segmenter` was built for; a change of target rebuilds it. */
+let segmenterFor = '';
 
 /**
  * Prefer real morphology, but never block on it. The dictionary is a ~10 MB
@@ -152,127 +198,198 @@ let segmenter: Segmenter | null = null;
  * is useful immediately rather than blank.
  */
 async function makeSegmenter(): Promise<Segmenter | null> {
-  if (segmenter) return segmenter;
+  const lang = targetLang();
+  if (segmenter && segmenterFor === lang) return segmenter;
 
   if (!IntlSegmenter.supported) {
     log('Intl.Segmenter unavailable — cannot segment at all');
     return null;
   }
-  segmenter = new IntlSegmenter(targetLang());
+  segmenter = new IntlSegmenter(lang);
+  segmenterFor = lang;
 
   // The dictionary is independent of the analyser: a failure to load lindera
-  // must not also cost us definitions.
-  void (async () => {
-    try {
-      const d = await ensureDictionary(jmdictEditionFor(settings().native));
-      log(
-        d.ready
-          ? 'JMdict ready — click a word to look it up'
-          : `dictionary unavailable: ${d.error ?? d.phase}`,
-      );
-      clearLookupCache();   // drop anything looked up before it was ready
-    } catch (e) {
-      log('dictionary unavailable:', e);
-    }
-  })();
+  // must not also cost us definitions. Only languages that have one fetch it —
+  // there is no point downloading JMdict to look up Spanish.
+  if (DICTIONARIES[lang]) {
+    void (async () => {
+      try {
+        const d = await ensureDictionary(jmdictEditionFor(settings().native));
+        log(
+          d.ready
+            ? 'JMdict ready — click a word to look it up'
+            : `dictionary unavailable: ${d.error ?? d.phase}`,
+        );
+        clearLookupCache();   // drop anything looked up before it was ready
+        if (d.ready) {
+          // Merging consults the dictionary — for counters, prefixes and the
+          // like — so lines analysed before it arrived carry guesses. Again.
+          segmented = new Map();
+          activeKey = STALE;
+          sidebar?.refreshAnalysis();
+        }
+      } catch (e) {
+        log('dictionary unavailable:', e);
+      }
+    })();
+  }
 
   // Upgrade in the background.
   void (async () => {
+    const dictName = TIER2_LANGS[lang];
+    if (!dictName) {
+      log(`no analyser for "${lang}" — staying on tier 0 (boundaries only)`);
+      return;
+    }
     try {
       const status = await LinderaSegmenter.status();
       if (!status.ready) log('downloading the Japanese dictionary (~10 MB, once)…');
 
-      const dictName = TIER2_LANGS[targetLang()];
-      if (!dictName) {
-        log(`no analyser for "${targetLang()}" — staying on tier 0 (boundaries only)`);
-        return;
-      }
       const r = await LinderaSegmenter.ensure(dictName);
       if (!r.ok) {
-        log('staying on tier 0 — analyser unavailable:', r.error);
+        analyserDown(r.error ?? 'the analyser did not load');
         return;
       }
+      // The learner may have switched language while this downloaded.
+      if (segmenterFor !== lang) return;
       segmenter = new LinderaSegmenter();
       segmented = new Map();   // re-segment with lemmas and readings
-      active = -1;
+      activeKey = STALE;
       sidebar?.refreshAnalysis();
       log('upgraded to tier 2 — lemmas, readings and furigana are live');
     } catch (e) {
-      log('staying on tier 0 —', e);
+      analyserDown(String(e));
     }
   })();
 
   return segmenter;
 }
 
-/** Binary search for the cue covering `t`. */
-function cueAt(t: number): number {
-  let lo = 0;
-  let hi = cues.length - 1;
-  while (lo <= hi) {
-    const mid = (lo + hi) >> 1;
-    const c = cues[mid];
-    if (!c) break;
-    if (t < c.start) hi = mid - 1;
-    else if (t > c.end) lo = mid + 1;
-    else return mid;
-  }
-  return -1;
+/**
+ * The analyser failed: say so, and keep going on boundaries alone.
+ *
+ * AGENTS.md: if the segmenter can't produce lemmas, the UI must say so rather
+ * than silently mismatching against the user's cards. This used to be a
+ * console line, so a failed download looked exactly like a working extension
+ * that never showed readings.
+ */
+let analyserNoticed = false;
+function analyserDown(reason: string): void {
+  log('analyser unavailable — boundaries only:', reason);
+  if (analyserNoticed || !currentMount) return;
+  analyserNoticed = true;
+  showNotice(currentMount, 'analyser-unavailable', reason);
 }
 
-function paint(i: number): void {
-  const cue = cues[i];
-  if (!cue) return;
+/**
+ * Segment a line, falling back to boundaries for this line alone if the
+ * analyser fails. Per line, not for good: the offscreen document can come
+ * back, and one failed request should not cost the rest of the session its
+ * readings. A rejection here used to leave the previous line frozen on screen.
+ */
+function segmentText(text: string): Token[] | Promise<Token[]> {
+  const seg = segmenter;
+  if (!seg) return [];
+  const degrade = (e: unknown): Token[] => {
+    analyserDown(String(e));
+    return IntlSegmenter.supported ? new IntlSegmenter(targetLang()).segment(text) : [];
+  };
+  try {
+    const r = seg.segment(text);
+    return Array.isArray(r) ? r : r.catch(degrade);
+  } catch (e) {
+    return degrade(e);
+  }
+}
+
+/** A line break between cues shown together. */
+const BREAK: Token = { surface: '\n', start: -1, end: -1, punct: true };
+
+function joined(parts: Token[][]): Token[] {
+  return parts.flatMap((p, i) => (i ? [BREAK, ...p] : p));
+}
+
+function segmentCue(i: number): Token[] | Promise<Token[]> {
+  const cached = segmented.get(i);
+  if (cached) return cached;
+  const result = segmentText(cues[i]?.text ?? '');
+  if (Array.isArray(result)) {
+    segmented.set(i, result);
+    return result;
+  }
+  return result.then((toks) => {
+    segmented.set(i, toks);
+    return toks;
+  });
+}
+
+function paint(idx: number[]): void {
+  const shown = idx.map((i) => cues[i]).filter((c): c is Cue => Boolean(c));
+  if (!shown.length) return;
 
   // Set once, before any branch. This used to be set inside the two
   // segmenting branches and missed by the cached one, so replaying or seeking
   // back to an already-analysed line left copy-sentence holding the previous
   // one — which on a fetched track is most lines.
-  currentLine = cue.text;
+  currentLine = shown.map((c) => c.text).join('\n');
+  const second = secondLine(shown);
 
-  const cached = segmented.get(i);
-  if (cached) {
-    overlay?.render(cached, secondLine(cue));
+  const parts = idx.map(segmentCue);
+  if (parts.every((p): p is Token[] => Array.isArray(p))) {
+    overlay?.render(joined(parts), second);
     return;
   }
-
-  const result = (segmenter ?? { segment: () => [] as Token[] }).segment(cue.text);
-  if (Array.isArray(result)) {
-    segmented.set(i, result);
-    overlay?.render(result, secondLine(cue));
-    return;
-  }
-  void result.then((toks) => {
-    segmented.set(i, toks);
-    // The cue may have moved on while we were analysing.
-    if (active === i) overlay?.render(toks, secondLine(cue));
+  const key = activeKey;
+  const gen = generation;
+  void Promise.all(parts).then((all) => {
+    // The cue may have moved on, or the video changed, while we were analysing.
+    if (activeKey === key && gen === generation) overlay?.render(joined(all), second);
   });
 }
 
-function tick(video: HTMLVideoElement, seg: Segmenter): void {
-  const i = cueAt(video.currentTime);
-  if (i !== active) {
-    active = i;
-    if (i < 0) {
-      // A blank overlay is ambiguous: no cue here, or a broken renderer?
-      log(`no cue at ${video.currentTime.toFixed(1)}s` +
-          (cues[0] ? ` · first cue starts at ${cues[0].start.toFixed(1)}s` : ''));
+function tick(video: HTMLVideoElement, seg: Segmenter, adapter: SubtitleSource): void {
+  // During an ad the element's clock is the ad's: reading cues against it put
+  // the video's opening lines over the advert.
+  if (adapter.isAd?.()) {
+    if (activeKey !== 'ad') {
+      activeKey = 'ad';
+      overlay?.clear();
+      closePopup();
+    }
+    raf = requestAnimationFrame(() => tick(video, seg, adapter));
+    return;
+  }
+
+  const idx = cueIndex.at(video.currentTime);
+  const key = idx.join(',');
+  if (key !== activeKey) {
+    activeKey = key;
+    if (!idx.length) {
       overlay?.clear();
     } else {
-      paint(i);
+      paint(idx);
     }
     sidebar?.setActive(transcript.activeAt(video.currentTime));
   }
-  raf = requestAnimationFrame(() => tick(video, seg));
+  raf = requestAnimationFrame(() => tick(video, seg, adapter));
 }
 
 let starting = false;
 let rendering = false;
 let retries = 0;
 let retryTimer = 0;
+/** Settings arrive asynchronously; nothing may run on the defaults instead. */
+let settingsReady = false;
+/**
+ * Bumped by every reset. A run that began under an older generation belongs
+ * to a video that is gone, and must not render.
+ */
+let generation = 0;
 
 const MAX_RETRIES = 60;   // ~30s at 500ms
 const RETRY_MS = 500;
+/** Retries to wait for a track list before settling for reading captions. */
+const DOM_GRACE = 6;      // ~3s
 
 /**
  * Players mount asynchronously — Netflix in particular builds its <video> well
@@ -280,16 +397,39 @@ const RETRY_MS = 500;
  * anything that is merely "not ready yet" schedules another attempt.
  */
 async function start(): Promise<void> {
-  if (starting || rendering) return;
+  // A second start while a run is in flight adds nothing: that run is doing
+  // the job. Unless the video changes under it — handled below.
+  if (!settingsReady || rendering || starting) return;
   starting = true;
+  const gen = generation;
+  let ok = false;
   try {
-    rendering = await run();
-    if (rendering) {
-      retries = 0;
-      return;
-    }
+    ok = await run(gen);
   } finally {
     starting = false;
+  }
+
+  // The video changed while that run was in flight, so its result is void.
+  // Start over for the new one: every start asked for in the meantime found
+  // this run still going and returned. This is what used to be missing — the
+  // stale run finished by rendering the previous video's subtitles, and the
+  // new video's start had already been ignored.
+  if (gen !== generation) {
+    if (!rendering) void start();
+    return;
+  }
+  if (ok) {
+    rendering = true;
+    retries = 0;
+    return;
+  }
+
+  // An advert can run for minutes. Waiting it out is not a failure to count.
+  if (pickAdapter()?.isAd?.()) {
+    quiet('waiting for the ad to finish');
+    clearTimeout(retryTimer);
+    retryTimer = window.setTimeout(() => void start(), 1000);
+    return;
   }
 
   if (retries++ >= MAX_RETRIES) {
@@ -311,12 +451,18 @@ async function start(): Promise<void> {
   retryTimer = window.setTimeout(() => void start(), RETRY_MS);
 }
 
-/** @returns true once cues are on screen; false means "not ready, try again". */
-async function run(): Promise<boolean> {
+/**
+ * @returns true once cues are on screen; false means "not ready, try again".
+ * Every await is followed by a generation check: past it, the world may have
+ * moved on to another video.
+ */
+async function run(gen: number): Promise<boolean> {
   const adapter = pickAdapter();
   if (!adapter) { quiet('no adapter for ' + location.href); return false; }
+  if (adapter.isAd?.()) return false;
 
   const seg = await makeSegmenter();
+  if (gen !== generation) return false;
   if (!seg) return true;   // unrecoverable; retrying will not help
 
   const video = adapter.video();
@@ -335,22 +481,31 @@ async function run(): Promise<boolean> {
       null,
     ) ?? video.parentElement;
   if (!mount) { quiet('waiting for a player container to mount into'); return false; }
+  currentMount = mount;
 
   log('mounting into', mount.id || mount.className || mount.tagName);
 
   const tracks = await adapter.listTracks();
+  if (gen !== generation) return false;
   if (!tracks.length) {
+    if (adapter.noSubtitles?.()) {
+      log('this video has no subtitle tracks');
+      showNotice(mount, 'no-subtitles');
+      return true;   // the site has answered; waiting will not change it
+    }
     // No manifest reached us — on Netflix the page CSP blocks the MAIN-world
     // hook entirely. That only costs us the *whole* transcript; if the player
     // is rendering subtitles we can still read them, so never sit and wait
-    // when there is a caption container right there.
-    if (new DomCaptionSource(adapter.domCaptions).container()) {
+    // long when there is a caption container right there. A short wait first:
+    // after clicking to another video the list is usually a second away, and
+    // YouTube keeps an empty caption container in every player.
+    if (retries >= DOM_GRACE && new DomCaptionSource(adapter.domCaptions).container()) {
       log('no track list (the page may block our manifest hook) — reading rendered captions instead');
-      return startDomFallback(mount, seg, adapter);
+      return startDomFallback(mount, seg, adapter, 'no-tracks');
     }
     quiet(
       'waiting for a subtitle track list, or for subtitles to be switched on',
-      adapter.id === 'netflix' ? 'nf.timedtexttracks' : 'yt.player-response',
+      adapter.id === 'netflix' ? 'nf.textTracks' : 'yt.player-response',
       'Subtitles may simply be switched off in the player.',
     );
     return false;
@@ -361,7 +516,11 @@ async function run(): Promise<boolean> {
     tracks.map((t) => `${t.lang}${t.generated ? ' (auto)' : ''}`).join(', '),
   );
 
-  // M0: first track matching the target language; a picker arrives with the UI.
+  // Anything still on screen is about an earlier attempt. Cleared here, before
+  // choosing tracks, so that the notices raised while choosing survive: they
+  // used to be cleared at the end of this same run, a frame after appearing.
+  clearNotice();
+
   /*
    * Prefer a human track over an auto-generated one in the same language.
    * ASR output has no punctuation and invents words, so segmenting it teaches
@@ -408,26 +567,30 @@ async function run(): Promise<boolean> {
     showNotice(mount, 'auto-generated', 'No human-written track was available for this video.');
   }
 
+  let loaded: Cue[];
   try {
-    cues = await adapter.loadTrack(track.id);
+    loaded = await adapter.loadTrack(track.id);
   } catch (err) {
+    if (gen !== generation) return false;
     log('could not fetch the track:', err);
     // Before settling for the current line only, ask the adapter whether it
     // knows another way to the whole transcript.
     const alt = (await adapter.fallbackTrack?.().catch(() => [])) ?? [];
+    if (gen !== generation) return false;
     if (alt.length) {
       log(`recovered ${alt.length} cues from the page's own transcript`);
-      cues = alt;
+      loaded = alt;
     } else {
-      return startDomFallback(mount, seg, adapter);
+      return startDomFallback(mount, seg, adapter, 'load-failed');
     }
   }
-  if (!cues.length) {
+  if (gen !== generation) return false;
+  if (!loaded.length) {
     log('track loaded but contained no cues');
-    return startDomFallback(mount, seg, adapter);
+    return startDomFallback(mount, seg, adapter, 'load-failed');
   }
 
-  log(`rendering ${cues.length} cues · segmenter tier ${seg.tier}` +
+  log(`rendering ${loaded.length} cues · segmenter tier ${seg.tier}` +
       (seg.hasLemma ? '' : ' (no lemmas — Anki matching would be surface-form only)'));
 
   /*
@@ -438,6 +601,7 @@ async function run(): Promise<boolean> {
    * is most of the value of watching them together.
    */
   // '' is an explicit "no second line" from the toolbar; null means pick one.
+  let second: string | null = null;
   if (settings().dualSubtitles && chosenSecond !== '') {
     const want = settings().native;
     // Same trap as above, plus a preference for plain subtitles over closed
@@ -445,22 +609,26 @@ async function run(): Promise<boolean> {
     const inNative = tracks.filter(
       (t) => t.lang.startsWith(want) && t.id !== track.id && !t.forced,
     );
-    const second =
+    const pick =
       (chosenSecond ? tracks.find((t) => t.id === chosenSecond) : undefined) ??
       inNative.find((t) => !t.cc) ??
       inNative[0];
-    if (second) {
+    if (pick) {
       try {
-        const other = await adapter.loadTrack(second.id);
+        const other = await adapter.loadTrack(pick.id);
+        if (gen !== generation) return false;
         if (other.length) {
-          cues = pairCues(cues, other);
-          activeSecond = second.id;
-          const paired = cues.filter((c) => c.secondary).length;
-          log(`dual subtitles: ${second.lang} on ${paired} of ${cues.length} lines`);
+          loaded = pairCues(loaded, other);
+          second = pick.id;
+          const paired = loaded.filter((c) => c.secondary).length;
+          log(`dual subtitles: ${pick.lang} on ${paired} of ${loaded.length} lines`);
         }
       } catch (e) {
-        // A missing second track is not a failure of the first.
+        if (gen !== generation) return false;
+        // A missing second track is not a failure of the first — but it is
+        // one the learner should hear about, or the setting looks broken.
         log('no second subtitle track:', e);
+        showNotice(mount, 'second-track-failed', `${pick.label || pick.lang}: ${String(e).slice(0, 140)}`);
       }
     } else {
       /*
@@ -480,8 +648,12 @@ async function run(): Promise<boolean> {
     }
   }
 
+  // Past the last await: everything from here on is this video's.
+  cues = loaded;
+  cueIndex = new CueIndex(cues);
+  activeSecond = second;
   segmented = new Map();
-  active = -1;
+  activeKey = STALE;
   transcript.setFull(cues);
 
   if (getComputedStyle(mount).position === 'static') mount.style.position = 'relative';
@@ -490,10 +662,9 @@ async function run(): Promise<boolean> {
   overlay?.destroy();
   overlay = makeOverlay(mount, adapter);
 
-  mountSidebar(mount, video);
+  mountSidebar(mount, video, adapter);
   cancelAnimationFrame(raf);
-  tick(video, seg);
-  clearNotice();
+  tick(video, seg, adapter);
   stalledOn = null;
   return true;
 }
@@ -502,7 +673,9 @@ async function run(): Promise<boolean> {
  * Tokenize whatever YouTube is currently displaying. Only the current line, but
  * it works wherever captions are visible, which the fetched path does not.
  */
-function startDomFallback(mount: HTMLElement, seg: Segmenter, adapter: SubtitleSource): boolean {
+function startDomFallback(
+  mount: HTMLElement, seg: Segmenter, adapter: SubtitleSource, reason: 'no-tracks' | 'load-failed',
+): boolean {
   const source = new DomCaptionSource(adapter.domCaptions);
   if (!source.container()) {
     quiet(
@@ -518,13 +691,21 @@ function startDomFallback(mount: HTMLElement, seg: Segmenter, adapter: SubtitleS
 
   domSource?.stop();
   domSource = source;
+  const gen = generation;
   const started = domSource.start((text) => {
+    if (adapter.isAd?.()) return overlay?.clear();
     if (!text) return overlay?.clear();
     currentLine = text;
-    transcript.observe(text, activeVideo?.currentTime ?? 0);
-    const result = (segmenter ?? seg).segment(text);
+    const at = activeVideo?.currentTime ?? 0;
+    transcript.observe(text, at);
+    // The panel has no clock to follow in this mode; the caption is the clock.
+    sidebar?.setActive(transcript.activeAt(at));
+    const result = segmentText(text);
     if (Array.isArray(result)) overlay?.render(result);
-    else void result.then((toks) => overlay?.render(toks));
+    // A late analysis must not repaint a line the player has already replaced.
+    else void result.then((toks) => {
+      if (gen === generation && currentLine === text) overlay?.render(toks);
+    });
   });
 
   if (!started) { quiet('could not observe the caption container'); return false; }
@@ -532,8 +713,9 @@ function startDomFallback(mount: HTMLElement, seg: Segmenter, adapter: SubtitleS
   // Not `libregaku-active`: that hides the container with display:none, and we
   // are reading from it.
   const v = pickAdapter()?.video();
-  if (v) mountSidebar(mount, v);
+  if (v) mountSidebar(mount, v, adapter);
   document.documentElement.classList.add('libregaku-reading');
+  domReason = reason;
   clearNotice();
   stalledOn = null;
   log('reading captions from the player DOM (current line only — the sidebar will need a fetched track)');
@@ -568,16 +750,26 @@ let replace: (() => void) | null = null;
 
 /** What the overlay was last told, so a settings change applies only what moved. */
 let appearance = { size: 0, bottom: 0, dual: true };
+/** The languages the current run was built for. */
+let languages = { target: '', native: '' };
+/** The status scope last read from Anki. */
+let scopeRead: string | null = null;
 
 /** The second line only while it is wanted — the switch can flip mid-video. */
-function secondLine(cue: { secondary?: string }): string | undefined {
-  return settings().dualSubtitles ? cue.secondary : undefined;
+function secondLine(shown: Array<{ secondary?: string }>): string | undefined {
+  if (!settings().dualSubtitles) return undefined;
+  const lines = shown.map((c) => c.secondary).filter((s): s is string => Boolean(s));
+  return lines.length ? lines.join('\n') : undefined;
 }
 
 /** Current line, for copy-sentence in the popup. */
 let currentLine = '';
 let hoverTimer = 0;
 let pausedForHover = false;
+/** The overlay word under the pointer, if any. */
+let hovering: HTMLElement | null = null;
+/** Only the most recent lookup may open a card. */
+let lookupSeq = 0;
 
 /**
  * Hover-to-open.
@@ -610,10 +802,13 @@ function makeOverlay(mount: HTMLElement, adapter: SubtitleSource): Overlay {
 function wireHover(o: Overlay, mount: HTMLElement): void {
   o.onHover((tok, el) => {
     clearTimeout(hoverTimer);
+    hovering = el;
 
     if (!tok || !el) {
+      // Leaving the word is often moving onto its card, to read it or press
+      // Add. Playback resumes when the card closes (its onClose), not here —
+      // resuming here restarted the video on the way to the card.
       closePopupSoon();
-      resumeAfterHover();
       return;
     }
     if (settings().interaction !== 'hover') return;
@@ -626,10 +821,15 @@ function wireHover(o: Overlay, mount: HTMLElement): void {
 
     hoverTimer = window.setTimeout(() => {
       pauseForHover();
-      void openLookup(mount, el, tok);
+      void openLookup(mount, el, tok, true);
     }, settings().hoverDelay);
   });
 }
+
+/** Resume a hover pause when the card goes away — unless another took its place. */
+const onCardClosed = (why: 'closed' | 'replaced'): void => {
+  if (why === 'closed') resumeAfterHover();
+};
 
 function pauseForHover(): void {
   if (!settings().hoverPause || !activeVideo || activeVideo.paused) return;
@@ -643,29 +843,83 @@ function resumeAfterHover(): void {
   void activeVideo.play().catch(() => {});
 }
 
+/** Where a word being mined was said, and what the second line said then. */
+interface LineContext {
+  /** Start of the line, in seconds. */
+  start?: number;
+  translation?: string;
+}
+
+/** The line on screen right now, for a word looked up from the overlay. */
+function lineHere(): LineContext {
+  // '' (nothing on screen), 'ad' and STALE name no cue.
+  if (!/^\d+(,\d+)*$/.test(activeKey)) return {};
+  const shown = activeKey.split(',').map((i) => cues[Number(i)]).filter((c): c is Cue => Boolean(c));
+  if (!shown.length) return {};
+  return { start: shown[0]!.start, translation: shown.map((c) => c.secondary).filter(Boolean).join('\n') || undefined };
+}
+
+/**
+ * A lookup for words that have no dictionary behind them, rather than
+ * answering every Spanish word from a Japanese one.
+ */
+async function lookupFor(token: Token): Promise<LookupResult> {
+  if (!DICTIONARIES[targetLang()]) {
+    return { state: 'error', error: 'No dictionary for this language yet.' };
+  }
+  // The token's own lookup plan: its reading and part of speech pick the
+  // entry, and a merged word knows which part to look up (勉強する → 勉強).
+  return lookupToken(token);
+}
+
 /** Turn a lookup into an Anki note, with everything needed to review it. */
-async function addCard(draft: CardDraft, token: Token): Promise<string> {
+async function addCard(draft: CardDraft, token: Token, line: LineContext): Promise<string> {
   const deck = settings().deck;
   if (!deck) throw new Error('Pick a deck in Libregaku settings first');
 
   const adapter = pickAdapter();
-  const at = activeVideo?.currentTime ?? 0;
+  // The line's own start, so the card links back to where the word was said —
+  // not to wherever playback has drifted to by the time Add is pressed, and
+  // not to the playhead at all for a word mined from further down the
+  // transcript.
+  const at = line.start ?? activeVideo?.currentTime ?? 0;
+
+  /*
+   * The reading of the headword, not of the word as it was said. The token's
+   * reading is the inflected surface's — たべた for 食べた — so aligning it
+   * against 食べる wrote 食べる[たべた] on every inflected card. The draft
+   * carries the dictionary entry's reading; the token's only fits when the
+   * word was said in its dictionary form.
+   */
+  const surfaceReading = token.surface === draft.expression ? token.reading : undefined;
+  const reading =
+    draft.reading && !(draft.reading === token.reading && token.surface !== draft.expression)
+      ? draft.reading
+      : surfaceReading;
 
   await ensureModel();
-  await addNote({
-    deck,
-    expression: draft.expression,
-    // Anki renders 勉強[べんきょう] as ruby, so store the bracket form.
-    reading: toAnkiFurigana(furigana(draft.expression, token.reading)),
-    meaning: draft.meaning,
-    sentence: draft.sentence,
-    source: sourceField({
-      title: adapter?.title() ?? null,
-      seconds: at,
-      url: adapter?.deepLink(at) ?? null,
-    }),
-    tags: tagsFor({ source: adapter?.id ?? 'unknown', lang: targetLang() }),
-  });
+  try {
+    await addNote({
+      deck,
+      expression: draft.expression,
+      // Anki renders 勉強[べんきょう] as ruby, so store the bracket form.
+      reading: toAnkiFurigana(furigana(draft.expression, reading)),
+      meaning: draft.meaning,
+      sentence: draft.sentence,
+      sentenceMeaning: line.translation,
+      source: sourceField({
+        title: adapter?.title() ?? null,
+        seconds: at,
+        url: adapter?.deepLink(at) ?? null,
+      }),
+      tags: tagsFor({ source: adapter?.id ?? 'unknown', lang: targetLang() }),
+    });
+  } catch (e) {
+    // Anki already has it. Not a failure: say so, and let status catch up.
+    if (!isDuplicate(e)) throw e;
+    void refreshStatus();
+    return `already in ${deck}`;
+  }
 
   // Show the successful addition immediately, then let Anki's next snapshot
   // replace it. A stored "learning" override would hide maturity or deletion.
@@ -680,17 +934,30 @@ async function addCard(draft: CardDraft, token: Token): Promise<string> {
   return `added to ${deck}`;
 }
 
-async function openLookup(mount: HTMLElement, el: HTMLElement, token: Token): Promise<void> {
+async function openLookup(mount: HTMLElement, el: HTMLElement, token: Token, byHover = false): Promise<void> {
   cancelPopupClose();
+  const seq = ++lookupSeq;
+  // Captured now: by the time the lookup returns, the line may have moved on.
+  const sentence = currentLine;
+  const line = lineHere();
   try {
-    const result = await lookupWord(token.lemma, token.surface);
+    const result = await lookupFor(token);
+    // A slower lookup for an earlier word must not replace this one's card.
+    if (seq !== lookupSeq || !el.isConnected) return;
+    // Opened by hover, but the pointer has already left: a card appearing now
+    // would have nothing to close it, and would hold the video paused.
+    if (byHover && hovering !== el) {
+      resumeAfterHover();
+      return;
+    }
     showPopup(mount, el, result, {
       token,
-      sentence: currentLine,
+      sentence,
       status: statusOf(token),
       onMark: mark,
-      onAddCard: (draft) => addCard(draft, token),
-      hasCard: statusOf(token) === 'learning' || statusOf(token) === 'known',
+      onAddCard: (draft) => addCard(draft, token, line),
+      hasCard: hasCardFor(token),
+      onClose: onCardClosed,
     });
   } catch (e) {
     log('lookup failed:', e);
@@ -719,7 +986,14 @@ function videoContext(atSeconds?: number): { site: string; video: string; title:
   };
 }
 
-function mountSidebar(mount: HTMLElement, video: HTMLVideoElement): void {
+/** Move playback, the way the site allows it to be moved. */
+function seekTo(t: number): void {
+  const adapter = pickAdapter();
+  if (adapter?.seek) adapter.seek(t);
+  else if (activeVideo) activeVideo.currentTime = t;
+}
+
+function mountSidebar(mount: HTMLElement, video: HTMLVideoElement, adapter: SubtitleSource): void {
   activeVideo = video;
   if (sidebar) return;
   sidebar = new Sidebar(mount, {
@@ -727,34 +1001,53 @@ function mountSidebar(mount: HTMLElement, video: HTMLVideoElement): void {
     segmenter: () => segmenter,
     statusOf,
     measure: async (text) => {
-      const seg = segmenter;
-      if (!seg) return { unknown: 0, words: 0 };
-      const toks = await seg.segment(text);
+      if (!segmenter) return { unknown: 0, words: 0 };
+      const toks = await segmentText(text);
       const words = toks.filter((t) => t.content && !t.punct);
       return {
         words: words.length,
         unknown: words.filter((t) => statusOf(t) === 'unknown').length,
       };
     },
-    seek: (t) => {
-      if (activeVideo) activeVideo.currentTime = t;
-    },
+    seek: seekTo,
     currentTime: () => activeVideo?.currentTime ?? 0,
     context: videoContext,
-    onWordClick: (token, el, sentence) => {
-      void lookupWord(token.lemma, token.surface).then((result) => {
+    onWordClick: (token, el, sentence, context) => {
+      const seq = ++lookupSeq;
+      void lookupFor(token).then((result) => {
+        if (seq !== lookupSeq || !el.isConnected) return;
         const host = el.getRootNode() as ShadowRoot;
         showPopup((host.host as HTMLElement).parentElement ?? mount, el, result, {
           token,
           sentence,
           status: statusOf(token),
           onMark: mark,
-          onAddCard: (draft) => addCard(draft, token),
-          hasCard: statusOf(token) === 'learning' || statusOf(token) === 'known',
+          // The line the word was clicked in, which may be far from the playhead.
+          onAddCard: (draft) => addCard(draft, token, { start: context?.start, translation: context?.translation }),
+          hasCard: hasCardFor(token),
+          onClose: onCardClosed,
         });
       });
     },
+    // "Check again" found Anki: what the words' colours say is now out of date.
+    onAnkiConnected: () => void refreshStatus(),
+    lookup: lookupFor,
   });
+  // Stop above the site's control bar, and follow it: YouTube's grows in
+  // fullscreen, and the player resizes under theater mode and window changes.
+  // Netflix only puts its bar on the page while the controls show, which
+  // pointer movement brings up — so that is a moment to measure too.
+  const fitControls = (): void => sidebar?.setBottomInset(adapter.controlsHeight?.() ?? 0);
+  fitControls();
+  controlsWatch = new ResizeObserver(fitControls);
+  controlsWatch.observe(mount);
+  controlsAbort = new AbortController();
+  let fittedAt = 0;
+  mount.addEventListener('pointermove', () => {
+    if (Date.now() - fittedAt < 500) return;
+    fittedAt = Date.now();
+    fitControls();
+  }, { signal: controlsAbort.signal, passive: true });
   header = new Header(mount, {
     stats: () => sidebar?.stats ?? null,
     savedCount: () => sidebar?.savedCount ?? 0,
@@ -796,9 +1089,17 @@ async function saveCurrentLine(): Promise<void> {
 }
 
 function reset(): void {
+  // Anything still in flight belongs to the video we are leaving.
+  generation++;
+  // Leaving is not the end of a hover: nothing should resume on our account.
+  pausedForHover = false;
   closePopup();
   sidebar?.destroy();
   sidebar = null;
+  controlsWatch?.disconnect();
+  controlsWatch = null;
+  controlsAbort?.abort();
+  controlsAbort = null;
   header?.destroy();
   header = null;
   playerInset?.destroy();
@@ -808,13 +1109,19 @@ function reset(): void {
   transcript.clear();
   domSource?.stop();
   domSource = null;
+  domReason = null;
   cancelAnimationFrame(raf);
   overlay?.destroy();
   overlay = null;
   replace = null;
   cues = [];
+  cueIndex = new CueIndex([]);
   segmented = new Map();
-  active = -1;
+  activeKey = '';
+  // Hand the site its own subtitles back. Both classes hide them, and nothing
+  // removed either, so after one Japanese video the site's captions stayed
+  // hidden in that tab for every later video, including ones we never render.
+  document.documentElement.classList.remove('libregaku-active', 'libregaku-reading');
 }
 
 for (const a of ADAPTERS) {
@@ -833,7 +1140,25 @@ for (const a of ADAPTERS) {
     setTimeout(() => void start(), 600);
   });
   // The real trigger: the track list arrives after we first ran.
-  a.onTracks(() => void start());
+  a.onTracks(() => {
+    // Reading the player's captions was a stand-in for a list we didn't have.
+    // Now that one is here, trade up to the whole transcript. Only when the
+    // list was what was missing — a track that failed to load would fail again.
+    if (rendering && domReason === 'no-tracks') {
+      log('a track list arrived — switching from reading captions to the full track');
+      restart();
+      return;
+    }
+    void start();
+  });
+}
+
+/** Tear down and run again from the top, for a change that needs new tracks. */
+function restart(): void {
+  reset();
+  rendering = false;
+  retries = 0;
+  void start();
 }
 
 /**
@@ -859,22 +1184,21 @@ document.addEventListener(
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     const key = e.key.toLowerCase();
     if (key !== 'b' && key !== 's') return;
+    // Only where there is something of ours to act on. B used to be taken
+    // from the site on every page, rendering or not.
+    if (!sidebar) return;
     // Someone typing in a field gets their letter. composedPath() sees through
     // shadow roots, so the search box inside our own panel counts as a field
     // too — e.target would only ever show the panel's host.
     const t = (e.composedPath()[0] ?? e.target) as HTMLElement | null;
     if (t && (t.isContentEditable || /^(input|textarea|select)$/i.test(t.tagName))) return;
-    if (key === 'b') {
-      // Netflix and YouTube both treat stray letters as player shortcuts.
-      e.preventDefault();
-      e.stopPropagation();
-      void saveCurrentLine();
-      return;
-    }
-    if (!sidebar) return;
+    // Netflix and YouTube both treat stray letters as player shortcuts.
     e.preventDefault();
     e.stopPropagation();
-    sidebar.toggle();
+    // Holding the key auto-repeats; one press is one action.
+    if (e.repeat) return;
+    if (key === 'b') void saveCurrentLine();
+    else sidebar.toggle();
   },
   true,
 );
@@ -888,12 +1212,30 @@ document.addEventListener(
   true,
 );
 
+// A tab left in the background for a while may be showing a stale picture of
+// the collection; coming back to it is a good moment to look again.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && Date.now() - statusReadAt > 5 * 60_000) {
+    void refreshStatus();
+  }
+});
+
 void loadSettings().then(async (s) => {
   log(`lookup opens on ${s.interaction}`);
   appearance = { size: s.subtitleSize, bottom: s.subtitleBottom, dual: s.dualSubtitles };
+  languages = { target: s.target, native: s.native };
+  scopeRead = s.statusScope;
+  settingsReady = true;
+  void start();
   await refreshStatus();
 });
-onSettingsChange(() => void refreshStatus());
+// Word status is a read of the whole collection, so it is re-read only when
+// what it reads changes — not on every panel toggle and button press.
+onSettingsChange((s) => {
+  if (s.statusScope === scopeRead) return;
+  scopeRead = s.statusScope;
+  void refreshStatus();
+});
 onSettingsChange((s) => {
   if (s.interaction !== 'hover') closePopup();
 });
@@ -906,16 +1248,34 @@ onSettingsChange((s) => {
   if (s.subtitleBottom !== appearance.bottom) replace?.();
   overlay?.setRubyMode(s.ruby);
   overlay?.setMarkKnown(s.markKnown);
-  // Turning the second line on needs its track, which is only fetched at
-  // load. Re-run from the top, exactly as the toolbar's track picker does.
-  if (s.dualSubtitles && !appearance.dual && activeTrack && !activeSecond) {
-    log('second line turned on — reloading to fetch its track');
-    reset();
-    rendering = false;
-    retries = 0;
-    void start();
-  }
+
+  const languageChanged = s.target !== languages.target || s.native !== languages.native;
+  const dualTurnedOn = s.dualSubtitles && !appearance.dual;
   appearance = { size: s.subtitleSize, bottom: s.subtitleBottom, dual: s.dualSubtitles };
+  languages = { target: s.target, native: s.native };
+
+  if (languageChanged) {
+    // A new target needs a new analyser and new tracks; a new native language
+    // a new dictionary edition and a new second line. None of it is live
+    // without starting over.
+    log('language changed — starting over');
+    segmenter = null;
+    analyserNoticed = false;
+    clearLookupCache();
+    restart();
+    return;
+  }
+  if (dualTurnedOn && activeTrack && !activeSecond) {
+    // Turning the second line on needs its track, which is only fetched at
+    // load. A "None" picked earlier in the toolbar is overridden by turning
+    // the line back on here.
+    log('second line turned on — reloading to fetch its track');
+    if (chosenSecond === '') chosenSecond = null;
+    restart();
+    return;
+  }
+  // Showing or hiding the second line applies to the line already on screen.
+  activeKey = STALE;
 });
 // Another tab saving a line must not be overwritten by this one's stale copy.
 bookmarks.watch(() => {
@@ -950,15 +1310,19 @@ chrome.runtime.onMessage.addListener((msg: { type?: string; track?: string; seco
       rendering,
       tracks: knownTracks,
       track: activeTrack ?? chosenTrack,
-      second: activeSecond ?? '',
+      // Null when no second line is loaded, which is not the same as a
+      // deliberate "None" — the popup must not echo one back as the other.
+      second: activeSecond,
       sidebarOpen: sidebar?.isOpen ?? false,
     });
     return true;
   }
 
   if (msg?.type === 'lg-set-tracks') {
-    chosenTrack = msg.track ?? null;
-    chosenSecond = msg.second ?? null;
+    // Only what the message names: a change to one picker is not a choice
+    // about the other.
+    if ('track' in msg) chosenTrack = msg.track || null;
+    if ('second' in msg) chosenSecond = msg.second ?? null;
     chosenForVideo = pickAdapter()?.videoId() ?? null;
     // Re-run from the top so the change takes effect on the current video.
     reset();
@@ -978,4 +1342,3 @@ chrome.runtime.onMessage.addListener((msg: { type?: string; track?: string; seco
 });
 
 log('content script loaded on', location.href);
-void start();

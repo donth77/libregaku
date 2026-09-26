@@ -49,9 +49,11 @@ a { color: var(--accent); }
 .setup li.done .tick { color: #63AF97; text-decoration: none; }
 .setup .fine { color: var(--faint); font-size: 12px; margin: 12px 0 0; }
 
-#confirmLang {
-  margin-top: 14px; background: var(--accent); color: #0D111C;
+.confirms { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+#confirmLang, #confirmDeck {
+  background: var(--accent); color: #0D111C;
   border: 0; border-radius: 6px; padding: 9px 16px; cursor: pointer;
   font: 600 12px system-ui, sans-serif;
 }
-#confirmLang:hover { filter: brightness(1.08); }
+#confirmLang:hover, #confirmDeck:hover { filter: brightness(1.08); }
+#confirmLang[hidden], #confirmDeck[hidden] { display: none; }

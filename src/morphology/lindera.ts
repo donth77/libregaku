@@ -1,5 +1,5 @@
 import { furigana } from './furigana';
-import { mergeMorphemes, type Morpheme } from './merge';
+import { mergeMorphemes, type Lexicon, type LexiconEntry, type Morpheme } from './merge';
 import type { Segmenter, Token } from './types';
 
 /**
@@ -11,6 +11,17 @@ import type { Segmenter, Token } from './types';
  */
 
 type Analysed = Morpheme;
+
+/** What the offscreen document answers a 'tokenize' with. */
+interface Analysis {
+  ok?: boolean;
+  tokens?: Analysed[];
+  /** The dictionary's readings for the written forms merging asked about. */
+  lexicon?: Record<string, LexiconEntry[]>;
+  /** False when the dictionary could not be consulted, so a retry may know more. */
+  complete?: boolean;
+  error?: string;
+}
 
 export class LinderaSegmenter implements Segmenter {
   readonly tier = 2 as const;
@@ -46,16 +57,28 @@ export class LinderaSegmenter implements Segmenter {
       target: 'offscreen',
       type: 'tokenize',
       text,
-    })) as { ok?: boolean; tokens?: Analysed[]; error?: string } | undefined;
+    })) as Analysis | undefined;
 
-    if (!res?.ok || !res.tokens) throw new Error(res?.error ?? 'tokenizer unavailable');
+    if (!res) throw new Error('the offscreen document did not answer');
+    if (!res.ok || !res.tokens) throw new Error(res.error ?? 'tokenizer unavailable');
 
-    const out = toTokens(text, res.tokens);
-    // Bounded: a long film is a few thousand lines, and they are short.
-    if (this.#cache.size > 4000) this.#cache.clear();
-    this.#cache.set(text, out);
+    const out = toTokens(text, res.tokens, lexiconFrom(res.lexicon));
+    // An analysis made before the dictionary loaded reads numbers and prefixed
+    // words less well; keep it for this call only, so the line improves once
+    // the dictionary is there.
+    if (res.complete !== false) {
+      // Bounded: a long film is a few thousand lines, and they are short.
+      if (this.#cache.size > 4000) this.#cache.clear();
+      this.#cache.set(text, out);
+    }
     return out;
   }
+}
+
+/** The offscreen document's answers as the merge pass consumes them. */
+export function lexiconFrom(answers?: Record<string, LexiconEntry[]>): Lexicon | undefined {
+  if (!answers) return undefined;
+  return (form) => answers[form];
 }
 
 /**
@@ -65,8 +88,8 @@ export class LinderaSegmenter implements Segmenter {
  * walk the text and find each surface in order — which also survives the
  * analyser normalising a character away.
  */
-export function toTokens(text: string, analysed: Analysed[]): Token[] {
-  const merged = mergeMorphemes(analysed);
+export function toTokens(text: string, analysed: Analysed[], lexicon?: Lexicon): Token[] {
+  const merged = mergeMorphemes(analysed, lexicon);
   const out: Token[] = [];
   let cursor = 0;
 
@@ -88,6 +111,8 @@ export function toTokens(text: string, analysed: Analysed[]): Token[] {
       punct: t.pos === '記号',
       parts: t.parts.length > 1 ? t.parts : undefined,
       inflections: t.inflections.length ? t.inflections : undefined,
+      lemmaReading: t.lemmaReading,
+      lookup: t.lookup.length ? t.lookup : undefined,
     });
   }
   return out;

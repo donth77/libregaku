@@ -1,14 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 
 /**
- * Four ways to fail, four different things to do about them. This is the
+ * Five ways to fail, five different things to do about them. This is the
  * classification the settings panel reads, and the reason "open Anki" no
  * longer appears while Anki is open.
  */
 
 vi.stubGlobal('chrome', { runtime: { getURL: () => 'chrome-extension://testid/' } });
 
-import { ankiDirect } from '../direct';
+import { ankiDirect, isRelayed, notRelayed } from '../direct';
 
 /** A fresh fetch per case, holding only as much Response as the transport touches. */
 function answers(status: number, body: string): void {
@@ -23,6 +23,13 @@ function refuses(): void {
   vi.stubGlobal('fetch', vi.fn(async () => {
     throw new TypeError('Failed to fetch');
   }));
+}
+
+/** A listener that takes the connection and never answers, until the caller gives up. */
+function hangs(): void {
+  vi.stubGlobal('fetch', vi.fn((_url: string, init: RequestInit) => new Promise((_resolve, reject) => {
+    init.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
+  })));
 }
 
 describe('ankiDirect', () => {
@@ -65,4 +72,34 @@ describe('ankiDirect', () => {
     expect(r.kind).toBe('refused');
     expect(r.error).toBe('deck was not found');
   });
+
+  it('gives up on a listener that never answers, and says so', async () => {
+    hangs();
+    const r = await ankiDirect('version', {}, 20);
+    expect(r.kind).toBe('timeout');
+    expect(r.offline).toBeUndefined();
+    expect(r.error).toContain('8765');
+  });
+
+  it('does not take another JSON service for AnkiConnect refusing', async () => {
+    // A JSON-RPC server answers 200 with an error object, not a string.
+    answers(200, '{"jsonrpc":"2.0","error":{"code":-32600},"result":null}');
+    expect((await ankiDirect('version')).kind).toBe('occupied');
+  });
 });
+
+describe('the relay allowlist', () => {
+  it('carries the actions the extension uses', () => {
+    for (const a of ['version', 'addNote', 'findNotes', 'notesInfo', 'modelFieldNames']) {
+      expect(isRelayed(a)).toBe(true);
+    }
+  });
+
+  it('refuses anything that could change or delete what is already in Anki', () => {
+    for (const a of ['deleteDecks', 'deleteNotes', 'updateNoteFields', 'storeMediaFile', 'multi', 'sync', undefined, 42]) {
+      expect(isRelayed(a)).toBe(false);
+    }
+    expect(notRelayed('deleteDecks')).toMatchObject({ ok: false, kind: 'refused' });
+  });
+});
+

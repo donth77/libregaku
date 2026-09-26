@@ -16,7 +16,8 @@ pnpm install
 pnpm build       # -> dist/, load unpacked in chrome://extensions
 pnpm dev         # rebuild on change
 pnpm typecheck   # tsc --noEmit
-pnpm test            # vitest
+pnpm test            # vitest, hermetic
+pnpm test:contract   # vitest against the live sites
 
 node scripts/check-captions.mjs --lang ja <url-or-id>   # screen a test video
 ```
@@ -30,9 +31,16 @@ node scripts/check-captions.mjs --lang ja <url-or-id>   # screen a test video
 
 Contract tests exist because this extension reads pages it does not control, and
 the failure mode is silent: subtitles just stop appearing. Every assumption is
-registered in `tests/contract/assumptions.ts` with what it claims, what breaks
-when it stops being true, and whether a fallback covers it — so a red canary
-names the cause instead of a line number.
+registered in `src/assumptions.ts` with what it claims, what breaks when it
+stops being true, and whether a fallback covers it — so a red canary names the
+cause instead of a line number. The same registry supplies the on-screen
+wording when the extension gives up, so the user sees which one broke.
+
+A canary that checks a *name* in a site's bundle is weaker than one that checks
+the behaviour: Netflix's stayed green through a manifest rename because the old
+field names were still in the code. Prefer checking the real response; say in
+the test when you can't. YouTube serves a bot-check page to CI runners, so its
+watch-page canaries report "inconclusive" there rather than failing.
 
 **Add an assumption to that registry whenever you rely on a new selector, field
 or endpoint.** An unregistered assumption is one that will fail silently.
@@ -45,16 +53,33 @@ whether the tokenizer works.
 ## Layout
 
 ```
-build.mjs              esbuild build — four entry points, no plugin framework
-src/manifest.json      MV3 manifest
-src/background.ts      service worker; owns the offscreen document lifecycle
-src/offscreen.{html,ts} WASM + OPFS host — the only place the tokenizer runs
-src/adapters/          one module per subtitle source
-src/morphology/        Segmenter implementations and token types
+build.mjs               esbuild build — seven entry points, no plugin framework
+src/manifest.json       MV3 manifest
+src/assumptions.ts      every live-site assumption, and the notices shown when one breaks
+src/settings.ts         settings, defaults, and which languages get which tier
+src/background.ts       service worker: offscreen lifecycle, the AnkiConnect relay,
+                        audio fetches, page-world injection on Netflix
+src/offscreen.{html,ts} WASM host — the only place the tokenizer runs. The lindera
+                        dictionary lives in OPFS; JMdict in IndexedDB
+src/adapters/           one module per subtitle source (youtube, netflix), their
+                        parsers (ttml, json3), the DOM-reading fallback
+src/morphology/         Segmenter implementations, merge rules, furigana alignment
+src/dict/               JMdict download, storage and lookup; remote fallbacks
+src/anki/               AnkiConnect client, note type, word status
+src/audio/              pronunciation
 src/content/
-  inject.ts            runs in the page world; captures subtitle request URLs
-  index.ts             runs isolated; orchestrates adapter → segmenter → render
-  renderer.ts          overlay DOM
+  inject.ts             YouTube page world: captures signed caption URLs, reads the player
+  inject-netflix.ts     Netflix page world: reads the manifest, drives the player's seek
+  index.ts              isolated world: orchestrates adapter → segmenter → UI
+  renderer.ts           subtitle overlay
+  sidebar.ts            transcript panel, saved lines, settings
+  popup.ts              lookup card
+  header.ts             bar across the top of the player
+  player-inset.ts       moves the picture beside the open panel
+src/options.*           options page (Anki setup)
+src/action.*            toolbar popup: status and per-video track pickers
+scripts/                check-captions.mjs, diagnose.js
+tests/contract/         the canaries
 ```
 
 ## Architectural invariants
@@ -67,6 +92,10 @@ and cache the result; we never keep our own authoritative list. This is what mak
 user's progress consistent across devices with no account and no server. A local
 override store exists only for states Anki can't express ("known, but I don't want a
 card"), and those reconcile back into Anki as tagged suspended notes.
+
+*Not yet built:* the reconciliation. Hand marks currently live only in
+`chrome.storage.local` on one browser. Until they reach Anki they don't follow the
+learner to another device, and they are lost with the extension's storage.
 
 **2. The tokenizer runs in the offscreen document. Only there.**
 OPFS inside a content script belongs to the *host page's* origin — wrong storage, and
@@ -85,6 +114,13 @@ the overlay, the sidebar, the popup, the status layer, or the Anki integration. 
 change would put a language check in any of those, the abstraction is in the wrong
 place — fix the seam instead.
 
+*Known leaks, to close rather than copy:* there is no `Dictionary` interface yet —
+`index.ts` calls the JMdict client directly and hands the sidebar the same lookup,
+and the popup reads JMdict's part-of-speech codes — and the overlay and sidebar
+call the Japanese furigana aligner themselves. Tier 2 is offered
+for Japanese only (`TIER2_LANGS` in `settings.ts`) because the analyser reads
+IPADIC's feature columns, which ko-dic and cc-cedict lay out differently.
+
 **5. Adapters are thin, isolated, and expected to break occasionally.**
 Netflix and YouTube are both first-class and both have our own adapters. A site
 changing its internals must be a patch to one file in `src/adapters/`, never a change
@@ -102,7 +138,9 @@ then stop.
 
 - TypeScript, `strict`, `noUncheckedIndexedAccess`. No `any` in committed code.
 - **Overlay: no framework.** It's a hot path; use direct DOM in the shadow root.
-- **Sidebar and options: Preact.** Real components, virtualized lists, forms.
+- **Sidebar and options: plain DOM, for now.** Preact was the plan; the panel was
+  written without it, and its transcript is not virtualized. A transcript long enough
+  to need virtualizing is the moment to revisit both.
 - Prefer `Intl` built-ins over dependencies. `Intl.Segmenter` costs zero bytes and
   covers every language; only reach for WASM when you need lemmas and readings.
 - Adapters are thin and swappable. A site changing its markup should be one file.

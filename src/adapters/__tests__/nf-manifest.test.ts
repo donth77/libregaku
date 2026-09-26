@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { tracksFrom } from '../nf-manifest';
+import { tracksFrom, unreadableTracks } from '../nf-manifest';
 
 /**
- * Both shapes are recorded from real manifests: the one this adapter was
- * written against, and the one Netflix serves now. The second went unnoticed
- * for a while because the DOM fallback kept subtitles on screen while the
- * whole transcript and the second subtitle line quietly stopped working, so
- * it is worth pinning both down.
+ * Both shapes: the one this adapter was written against, and the one Netflix
+ * serves now. The second went unnoticed for a while because the DOM fallback
+ * kept subtitles on screen while the whole transcript and the second subtitle
+ * line quietly stopped working, so it is worth pinning both down.
+ *
+ * These are hand-reduced to the fields the adapter reads, with made-up URLs —
+ * not recorded manifests. They pin how we read Netflix's shape, not the shape
+ * itself; a sanitised capture of a real manifest would be a better fixture.
  */
 
 const url = (u: string) => ({ urls: [{ url: u }] });
@@ -107,5 +110,77 @@ describe('tracksFrom', () => {
     for (const other of [null, 42, 'text', {}, { result: {} }, { timedtexttracks: 'no' }, { result: { textTracks: [] } }]) {
       expect(tracksFrom(other)).toBeNull();
     }
+  });
+
+  it('publishes every URL: best format first, then each CDN in the order listed', () => {
+    const got = tracksFrom({
+      result: {
+        textTracks: [{
+          language: 'ja',
+          downloadables: {
+            'webvtt-lssdh-ios8': url('https://nf.test/ja.vtt'),
+            'dfxp-ls-sdh': { downloadUrls: { cdn1: 'https://nf.test/ja-1.dfxp', cdn2: 'https://nf.test/ja-2.dfxp' } },
+            'imsc1.1': { urls: [{ url: 'https://nf.test/ja-a.imsc' }, { url: 'https://nf.test/ja-b.imsc' }] },
+          },
+        }],
+      },
+    });
+    expect(got?.tracks[0]?.urls).toEqual([
+      'https://nf.test/ja-a.imsc',
+      'https://nf.test/ja-b.imsc',
+      'https://nf.test/ja-1.dfxp',
+      'https://nf.test/ja-2.dfxp',
+      'https://nf.test/ja.vtt',
+    ]);
+    expect(got?.tracks[0]?.url).toBe('https://nf.test/ja-a.imsc');
+  });
+
+  it('never picks an image encoding, whatever order the keys come in', () => {
+    const got = tracksFrom({
+      result: {
+        textTracks: [
+          { language: 'ja', downloadables: { 'nflx-cmisc': url('https://nf.test/ja.cmisc'), 'dfxp-ls-sdh': url('https://nf.test/ja.dfxp') } },
+          { language: 'ko', downloadables: { 'nflx-cmisc': url('https://nf.test/ko.cmisc') } },
+        ],
+      },
+    });
+    expect(got?.tracks.map((t) => t.urls)).toEqual([['https://nf.test/ja.dfxp']]);
+  });
+
+  it('survives junk inside a manifest without losing the good tracks', () => {
+    const got = tracksFrom({
+      result: {
+        movieId: 7,
+        textTracks: [
+          null,
+          'nonsense',
+          { language: 'fr', downloadables: null },
+          { language: 'de', downloadables: { 'imsc1.1': null, 'dfxp-ls-sdh': { urls: [null, { url: 42 }] } } },
+          { language: 'ja', downloadables: { 'imsc1.1': { urls: [{}, { url: 'https://nf.test/ja' }] } } },
+        ],
+      },
+    });
+    expect(got?.tracks.map((t) => [t.language, t.urls])).toEqual([['ja', ['https://nf.test/ja']]]);
+    expect(got?.movieId).toBe('7');
+  });
+});
+
+describe('unreadableTracks', () => {
+  it('names the text tracks offered only in encodings we do not know', () => {
+    expect(unreadableTracks({
+      result: {
+        textTracks: [
+          { language: 'ja', downloadables: { 'imsc2': url('https://nf.test/ja'), 'nflx-cmisc': url('https://nf.test/ja.c') } },
+          { language: 'en', downloadables: { 'imsc1.1': url('https://nf.test/en') } },
+          { language: 'de', isImageBased: true, downloadables: { 'nflx-cmisc': url('https://nf.test/de') } },
+          { language: null, isNoneTrack: true, downloadables: {} },
+        ],
+      },
+    })).toEqual(['ja: imsc2, nflx-cmisc']);
+  });
+
+  it('is empty when every text track is readable, and null for anything that is not a manifest', () => {
+    expect(unreadableTracks(newShape)).toEqual([]);
+    expect(unreadableTracks({ some: 'object' })).toBeNull();
   });
 });

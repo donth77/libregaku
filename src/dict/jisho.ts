@@ -79,8 +79,12 @@ export function toEntries(data: JishoWord[], key: string): Entry[] {
   });
 }
 
-export async function jishoLookup(key: string): Promise<Entry[]> {
-  const res = await fetch(`${API}?keyword=${encodeURIComponent(key)}`);
+/** English only: Jisho serves no other edition. */
+export async function jishoLookup(key: string, opts: { timeoutMs?: number } = {}): Promise<Entry[]> {
+  const res = await fetch(`${API}?keyword=${encodeURIComponent(key)}`, {
+    // A hung request must not hold a lookup open.
+    signal: AbortSignal.timeout(opts.timeoutMs ?? 8000),
+  });
   if (!res.ok) throw new Error(`jisho returned HTTP ${res.status}`);
   const body = (await res.json()) as { data?: JishoWord[] };
   return toEntries(body.data ?? [], key);

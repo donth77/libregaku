@@ -7,13 +7,18 @@ import { describeFailure } from '../../src/assumptions';
  * Netflix cannot be driven end-to-end in CI — playback needs an authenticated
  * account and Widevine, which headless Chromium lacks. But it does not need to
  * be: Netflix ships its player as a public, unauthenticated JS bundle
- * (cadmium-playercore), and every selector and manifest field this extension
- * depends on is a literal string inside it. If Netflix renames one, it vanishes
- * from the bundle, and that is detectable in seconds without logging in.
+ * (cadmium-playercore), and the subtitle classes and manifest fields this
+ * extension reads are literal strings inside it. If Netflix renames one, it
+ * vanishes from the bundle, and that is detectable in seconds without logging in.
  *
- * What this catches: renamed DOM classes, renamed manifest fields.
+ * What this catches: renamed subtitle classes, renamed manifest fields.
  * What it does not: behavioural change where the name survives but its meaning
  * shifts. For that there is no substitute for watching something.
+ *
+ * Nor what lives in Netflix's UI app rather than its player, which this bundle
+ * does not contain: the player-root and title selectors, the bottom control
+ * bar, and the netflix.appContext…videoPlayer API the page hook seeks with.
+ * Those have no canary; a break shows only as the runtime warnings they log.
  */
 
 const UA =
@@ -75,18 +80,30 @@ describe('netflix contract', () => {
    * player bundle, which is not the same as the manifest still using them:
    * Netflix moved the track array from `timedtexttracks` to
    * `result.textTracks` while both names stayed in the bundle, so this stayed
-   * green through an outage. Shape handling is pinned properly by the unit
-   * tests over recorded manifests in src/adapters/__tests__; this only catches
-   * a name disappearing outright.
+   * green through an outage. It only catches a name disappearing outright.
+   *
+   * It used to include `textTracks`, which could never fail: that is also the
+   * standard HTMLMediaElement property, so any video player's bundle contains
+   * it whatever the manifest does. Every name below is one only manifest
+   * handling has a reason to mention.
+   *
+   * What pins the shape is the unit tests in src/adapters/__tests__ — and
+   * those fixtures are hand-reduced from what the adapter reads, not recorded
+   * manifests, so they pin our reading rather than Netflix's format. At
+   * runtime, the page hook warns when a manifest's tracks come only in formats
+   * we cannot read, and the adapter warns when no manifest ever matches the
+   * /watch/ id.
    */
   it('nf.textTracks — the manifest fields we read still exist', async () => {
     const { body } = await playerCore();
     for (const field of [
-      'textTracks',
-      'downloadables',
-      'isNoneTrack',
+      'rawTrackType',
       'isForcedNarrative',
+      'isNoneTrack',
+      'isImageBased',
       'languageDescription',
+      'downloadables',
+      'imsc1.1',
     ]) {
       expect(
         body.includes(field),
@@ -95,7 +112,15 @@ describe('netflix contract', () => {
     }
   }, 90_000);
 
-  it('nf.main-world-csp — records the current CSP so a tightening is visible', async () => {
+  /**
+   * Informational, and named for it: this asserts nothing about injection.
+   * Whether Chrome lets a manifest-declared MAIN-world script run under
+   * Netflix's CSP cannot be observed without a browser. The extension no longer
+   * depends on the answer — the hook is both declared and injected by the
+   * service worker, and installs once — so this only puts the policy in the
+   * daily log, where a change shows up as a diff.
+   */
+  it('nf.main-world-csp — logs the CSP for the daily diff (informational)', async () => {
     const res = await fetch('https://www.netflix.com/', { headers: { 'user-agent': UA } });
     const enforced = res.headers.get('content-security-policy');
     const report = res.headers.get('content-security-policy-report-only');

@@ -197,6 +197,12 @@ export class Header {
 
     this.#root.append(style, this.#bar, this.#tab);
 
+    // A click leaves focus where it was. A focused switch here kept Space for
+    // itself, so the next Space flipped furigana again instead of pausing.
+    this.#root.addEventListener('mousedown', (e) => {
+      if ((e.target as Element | null)?.closest?.('button')) e.preventDefault();
+    });
+
     // The player container is positioned by the site in every case we mount
     // into, but say so anyway rather than trust it — an unpositioned parent
     // would send the bar to the top of the document.

@@ -102,3 +102,16 @@ describe('stamp', () => {
     expect(stamp(-5)).toBe('00:00');
   });
 });
+
+describe('Transcript.activeAt with overlapping lines', () => {
+  it('keeps a long line active after a shorter one inside it has ended', () => {
+    const t = new Transcript();
+    t.setFull([
+      { start: 10, end: 20, text: 'sign' },
+      { start: 11, end: 12, text: 'dialogue' },
+    ]);
+    expect(t.activeAt(11.5)).toBe(1);
+    expect(t.activeAt(15)).toBe(0);
+    expect(t.activeAt(25)).toBe(-1);
+  });
+});

@@ -58,6 +58,35 @@ export interface SubtitleSource {
 
   /** Hide the site's own subtitle rendering so ours is the only one. */
   hideNative(): void;
+  /**
+   * True while the site is playing an advert in the same <video>.
+   *
+   * During an ad the element's clock and captions belong to the ad, so no cue
+   * may be looked up, rendered or captured from them. Optional: a site that
+   * never plays ads in the content's element leaves it out.
+   */
+  isAd?(): boolean;
+  /**
+   * Move playback to `seconds`.
+   *
+   * Optional: without it the orchestrator sets `video.currentTime`, which works
+   * on YouTube but not on every player — Netflix answers a scripted seek with
+   * error M7375 and has to be driven through its own player API.
+   */
+  seek?(seconds: number): void;
+  /**
+   * Height in px of the site's bottom control bar, measured from the bottom of
+   * the player, so the transcript panel can stop above it instead of covering
+   * the player's own buttons. 0 when the adapter cannot tell.
+   */
+  controlsHeight?(): number;
+  /**
+   * True once the site has said this video carries no subtitle tracks at all —
+   * as opposed to not having said anything yet. Lets the orchestrator stop
+   * waiting and say so, instead of giving up after a timeout with a message
+   * that blames a broken page.
+   */
+  noSubtitles?(): boolean;
   /** SPA route changes — the video changed under us. */
   onNavigate(cb: () => void): void;
   /** A track list became available. Usually after the page first loaded. */

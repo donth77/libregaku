@@ -22,6 +22,15 @@ export interface Token {
   parts?: string[];
   /** What the endings do — "conditional", "polite", "past". */
   inflections?: string[];
+  /** Reading of `lemma`, when the analysis pins it down. Tier 2 only. */
+  lemmaReading?: string;
+  /**
+   * How to look this token up: dictionary keys, best first, each carrying
+   * what the analyser knows to tell homographs apart. Opaque above the
+   * dictionary client — pass the token to `lookupToken`, never read this.
+   * Tier 2 only; without it a lookup uses `lemma`, then `surface`.
+   */
+  lookup?: Array<{ key: string; reading?: string; pos?: string }>;
   /**
    * Punctuation and whitespace. Rendered so the line reads correctly, but
    * never interactive — nobody looks up a question mark.

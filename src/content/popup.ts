@@ -4,6 +4,7 @@ import type { LookupResult } from '../dict/client';
 import { readablePos } from '../dict/pos';
 import type { Token } from '../morphology/types';
 import { icon } from './icons';
+import { copyText } from './share';
 
 /**
  * The lookup card.
@@ -20,15 +21,24 @@ const STYLE = `
     z-index: 2147483647 !important;
     pointer-events: none !important;
   }
+  /*
+   * A column whose middle scrolls. The card is capped to the room beside the
+   * word, and what gives way is the list of senses — never the status
+   * buttons, which used to be the part a short player cut off.
+   */
   .card {
     pointer-events: auto;
-    width: min(400px, 86vw);
+    position: relative;
+    display: flex; flex-direction: column;
+    width: min(400px, 86vw); box-sizing: border-box;
     background: #12172A; color: #E8ECF6;
     border: 1px solid #2A3348; border-radius: 12px;
     box-shadow: 0 10px 40px -8px rgba(0,0,0,.75);
     font: 15px/1.5 system-ui, -apple-system, "Hiragino Sans", sans-serif;
     overflow: hidden;
   }
+  .head, .meta, .tools, .marks { flex: none; }
+  .body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
   .head { padding: 14px 16px 0; }
   .reading { font: 500 12px/1.4 ui-monospace, monospace; color: #8AA2E8; letter-spacing: .04em; }
   .word { font-size: 27px; font-weight: 600; line-height: 1.2; margin-top: 1px; }
@@ -63,7 +73,7 @@ const STYLE = `
   .mk[aria-pressed="true"] { outline: 2px solid currentColor; outline-offset: -1px; }
   .mk:hover { filter: brightness(1.12); }
   .tb:hover { border-color: #8AA2E8; color: #E8ECF6; }
-  .tb:focus-visible { outline: 2px solid #8AA2E8; outline-offset: 2px; }
+  .tb:focus-visible, .mk:focus-visible { outline: 2px solid #8AA2E8; outline-offset: 2px; }
   ol { margin: 0; padding: 12px 16px 12px 34px; }
   li { margin-bottom: 5px; color: #C7CFE2; }
   li:last-child { margin-bottom: 0; }
@@ -79,28 +89,67 @@ const STYLE = `
     text-transform: uppercase;
   }
   .empty { padding: 16px; color: #838DA8; }
+  /*
+   * Inside the card, over the status row while it shows. It used to hang
+   * below the card, which near the bottom of a player was outside it, and an
+   * error message there was never seen at all.
+   */
   .toast {
-    position: absolute; left: 50%; bottom: -26px; transform: translateX(-50%);
-    background: #E8ECF6; color: #12172A; font: 600 10px/1 ui-monospace, monospace;
-    letter-spacing: .06em; padding: 5px 9px; border-radius: 4px; opacity: 0;
-    transition: opacity .15s; pointer-events: none; white-space: nowrap;
+    position: absolute; left: 16px; right: 16px; bottom: 12px;
+    background: #E8ECF6; color: #12172A; font: 600 11px/1.4 ui-monospace, monospace;
+    letter-spacing: .04em; padding: 7px 10px; border-radius: 5px; opacity: 0;
+    transition: opacity .15s; pointer-events: none; text-align: center;
   }
-  .toast.on { opacity: .95; }
+  .toast.on { opacity: .97; }
   @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
 `;
+
+/** Space kept between the card and the word it describes. */
+const GAP = 10;
+/** Space kept between the card and the edge of the player. */
+const EDGE = 8;
+/**
+ * The least room worth placing a card in beside the word: the headword, the
+ * toolbar, the status row and a line or two of senses. With less than this on
+ * both sides, covering the word is the smaller loss.
+ */
+const MIN_ROOM = 240;
+/** The card's size, for when layout cannot measure it. */
+const CARD_WIDTH = 400;
+const CARD_HEIGHT = 320;
 
 let host: HTMLElement | null = null;
 let openFor: string | null = null;
 let hideTimer = 0;
 let overCard = false;
+let onClose: ((why: CloseReason) => void) | null = null;
 
-/** One card, ever. Opening a second closes the first. */
-export function closePopup(): void {
+/**
+ * Why a card went away. `replaced` means another card took its place, so
+ * whatever it was holding — a paused video — is still needed.
+ */
+export type CloseReason = 'closed' | 'replaced';
+
+function dismiss(why: CloseReason): void {
   clearTimeout(hideTimer);
+  const had = host !== null;
+  const done = onClose;
   host?.remove();
   host = null;
   openFor = null;
   overCard = false;
+  onClose = null;
+  if (!had || !done) return;
+  try {
+    done(why);
+  } catch (e) {
+    console.warn('[libregaku] lookup card close handler failed:', e);
+  }
+}
+
+/** One card, ever. Opening a second closes the first. */
+export function closePopup(): void {
+  dismiss('closed');
 }
 
 export function popupIsOpen(): boolean {
@@ -143,8 +192,17 @@ interface Context {
   onMark: (word: string, status: OverrideStatus | null) => void;
   /** Resolves to a message for the toast, or throws with one. */
   onAddCard: (draft: CardDraft) => Promise<string>;
-  /** Whether a card already exists, so the control can say so. */
-  hasCard: boolean;
+  /**
+   * Whether Anki already holds a card for this word. The only thing the
+   * "already in Anki" state is drawn from: a word marked known by hand, or
+   * learning only because a card was just added, is not the same fact.
+   */
+  hasCard?: boolean;
+  /**
+   * The card went away, however it went: closed, dismissed with Escape or an
+   * outside click, timed out after the cursor left, or replaced by another.
+   */
+  onClose?: (why: CloseReason) => void;
 }
 
 export function showPopup(
@@ -156,7 +214,7 @@ export function showPopup(
   const entries = result.state === 'ok' ? result.entries : [];
   const key = `${ctx.token.start}:${ctx.token.surface}`;
   if (openFor === key) return;   // already showing this word
-  closePopup();
+  dismiss('replaced');
   openFor = key;
 
   host = document.createElement('div');
@@ -166,9 +224,15 @@ export function showPopup(
   const style = document.createElement('style');
   style.textContent = STYLE;
 
+  const top = entries[0];
+  const word = top?.word ?? ctx.token.lemma ?? ctx.token.surface;
+  const reading = top?.reading ?? ctx.token.reading;
+  const hasCard = ctx.hasCard === true;
+
   const card = document.createElement('div');
   card.className = 'card';
   card.setAttribute('role', 'dialog');
+  card.setAttribute('aria-label', `${word} — dictionary`);
   card.addEventListener('mouseenter', () => {
     overCard = true;
     cancelPopupClose();
@@ -177,10 +241,11 @@ export function showPopup(
     overCard = false;
     closePopupSoon();
   });
-
-  const top = entries[0];
-  const word = top?.word ?? ctx.token.lemma ?? ctx.token.surface;
-  const reading = top?.reading ?? ctx.token.reading;
+  // A click leaves focus where it was. A focused button here kept Space for
+  // itself: the next Space pressed Add again instead of pausing the video.
+  card.addEventListener('mousedown', (e) => {
+    if ((e.target as Element | null)?.closest?.('button')) e.preventDefault();
+  });
 
   const head = document.createElement('div');
   head.className = 'head';
@@ -220,13 +285,15 @@ export function showPopup(
   tools.className = 'tools';
   const toast = document.createElement('div');
   toast.className = 'toast';
+  toast.setAttribute('role', 'status');
 
   let toastT = 0;
-  const say = (m: string): void => {
+  // Failures stay up long enough to be read; a confirmation needs a glance.
+  const say = (m: string, ms = 1500): void => {
     toast.textContent = m;
     toast.classList.add('on');
     clearTimeout(toastT);
-    toastT = window.setTimeout(() => toast.classList.remove('on'), 1500);
+    toastT = window.setTimeout(() => toast.classList.remove('on'), ms);
   };
 
   const button = (name: string, title: string, fn: (b: HTMLButtonElement) => void): HTMLButtonElement => {
@@ -255,7 +322,7 @@ export function showPopup(
         // are not equally trustworthy models to imitate.
         say(spoken.human ? `${word} · recording` : `${word} · synthesised`);
       })
-      .catch(() => say('could not play audio'))
+      .catch(() => say('could not play audio', 4000))
       .finally(() => {
         b.classList.remove('busy');
         b.replaceChildren(icon('volume', 16));
@@ -266,8 +333,8 @@ export function showPopup(
    * and it states its outcome. A silent success is indistinguishable from a
    * silent failure, and mining is a decision the learner should see land.
    */
-  const addBtn = button(ctx.hasCard ? 'check' : 'plus',
-    ctx.hasCard ? 'Already in Anki — add another' : 'Add to Anki', (b) => {
+  const addBtn = button(hasCard ? 'check' : 'plus',
+    hasCard ? 'Already in Anki — add another' : 'Add to Anki', (b) => {
       b.classList.add('busy');
       b.replaceChildren(icon('loader', 16));
       void ctx
@@ -282,16 +349,21 @@ export function showPopup(
           b.replaceChildren(icon('check', 16));
         })
         .catch((e: unknown) => {
-          say(e instanceof Error ? e.message : String(e));
+          say(e instanceof Error ? e.message : String(e), 4000);
           b.replaceChildren(icon('plus', 16));
         })
         .finally(() => b.classList.remove('busy'));
     });
   addBtn.classList.add('add');
-  if (ctx.hasCard) addBtn.classList.add('has');
+  if (hasCard) addBtn.classList.add('has');
 
-  button('copy', 'Copy word', () => void navigator.clipboard.writeText(word).then(() => say('word copied')));
-  button('quote', 'Copy sentence', () => void navigator.clipboard.writeText(ctx.sentence).then(() => say('sentence copied')));
+  // The clipboard refuses without focus or permission, which a video page can
+  // withhold; copyText falls back, and either way the result is said aloud.
+  const copy = (text: string, done: string): void => {
+    void copyText(text).then((ok) => (ok ? say(done) : say('could not copy — select the text instead', 4000)));
+  };
+  button('copy', 'Copy word', () => copy(word, 'word copied'));
+  button('quote', 'Copy sentence', () => copy(ctx.sentence, 'sentence copied'));
   /*
    * Jisho for the human link, Jotoba for the API — the distinction is real.
    * Calling someone's API implicates their terms, so that goes to the one that
@@ -305,21 +377,26 @@ export function showPopup(
   });
   card.appendChild(tools);
 
+  // Everything that can grow goes in one scrolling body, so a long entry
+  // costs scrolling rather than the status row.
+  const body = document.createElement('div');
+  body.className = 'body';
+
   if (result.state === 'loading') {
     const e = document.createElement('div');
     e.className = 'loading';
     e.textContent = `Dictionary still loading — ${result.percent}%. Try again in a moment.`;
-    card.appendChild(e);
+    body.appendChild(e);
   } else if (result.state === 'error') {
     const e = document.createElement('div');
     e.className = 'loading';
     e.textContent = `Dictionary unavailable: ${result.error}`;
-    card.appendChild(e);
+    body.appendChild(e);
   } else if (!entries.length) {
     const e = document.createElement('div');
     e.className = 'empty';
     e.textContent = 'No dictionary entry for this word.';
-    card.appendChild(e);
+    body.appendChild(e);
   } else {
     const ol = document.createElement('ol');
     for (const sense of top!.senses.slice(0, 6)) {
@@ -327,7 +404,7 @@ export function showPopup(
       li.textContent = sense.glosses.slice(0, 4).join('; ');
       ol.appendChild(li);
     }
-    card.appendChild(ol);
+    body.appendChild(ol);
   }
 
   // The inflection trace: what this token was built from, and where it leads.
@@ -352,8 +429,9 @@ export function showPopup(
       g.textContent = inflections.join(' · ');
       tr.appendChild(g);
     }
-    card.appendChild(tr);
+    body.appendChild(tr);
   }
+  card.appendChild(body);
 
   /*
    * Marking is deliberately separate from carding.
@@ -361,8 +439,9 @@ export function showPopup(
    * "I know this" and "I have a flashcard for this" are different facts, and
    * conflating them is how a learner ends up carding words they have known for
    * years. Anki can express the second; only the user can express the first,
-   * so it is stored as an override and reconciled into Anki later as a tagged
-   * suspended note.
+   * so it is stored as an override in this browser. Reconciling overrides into
+   * Anki as tagged suspended notes, so they follow the collection, is planned
+   * and not built (AGENTS.md, invariant 1).
    */
   const marks = document.createElement('div');
   marks.className = 'marks';
@@ -390,23 +469,83 @@ export function showPopup(
   card.appendChild(toast);
   root.append(style, card);
   mount.appendChild(host);
+  onClose = ctx.onClose ?? null;
 
   place(host, card, mount, anchor);
 }
 
-/** Sit above the word, or below it when there is no room, never over it. */
+/** A box in viewport coordinates — what getBoundingClientRect returns. */
+export interface Box {
+  left: number;
+  top: number;
+  bottom: number;
+  width: number;
+  height: number;
+}
+
+export interface Placement {
+  /** Offsets within the mount. */
+  left: number;
+  top: number;
+  /** The most height the card may take without reaching the word or the edge. */
+  maxHeight: number;
+  /** Where it went; `over` is the last resort, covering the word. */
+  side: 'above' | 'below' | 'over';
+}
+
+/**
+ * Where the card goes, relative to the mount.
+ *
+ * Above the word when it fits there — subtitles sit low, so that is where the
+ * room usually is — and below when that fits instead. When neither side can
+ * take the whole card, it goes on the roomier side with its height capped to
+ * that room, so its senses scroll and the word stays visible. Only when both
+ * sides are too small for a usable card does it cover the word, with its
+ * height capped to the player so the status row still fits on screen.
+ */
+export function placeCard(mount: Box, anchor: Box, size: { width: number; height: number }): Placement {
+  let left = anchor.left - mount.left + anchor.width / 2 - size.width / 2;
+  left = Math.max(EDGE, Math.min(left, mount.width - size.width - EDGE));
+
+  const wordTop = anchor.top - mount.top;
+  const wordBottom = anchor.bottom - mount.top;
+  const above = wordTop - GAP - EDGE;
+  const below = mount.height - wordBottom - GAP - EDGE;
+
+  if (size.height <= above) return { left, top: wordTop - GAP - size.height, maxHeight: above, side: 'above' };
+  if (size.height <= below) return { left, top: wordBottom + GAP, maxHeight: below, side: 'below' };
+  if (Math.max(above, below) >= MIN_ROOM) {
+    return above >= below
+      ? { left, top: EDGE, maxHeight: above, side: 'above' }
+      : { left, top: wordBottom + GAP, maxHeight: below, side: 'below' };
+  }
+
+  const maxHeight = Math.max(0, mount.height - 2 * EDGE);
+  const height = Math.min(size.height, maxHeight);
+  const top = Math.max(EDGE, Math.min(wordTop - GAP - height, mount.height - height - EDGE));
+  return { left, top, maxHeight, side: 'over' };
+}
+
+/**
+ * Size the card to the player, then put it beside the word.
+ *
+ * The card used to keep its natural height whatever the player's, so at
+ * YouTube's default size a long entry was pinned to the top of the player,
+ * covered the word it described, and pushed its status row out of sight.
+ */
 function place(h: HTMLElement, card: HTMLElement, mount: HTMLElement, anchor: HTMLElement): void {
   const m = mount.getBoundingClientRect();
   const a = anchor.getBoundingClientRect();
-  const w = card.offsetWidth || 340;
-  const ch = card.offsetHeight || 200;
 
-  let left = a.left - m.left + a.width / 2 - w / 2;
-  left = Math.max(8, Math.min(left, m.width - w - 8));
+  // Narrower than the card, as in a miniplayer: fit the width first, since
+  // the width decides how tall the wrapped senses are.
+  const room = m.width - 2 * EDGE;
+  if (room > 0 && (card.offsetWidth || CARD_WIDTH) > room) card.style.width = `${room}px`;
 
-  const above = a.top - m.top - ch - 10;
-  const top = above >= 8 ? above : a.bottom - m.top + 10;
-
-  h.style.left = `${left}px`;
-  h.style.top = `${Math.max(8, Math.min(top, m.height - ch - 8))}px`;
+  const size = { width: card.offsetWidth || CARD_WIDTH, height: card.offsetHeight || CARD_HEIGHT };
+  const p = placeCard(m, a, size);
+  card.style.maxHeight = `${Math.floor(p.maxHeight)}px`;
+  card.dataset.side = p.side;
+  h.style.left = `${Math.round(p.left)}px`;
+  h.style.top = `${Math.round(p.top)}px`;
 }

@@ -80,8 +80,19 @@ export class PlayerInset {
     }
 
     const avail = root.width - this.#inset;
-    const scale = Math.max(MIN_SCALE, Math.min(1, avail / root.width));
-    if (scale >= 1) {
+    if (avail <= 0) {
+      this.#report(0);
+      return;
+    }
+    /*
+     * Scale by the picture, not the player. YouTube sizes the <video> to the
+     * picture, so a pillarboxed video — theater mode, 4:3, a vertical clip —
+     * is narrower than the player, and may already fit beside the panel with
+     * no shrinking at all. It still has to move out from under it.
+     */
+    const scale = Math.max(MIN_SCALE, Math.min(1, avail / box.width));
+    const already = box.left >= root.left && box.right <= root.left + avail;
+    if (scale >= 1 && already) {
       this.#report(0);
       return;
     }
@@ -92,10 +103,14 @@ export class PlayerInset {
      * the rest of the way. Doing it from measurements means an unexpected
      * origin, or a container that is not flush with the player, cannot put
      * the picture somewhere surprising.
+     *
+     * At the MIN_SCALE floor the picture is wider than the space left, and
+     * centring it there would push its left edge off the player. Keep the
+     * left edge in; let the overlap fall under the panel instead.
      */
     const scaledLeft = stage.left + scale * (box.left - stage.left);
     const scaledTop = stage.top + scale * (box.top - stage.top);
-    const targetLeft = root.left + (avail - box.width * scale) / 2;
+    const targetLeft = root.left + Math.max(0, (avail - box.width * scale) / 2);
     const targetTop = root.top + (root.height - box.height * scale) / 2;
 
     this.#stage.style.setProperty('transform-origin', '0 0', 'important');

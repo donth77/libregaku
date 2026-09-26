@@ -1,5 +1,7 @@
 /**
- * Service worker. Owns the offscreen document's lifecycle — nothing else.
+ * Service worker. Owns the offscreen document's lifecycle, and relays the few
+ * requests a content script cannot make itself: AnkiConnect, audio, and
+ * page-world injection. Each relay carries only what the extension uses.
  *
  * The tokenizer cannot live here: MV3 service workers are killed aggressively
  * and have no OPFS. It cannot live in a content script either, where OPFS
@@ -7,9 +9,16 @@
  * The offscreen document is the only correct home, and this file creates it.
  */
 
-import { ankiDirect } from './anki/direct';
+import { ankiDirect, isRelayed, notRelayed } from './anki/direct';
+import { MAX_AUDIO_BYTES, TEMPLATE_KEY, audioUrlAllowed } from './audio/pronounce';
 
 const OFFSCREEN_PATH = 'offscreen.html';
+
+/**
+ * Page-world scripts a content script may ask to have injected. Only Netflix
+ * needs this route; anything else asking is not one of ours.
+ */
+const MAIN_WORLD_FILES: ReadonlySet<string> = new Set(['inject-netflix.js']);
 
 /*
  * Show setup once on install. The language pair is the one thing that cannot
@@ -97,6 +106,45 @@ async function injectMainWorld(tabId: number, file: string): Promise<void> {
   });
 }
 
+/** The user's own audio template, if one is set; its host is the one extra host allowed. */
+async function audioTemplate(): Promise<unknown> {
+  try {
+    return (await chrome.storage.sync.get(TEMPLATE_KEY))[TEMPLATE_KEY];
+  } catch {
+    return undefined;
+  }
+}
+
+/** The body, or null past `cap` bytes — stopping the download rather than buffering it first. */
+async function readCapped(res: Response, cap: number): Promise<Uint8Array | null> {
+  const declared = Number(res.headers.get('content-length'));
+  if (declared > cap) return null;
+  if (!res.body) {
+    const whole = new Uint8Array(await res.arrayBuffer());
+    return whole.length > cap ? null : whole;
+  }
+  const reader = res.body.getReader();
+  const parts: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.length;
+    if (size > cap) {
+      void reader.cancel();
+      return null;
+    }
+    parts.push(value);
+  }
+  const out = new Uint8Array(size);
+  let at = 0;
+  for (const p of parts) {
+    out.set(p, at);
+    at += p.length;
+  }
+  return out;
+}
+
 /**
  * Fetch a recording on a content script's behalf.
  *
@@ -106,25 +154,50 @@ async function injectMainWorld(tabId: number, file: string): Promise<void> {
  * failed as "Failed to fetch" and the card fell back to synthesis without
  * saying why. Host permissions apply here and CORS does not. Bytes travel
  * back as base64 because messages are JSON.
+ *
+ * That exemption is why this is narrow: only the audio hosts pronounce.ts
+ * uses, checked again where a redirect lands, no cookies sent, and a size
+ * cap. Anything wider would let a content script fetch as the extension.
  */
 async function fetchAudio(url: string): Promise<{ ok: boolean; status?: number; type?: string; bytes?: string; error?: string }> {
-  if (!/^https:\/\//.test(url)) return { ok: false, error: 'only https URLs are fetched' };
-  const res = await fetch(url);
-  if (!res.ok) return { ok: false, status: res.status };
-  const view = new Uint8Array(await res.arrayBuffer());
-  let bin = '';
-  for (let i = 0; i < view.length; i += 0x8000) bin += String.fromCharCode(...view.subarray(i, i + 0x8000));
-  return { ok: true, status: res.status, type: res.headers.get('content-type') ?? 'audio/mpeg', bytes: btoa(bin) };
+  const template = await audioTemplate();
+  if (!audioUrlAllowed(url, template)) return { ok: false, error: 'not an audio source Libregaku uses' };
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 15_000);
+  try {
+    const res = await fetch(url, { credentials: 'omit', signal: ctl.signal });
+    // A redirect can land anywhere; what matters is where the bytes came from.
+    if (!audioUrlAllowed(res.url || url, template)) {
+      return { ok: false, status: res.status, error: 'audio redirected to a host Libregaku does not use' };
+    }
+    if (!res.ok) return { ok: false, status: res.status };
+    const view = await readCapped(res, MAX_AUDIO_BYTES);
+    if (!view) return { ok: false, status: res.status, error: 'too large to be a recording' };
+    let bin = '';
+    for (let i = 0; i < view.length; i += 0x8000) bin += String.fromCharCode(...view.subarray(i, i + 0x8000));
+    return { ok: true, status: res.status, type: res.headers.get('content-type') ?? 'audio/mpeg', bytes: btoa(bin) };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 chrome.runtime.onMessage.addListener((msg: { type?: string; file?: string; action?: string; params?: Record<string, unknown>; url?: string }, sender, sendResponse) => {
+  // Only this extension's own pages and content scripts. Nothing is
+  // externally connectable today; this keeps it that way if that changes.
+  if (sender.id !== chrome.runtime.id) return false;
+
   if (msg?.type === 'fetch-audio' && typeof msg.url === 'string') {
     fetchAudio(msg.url).then(sendResponse, (e: unknown) => sendResponse({ ok: false, error: String(e) }));
     return true;
   }
 
-  // All AnkiConnect traffic funnels through here, so it presents one origin.
-  if (msg?.type === 'anki' && msg.action) {
+  // All AnkiConnect traffic funnels through here, so it presents one origin —
+  // and only for the actions the extension itself uses.
+  if (msg?.type === 'anki') {
+    if (!isRelayed(msg.action)) {
+      sendResponse(notRelayed(msg.action));
+      return false;
+    }
     void ankiDirect(msg.action, msg.params ?? {}).then(sendResponse);
     return true;
   }
@@ -133,6 +206,10 @@ chrome.runtime.onMessage.addListener((msg: { type?: string; file?: string; actio
     const tabId = sender.tab?.id;
     if (tabId == null || !msg.file) {
       sendResponse({ ok: false, error: 'no tab or file' });
+      return true;
+    }
+    if (!MAIN_WORLD_FILES.has(msg.file)) {
+      sendResponse({ ok: false, error: `${msg.file} is not a page script Libregaku injects` });
       return true;
     }
     injectMainWorld(tabId, msg.file).then(

@@ -10,26 +10,31 @@ Watch something in the language you're learning. Unknown words are highlighted. 
 one, read the definition, make a card. Over time the highlighting fades as the words
 become yours.
 
-- **Tokenized subtitles** — real word boundaries, not whitespace guessing, so Japanese,
-  Korean, Chinese and Thai work properly.
+- **Tokenized subtitles** — real word boundaries, not whitespace guessing, which is
+  what languages written without spaces need. Japanese gets dictionary forms, readings
+  and furigana; other languages get word boundaries for now.
 - **Dual subtitles** — target language and your own, at the same time, from the source's
   own tracks. No machine translation.
 - **Transcript sidebar** — the full script beside the video. Click any line to jump
   there. Hover a word for its definition, click it for the full entry. Read ahead, and
   filter to lines with exactly one unknown word.
-- **Click-to-look-up** — definitions, readings, frequency and inflection, with furigana
-  for Japanese.
-- **Anki integration** — cards carry the sentence, reading, definition, timestamp and a
-  link back. Media where the source allows it.
-- **Your word list is your Anki collection.** Libregaku stores nothing of its own, so
-  what you know stays consistent everywhere without an account.
+- **Look-up on hover or click** — definitions, readings, a common-word marker and what
+  the endings do, with furigana for Japanese.
+- **Anki integration** — cards carry the sentence and its translation, the reading,
+  definition, timestamp and a link back to that moment. Audio and screenshots are
+  planned, not built.
+- **Your word list is your Anki collection.** What you know is read from Anki, so it
+  stays consistent everywhere without an account. Libregaku itself keeps only your
+  settings, saved lines and any words you mark by hand, in the browser. Hand marks
+  don't reach Anki yet.
 
 ## Requirements
 
 - Chrome 116+ (or a Chromium browser)
 - [Anki](https://apps.ankiweb.net/) with the
-  [AnkiConnect](https://ankiweb.net/shared/info/2055492159) add-on, for live card
-  creation. Without it you can still export `.apkg` files.
+  [AnkiConnect](https://ankiweb.net/shared/info/2055492159) add-on, for card
+  creation and word status. Without it, subtitles, lookups and the transcript still
+  work, and saved lines export as a tab-separated file Anki can import.
 
 ### What you're depending on
 
@@ -66,8 +71,9 @@ pnpm typecheck
 
 ## Languages
 
-Japanese is the primary target and gets every feature. Others are supported by the same
-machinery, at a fidelity that depends on what data exists for them.
+Japanese is the primary target and, today, the only language with a dictionary and an
+analyser behind it. Any other language gets word boundaries only. The rest is planned
+on the same machinery, at a fidelity that depends on what data exists for each.
 
 | | Languages | Status |
 |---|---|---|
@@ -85,7 +91,9 @@ that applies.
 
 Code is MIT. See [`LICENSE`](LICENSE).
 
-Dictionary data carries its own terms and is downloaded at runtime rather than bundled:
+Dictionary data carries its own terms and is downloaded at runtime rather than bundled.
+The one exception is a small JMdict excerpt used as a test fixture
+(`src/dict/__tests__/fixtures/jmdict-frequent.ts`), which stays under JMdict's licence:
 
 - [JMdict / KANJIDIC2](https://www.edrdg.org/) — Electronic Dictionary Research and
   Development Group, CC BY-SA 4.0

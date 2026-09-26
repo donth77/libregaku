@@ -75,6 +75,30 @@ export async function fetchJsonTgz(
   >;
   const stream = res.body.pipeThrough(counted).pipeThrough(gunzip);
 
+  let text: string;
+  try {
+    text = await unpackText(stream);
+  } catch (e) {
+    // A dropped connection and a truncated archive both surface here, as a
+    // bare stream error that names neither. Say which download, and how far.
+    throw new Error(
+      `libregaku: dictionary download broke off after ${loaded} of ${total || '?'} bytes — ${String(e)}`,
+    );
+  }
+  if (total && loaded < total) {
+    throw new Error(`libregaku: dictionary download ended early (${loaded} of ${total} bytes)`);
+  }
+  return JSON.parse(text);
+}
+
+/**
+ * The archive's one file, as text.
+ *
+ * Its own function so the decompressed bytes — over 100 MB for English — are
+ * unreachable by the time the caller parses the text, rather than held until
+ * the parse returns.
+ */
+async function unpackText(stream: ReadableStream<Uint8Array>): Promise<string> {
   const tar = new Uint8Array(await new Response(stream).arrayBuffer());
-  return JSON.parse(new TextDecoder().decode(untarSingle(tar)));
+  return new TextDecoder().decode(untarSingle(tar));
 }

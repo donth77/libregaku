@@ -1,4 +1,5 @@
-import { isAvailable, countOurCards } from './anki/client';
+import { probe, type AnkiState } from './anki/client';
+import { ANKI_PORT } from './anki/endpoint';
 
 /**
  * Toolbar popup.
@@ -95,16 +96,15 @@ async function main(): Promise<void> {
     fillTracks(track, state, state.track);
     fillTracks(second, state, state.second, 'None');
 
-    const apply = (): void => {
+    // Only the picker that changed. Sending both turned the second picker's
+    // "None" — which is also what it shows when no second line happened to
+    // load — into a deliberate choice whenever the first was changed.
+    const apply = (field: 'track' | 'second', value: string): void => {
       if (!tab?.id) return;
-      void chrome.tabs.sendMessage(tab.id, {
-        type: 'lg-set-tracks',
-        track: track.value,
-        second: second.value,
-      });
+      void chrome.tabs.sendMessage(tab.id, { type: 'lg-set-tracks', [field]: value });
     };
-    track.addEventListener('change', apply);
-    second.addEventListener('change', apply);
+    track.addEventListener('change', () => apply('track', track.value));
+    second.addEventListener('change', () => apply('second', second.value));
   }
 
   if (state?.supported) {
@@ -115,13 +115,32 @@ async function main(): Promise<void> {
   }
 
   const anki = $('anki');
-  if (await isAvailable()) {
-    const n = await countOurCards().catch(() => 0);
-    anki.className = 'ok';
-    anki.textContent = `Anki connected · ${n} card${n === 1 ? '' : 's'}`;
-  } else {
-    anki.className = '';
-    anki.textContent = 'Anki not running — words show as unknown';
+  const { text: said, cls: tone } = describeAnki(await probe());
+  anki.className = tone;
+  anki.textContent = said;
+}
+
+/**
+ * The states the settings panel distinguishes, in one line each.
+ *
+ * This used to be a yes/no on whether anything answered, so a port held by
+ * another program — or AnkiConnect refusing the extension — read "Anki not
+ * running" while Anki sat open.
+ */
+export function describeAnki(s: AnkiState): { text: string; cls: string } {
+  switch (s.kind) {
+    case 'connected':
+      return { text: `Anki connected · ${s.cards} card${s.cards === 1 ? '' : 's'} from Libregaku`, cls: 'ok' };
+    case 'offline':
+      return { text: 'Anki not running — words show as unknown', cls: '' };
+    case 'occupied':
+      return { text: `Another program is using port ${ANKI_PORT}, so Anki cannot be reached`, cls: 'bad' };
+    case 'blocked':
+      return { text: 'Anki refused this extension — Settings has the line to add', cls: 'bad' };
+    case 'busy':
+      return { text: 'Anki did not answer — it may be busy syncing', cls: 'bad' };
+    case 'refused':
+      return { text: s.detail || 'Anki refused the request', cls: 'bad' };
   }
 }
 

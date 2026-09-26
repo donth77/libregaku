@@ -69,6 +69,10 @@ const STYLE = `
   .secondary { font-size: calc(var(--size) * .66); font-weight: 500; color: #D5DCEC; user-select: text; }
   .t { position: relative; padding: 0 1px 4px; border-radius: 2px; cursor: pointer; }
   .p { padding: 0 1px 4px; white-space: pre-wrap; }
+  /* A line break in a flex row: a zero-height item as wide as the row pushes
+     what follows onto the next one. A newline inside a span does not — it
+     only made that span two lines tall beside the rest of the row. */
+  .br { flex-basis: 100%; height: 0; }
   .t:hover { background: rgba(255,255,255,.15); }
   /*
    * Furigana is taken out of flow.
@@ -271,12 +275,23 @@ export class Overlay {
       tokens.some((t) => !t.punct && furigana(t.surface, t.reading).some((x) => x.ruby)),
     );
     for (const tok of tokens) {
-      // Punctuation is text, not a word: rendered, never hoverable.
+      // Punctuation is text, not a word: rendered, never hoverable. The line
+      // breaks a subtitle was written with are kept — two speakers, or the
+      // author's own phrasing — as are breaks between cues shown together.
       if (tok.punct) {
-        const plain = document.createElement('span');
-        plain.className = 'p';
-        plain.textContent = tok.surface;
-        this.#primary.appendChild(plain);
+        tok.surface.split('\n').forEach((piece, i) => {
+          if (i) {
+            const br = document.createElement('span');
+            br.className = 'br';
+            this.#primary.appendChild(br);
+          }
+          if (!piece.trim() && i) return;
+          if (!piece) return;
+          const plain = document.createElement('span');
+          plain.className = 'p';
+          plain.textContent = piece;
+          this.#primary.appendChild(plain);
+        });
         continue;
       }
 

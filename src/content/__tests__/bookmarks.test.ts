@@ -45,6 +45,10 @@ const line = (start: number, text: string) => ({
 
 beforeEach(() => {
   area = {};
+  // Each test's module registers its own storage listener. Left in place, an
+  // earlier test's listener — one that throws on purpose — ran in later tests,
+  // so the file passed or failed depending on the order it ran in.
+  changeListeners.length = 0;
 });
 
 describe('saved lines', () => {
