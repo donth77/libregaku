@@ -209,18 +209,17 @@ describe('YouTubeAdapter', () => {
 
   it('asks the player again, forcing a fresh request, until a signed one arrives', async () => {
     vi.useFakeTimers();
-    const asks: Array<{ force?: boolean }> = [];
-    const onAsk = (e: MessageEvent) => {
-      const d = e.data as { kind?: string; force?: boolean };
-      if (d?.kind === 'enable-captions') asks.push(d);
-    };
-    window.addEventListener('message', onAsk);
+    // Counted where they are sent. The DOM delivers messages on the real
+    // clock, not the fake one, so listening for them raced the assertion.
+    const posted = vi.spyOn(window, 'postMessage');
     vi.stubGlobal('fetch', vi.fn(async () => new Response('')));
     const a = make();
     list('current', [track('ja')]);
     const loading = a.loadTrack('0').catch(() => []);
     await vi.advanceTimersByTimeAsync(6000);
-    window.removeEventListener('message', onAsk);
+    const asks = posted.mock.calls
+      .map(([data]) => data as { kind?: string; force?: boolean })
+      .filter((d) => d?.kind === 'enable-captions');
     expect(asks.length).toBeGreaterThanOrEqual(2);
     expect(asks[0]?.force).toBe(false);
     expect(asks[1]?.force).toBe(true);
