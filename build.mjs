@@ -30,6 +30,7 @@ await cp('src/options.html', `${outdir}/options.html`);
 await cp('src/options.css', `${outdir}/options.css`);
 await cp('src/action.html', `${outdir}/action.html`);
 await cp('src/action.css', `${outdir}/action.css`);
+await cp('src/icons', `${outdir}/icons`, { recursive: true });
 // _locales must sit beside the manifest for Chrome to find it.
 await cp('src/_locales', `${outdir}/_locales`, { recursive: true });
 

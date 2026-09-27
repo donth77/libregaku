@@ -78,6 +78,8 @@ src/content/
   player-inset.ts       moves the picture beside the open panel
 src/options.*           options page (Anki setup)
 src/action.*            toolbar popup: status and per-video track pickers
+src/icons/              extension icons, 16/32/48/128 PNG, exported from brand/
+brand/                  logo masters (SVG), PNG exports, and how to use them
 scripts/                check-captions.mjs, diagnose.js
 tests/contract/         the canaries
 ```
