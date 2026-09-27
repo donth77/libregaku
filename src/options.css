@@ -17,6 +17,8 @@ main { max-width: 640px; margin: 0 auto; padding: 48px 24px 96px; }
 
 .top { margin-bottom: 26px; }
 h1 { font-size: 28px; letter-spacing: -.02em; margin: 0 0 6px; }
+/* The lockup's artboard has a margin; pull it back so the ink lines up with the text below. */
+h1 svg { display: block; margin-left: -4px; }
 .tag { margin: 0; color: var(--faint); }
 
 .card {

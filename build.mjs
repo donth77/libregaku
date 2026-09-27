@@ -55,6 +55,8 @@ const contexts = await Promise.all(targets.map((t) =>
     logLevel: 'info',
     // Never inline the wasm; it is fetched at runtime by URL.
     external: ['*.wasm'],
+    // The logo is imported from brand/ as markup (src/logo.ts).
+    loader: { '.svg': 'text' },
   })
 ));
 

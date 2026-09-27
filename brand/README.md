@@ -16,6 +16,11 @@ word you haven't learned yet. The logo is the first word you learn.
 | Extension icons | `../src/icons/icon-{16,32,48,128}.png` |
 | Where SVG isn't accepted | `png/` |
 
+The extension's own pages and the bar over the player import
+`libregaku-symbol-color-on-dark.svg` and `libregaku-logo-horizontal-color-on-dark.svg`
+straight from this folder (`src/logo.ts`). Rename either and the build breaks;
+replace either and the extension shows the new one.
+
 The 16 and 32 px icons are drawn pixel by pixel for those sizes
 (`libregaku-icon-16.svg`, `libregaku-icon-32.svg`). Don't scale them up; the
 48 and 128 px icons come from `libregaku-icon.svg`.

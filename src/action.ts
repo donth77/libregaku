@@ -1,5 +1,6 @@
 import { probe, type AnkiState } from './anki/client';
 import { ANKI_PORT } from './anki/endpoint';
+import { logo } from './logo';
 
 /**
  * Toolbar popup.
@@ -79,6 +80,12 @@ function fillTracks(
 }
 
 async function main(): Promise<void> {
+  // The name in the header becomes the logo. The text stays in action.html
+  // for as long as the script takes to arrive.
+  const brand = document.querySelector('.brand');
+  const mark = logo('lockup', 26, 'Libregaku');
+  if (brand && mark) brand.replaceChildren(mark);
+
   $('openSettings').addEventListener('click', () => void chrome.runtime.openOptionsPage());
 
   const tab = await activeTab();

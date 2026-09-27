@@ -8,6 +8,8 @@ body { margin: 0; width: 300px; background: var(--bg); color: var(--ink);
 main { padding: 12px 14px 10px; }
 header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .brand { font-weight: 600; font-size: 14px; letter-spacing: -.01em; }
+/* The lockup's artboard has a margin; pull it back so the ink lines up with the status box. */
+.brand svg { display: block; margin-left: -2px; }
 button {
   background: var(--card); color: var(--dim); border: 1px solid var(--line);
   border-radius: 6px; padding: 6px 10px; cursor: pointer;

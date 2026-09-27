@@ -1,4 +1,5 @@
 import { icon } from './icons';
+import { logo } from '../logo';
 import { settings, setSetting } from '../settings';
 
 /**
@@ -67,6 +68,9 @@ const STYLE = `
 @media (prefers-reduced-motion: reduce) { .bar, .tab { transition: none; } }
 
 .left { display: flex; align-items: center; gap: 12px; min-width: 0; overflow: hidden; }
+/* The symbol's square artboard has margins at the sides; take them back so
+   the ink sits on the bar's padding and the usual gap from the badge. */
+.mark { display: block; flex: none; margin: 0 -4px; }
 .badge {
   display: inline-flex; align-items: center; height: 24px; padding: 0 10px;
   border-radius: 999px; background: #2A3348; color: #C7CFE2;
@@ -119,6 +123,8 @@ export class Header {
   #bar: HTMLElement;
   #tab: HTMLButtonElement;
   #left: HTMLElement;
+  /** Whose bar this is, when it sits over someone else's player. */
+  #mark: SVGSVGElement | null;
   #deps: HeaderDeps;
   #mount: HTMLElement;
   #shown = false;
@@ -142,6 +148,9 @@ export class Header {
 
     this.#left = document.createElement('div');
     this.#left.className = 'left';
+
+    this.#mark = logo('symbol', 30, 'Libregaku');
+    this.#mark?.classList.add('mark');
 
     const right = document.createElement('div');
     right.className = 'right';
@@ -242,6 +251,7 @@ export class Header {
 
     const stats = this.#deps.stats();
     this.#left.replaceChildren();
+    if (this.#mark) this.#left.appendChild(this.#mark);
 
     const badge = document.createElement('span');
     badge.className = 'badge';

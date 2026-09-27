@@ -79,6 +79,8 @@ src/content/
 src/options.*           options page (Anki setup)
 src/action.*            toolbar popup: status and per-video track pickers
 src/icons/              extension icons, 16/32/48/128 PNG, exported from brand/
+src/logo.ts             the logo in the popup, options page and player bar, imported
+                        from brand/ as markup (the build loads .svg as text)
 brand/                  logo masters (SVG), PNG exports, and how to use them
 scripts/                check-captions.mjs, diagnose.js
 tests/contract/         the canaries

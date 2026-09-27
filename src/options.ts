@@ -1,4 +1,5 @@
 import { PANEL_STYLE, buildSettings } from './content/settings-panel';
+import { logo } from './logo';
 import { loadSettings, onSettingsChange, setSetting, settings, type Settings } from './settings';
 
 /**
@@ -44,6 +45,10 @@ export function deckStepDone(cur: Pick<Settings, 'deck'>, chosen: string): boole
 }
 
 async function main(): Promise<void> {
+  const h1 = document.querySelector('h1');
+  const mark = logo('lockup', 46, 'Libregaku');
+  if (h1 && mark) h1.replaceChildren(mark);
+
   await loadSettings();
 
   const style = document.createElement('style');
