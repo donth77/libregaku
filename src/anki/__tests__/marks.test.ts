@@ -132,7 +132,12 @@ describe('syncing with Anki', () => {
   });
 
   it('splits a long queue into batches of 500', async () => {
-    for (let i = 0; i < 600; i++) await setMark(`語${i}`, 'ignored');
+    // Stored as 600 setMark calls would leave it. Making those calls rewrote
+    // the whole queue each time, slow enough on a busy machine to time out, and
+    // the loop then ran on into the next tests' storage.
+    const words = Array.from({ length: 600 }, (_, i) => `語${i}`);
+    store.local[CACHE] = Object.fromEntries(words.map((w) => [w, 'ignored']));
+    store.local[PENDING] = Object.fromEntries(words.map((w, i) => [w, { status: 'ignored', at: i + 1 }]));
     await syncMarks();
     expect(sent('addNotes').map((c) => (c.params.notes as unknown[]).length)).toEqual([500, 100]);
     expect(marksInAnki().size).toBe(600);

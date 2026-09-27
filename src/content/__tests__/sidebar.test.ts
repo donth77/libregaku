@@ -675,8 +675,12 @@ describe('Sidebar hover card', () => {
  * is analysed once per analysis however many parts of the panel want it; the
  * counter keeps only a few requests open; and a status change repaints rows
  * where they stand instead of building them again.
+ *
+ * Thousands of rows in a simulated DOM take well under a second alone but can
+ * pass the default five when the whole suite shares a busy machine, hence the
+ * longer limit. The assertions are about what gets built, not how fast.
  */
-describe('Sidebar at the length of a film', () => {
+describe('Sidebar at the length of a film', { timeout: 30_000 }, () => {
   /** Visibility, reported when the test says so rather than by layout. */
   class FakeIO {
     static current: FakeIO | null = null;
