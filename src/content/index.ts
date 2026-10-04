@@ -8,18 +8,24 @@ import type { Segmenter, Token } from '../morphology/types';
 import { DomCaptionSource } from '../adapters/dom-captions';
 import { clearLookupCache, ensureDictionary, lookupToken, type LookupResult } from '../dict/client';
 import { bottomOffset, namedMatches, occupiedBands } from './coexist';
-import { addNote, ensureModel, isDuplicate } from '../anki/client';
+import { addNote, ensureModel, isDuplicate, type NewCard } from '../anki/client';
+import { flushCards, isQueueKey, queueCard, queuedCards } from '../anki/card-queue';
 import { tagsFor, toAnkiFurigana } from '../anki/model';
+import { AnkiUnavailable } from '../anki/rpc';
+import { cardAudio } from '../audio/card-audio';
 import { sourceField } from '../anki/source';
 import { buildStatusMap, lemmaReading, type OverrideStatus, type Status, type StatusMap } from '../anki/status';
 import { loadOverrides, setMark, syncMarks } from '../anki/marks';
 import { furigana } from '../morphology/furigana';
 import {
-  DICTIONARIES, TIER2_LANGS, jmdictEditionFor, loadSettings, onSettingsChange, settings,
+  DICTIONARIES, TIER2_LANGS, jmdictEditionFor, loadSettings, nextRuby, onSettingsChange, rubyLabel, setSetting,
+  settings,
 } from '../settings';
 import {
-  cancelPopupClose, closePopup, closePopupSoon, popupKey, showPopup, type CardDraft,
+  cancelPopupClose, closePopup, closePopupSoon, draftFor, popupKey, pressAdd, showPopup, type CardDraft,
 } from './popup';
+import { clearFlash, flash as flashOn } from './flash';
+import { isLineKey, isTyping, keyAction, type KeyAction } from './keys';
 import { Sidebar } from './sidebar';
 import { PlayerInset } from './player-inset';
 import * as bookmarks from './bookmarks';
@@ -82,6 +88,12 @@ let status: StatusMap | null = null;
 let overrides = new Map<string, OverrideStatus>();
 /** Successful additions awaiting the next Anki snapshot; never persisted. */
 const addedCards = new Set<string>();
+/**
+ * Words with a card kept for when Anki opens (src/anki/card-queue.ts). Shown
+ * as on their way, like a card just added — the card exists, Anki just has
+ * not been told yet.
+ */
+let queuedWords = new Set<string>();
 let statusRequest = 0;
 let manualRevision = 0;
 /** When word status was last read from Anki, so a returning tab can refresh. */
@@ -99,7 +111,7 @@ function statusOf(tok: Token): Status {
   const manual = overrides.get(key);
   if (manual) return manual;
   const fromAnki = ankiStatus(tok);
-  return addedCards.has(key) && fromAnki !== 'known' ? 'learning' : fromAnki;
+  return (addedCards.has(key) || queuedWords.has(key)) && fromAnki !== 'known' ? 'learning' : fromAnki;
 }
 
 /**
@@ -120,7 +132,8 @@ function ankiStatus(tok: Token): Status {
  * make one.
  */
 function hasCardFor(tok: Token): boolean {
-  if (addedCards.has(tok.lemma ?? tok.surface)) return true;
+  const key = tok.lemma ?? tok.surface;
+  if (addedCards.has(key) || queuedWords.has(key)) return true;
   const fromAnki = ankiStatus(tok);
   return fromAnki === 'learning' || fromAnki === 'known';
 }
@@ -197,8 +210,10 @@ async function refreshStatus(): Promise<void> {
         ? `Anki: ${status.size} words known or learning in ${scope || 'the whole collection'}`
         : 'Anki reachable but nothing found in that scope — everything reads as unknown',
     );
-    // Anki answered, so marks can travel both ways now.
+    // Anki answered, so marks can travel both ways now, and cards kept while
+    // it was closed can go in.
     void pushMarks();
+    void sendQueued();
   } catch {
     if (request !== statusRequest) return;
     // Anki being closed is normal, not a fault. Everything simply reads unknown.
@@ -208,6 +223,52 @@ async function refreshStatus(): Promise<void> {
   // A manual mark made during the fetch is newer than the storage read.
   if (revision === manualRevision) overrides = nextOverrides;
   repaint();
+}
+
+/**
+ * Put the cards kept while Anki was closed into it, if it is open now. Called
+ * whenever Anki answers, and every minute while any are waiting.
+ */
+async function sendQueued(): Promise<void> {
+  const r = await flushCards(cardAudio);
+  if (!r) return;   // still closed: they keep waiting
+  if (r.words.length) {
+    // On their way until Anki's next snapshot reports them itself.
+    for (const w of r.words) addedCards.add(w);
+    if (r.added) {
+      log(`added ${r.added} card(s) kept while Anki was closed`);
+      if (currentMount) flash(currentMount, `Anki is open — added ${r.added === 1 ? 'the card' : `${r.added} cards`} kept for it`);
+    }
+    void refreshStatus();
+  }
+  if (r.error && r.remaining && currentMount) showNotice(currentMount, 'cards-not-added', r.error);
+  await reloadQueued();
+}
+
+/** A word or two over the picture, confirming what a key did. */
+function flash(mount: HTMLElement, text: string, ms?: number): void {
+  flashOn(mount, text, ms, sidebar?.inset ?? 0);
+}
+
+/** Re-read which words have a card waiting, and keep looking for Anki while any do. */
+async function reloadQueued(): Promise<void> {
+  const waiting = await queuedCards();
+  queuedWords = new Set(waiting.map((q) => q.word));
+  repaint();
+  watchQueue(waiting.length > 0);
+}
+
+let queueTimer = 0;
+/** While cards wait, look for Anki every minute: it can be opened at any moment. */
+function watchQueue(on: boolean): void {
+  if (!on) {
+    clearInterval(queueTimer);
+    queueTimer = 0;
+  } else if (!queueTimer) {
+    queueTimer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void sendQueued();
+    }, 60_000);
+  }
 }
 
 function pickAdapter(): SubtitleSource | null {
@@ -923,33 +984,50 @@ async function addCard(draft: CardDraft, token: Token, line: LineContext): Promi
       ? draft.reading
       : surfaceReading;
 
-  await ensureModel();
+  const card: NewCard = {
+    deck,
+    expression: draft.expression,
+    // Anki renders 勉強[べんきょう] as ruby, so store the bracket form.
+    reading: toAnkiFurigana(furigana(draft.expression, reading)),
+    meaning: draft.meaning,
+    sentence: draft.sentence,
+    sentenceMeaning: line.translation,
+    source: sourceField({
+      title: adapter?.title() ?? null,
+      seconds: at,
+      url: adapter?.deepLink(at) ?? null,
+    }),
+    tags: tagsFor({ source: adapter?.id ?? 'unknown', lang: targetLang() }),
+  };
+  const word = token.lemma ?? token.surface;
+  // The headword and its reading: the pair recordings are filed under.
+  const audio = settings().cardAudio ? { word: draft.expression, reading, lang: targetLang() } : undefined;
+
   try {
-    await addNote({
-      deck,
-      expression: draft.expression,
-      // Anki renders 勉強[べんきょう] as ruby, so store the bracket form.
-      reading: toAnkiFurigana(furigana(draft.expression, reading)),
-      meaning: draft.meaning,
-      sentence: draft.sentence,
-      sentenceMeaning: line.translation,
-      source: sourceField({
-        title: adapter?.title() ?? null,
-        seconds: at,
-        url: adapter?.deepLink(at) ?? null,
-      }),
-      tags: tagsFor({ source: adapter?.id ?? 'unknown', lang: targetLang() }),
-    });
+    await ensureModel();
+    await addNote({ ...card, audio: audio ? await cardAudio(audio) : null });
   } catch (e) {
     // Anki already has it. Not a failure: say so, and let status catch up.
-    if (!isDuplicate(e)) throw e;
-    void refreshStatus();
-    return `already in ${deck}`;
+    if (isDuplicate(e)) {
+      void refreshStatus();
+      return `already in ${deck}`;
+    }
+    if (!(e instanceof AnkiUnavailable)) throw e;
+    // Anki is closed. Keep the card, and add it the next time Anki answers.
+    const kept = await queueCard({ card, word, ...(audio ? { audio } : {}) });
+    if (kept === 'failed') throw new Error('Anki is closed, and the browser would not keep the card for later');
+    if (kept === 'already') return `already waiting for Anki`;
+    manualRevision++;
+    overrides.delete(word);
+    queuedWords.add(word);
+    repaint();
+    await setMark(word, null);
+    watchQueue(true);
+    return `Anki is closed — this goes to ${deck} when it opens`;
   }
 
   // Show the successful addition immediately, then let Anki's next snapshot
   // replace it. A stored "learning" override would hide maturity or deletion.
-  const word = token.lemma ?? token.surface;
   statusRequest++;   // an older query may have started before this card existed
   manualRevision++;
   overrides.delete(word);
@@ -959,6 +1037,18 @@ async function addCard(draft: CardDraft, token: Token, line: LineContext): Promi
   await setMark(word, null);
   void refreshStatus();
   return `added to ${deck}`;
+}
+
+/**
+ * The last word looked up, for the A and K keys. A card that has closed still
+ * counts for a little while: pressing A a moment after moving off a word is
+ * the same decision as pressing it with the card open.
+ */
+let lastLookup: { token: Token; result: LookupResult; sentence: string; line: LineContext; gen: number; at: number } | null = null;
+const LOOKUP_FRESH_MS = 90_000;
+
+function rememberLookup(token: Token, result: LookupResult, sentence: string, line: LineContext): void {
+  lastLookup = { token, result, sentence, line, gen: generation, at: Date.now() };
 }
 
 async function openLookup(mount: HTMLElement, el: HTMLElement, token: Token, byHover = false): Promise<void> {
@@ -977,6 +1067,7 @@ async function openLookup(mount: HTMLElement, el: HTMLElement, token: Token, byH
       resumeAfterHover();
       return;
     }
+    rememberLookup(token, result, sentence, line);
     showPopup(mount, el, result, {
       token,
       sentence,
@@ -984,6 +1075,7 @@ async function openLookup(mount: HTMLElement, el: HTMLElement, token: Token, byH
       onMark: (word, next) => mark(word, next, lemmaReading(word, token.surface, token.reading)),
       onAddCard: (draft) => addCard(draft, token, line),
       hasCard: hasCardFor(token),
+      queued: queuedWords.has(token.lemma ?? token.surface),
       onClose: onCardClosed,
     });
   } catch (e) {
@@ -1044,14 +1136,17 @@ function mountSidebar(mount: HTMLElement, video: HTMLVideoElement, adapter: Subt
       void lookupFor(token).then((result) => {
         if (seq !== lookupSeq || !el.isConnected) return;
         const host = el.getRootNode() as ShadowRoot;
+        // The line the word was clicked in, which may be far from the playhead.
+        const line = { start: context?.start, translation: context?.translation };
+        rememberLookup(token, result, sentence, line);
         showPopup((host.host as HTMLElement).parentElement ?? mount, el, result, {
           token,
           sentence,
           status: statusOf(token),
           onMark: (word, next) => mark(word, next, lemmaReading(word, token.surface, token.reading)),
-          // The line the word was clicked in, which may be far from the playhead.
-          onAddCard: (draft) => addCard(draft, token, { start: context?.start, translation: context?.translation }),
+          onAddCard: (draft) => addCard(draft, token, line),
           hasCard: hasCardFor(token),
+          queued: queuedWords.has(token.lemma ?? token.surface),
           onClose: onCardClosed,
         });
       });
@@ -1112,7 +1207,8 @@ async function saveCurrentLine(): Promise<void> {
   const i = transcript.activeAt(activeVideo?.currentTime ?? 0);
   const line = transcript.lines[i];
   if (!line || !sidebar) return;
-  await sidebar.saveLine(line);
+  const saved = await sidebar.saveLine(line);
+  if (currentMount) flash(currentMount, saved ? 'Line saved' : 'Line no longer saved');
 }
 
 function reset(): void {
@@ -1137,6 +1233,8 @@ function reset(): void {
   domSource?.stop();
   domSource = null;
   domReason = null;
+  lineSeek = null;
+  clearFlash();
   cancelAnimationFrame(raf);
   overlay?.destroy();
   overlay = null;
@@ -1203,29 +1301,143 @@ if (/netflix\.com/.test(location.hostname)) {
     .catch((e: unknown) => log('page hook injection failed:', e));
 }
 
-// popup-dismiss
+/**
+ * Where the last line key sent playback, and when. A seek takes a moment to
+ * land — on Netflix, noticeably — and a second press that read the clock
+ * before then went to the same line again rather than the one after it.
+ */
+let lineSeek: { to: number; at: number } | null = null;
+
+function lineClock(): number {
+  const now = activeVideo?.currentTime ?? 0;
+  if (lineSeek && Date.now() - lineSeek.at < 1500 && Math.abs(now - lineSeek.to) > 0.5) return lineSeek.to;
+  return now;
+}
+
+/** Go to the line before, the line after, or the start of this one — and play it. */
+function goToLine(which: 'previous' | 'next' | 'replay'): boolean {
+  const t = lineClock();
+  const to = which === 'previous' ? cueIndex.previous(t) : which === 'next' ? cueIndex.next(t) : cueIndex.replay(t);
+  if (to === null) return false;
+  closePopup();   // its word belongs to the line being left
+  lineSeek = { to, at: Date.now() };
+  seekTo(to);
+  // A line key is a request to hear that line, paused or not.
+  void activeVideo?.play().catch(() => {});
+  return true;
+}
+
+/**
+ * Whether the player is where the keys would act on it: most of it on screen.
+ * Scrolled down to read the comments, the arrows scroll the page again.
+ */
+function playerInView(): boolean {
+  if (!currentMount) return false;
+  const r = currentMount.getBoundingClientRect();
+  const shown = Math.min(r.bottom, window.innerHeight) - Math.max(r.top, 0);
+  return r.height > 0 && shown >= r.height / 2;
+}
+
+/**
+ * Whether a key has anything of ours to act on here. When it does not, the
+ * page keeps the key: B used to be taken from the site on every page,
+ * rendering or not.
+ */
+function keyApplies(action: KeyAction): boolean {
+  if (isLineKey(action)) {
+    // Moving between lines needs every line, not just the one on screen.
+    return cues.length > 0 && !domSource && !pickAdapter()?.isAd?.() && playerInView();
+  }
+  if (action === 'known') return popupKey() !== null;   // otherwise K is YouTube's play/pause
+  if (action === 'save' || action === 'panel') return sidebar !== null;
+  return overlay !== null;
+}
+
+/** A and K: the word whose card is open, or else the one looked up last. */
+function keyOnWord(action: 'add' | 'known'): void {
+  const mount = currentMount;
+  // With its card open, Add goes through the card, which then says what happened.
+  if (action === 'add' && pressAdd()) return;
+  const last = lastLookup;
+  if (!last || last.gen !== generation || Date.now() - last.at > LOOKUP_FRESH_MS) {
+    if (mount) flash(mount, 'Look a word up first, then press A');
+    return;
+  }
+  const word = last.token.lemma ?? last.token.surface;
+  if (action === 'known') {
+    // As the card's Known button does: pressing it on a known word clears it.
+    const next = statusOf(last.token) === 'known' ? null : 'known';
+    void mark(word, next, lemmaReading(word, last.token.surface, last.token.reading));
+    closePopup();
+    if (mount) flash(mount, next ? `${word} · marked known` : `${word} · mark cleared`);
+    return;
+  }
+  const draft = draftFor(last.result, last.token, last.sentence);
+  if (mount) flash(mount, `Adding ${draft.expression}…`, 8000);
+  void addCard(draft, last.token, last.line).then(
+    (said) => mount && flash(mount, `${draft.expression} · ${said}`),
+    (e: unknown) => mount && flash(mount, e instanceof Error ? e.message : String(e), 4000),
+  );
+}
+
+function act(action: KeyAction): void {
+  const mount = currentMount;
+  switch (action) {
+    case 'previous':
+    case 'next':
+    case 'replay':
+      if (!goToLine(action) && mount) flash(mount, action === 'next' ? 'That was the last line' : 'No line before this');
+      return;
+    case 'second': {
+      const on = !settings().dualSubtitles;
+      void setSetting('dualSubtitles', on).then(() => header?.update());
+      if (mount) flash(mount, on ? 'Second line on' : 'Second line off');
+      return;
+    }
+    case 'furigana': {
+      const next = nextRuby(settings().ruby);
+      void setSetting('ruby', next).then(() => header?.update());
+      if (mount) flash(mount, `Furigana: ${rubyLabel(next)}`);
+      return;
+    }
+    case 'add':
+    case 'known':
+      keyOnWord(action);
+      return;
+    case 'save':
+      void saveCurrentLine();
+      return;
+    case 'panel':
+      sidebar?.toggle();
+  }
+}
+
+/** Keys taken on the way down, whose release must not reach the page either. */
+const taken = new Set<string>();
+
+// Capture phase, so the keys reach us before the player's own shortcuts.
 document.addEventListener(
   'keydown',
   (e) => {
     if (e.key === 'Escape') closePopup();
-    if (e.metaKey || e.ctrlKey || e.altKey) return;
-    const key = e.key.toLowerCase();
-    if (key !== 'b' && key !== 's') return;
-    // Only where there is something of ours to act on. B used to be taken
-    // from the site on every page, rendering or not.
-    if (!sidebar) return;
-    // Someone typing in a field gets their letter. composedPath() sees through
-    // shadow roots, so the search box inside our own panel counts as a field
-    // too — e.target would only ever show the panel's host.
-    const t = (e.composedPath()[0] ?? e.target) as HTMLElement | null;
-    if (t && (t.isContentEditable || /^(input|textarea|select)$/i.test(t.tagName))) return;
-    // Netflix and YouTube both treat stray letters as player shortcuts.
+    const action = keyAction(e);
+    if (!action || isTyping(e) || !keyApplies(action)) return;
+    // Netflix and YouTube both treat stray letters and arrows as player shortcuts.
     e.preventDefault();
     e.stopPropagation();
+    taken.add(e.code || e.key);
     // Holding the key auto-repeats; one press is one action.
     if (e.repeat) return;
-    if (key === 'b') void saveCurrentLine();
-    else sidebar.toggle();
+    act(action);
+  },
+  true,
+);
+document.addEventListener(
+  'keyup',
+  (e) => {
+    if (!taken.delete(e.code || e.key)) return;
+    e.preventDefault();
+    e.stopPropagation();
   },
   true,
 );
@@ -1247,8 +1459,18 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
+// Cards kept for Anki in another tab, or sent from one, change what this one shows.
+try {
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && Object.keys(changes).some(isQueueKey)) void reloadQueued();
+  });
+} catch {
+  /* not in an extension context */
+}
+
 void loadSettings().then(async (s) => {
   log(`lookup opens on ${s.interaction}`);
+  await reloadQueued();
   appearance = { size: s.subtitleSize, bottom: s.subtitleBottom, dual: s.dualSubtitles };
   languages = { target: s.target, native: s.native };
   scopeRead = s.statusScope;

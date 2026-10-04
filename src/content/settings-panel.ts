@@ -1,5 +1,7 @@
+import { flushCards, queuedCards } from '../anki/card-queue';
 import { browseOurCards, createDeck, probe, type AnkiState } from '../anki/client';
 import { ADDON_CODE, ADDON_URL, ANKI_PORT, ANKI_URL, extensionOrigin } from '../anki/endpoint';
+import { cardAudio } from '../audio/card-audio';
 import { copyText } from './share';
 import {
   NATIVE_LANGUAGES, TARGET_LANGUAGES, setSetting, settings, type Settings,
@@ -146,6 +148,18 @@ export const PANEL_STYLE = `
     border: 1px solid #2A3348; background: #1A2138; color: #B4BDD4; cursor: pointer;
   }
   .chip button:hover { border-color: #8AA2E8; color: #E8ECF6; }
+
+  .keys {
+    display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center;
+    gap: 9px 14px; margin: 0; padding: 4px 16px 6px;
+  }
+  .keys dt { display: flex; gap: 4px; }
+  .keys dd { margin: 0; font-size: 13px; line-height: 1.4; color: #C2C9DC; }
+  .keys kbd {
+    min-width: 14px; padding: 4px 6px; text-align: center;
+    font: 600 12px/1 system-ui, -apple-system, sans-serif; color: #E8ECF6;
+    background: #12172A; border: 1px solid #2A3348; border-bottom-width: 2px; border-radius: 5px;
+  }
 
   .credits { padding: 4px 16px 0; margin: 0; }
   .credits dt { margin-top: 12px; font-size: 13px; }
@@ -319,6 +333,9 @@ export function buildSettings(onChange: Rerender, opts: SettingsPanelOptions = {
   check('headerBar', 'Show the top bar', 'Appears when the cursor nears the top of the player.');
   check('sidebarStats', 'Show progress', 'Comprehension, per-line counts, and the ready-to-learn filter.');
 
+  group('Keys');
+  root.appendChild(keyList());
+
   group('Anki');
   const state = document.createElement('div');
   state.className = 'state';
@@ -335,6 +352,8 @@ export function buildSettings(onChange: Rerender, opts: SettingsPanelOptions = {
     'Read to decide what to underline. Includes subdecks.');
   deckRow.hidden = true;
   scopeRow.hidden = true;
+  check('cardAudio', 'Pronunciation on cards',
+    'A recording of the word, when there is one. Never a synthesised voice.');
 
   const steps = ankiSteps();
   root.appendChild(steps);
@@ -431,6 +450,10 @@ function chip(value: string): HTMLElement {
   return wrap;
 }
 
+function cards(n: number): string {
+  return `${n} card${n === 1 ? '' : 's'}`;
+}
+
 /** A stored deck against Anki's list: fine, never chosen, or gone from Anki. */
 type DeckPick = 'ok' | 'unset' | 'missing';
 
@@ -520,8 +543,13 @@ function ankiControls(ui: AnkiUi, onChange: Rerender, opts: SettingsPanelOptions
     hint.classList.toggle('warn', text !== null);
   };
 
-  const show = (s: AnkiState): void => {
+  /**
+   * `waiting` is how many cards made while Anki was closed are still to go
+   * in; `news` is what this check did about them.
+   */
+  const show = (s: AnkiState, waiting = 0, news = ''): void => {
     const connected = s.kind === 'connected';
+    const still = waiting ? ` ${cards(waiting)} waiting to go in.` : '';
     deckRow.hidden = !connected;
     scopeRow.hidden = !connected;
     newDeck.disabled = !connected;
@@ -543,8 +571,8 @@ function ankiControls(ui: AnkiUi, onChange: Rerender, opts: SettingsPanelOptions
           : null);
       state.className = 'state ok';
       state.textContent =
-        (s.installed === 'created' ? 'Connected. Note type installed. ' : 'Connected. ') +
-        (s.cards ? `${s.cards} card${s.cards === 1 ? '' : 's'} from Libregaku.` : 'No cards yet.');
+        (s.installed === 'created' ? 'Connected. Note type installed. ' : 'Connected. ') + news +
+        (s.cards ? `${cards(s.cards)} from Libregaku.` : 'No cards yet.') + still;
       need();
       return;
     }
@@ -553,14 +581,14 @@ function ankiControls(ui: AnkiUi, onChange: Rerender, opts: SettingsPanelOptions
       state.className = 'state';
       state.textContent =
         `Anki is not answering on port ${ANKI_PORT}. That is normal when it is closed — ` +
-        'everything except cards works without it.';
+        'cards you add wait here, and go in when it opens.' + still;
       need('install', 'addon', 'origin', 'running');
       return;
     }
 
     if (s.kind === 'blocked') {
       state.className = 'state warn';
-      state.textContent = 'Anki is running, but AnkiConnect has not been told to allow this extension.';
+      state.textContent = 'Anki is running, but AnkiConnect has not been told to allow this extension.' + still;
       need('origin');
       return;
     }
@@ -568,13 +596,13 @@ function ankiControls(ui: AnkiUi, onChange: Rerender, opts: SettingsPanelOptions
     if (s.kind === 'occupied') {
       state.className = 'state warn';
       state.textContent =
-        `${s.detail} Close whatever is using the port, or Anki cannot have it.`;
+        `${s.detail} Close whatever is using the port, or Anki cannot have it.` + still;
       need('running');
       return;
     }
 
     state.className = 'state bad';
-    state.textContent = s.detail;
+    state.textContent = s.detail + still;
     need();
   };
 
@@ -583,8 +611,18 @@ function ankiControls(ui: AnkiUi, onChange: Rerender, opts: SettingsPanelOptions
     state.textContent = 'Checking…';
     recheck.disabled = true;
     try {
-      const s = await probe();
-      show(s);
+      let s = await probe();
+      let news = '';
+      if (s.kind === 'connected') {
+        // Anki is here: cards kept while it was closed go in now.
+        const r = await flushCards(cardAudio);
+        if (r?.added) {
+          news = `Added the ${cards(r.added)} kept while it was closed. `;
+          s = await probe();   // the count it gave is from before them
+        }
+        if (r?.error && r.remaining) news += `${cards(r.remaining)} could not be added: ${r.error} `;
+      }
+      show(s, (await queuedCards()).length, news);
       return s;
     } finally {
       recheck.disabled = false;
@@ -615,6 +653,35 @@ function ankiControls(ui: AnkiUi, onChange: Rerender, opts: SettingsPanelOptions
 
   void refresh();
   return row;
+}
+
+/** The player's keys (src/content/keys.ts), where someone looking for them will look. */
+function keyList(): HTMLElement {
+  const dl = document.createElement('dl');
+  dl.className = 'keys';
+  const KEYS: Array<[string[], string]> = [
+    [['←', '→'], 'The line before, the line after'],
+    [['↓'], 'This line again'],
+    [['↑'], 'Second line on or off'],
+    [['A'], 'Add a card for the word looked up'],
+    [['K'], 'Mark it known, while its card is open'],
+    [['R'], 'Furigana: off, new words, all'],
+    [['B'], 'Save the line'],
+    [['S'], 'Show or hide this panel'],
+    [['Esc'], 'Close the card'],
+  ];
+  for (const [keys, what] of KEYS) {
+    const dt = document.createElement('dt');
+    for (const k of keys) {
+      const kbd = document.createElement('kbd');
+      kbd.textContent = k;
+      dt.appendChild(kbd);
+    }
+    const dd = document.createElement('dd');
+    dd.textContent = what;
+    dl.append(dt, dd);
+  }
+  return dl;
 }
 
 /** Attribution belongs where someone can reach it, not only in a README. */

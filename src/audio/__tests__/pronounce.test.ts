@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { AUDIO_HOSTS, audioUrlAllowed, jpodQuery, templateHost } from '../pronounce';
+import { describe, expect, it, vi } from 'vitest';
+import { AUDIO_HOSTS, audioUrlAllowed, decodedSize, findRecording, jpodQuery, templateHost } from '../pronounce';
+import { cardAudio } from '../card-audio';
 
 const parse = (q: string) => Object.fromEntries(new URLSearchParams(q));
 
@@ -64,3 +65,80 @@ describe('what the service worker may fetch as audio', () => {
   });
 });
 
+
+/** The service worker's fetch-audio answers: by URL, a body of this many bytes. */
+function serve(bodies: Record<string, number>, template?: string): ReturnType<typeof vi.fn> {
+  const sendMessage = vi.fn(async (msg: { type: string; url: string }) => {
+    const hit = Object.entries(bodies).find(([part]) => msg.url.includes(part));
+    if (!hit) return { ok: false, status: 404 };
+    return { ok: true, status: 200, type: 'audio/mpeg', bytes: btoa('x'.repeat(hit[1])) };
+  });
+  vi.stubGlobal('chrome', {
+    runtime: { sendMessage },
+    storage: { sync: { get: async () => (template ? { 'libregaku.audioTemplate': template } : {}) } },
+  });
+  vi.spyOn(console, 'log').mockImplementation(() => {});
+  return sendMessage;
+}
+
+const kana = (s: string) => encodeURIComponent(s);
+
+describe('decodedSize', () => {
+  it('counts the bytes behind base64, padding included', () => {
+    for (const n of [0, 1, 2, 3, 4, 52288]) expect(decodedSize(btoa('x'.repeat(n)))).toBe(n);
+  });
+});
+
+describe('findRecording', () => {
+  it('returns what jpod101 has, as base64 with its size', async () => {
+    serve({ [kana('ねこ')]: 9000 });
+    const rec = await findRecording('猫', 'ネコ', 'ja');
+    expect(rec).toMatchObject({ size: 9000, type: 'audio/mpeg', source: 'jpod101' });
+    expect(rec?.data).toBe(btoa('x'.repeat(9000)));
+  });
+
+  it("takes jpod101's placeholder for no recording", async () => {
+    serve({ [kana('ぬえ')]: 52288 });
+    expect(await findRecording('鵺', 'ぬえ', 'ja')).toBeNull();
+  });
+
+  it('fetches a word once, however often it is played or carded', async () => {
+    const sent = serve({ [kana('いぬ')]: 9000 });
+    await findRecording('犬', 'いぬ', 'ja');
+    await findRecording('犬', 'いぬ', 'ja');
+    expect(sent).toHaveBeenCalledOnce();
+  });
+
+  it("never asks jpod101 about another language, but tries the learner's own source", async () => {
+    const sent = serve({ 'audio.example.org': 4000 }, 'https://audio.example.org/es/{word}.mp3');
+    const rec = await findRecording('hablar', undefined, 'es');
+    expect(rec?.source).toBe('custom');
+    expect(sent.mock.calls.every(([m]) => !String((m as { url: string }).url).includes('languagepod101'))).toBe(true);
+  });
+
+  it('has nothing when no source does', async () => {
+    // A word of its own: recordings found earlier stay found for the session.
+    serve({});
+    expect(await findRecording('comer', undefined, 'es')).toBeNull();
+  });
+});
+
+describe('cardAudio', () => {
+  it('names the recording for the card', async () => {
+    serve({ [kana('とり')]: 9000 });
+    expect(await cardAudio({ word: '鳥', reading: 'とり', lang: 'ja' }))
+      .toEqual({ data: btoa('x'.repeat(9000)), filename: 'libregaku_鳥_とり.mp3' });
+  });
+
+  it('does not hold a card up for a recording that is slow to come', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('chrome', {
+      runtime: { sendMessage: () => new Promise(() => {}) },
+      storage: { sync: { get: async () => ({}) } },
+    });
+    const pending = cardAudio({ word: '亀', reading: 'かめ', lang: 'ja' });
+    await vi.advanceTimersByTimeAsync(6000);
+    expect(await pending).toBeNull();
+    vi.useRealTimers();
+  });
+});

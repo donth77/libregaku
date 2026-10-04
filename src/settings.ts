@@ -85,6 +85,8 @@ export interface Settings {
    * Where new cards go. One specific deck.
    */
   deck: string;
+  /** Put a recording of the word on each new card, when one exists. */
+  cardAudio: boolean;
   /**
    * Which deck is read to decide what you already know. Empty means the whole
    * collection.
@@ -156,6 +158,7 @@ export const DEFAULTS: Settings = {
   ruby: 'unknown',
   sidebarHover: true,
   deck: '',
+  cardAudio: true,
   statusScope: '',
   sidebarStats: true,
   sidebarFollow: true,
@@ -167,6 +170,18 @@ export const DEFAULTS: Settings = {
   headerBar: true,
   headerPinned: false,
 };
+
+/** Furigana's three settings in the order the top bar and R step through them: off, new words, all. */
+const RUBY_ORDER: ReadonlyArray<Settings['ruby']> = ['never', 'unknown', 'always'];
+
+export function nextRuby(mode: Settings['ruby']): Settings['ruby'] {
+  return RUBY_ORDER[(RUBY_ORDER.indexOf(mode) + 1) % RUBY_ORDER.length] ?? 'unknown';
+}
+
+/** A furigana setting as the top bar and the player name it. */
+export function rubyLabel(mode: Settings['ruby']): string {
+  return mode === 'unknown' ? 'new words' : mode;
+}
 
 const KEY = 'libregaku.settings';
 

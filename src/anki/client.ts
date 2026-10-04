@@ -129,6 +129,15 @@ export interface NewCard {
   /** Already HTML: sourceField() escapes it and makes the link. */
   source?: string;
   tags: string[];
+  /** A recording of the word, stored in Anki's media folder and played from the Audio field. */
+  audio?: CardAudio | null;
+}
+
+export interface CardAudio {
+  /** Base64. */
+  data: string;
+  /** mediaFilename()'s: the service worker refuses any other. */
+  filename: string;
 }
 
 export async function createDeck(name: string): Promise<void> {
@@ -207,6 +216,10 @@ export async function addSentence(s: SavedSentence): Promise<number> {
 /** Throws DuplicateNote when the deck already has this word in our note type. */
 export async function addNote(card: NewCard): Promise<number> {
   const reading = typeof card.reading === 'string' ? card.reading : toAnkiFurigana(card.reading);
+  // AnkiConnect stores the bytes and writes [sound:…] into the field itself.
+  const media = card.audio
+    ? { audio: [{ data: card.audio.data, filename: card.audio.filename, fields: ['Audio'] }] }
+    : {};
   return add({
     deckName: card.deck,
     modelName: MODEL_NAME,
@@ -222,6 +235,7 @@ export async function addNote(card: NewCard): Promise<number> {
     },
     tags: card.tags,
     options: { allowDuplicate: false, duplicateScope: 'deck' },
+    ...media,
   }, card.deck, card.expression);
 }
 

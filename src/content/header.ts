@@ -1,6 +1,6 @@
 import { icon } from './icons';
 import { logo } from '../logo';
-import { settings, setSetting } from '../settings';
+import { nextRuby, rubyLabel, settings, setSetting } from '../settings';
 
 /**
  * The bar across the top of the player.
@@ -174,9 +174,7 @@ export class Header {
     add('ruby', 'ruby', 'Furigana', () => {
       // Cycles the same three values the settings panel offers, in the order
       // you would want them mid-episode: off, only what you don't know, all.
-      const order = ['never', 'unknown', 'always'] as const;
-      const next = order[(order.indexOf(settings().ruby) + 1) % order.length]!;
-      void setSetting('ruby', next).then(() => this.update());
+      void setSetting('ruby', nextRuby(settings().ruby)).then(() => this.update());
     });
     add('dual', 'captions', 'Second subtitle line', () => {
       void setSetting('dualSubtitles', !settings().dualSubtitles).then(() => this.update());
@@ -269,18 +267,21 @@ export class Header {
         'Lines where only one word is new to you — the easiest to learn from'));
     }
 
-    const setOn = (key: string, on: boolean, title: string): void => {
+    /** `keys` is the button's key, shown in its tooltip and given to assistive tech. */
+    const setOn = (key: string, on: boolean, title: string, keys?: { shown: string; aria: string }): void => {
       const b = this.#buttons.get(key);
       if (!b) return;
       b.classList.toggle('on', on);
-      b.title = title;
+      b.title = keys ? `${title} (${keys.shown})` : title;
       b.setAttribute('aria-label', title);
       b.setAttribute('aria-pressed', String(on));
+      if (keys) b.setAttribute('aria-keyshortcuts', keys.aria);
     };
 
-    setOn('ruby', s.ruby !== 'never', `Furigana: ${s.ruby === 'unknown' ? 'new words' : s.ruby}`);
-    setOn('dual', s.dualSubtitles, s.dualSubtitles ? 'Hide the second line' : 'Show a second line');
-    setOn('sidebar', this.#deps.sidebarOpen(), 'Transcript panel');
+    setOn('ruby', s.ruby !== 'never', `Furigana: ${rubyLabel(s.ruby)}`, { shown: 'R', aria: 'R' });
+    setOn('dual', s.dualSubtitles, s.dualSubtitles ? 'Hide the second line' : 'Show a second line',
+      { shown: '↑', aria: 'ArrowUp' });
+    setOn('sidebar', this.#deps.sidebarOpen(), 'Transcript panel', { shown: 'S', aria: 'S' });
 
     const pin = this.#buttons.get('pin');
     if (pin) {

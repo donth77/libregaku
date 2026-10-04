@@ -1060,11 +1060,12 @@ export class Sidebar {
   }
 
   /** Save or unsave a line from outside the panel — the B key uses this. */
-  async saveLine(line: Line): Promise<void> {
-    await this.#toggleSave(line);
+  /** Save the line, or unsave it if it was saved. Resolves to whether it is saved now. */
+  async saveLine(line: Line): Promise<boolean> {
+    return this.#toggleSave(line);
   }
 
-  async #toggleSave(line: Line): Promise<void> {
+  async #toggleSave(line: Line): Promise<boolean> {
     const c = this.#deps.context(line.start);
     const on = await bookmarks.toggle({
       id: this.#idFor(line.start),
@@ -1087,6 +1088,7 @@ export class Sidebar {
     if (row) this.#paintSave(row);
     this.#onSavedChange?.();
     if (this.#filter === 'saved') this.render();
+    return on;
   }
 
   /** A row's bookmark, drawn to match whether its line is saved. */

@@ -70,6 +70,8 @@ export class FakeAnki {
   refuseWords = new Set<string>();
   /** Runs before each call is answered: a mark made mid-sync, say. */
   onCall: ((action: string, params: Params) => Promise<void> | void) | null = null;
+  /** The media folder: file name → base64. */
+  media = new Map<string, string>();
 
   #id = 1000;
   #clock = 1_700_000_000;
@@ -223,6 +225,12 @@ export class FakeAnki {
         (options.duplicateScope !== 'deck' || n.deck === deck));
       if (clash) throw new Error('cannot create note because it is a duplicate');
     }
+    // AnkiConnect stores each file, then appends [sound:…] to the fields named
+    // — only those the note type has, matched exactly.
+    for (const m of (spec.audio ?? []) as Array<{ data: string; filename: string; fields: string[] }>) {
+      this.media.set(m.filename, m.data);
+      for (const f of m.fields) if (f in values) values[f] += `[sound:${m.filename}]`;
+    }
     return this.add(values, { model, deck, tags: [...(spec.tags as string[])] }).id;
   }
 }
@@ -234,8 +242,9 @@ export class FakeStorage {
 
   readonly api = {
     local: {
-      get: vi.fn(async (keys: string | string[]) => { await tick(); return pick(this.local, keys); }),
+      get: vi.fn(async (keys: string | string[] | null) => { await tick(); return pick(this.local, keys); }),
       set: vi.fn(async (patch: Record<string, unknown>) => { await tick(); Object.assign(this.local, structuredClone(patch)); }),
+      remove: vi.fn(async (keys: string | string[]) => { await tick(); for (const k of [keys].flat()) delete this.local[k]; }),
     },
     sync: {
       get: vi.fn(async (keys: string | string[]) => { await tick(); return pick(this.sync, keys); }),
@@ -252,6 +261,7 @@ export class FakeStorage {
     }
     this.api.local.get.mockImplementation(async (keys) => { await tick(); return pick(this.local, keys); });
     this.api.local.set.mockImplementation(async (patch) => { await tick(); Object.assign(this.local, structuredClone(patch)); });
+    this.api.local.remove.mockImplementation(async (keys) => { await tick(); for (const k of [keys].flat()) delete this.local[k]; });
     this.api.sync.get.mockImplementation(async (keys) => { await tick(); return pick(this.sync, keys); });
     this.api.sync.set.mockImplementation(async (patch) => { Object.assign(this.sync, patch); });
     this.api.sync.remove.mockImplementation(async (key) => { delete this.sync[key]; });
@@ -260,7 +270,9 @@ export class FakeStorage {
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
-function pick(area: Record<string, unknown>, keys: string | string[]): Record<string, unknown> {
+/** chrome.storage's get: the keys asked for, or everything for null. */
+function pick(area: Record<string, unknown>, keys: string | string[] | null): Record<string, unknown> {
+  if (keys === null) return structuredClone(area);
   return Object.fromEntries(
     (Array.isArray(keys) ? keys : [keys]).filter((k) => k in area).map((k) => [k, structuredClone(area[k])]),
   );

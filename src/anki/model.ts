@@ -117,6 +117,38 @@ export function markTag(status: string): string {
 }
 
 /**
+ * What every media file the extension puts in a collection is named with.
+ * The service worker refuses media under any other name: AnkiConnect replaces
+ * a file of the same name, which other notes may be using.
+ */
+export const MEDIA_PREFIX = 'libregaku_';
+
+const MEDIA_TYPES: Record<string, string> = {
+  'audio/mpeg': 'mp3', 'audio/mp3': 'mp3', 'audio/ogg': 'ogg', 'audio/opus': 'opus',
+  'audio/wav': 'wav', 'audio/x-wav': 'wav', 'audio/wave': 'wav', 'audio/aac': 'aac',
+  'audio/mp4': 'm4a', 'audio/x-m4a': 'm4a', 'audio/webm': 'webm', 'audio/flac': 'flac',
+};
+
+/**
+ * A recording's file name in Anki's media folder: ours by its prefix, and the
+ * same for the same word, so carding a word twice stores one file. Brackets
+ * and anything a file system or `[sound:…]` would choke on become `_`.
+ */
+export function mediaFilename(word: string, reading: string | undefined, type: string): string {
+  const safe = (s: string): string =>
+    s.normalize('NFC').replace(/[^\p{L}\p{N}\p{M}ー・-]+/gu, '_').replace(/^_+|_+$/g, '').slice(0, 40);
+  const ext = MEDIA_TYPES[type.split(';')[0]?.trim().toLowerCase() ?? ''] ?? 'mp3';
+  const parts = [safe(word) || 'word', reading && reading !== word ? safe(reading) : ''].filter(Boolean);
+  return `${MEDIA_PREFIX}${parts.join('_')}.${ext}`;
+}
+
+/** Whether a media file name is one the extension would have made. */
+export function isOwnMedia(name: unknown): boolean {
+  return typeof name === 'string' && name.startsWith(MEDIA_PREFIX) && name.length <= 120 &&
+    !/[\\/]|\.\./.test(name);
+}
+
+/**
  * Hierarchical, so Anki can filter at any level: `tag:libregaku` for
  * everything, `tag:libregaku::netflix` for one source.
  */

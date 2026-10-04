@@ -96,6 +96,21 @@ describe('addNote', () => {
     expect((e as Error).message).toBe('Already in Mining.');
   });
 
+  it('hands AnkiConnect a recording to store and play from the Audio field', async () => {
+    await addNote({
+      deck: 'Mining', expression: '猫', reading: '猫[ねこ]', meaning: 'cat', tags: [],
+      audio: { data: 'SUQzBAAAAAAA', filename: 'libregaku_猫_ねこ.mp3' },
+    });
+    expect(added[0]?.audio).toEqual([{ data: 'SUQzBAAAAAAA', filename: 'libregaku_猫_ねこ.mp3', fields: ['Audio'] }]);
+    // AnkiConnect writes [sound:…] into the field itself; the field goes in empty.
+    expect(fieldsOf().Audio).toBe('');
+  });
+
+  it('sends no media when there is no recording', async () => {
+    await addNote({ deck: 'Mining', expression: '猫', reading: '猫', meaning: '', tags: [], audio: null });
+    expect(added[0]).not.toHaveProperty('audio');
+  });
+
   it('does not mistake a missing deck named for duplicates as a duplicate card', async () => {
     vi.mocked(ankiCall).mockRejectedValueOnce(new Error('deck was not found: Duplicates'));
     const e = await addNote({ deck: 'Duplicates', expression: '猫', reading: '猫', meaning: '', tags: [] })

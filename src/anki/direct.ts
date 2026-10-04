@@ -14,7 +14,7 @@
  */
 
 import { ANKI_PORT, ENDPOINT, extensionOrigin } from './endpoint';
-import { MARK_SEARCH } from './model';
+import { MARK_SEARCH, MEDIA_PREFIX, isOwnMedia } from './model';
 
 const VERSION = 6;
 
@@ -97,12 +97,44 @@ const MARKS_ONLY: Record<string, { ids: 'notes' | 'cards'; find: 'findNotes' | '
 };
 
 /**
+ * What is wrong with the media a new note asks AnkiConnect to store, or null.
+ *
+ * AnkiConnect will fetch a URL, or read any path on the computer, into the
+ * collection — and from there into every synced device — and it replaces a
+ * file of the same name that other notes may use. The extension only ever
+ * sends bytes it fetched itself, under a name of its own, so that is all the
+ * relay carries.
+ */
+export function mediaProblem(note: unknown): string | null {
+  if (!note || typeof note !== 'object') return null;
+  for (const kind of ['audio', 'video', 'picture'] as const) {
+    const raw = (note as Record<string, unknown>)[kind];
+    if (raw === undefined || raw === null) continue;
+    for (const m of Array.isArray(raw) ? raw : [raw]) {
+      const { data, url, path, filename } = (m && typeof m === 'object' ? m : {}) as Record<string, unknown>;
+      if (url !== undefined || path !== undefined) return `Libregaku only attaches ${kind} it fetched itself.`;
+      if (typeof data !== 'string' || !data) return `The ${kind} for this note has no data.`;
+      if (!isOwnMedia(filename)) return `Libregaku names the files it adds ${MEDIA_PREFIX}…, and this one is not.`;
+    }
+  }
+  return null;
+}
+
+/**
  * The service worker's side of every AnkiConnect call: only the actions the
- * extension uses, and the ones that touch existing notes only on mark notes.
+ * extension uses, the ones that touch existing notes only on mark notes, and
+ * new notes only with media of the extension's own.
  */
 export async function relay<T>(action: unknown, params: unknown): Promise<AnkiResult<T>> {
   if (!isRelayed(action)) return notRelayed(action);
   const p = params && typeof params === 'object' ? (params as Record<string, unknown>) : {};
+  if (action === 'addNote' || action === 'addNotes') {
+    const notes = action === 'addNote' ? [p.note] : Array.isArray(p.notes) ? (p.notes as unknown[]) : [];
+    for (const note of notes) {
+      const problem = mediaProblem(note);
+      if (problem) return { ok: false, kind: 'refused', error: problem };
+    }
+  }
   const rule = MARKS_ONLY[action];
   if (rule) {
     const raw = p[rule.ids];

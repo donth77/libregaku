@@ -1,3 +1,4 @@
+import { queuedCards } from './anki/card-queue';
 import { probe, type AnkiState } from './anki/client';
 import { ANKI_PORT } from './anki/endpoint';
 import { logo } from './logo';
@@ -122,19 +123,31 @@ async function main(): Promise<void> {
   }
 
   const anki = $('anki');
-  const { text: said, cls: tone } = describeAnki(await probe());
+  const [ankiState, waiting] = await Promise.all([probe(), queuedCards()]);
+  const { text: said, cls: tone } = describeAnki(ankiState, waiting.length);
   anki.className = tone;
   anki.textContent = said;
 }
 
 /**
- * The states the settings panel distinguishes, in one line each.
+ * The states the settings panel distinguishes, in one line each, and how many
+ * cards made while Anki was closed are still waiting to go in.
  *
  * This used to be a yes/no on whether anything answered, so a port held by
  * another program — or AnkiConnect refusing the extension — read "Anki not
  * running" while Anki sat open.
  */
-export function describeAnki(s: AnkiState): { text: string; cls: string } {
+export function describeAnki(s: AnkiState, waiting = 0): { text: string; cls: string } {
+  const said = describeState(s);
+  if (!waiting) return said;
+  const n = `${waiting} card${waiting === 1 ? '' : 's'}`;
+  return {
+    ...said,
+    text: s.kind === 'connected' ? `${said.text} · ${n} still to add` : `${said.text} · ${n} waiting for Anki`,
+  };
+}
+
+function describeState(s: AnkiState): { text: string; cls: string } {
   switch (s.kind) {
     case 'connected':
       return { text: `Anki connected · ${s.cards} card${s.cards === 1 ? '' : 's'} from Libregaku`, cls: 'ok' };

@@ -183,6 +183,33 @@ export interface CardDraft {
   sentence: string;
 }
 
+/**
+ * The card a lookup makes: the dictionary's headword and reading where it has
+ * them, the word as it was said where it does not. One definition for the Add
+ * button and the A key, so the two can never make different cards.
+ */
+export function draftFor(result: LookupResult, token: Token, sentence: string): CardDraft {
+  const top = result.state === 'ok' ? result.entries[0] : undefined;
+  return {
+    expression: top?.word ?? token.lemma ?? token.surface,
+    reading: top?.reading ?? token.reading ?? '',
+    meaning: top?.senses.flatMap((x) => x.glosses).slice(0, 4).join('; ') ?? '',
+    sentence,
+  };
+}
+
+/**
+ * Press the open card's Add button, the way the A key does: the same handler,
+ * and the outcome said on the card exactly as for a click. False when no card
+ * is open.
+ */
+export function pressAdd(): boolean {
+  const b = host?.shadowRoot?.querySelector<HTMLButtonElement>('.tb.add');
+  if (!b) return false;
+  b.click();
+  return true;
+}
+
 interface Context {
   token: Token;
   /** The whole line, for copy-sentence. */
@@ -198,6 +225,8 @@ interface Context {
    * learning only because a card was just added, is not the same fact.
    */
   hasCard?: boolean;
+  /** A card for it is waiting for Anki to open, rather than in Anki. */
+  queued?: boolean;
   /**
    * The card went away, however it went: closed, dismissed with Escape or an
    * outside click, timed out after the cursor left, or replaced by another.
@@ -334,16 +363,16 @@ export function showPopup(
    * silent failure, and mining is a decision the learner should see land.
    */
   const addBtn = button(hasCard ? 'check' : 'plus',
-    hasCard ? 'Already in Anki — add another' : 'Add to Anki', (b) => {
+    hasCard
+      ? ctx.queued ? 'Waiting for Anki to open — add another' : 'Already in Anki — add another'
+      : 'Add to Anki',
+    (b) => {
+      // One card per press, however impatient the second click or key.
+      if (b.classList.contains('busy')) return;
       b.classList.add('busy');
       b.replaceChildren(icon('loader', 16));
       void ctx
-        .onAddCard({
-          expression: word,
-          reading: reading ?? '',
-          meaning: entries[0]?.senses.flatMap((x) => x.glosses).slice(0, 4).join('; ') ?? '',
-          sentence: ctx.sentence,
-        })
+        .onAddCard(draftFor(result, ctx.token, ctx.sentence))
         .then((msg) => {
           say(msg);
           b.replaceChildren(icon('check', 16));
@@ -356,6 +385,8 @@ export function showPopup(
     });
   addBtn.classList.add('add');
   if (hasCard) addBtn.classList.add('has');
+  // Its key, where someone hovering the button will see it (src/content/keys.ts).
+  shortcut(addBtn, 'A', 'A');
 
   // The clipboard refuses without focus or permission, which a video page can
   // withhold; copyText falls back, and either way the result is said aloud.
@@ -450,6 +481,10 @@ export function showPopup(
     const b = document.createElement('button');
     b.className = `mk ${cls}`;
     b.textContent = label;
+    if (next === 'known') {
+      b.title = label;
+      shortcut(b, 'K', 'K');
+    }
     b.setAttribute('aria-pressed', String(ctx.status === next));
     b.addEventListener('click', () => {
       const value = ctx.status === next ? null : next;   // clicking again clears
@@ -471,6 +506,16 @@ export function showPopup(
   onClose = ctx.onClose ?? null;
 
   place(host, card, mount, anchor);
+}
+
+/**
+ * Name a button's key in its tooltip, and to assistive tech. The label it is
+ * read out by stays as it was: the key is announced as a shortcut, not as
+ * part of the button's name.
+ */
+export function shortcut(b: HTMLElement, shown: string, aria: string): void {
+  b.title = `${b.title} (${shown})`;
+  b.setAttribute('aria-keyshortcuts', aria);
 }
 
 /** A box in viewport coordinates — what getBoundingClientRect returns. */

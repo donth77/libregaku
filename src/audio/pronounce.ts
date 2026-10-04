@@ -80,17 +80,34 @@ export interface Spoken {
   human: boolean;
 }
 
+/** A recording, as bytes: to play now, or to put on a card. */
+export interface Recording {
+  /** Base64 — how messages carry bytes, and how AnkiConnect takes media. */
+  data: string;
+  /** Decoded size, in bytes. */
+  size: number;
+  type: string;
+  source: 'jpod101' | 'custom';
+}
+
 let current: HTMLAudioElement | null = null;
+let currentUrl: string | null = null;
 
 function stop(): void {
   current?.pause();
   current = null;
+  if (currentUrl) URL.revokeObjectURL(currentUrl);
+  currentUrl = null;
   if ('speechSynthesis' in window) speechSynthesis.cancel();
 }
 
-async function playUrl(url: string): Promise<void> {
+async function play(rec: Recording): Promise<void> {
   stop();
-  const audio = new Audio(url);
+  const bin = atob(rec.data);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  currentUrl = URL.createObjectURL(new Blob([bytes], { type: rec.type }));
+  const audio = new Audio(currentUrl);
   current = audio;
   await audio.play();
 }
@@ -114,6 +131,12 @@ export function jpodQuery(word: string, reading?: string): string {
   }).toString();
 }
 
+/** The size of what a base64 string decodes to, without decoding it. */
+export function decodedSize(b64: string): number {
+  const pad = b64.endsWith('==') ? 2 : b64.endsWith('=') ? 1 : 0;
+  return Math.floor((b64.length * 3) / 4) - pad;
+}
+
 /**
  * Recordings are fetched by the service worker, not from here. A content
  * script's fetch is bound by the host page's CORS policy, and neither jpod101
@@ -121,41 +144,37 @@ export function jpodQuery(word: string, reading?: string): string {
  * script every recording failed as "Failed to fetch", and synthesis quietly
  * took its place. Host permissions apply in the worker; CORS does not.
  */
-async function fetchBlob(url: string): Promise<{ ok: true; blob: Blob } | { ok: false; reason: string }> {
+async function fetchBytes(url: string): Promise<{ ok: true; data: string; size: number; type: string } | { ok: false; reason: string }> {
   const r = (await chrome.runtime.sendMessage({ type: 'fetch-audio', url })) as
     | { ok: boolean; status?: number; type?: string; bytes?: string; error?: string }
     | undefined;
   if (!r) return { ok: false, reason: 'no reply from the service worker' };
   if (!r.ok || !r.bytes) return { ok: false, reason: r.error ?? `HTTP ${r.status}` };
-  const bin = atob(r.bytes);
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return { ok: true, blob: new Blob([bytes], { type: r.type ?? 'audio/mpeg' }) };
+  return { ok: true, data: r.bytes, size: decodedSize(r.bytes), type: r.type ?? 'audio/mpeg' };
 }
 
-/** Fetch as a blob so the body can be inspected before anything is played. */
-async function tryJpod(word: string, reading?: string): Promise<string | null> {
+/** Fetched as bytes so the body can be inspected before anything is played. */
+async function tryJpod(word: string, reading?: string): Promise<Recording | null> {
   const q = jpodQuery(word, reading);
   const say = (verdict: string): void =>
     console.log(`%c[libregaku]%c audio ${verdict} · ${q}`, 'color:#8AA2E8', '');
 
   try {
-    const got = await fetchBlob(`${JPOD}?${q}`);
+    const got = await fetchBytes(`${JPOD}?${q}`);
     if (!got.ok) {
       say(got.reason);
       return null;
     }
-    const blob = got.blob;
-    if (blob.size === JPOD_MISSING_BYTES) {
+    if (got.size === JPOD_MISSING_BYTES) {
       say('not in jpod101');
       return null;
     }
-    if (blob.size < 512) {
-      say(`suspiciously small (${blob.size}b)`);
+    if (got.size < 512) {
+      say(`suspiciously small (${got.size}b)`);
       return null;
     }
-    say(`recording ${blob.size}b`);
-    return URL.createObjectURL(blob);
+    say(`recording ${got.size}b`);
+    return { data: got.data, size: got.size, type: got.type, source: 'jpod101' };
   } catch (e) {
     // A blocked host reports identically to a dead network here, and the
     // fallback hides it — so name it rather than failing quietly.
@@ -169,19 +188,60 @@ async function tryJpod(word: string, reading?: string): Promise<string | null> {
  *   https://example.org/audio/{word}.mp3
  *   https://example.org/api?w={word}&r={reading}
  */
-async function tryTemplate(template: string, word: string, reading?: string): Promise<string | null> {
+async function tryTemplate(template: string, word: string, reading?: string): Promise<Recording | null> {
   try {
     const url = template
       .replaceAll('{word}', encodeURIComponent(word))
       .replaceAll('{reading}', encodeURIComponent(reading ?? word));
-    const got = await fetchBlob(url);
-    if (!got.ok) return null;
-    const blob = got.blob;
-    if (blob.size < 512) return null;
-    return URL.createObjectURL(blob);
+    const got = await fetchBytes(url);
+    if (!got.ok || got.size < 512) return null;
+    return { data: got.data, size: got.size, type: got.type, source: 'custom' };
   } catch {
     return null;
   }
+}
+
+async function storedTemplate(): Promise<string | null> {
+  try {
+    const template = (await chrome.storage.sync.get(TEMPLATE_KEY))[TEMPLATE_KEY];
+    return typeof template === 'string' && template.includes('{word}') ? template : null;
+  } catch {
+    return null;   // storage unavailable; the caller falls back
+  }
+}
+
+async function lookFor(word: string, reading: string | undefined, lang: string): Promise<Recording | null> {
+  if (lang === 'ja') {
+    const jpod = await tryJpod(word, reading);
+    if (jpod) return jpod;
+  }
+  const template = await storedTemplate();
+  return template ? tryTemplate(template, word, reading) : null;
+}
+
+/** Recordings found this session, so pronouncing a word and then carding it fetches it once. */
+const found = new Map<string, Recording>();
+const KEEP = 40;
+
+/**
+ * A human recording of the word, or null when no source has one.
+ *
+ * Never synthesis. A synthesised voice can be played but not stored on a
+ * card, and should not be: it is the poorest model there is to imitate.
+ * JapanesePod101 has Japanese only, so other languages go straight to the
+ * learner's own source, if they set one.
+ */
+export async function findRecording(word: string, reading?: string, lang = 'ja'): Promise<Recording | null> {
+  const key = `${lang}|${word}|${reading ?? ''}`;
+  const known = found.get(key);
+  if (known) return known;
+  // Misses are not kept: a network that failed once may not fail again.
+  const rec = await lookFor(word, reading, lang);
+  if (rec) {
+    found.set(key, rec);
+    if (found.size > KEEP) found.delete(found.keys().next().value as string);
+  }
+  return rec;
 }
 
 function synthesise(word: string): void {
@@ -197,26 +257,11 @@ function synthesise(word: string): void {
 }
 
 export async function pronounce(word: string, reading?: string): Promise<Spoken> {
-  const jpod = await tryJpod(word, reading);
-  if (jpod) {
-    await playUrl(jpod);
-    return { source: 'jpod101', human: true };
+  const rec = await findRecording(word, reading);
+  if (rec) {
+    await play(rec);
+    return { source: rec.source, human: true };
   }
-
-  try {
-    const got = await chrome.storage.sync.get(TEMPLATE_KEY);
-    const template = got[TEMPLATE_KEY];
-    if (typeof template === 'string' && template.includes('{word}')) {
-      const custom = await tryTemplate(template, word, reading);
-      if (custom) {
-        await playUrl(custom);
-        return { source: 'custom', human: true };
-      }
-    }
-  } catch {
-    /* storage unavailable; synthesis still covers us */
-  }
-
   synthesise(word);
   return { source: 'synthesis', human: false };
 }

@@ -76,6 +76,13 @@ export const ASSUMPTIONS: Assumption[] = [
     fallback: 'The panel runs full height; closing it with S uncovers them',
   },
   {
+    id: 'yt.keys',
+    site: 'youtube',
+    claim: "YouTube's keyboard shortcuts listen below the document's capture phase — on the document's bubble phase or the player — so a key the extension takes there never reaches them, focused player or not",
+    breaks: 'The line keys also do what YouTube does with them: ← and → seek five seconds too, ↑ and ↓ change the volume',
+    fallback: null,
+  },
+  {
     id: 'yt.caption-dom',
     site: 'youtube',
     claim: 'Rendered captions live in .ytp-caption-window-container / .ytp-caption-segment',
@@ -93,8 +100,8 @@ export const ASSUMPTIONS: Assumption[] = [
     id: 'audio.jpod101',
     site: 'external',
     claim: 'assets.languagepod101.com/dictionary/japanese/audiomp3.php serves human recordings, keyed by kanji + hiragana, returning a fixed 52,288-byte placeholder for words it lacks — and every host it redirects through (currently cdn.innovativelanguage.com) is listed in host_permissions',
-    breaks: 'Every pronunciation silently degrades to synthesis — and silently is the problem: nothing looks broken. A redirect to a host missing from host_permissions, or from AUDIO_HOSTS in src/audio/pronounce.ts, fails the same way',
-    fallback: 'speechSynthesis, which flattens pitch accent',
+    breaks: 'Every pronunciation silently degrades to synthesis, and new cards go in without a recording — and silently is the problem: nothing looks broken. A redirect to a host missing from host_permissions, or from AUDIO_HOSTS in src/audio/pronounce.ts, fails the same way',
+    fallback: 'speechSynthesis, which flattens pitch accent; a card is added without audio',
   },
   {
     id: 'dict.jmdict-release',
@@ -164,6 +171,13 @@ export const ASSUMPTIONS: Assumption[] = [
     site: 'netflix',
     claim: 'Rendered subtitles live in .player-timedtext / .player-timedtext-text-container, with ruby readings in <rt> elements that are skipped',
     breaks: 'The DOM fallback on Netflix, used when no manifest reaches us',
+    fallback: null,
+  },
+  {
+    id: 'nf.keys',
+    site: 'netflix',
+    claim: "Unverified: Netflix's keyboard shortcuts listen below the document's capture phase, so a key the extension takes there never reaches them",
+    breaks: 'The line keys also do what Netflix does with them: ← and → skip ten seconds too, ↑ and ↓ change the volume',
     fallback: null,
   },
   {
@@ -244,6 +258,13 @@ export const ASSUMPTIONS: Assumption[] = [
     fallback: null,
   },
   {
+    id: 'anki.media',
+    site: 'external',
+    claim: 'addNote stores each file in note.audio from its base64 data under its filename, and appends [sound:filename] to the fields it names',
+    breaks: 'Pronunciation on new cards',
+    fallback: 'The card is still added, without a recording',
+  },
+  {
     id: 'anki.cors-default',
     site: 'external',
     claim: 'AnkiConnect\'s default webCorsOriginList admits a chrome-extension:// origin',
@@ -272,6 +293,7 @@ export const HUMAN: Record<string, string> = {
     'Readings and dictionary forms are off: the language analyser didn\'t load. Words match your cards by exact spelling only.',
   'mark-not-saved': "Couldn't save that mark. It applies until you reload, then it's lost.",
   'marks-not-synced': "Couldn't save your marks to Anki. They're kept in this browser and will be tried again.",
+  'cards-not-added': "Anki wouldn't take some of the cards kept while it was closed. They're still kept, and will be tried again.",
 };
 
 export function describeFailure(id: string): string {

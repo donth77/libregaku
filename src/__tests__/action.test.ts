@@ -9,6 +9,8 @@ import type { AnkiState } from '../anki/client';
 
 /** What the service worker answers for each AnkiConnect action. */
 let answers: Record<string, unknown>;
+/** chrome.storage.local, where cards made while Anki was closed wait. */
+let local: Record<string, unknown>;
 
 /** The parts of action.html the script reaches for. */
 const PAGE = `
@@ -26,6 +28,7 @@ function mount(): void {
       openOptionsPage: () => {},
       sendMessage: async (msg: { action: string }) => answers[msg.action] ?? { ok: false, kind: 'refused', error: 'unexpected' },
     },
+    storage: { local: { get: async () => ({ ...local }) } },
   });
 }
 
@@ -40,6 +43,7 @@ async function footer(): Promise<HTMLElement> {
 
 beforeEach(() => {
   answers = {};
+  local = {};
   mount();
 });
 
@@ -70,6 +74,14 @@ describe('the Anki line', () => {
   it('keeps "not running" for when nothing is listening', async () => {
     answers.version = { ok: false, kind: 'offline', offline: true };
     expect((await footer()).textContent).toBe('Anki not running — words show as unknown');
+  });
+
+  it('says how many cards are waiting for Anki to open', async () => {
+    answers.version = { ok: false, kind: 'offline', offline: true };
+    const waiting = (expression: string) => ({ card: { deck: 'Mining', expression }, word: expression, at: 1 });
+    local['libregaku.cards.pending.a'] = waiting('猫');
+    local['libregaku.cards.pending.b'] = waiting('犬');
+    expect((await footer()).textContent).toBe('Anki not running — words show as unknown · 2 cards waiting for Anki');
   });
 });
 

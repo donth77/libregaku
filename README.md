@@ -21,13 +21,17 @@ become yours.
 - **Look-up on hover or click** — definitions, readings, a common-word marker and what
   the endings do, with furigana for Japanese.
 - **Anki integration** — cards carry the sentence and its translation, the reading,
-  definition, timestamp and a link back to that moment. Audio and screenshots are
-  planned, not built.
+  definition, a recording of the word where JapanesePod101 has one, the timestamp and
+  a link back to that moment. Screenshots are planned, not built. A card made while
+  Anki is closed waits in the browser and goes in when Anki next answers.
+- **Keyboard** — ← and → move a line at a time, ↓ plays the line again, ↑ shows or
+  hides the second line, A adds a card for the word looked up, K marks it known, R
+  steps through furigana, B saves the line, S shows the panel. Settings lists them.
 - **Your word list is your Anki collection.** What you know is read from Anki, so it
   stays consistent everywhere without an account. Words you mark by hand — known,
   tracked, ignored — are saved into Anki too, as hidden notes that never come up for
   review, so they follow your collection to every device. Libregaku keeps only your
-  settings and saved lines in the browser.
+  settings, saved lines, and any cards still waiting for Anki in the browser.
 
 ## Requirements
 

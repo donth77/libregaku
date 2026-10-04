@@ -16,7 +16,9 @@ vi.stubGlobal('chrome', {
   runtime: { sendMessage: async () => ({}) },
 });
 
-import { closePopup, closePopupSoon, placeCard, popupIsOpen, showPopup, type Box } from '../popup';
+import {
+  closePopup, closePopupSoon, draftFor, placeCard, popupIsOpen, pressAdd, showPopup, type Box,
+} from '../popup';
 import type { LookupResult } from '../../dict/client';
 
 const box = (left: number, top: number, width: number, height: number): Box =>
@@ -186,5 +188,55 @@ describe('the card\'s controls', () => {
     expect(down(root.querySelector('.mk.known')!)).toBe(true);
     expect(down(root.querySelector('.body li')!)).toBe(false);
     expect(root.querySelector('.card')?.getAttribute('aria-label')).toBe('勉強 — dictionary');
+  });
+});
+
+describe('adding from the card', () => {
+  it("drafts the dictionary's headword and reading, or the word as said when there is no entry", () => {
+    const said = { surface: '勉強して', lemma: '勉強する', reading: 'ベンキョウシテ', start: 0, end: 4 };
+    expect(draftFor(RESULT, said, '毎日勉強して')).toEqual({
+      expression: '勉強', reading: 'べんきょう', meaning: 'study; diligence', sentence: '毎日勉強して',
+    });
+    expect(draftFor({ state: 'empty' } as LookupResult, said, 'x')).toEqual({
+      expression: '勉強する', reading: 'ベンキョウシテ', meaning: '', sentence: 'x',
+    });
+  });
+
+  it('is what the A key presses, when a card is open', async () => {
+    expect(pressAdd()).toBe(false);
+    const onAddCard = vi.fn(async () => 'added to Mining');
+    const card = open({ onAddCard });
+    expect(pressAdd()).toBe(true);
+    await flush();
+    expect(onAddCard).toHaveBeenCalledWith(expect.objectContaining({ expression: '勉強', reading: 'べんきょう' }));
+    expect(card.querySelector('.toast')?.textContent).toBe('added to Mining');
+  });
+
+  it('adds one card however many times it is pressed while adding', async () => {
+    let finish!: (msg: string) => void;
+    const onAddCard = vi.fn(() => new Promise<string>((r) => { finish = r; }));
+    open({ onAddCard });
+    pressAdd();
+    pressAdd();
+    finish('added to Mining');
+    await flush();
+    expect(onAddCard).toHaveBeenCalledOnce();
+  });
+
+  it('says a card is waiting for Anki rather than in it', () => {
+    const card = open({ hasCard: true, queued: true });
+    expect(card.querySelector('.tb.add')?.getAttribute('title')).toBe('Waiting for Anki to open — add another (A)');
+  });
+
+  it('names its keys in the tooltips, without changing what the buttons are called', () => {
+    const card = open();
+    const add = card.querySelector('.tb.add')!;
+    expect(add.getAttribute('title')).toBe('Add to Anki (A)');
+    expect(add.getAttribute('aria-label')).toBe('Add to Anki');
+    expect(add.getAttribute('aria-keyshortcuts')).toBe('A');
+    const known = card.querySelector('.mk.known')!;
+    expect(known.getAttribute('title')).toBe('Known (K)');
+    expect(known.getAttribute('aria-keyshortcuts')).toBe('K');
+    expect(card.querySelector('.mk.track')?.hasAttribute('aria-keyshortcuts')).toBe(false);
   });
 });

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { MODEL, ROOT_TAG, fieldHtml, furiganaField, keyField, tagsFor, toAnkiFurigana } from '../model';
+import {
+  MODEL, ROOT_TAG, fieldHtml, furiganaField, isOwnMedia, keyField, mediaFilename, tagsFor, toAnkiFurigana,
+} from '../model';
 
 describe('tagsFor', () => {
   it('tags hierarchically so Anki can filter at any level', () => {
@@ -75,6 +77,36 @@ describe('MODEL', () => {
   it('keeps optional fields conditional so empty ones leave no blank rows', () => {
     for (const f of ['Audio', 'Sentence']) {
       expect(MODEL.cardTemplates[0]?.Front).toContain(`{{#${f}}}`);
+    }
+  });
+});
+
+describe('media file names', () => {
+  it('names a recording by its word and reading, under our prefix', () => {
+    expect(mediaFilename('猫', 'ねこ', 'audio/mpeg')).toBe('libregaku_猫_ねこ.mp3');
+    expect(mediaFilename('食べる', 'たべる', 'audio/ogg; codecs=opus')).toBe('libregaku_食べる_たべる.ogg');
+  });
+
+  it('leaves out a reading that is the word itself', () => {
+    expect(mediaFilename('やばい', 'やばい', 'audio/mpeg')).toBe('libregaku_やばい.mp3');
+    expect(mediaFilename('やばい', undefined, 'audio/mpeg')).toBe('libregaku_やばい.mp3');
+  });
+
+  it("keeps out what a file system or Anki's [sound:] tag would choke on", () => {
+    const name = mediaFilename('a/b]c[d', 'x\\y:z', 'audio/mpeg');
+    expect(name).toBe('libregaku_a_b_c_d_x_y_z.mp3');
+    expect(isOwnMedia(name)).toBe(true);
+    expect(mediaFilename('???', '', 'audio/mpeg')).toBe('libregaku_word.mp3');
+  });
+
+  it('falls back to mp3 for a type it does not know', () => {
+    expect(mediaFilename('猫', 'ねこ', 'application/octet-stream')).toBe('libregaku_猫_ねこ.mp3');
+  });
+
+  it('recognises only names it would have made', () => {
+    expect(isOwnMedia('libregaku_猫.mp3')).toBe(true);
+    for (const name of ['猫.mp3', 'libregaku_../x.mp3', 'libregaku_a/b.mp3', `libregaku_${'x'.repeat(200)}.mp3`, 42, null]) {
+      expect(isOwnMedia(name)).toBe(false);
     }
   });
 });

@@ -65,8 +65,9 @@ src/adapters/           one module per subtitle source (youtube, netflix), their
                         parsers (ttml, json3), the DOM-reading fallback
 src/morphology/         Segmenter implementations, merge rules, furigana alignment
 src/dict/               JMdict download, storage and lookup; remote fallbacks
-src/anki/               AnkiConnect client, note type, word status
-src/audio/              pronunciation
+src/anki/               AnkiConnect client, note type, word status, hand marks, cards
+                        waiting for Anki
+src/audio/              pronunciation, and the recording a new card carries
 src/content/
   inject.ts             YouTube page world: captures signed caption URLs, reads the player
   inject-netflix.ts     Netflix page world: reads the manifest, drives the player's seek
@@ -74,6 +75,7 @@ src/content/
   renderer.ts           subtitle overlay
   sidebar.ts            transcript panel, saved lines, settings
   popup.ts              lookup card
+  keys.ts               the player's keys
   header.ts             bar across the top of the player
   player-inset.ts       moves the picture beside the open panel
 src/options.*           options page (Anki setup)
@@ -104,6 +106,12 @@ at once and queues the change; each sync with Anki flushes the queue and reads e
 mark back, so a mark made on one device reaches the others through Anki's own sync.
 The status searches exclude the mark note type, and the service worker lets the page
 delete, retag or suspend only notes of that type.
+
+Cards made while Anki is closed are not status either: they are writes that have not
+happened yet (`src/anki/card-queue.ts`), one storage key each, sent the next time Anki
+answers. The page shows their words as on their way, as it does a card just added.
+New notes may carry media only as bytes the extension fetched, under a `libregaku_`
+file name — the service worker refuses anything AnkiConnect would fetch or read itself.
 
 **2. The tokenizer runs in the offscreen document. Only there.**
 OPFS inside a content script belongs to the *host page's* origin — wrong storage, and

@@ -126,6 +126,24 @@ describe('settings panel selects', () => {
     }
   });
 
+  it('lists the player\'s keys, so they can be found', () => {
+    const root = buildSettings(() => {});
+    const keys = Array.from(root.querySelectorAll('.keys dt')).map((dt) => dt.textContent);
+    expect(keys).toEqual(['←→', '↓', '↑', 'A', 'K', 'R', 'B', 'S', 'Esc']);
+    expect(root.querySelector('.keys dd')?.textContent).toBe('The line before, the line after');
+  });
+
+  it('offers pronunciation on cards, on unless turned off', () => {
+    const root = buildSettings(() => {});
+    expect(switchFor(root, 'Pronunciation on cards').checked).toBe(true);
+  });
+
+  it('says that cards wait for Anki while it is closed', async () => {
+    const root = buildSettings(() => {});
+    await flush();
+    expect(root.querySelector('.state')?.textContent).toContain('cards you add wait here, and go in when it opens');
+  });
+
   // Once relied on an earlier test having chosen these values; it now makes
   // its own choices, so it passes alone and in any order.
   it('shows the stored value when rebuilt', async () => {

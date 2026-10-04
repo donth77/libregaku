@@ -96,8 +96,10 @@ beforeEach(async () => {
         remove: async (key: string) => { delete stored[key]; },
       },
       local: {
-        get: read(local),
+        // null asks for everything, as the waiting-card queue does.
+        get: async (keys: string | string[] | null) => (keys === null ? { ...local } : read(local)(keys)),
         set: async (patch: Record<string, unknown>) => { Object.assign(local, patch); },
+        remove: async (keys: string | string[]) => { for (const k of [keys].flat()) delete local[k]; },
       },
       onChanged: { addListener: () => {} },
     },
@@ -244,5 +246,159 @@ describe('a card mined from the player', () => {
     // must not move the card's timestamp.
     expect(card?.source).toContain('Test video · 0:00');
     expect(card?.source).not.toContain('0:07');
+  });
+});
+
+/** A key pressed on the page, as the browser would send it. */
+function key(k: string, more: KeyboardEventInit = {}): KeyboardEvent {
+  const e = new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true, ...more });
+  document.body.dispatchEvent(e);
+  return e;
+}
+
+/** The message the player is showing for a key, if any. */
+const flashed = (): string => document.querySelector('.libregaku-flash')?.shadowRoot?.textContent ?? '';
+
+/** Load a video with these lines, a clock the test sets, and a player on screen. */
+async function lines(texts: Array<[number, number, string]>): Promise<{ clock: { now: number }; play: ReturnType<typeof vi.fn> }> {
+  api.navigate();
+  api.cues = { ja: texts.map(([start, end, text]) => ({ start, end, text })) };
+  await vi.advanceTimersByTimeAsync(700);
+  const clock = { now: 0 };
+  const video = document.querySelector('video')!;
+  Object.defineProperty(video, 'currentTime', { get: () => clock.now, set: (t: number) => { clock.now = t; }, configurable: true });
+  const play = vi.fn(async () => {});
+  video.play = play;
+  const player = document.querySelector<HTMLElement>('#movie_player')!;
+  player.getBoundingClientRect = () => ({ top: 0, bottom: 400, height: 400, left: 0, right: 700, width: 700, x: 0, y: 0, toJSON: () => ({}) });
+  return { clock, play };
+}
+
+describe('keys in the player', () => {
+  it('moves a line at a time with the arrows, and plays the line it lands on', async () => {
+    const { clock, play } = await lines([[0, 2, '食べる'], [3, 5, '飲む'], [6, 8, '寝る']]);
+    clock.now = 1;
+    const e = key('ArrowRight');
+    expect(e.defaultPrevented).toBe(true);
+    expect(clock.now).toBe(3);
+    expect(play).toHaveBeenCalled();
+
+    clock.now = 4;
+    key('ArrowDown');
+    expect(clock.now).toBe(3);
+    clock.now = 4;
+    key('ArrowLeft');
+    expect(clock.now).toBe(0);
+  });
+
+  it('steps on from where it sent playback, even before the player gets there', async () => {
+    await lines([[0, 2, '食べる'], [3, 5, '飲む'], [6, 8, '寝る']]);
+    // A player that takes its time: the seek has not landed when the next key comes.
+    const seeks: number[] = [];
+    const video = document.querySelector('video')!;
+    Object.defineProperty(video, 'currentTime', { get: () => 1, set: (t: number) => { seeks.push(t); }, configurable: true });
+    key('ArrowRight');
+    key('ArrowRight');
+    expect(seeks).toEqual([3, 6]);
+  });
+
+  it('leaves the arrows to the page when typing, with shift, or with the player scrolled away', async () => {
+    const { clock } = await lines([[0, 2, '食べる'], [3, 5, '飲む']]);
+    clock.now = 1;
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    const typed = new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true });
+    input.dispatchEvent(typed);
+    expect(typed.defaultPrevented).toBe(false);
+    expect(key('ArrowRight', { shiftKey: true }).defaultPrevented).toBe(false);
+    document.querySelector<HTMLElement>('#movie_player')!.getBoundingClientRect = () =>
+      ({ top: -900, bottom: -500, height: 400, left: 0, right: 700, width: 700, x: 0, y: -900, toJSON: () => ({}) });
+    expect(key('ArrowRight').defaultPrevented).toBe(false);
+    expect(clock.now).toBe(1);
+  });
+
+  it('steps furigana and the second line, and says what it did', async () => {
+    await lines([[0, 2, '食べる']]);
+    key('r');
+    expect((stored['libregaku.settings'] as Record<string, unknown>).ruby).toBe('always');
+    expect(flashed()).toContain('Furigana: always');
+    key('ArrowUp');
+    expect((stored['libregaku.settings'] as Record<string, unknown>).dualSubtitles).toBe(false);
+    expect(flashed()).toContain('Second line off');
+  });
+
+  it("adds the open card's word with A, through the card", async () => {
+    const popup = await openWord();
+    key('a');
+    await flush();
+    expect(api.addNote).toHaveBeenCalledOnce();
+    expect(popup.querySelector('.toast')?.textContent).toContain('added to Mining');
+  });
+
+  it('adds the last word looked up once its card has closed, and says so', async () => {
+    await openWord();
+    key('Escape');
+    expect(document.querySelector('.libregaku-popup')).toBeNull();
+    key('a');
+    await flush();
+    expect(api.addNote).toHaveBeenCalledOnce();
+    expect(flashed()).toContain('食べる · added to Mining');
+  });
+
+  it('asks for a word first when nothing has been looked up', async () => {
+    key('a');
+    await flush();
+    expect(api.addNote).not.toHaveBeenCalled();
+    expect(flashed()).toContain('Look a word up first');
+  });
+
+  it("marks the open card's word known with K, and leaves K to YouTube otherwise", async () => {
+    // No card open: K is YouTube's play/pause.
+    expect(key('k').defaultPrevented).toBe(false);
+    await openWord();
+    expect(key('k').defaultPrevented).toBe(true);
+    await flush();
+    expect(token().dataset.s).toBe('known');
+    expect(document.querySelector('.libregaku-popup')).toBeNull();
+    expect(flashed()).toContain('marked known');
+  });
+});
+
+describe('a card made while Anki is closed', () => {
+  it('waits in the browser, shows as on its way, and goes in when Anki answers', async () => {
+    const { AnkiUnavailable } = await import('../../anki/rpc');
+    api.addNote.mockRejectedValueOnce(new AnkiUnavailable('Nothing is listening on port 8765.'));
+    const popup = await openWord();
+    popup.querySelector<HTMLButtonElement>('.tb.add')!.click();
+    await flush();
+    await flush();
+
+    const waiting = Object.keys(local).filter((k) => k.startsWith('libregaku.cards.pending.'));
+    expect(waiting).toHaveLength(1);
+    expect(popup.querySelector('.toast')?.textContent).toContain('goes to Mining when it opens');
+    expect(token().dataset.s).toBe('learning');
+    expect(summary()).toContain('0 new');
+
+    // Anki opens: it answers, and the next read of word status sends the card.
+    vi.stubGlobal('chrome', {
+      ...(globalThis as unknown as { chrome: object }).chrome,
+      runtime: {
+        onMessage: { addListener: () => {} },
+        sendMessage: async (msg: { type?: string; action?: string }) => {
+          if (msg.type === 'anki' && msg.action === 'version') return { ok: true, result: 6 };
+          if (msg.type === 'anki' && msg.action === 'createDeck') return { ok: true, result: 1 };
+          return { ok: false, kind: 'offline', offline: true };
+        },
+      },
+    });
+    api.buildStatusMap.mockResolvedValue(snapshot('learning'));
+    const { setSetting } = await import('../../settings');
+    await setSetting('statusScope', 'Japanese');
+    await vi.advanceTimersByTimeAsync(7000);
+
+    expect(api.addNote).toHaveBeenCalledTimes(2);
+    expect((api.addNote.mock.calls[1]?.[0] as Record<string, unknown>).expression).toBe('食べる');
+    expect(Object.keys(local).filter((k) => k.startsWith('libregaku.cards.pending.'))).toEqual([]);
+    expect(token().dataset.s).toBe('learning');
   });
 });
