@@ -1,6 +1,6 @@
 import type { OverrideStatus, Status } from '../anki/status';
 import { pronounce } from '../audio/pronounce';
-import type { LookupResult } from '../dict/client';
+import type { Characters, LookupResult } from '../dict/client';
 import { readablePos } from '../dict/pos';
 import type { Token } from '../morphology/types';
 import { icon } from './icons';
@@ -89,6 +89,33 @@ const STYLE = `
     text-transform: uppercase;
   }
   .empty { padding: 16px; color: #838DA8; }
+  .chars {
+    display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: baseline;
+    gap: 7px 12px; padding: 10px 16px 12px; border-top: 1px solid #212939;
+  }
+  .chars-head {
+    grid-column: 1 / -1; font: 600 11px/1.4 ui-monospace, monospace; letter-spacing: .07em;
+    text-transform: uppercase; color: #8A94AF;
+  }
+  .kanji { font: 500 24px/1.1 "Hiragino Mincho ProN", "Yu Mincho", serif; color: #E8ECF6; }
+  .kanji-mean { font-size: 13.5px; line-height: 1.4; color: #C7CFE2; }
+  .kanji-read { display: block; font-size: 12px; line-height: 1.5; color: #8AA2E8; }
+  .also { padding: 10px 16px 12px; border-top: 1px solid #212939; }
+  .also-head {
+    font: 600 11px/1.4 ui-monospace, monospace; letter-spacing: .07em;
+    text-transform: uppercase; color: #8A94AF; margin-bottom: 4px;
+  }
+  .also-line {
+    display: flex; gap: 10px; align-items: baseline; width: calc(100% + 12px);
+    margin: 0 -6px; padding: 5px 6px; border: 0; border-radius: 6px;
+    background: none; color: #C7CFE2; text-align: left; cursor: pointer;
+    font: 14px/1.5 system-ui, -apple-system, "Hiragino Sans", sans-serif;
+  }
+  .also-line:hover { background: #1B2234; color: #E8ECF6; }
+  .also-line:focus-visible { outline: 2px solid #8AA2E8; outline-offset: -2px; }
+  .also-line .at { flex: none; font: 500 11.5px/1 ui-monospace, monospace; color: #6B7490; font-variant-numeric: tabular-nums; }
+  .also-line b { font-weight: 600; color: #E8ECF6; box-shadow: inset 0 -2px 0 #8AA2E8; }
+  .also-more { font-size: 12px; color: #6B7490; padding: 4px 0 0; }
   /*
    * Inside the card, over the status row while it shows. It used to hang
    * below the card, which near the bottom of a player was outside it, and an
@@ -228,6 +255,15 @@ interface Context {
   /** A card for it is waiting for Anki to open, rather than in Anki. */
   queued?: boolean;
   /**
+   * The other lines of this video the word is in, once found. Shown when it
+   * arrives, so a long transcript never holds up the definition.
+   */
+  elsewhere?: Promise<Array<{ start: number; text: string; match: string }>>;
+  /** Play from one of those lines. */
+  onSeek?: (start: number) => void;
+  /** The characters the word is written with, once looked up. */
+  characters?: Promise<Characters>;
+  /**
    * The card went away, however it went: closed, dismissed with Escape or an
    * outside click, timed out after the cursor left, or replaced by another.
    */
@@ -360,7 +396,7 @@ export function showPopup(
   /*
    * Adding a card is the point of the whole tool, so it is the widest control
    * and it states its outcome. A silent success is indistinguishable from a
-   * silent failure, and mining is a decision the learner should see land.
+   * silent failure, and making a card is a decision the learner should see land.
    */
   const addBtn = button(hasCard ? 'check' : 'plus',
     hasCard
@@ -438,6 +474,19 @@ export function showPopup(
     body.appendChild(ol);
   }
 
+  if (ctx.characters) {
+    const chars = document.createElement('div');
+    chars.className = 'chars';
+    chars.hidden = true;
+    body.appendChild(chars);
+    const mine = host;
+    void ctx.characters.then((c) => {
+      if (host !== mine || !c.items.length) return;
+      fillCharacters(chars, c);
+      chars.hidden = false;
+    }, () => {});
+  }
+
   // The inflection trace: what this token was built from, and where it leads.
   const { parts, lemma, surface, inflections } = ctx.token;
   if (parts?.length && lemma && lemma !== surface) {
@@ -461,6 +510,19 @@ export function showPopup(
       tr.appendChild(g);
     }
     body.appendChild(tr);
+  }
+  if (ctx.elsewhere) {
+    const also = document.createElement('div');
+    also.className = 'also';
+    also.hidden = true;
+    body.appendChild(also);
+    const mine = host;
+    void ctx.elsewhere.then((lines) => {
+      // The card may have closed, or become another word's, meanwhile.
+      if (host !== mine || !lines.length) return;
+      fillAlso(also, lines, ctx.onSeek);
+      also.hidden = false;
+    }, () => {});
   }
   card.appendChild(body);
 
@@ -516,6 +578,91 @@ export function showPopup(
 export function shortcut(b: HTMLElement, shown: string, aria: string): void {
   b.title = `${b.title} (${shown})`;
   b.setAttribute('aria-keyshortcuts', aria);
+}
+
+/**
+ * Each character of the word: what it means, and how it reads. The readings
+ * are the dictionary's, dots and all — つと.める shows where the okurigana starts.
+ */
+function fillCharacters(el: HTMLElement, c: Characters): void {
+  const head = document.createElement('div');
+  head.className = 'chars-head';
+  head.textContent = c.label;
+  el.appendChild(head);
+  for (const k of c.items) {
+    const ch = document.createElement('div');
+    ch.className = 'kanji';
+    ch.textContent = k.char;
+    const info = document.createElement('div');
+    info.className = 'kanji-mean';
+    info.textContent = k.meanings.slice(0, 3).join(', ') || '—';
+    const readings = [...k.on.slice(0, 2), ...k.kun.slice(0, 2)];
+    if (readings.length) {
+      const r = document.createElement('span');
+      r.className = 'kanji-read';
+      r.textContent = readings.join(' · ');
+      info.appendChild(r);
+    }
+    el.append(ch, info);
+  }
+}
+
+/** How many of a word's other lines the card lists before saying how many more. */
+const ALSO_SHOWN = 4;
+
+/** m:ss, or h:mm:ss past the hour. */
+function clock(seconds: number): string {
+  const s = Math.max(0, Math.floor(seconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const ss = String(s % 60).padStart(2, '0');
+  return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`;
+}
+
+/**
+ * The word's other lines, each one a way back to that moment: seeing a word
+ * used three ways is how its meaning settles, and the best of the three is
+ * often the sentence worth the card.
+ */
+function fillAlso(
+  el: HTMLElement,
+  lines: Array<{ start: number; text: string; match: string }>,
+  onSeek?: (start: number) => void,
+): void {
+  const head = document.createElement('div');
+  head.className = 'also-head';
+  head.textContent = lines.length === 1 ? 'Once more in this video' : `${lines.length} more times in this video`;
+  el.appendChild(head);
+  for (const line of lines.slice(0, ALSO_SHOWN)) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'also-line';
+    b.title = 'Play from here';
+    const at = document.createElement('span');
+    at.className = 'at';
+    at.textContent = clock(line.start);
+    const text = document.createElement('span');
+    const i = line.match ? line.text.indexOf(line.match) : -1;
+    if (i < 0) {
+      text.textContent = line.text;
+    } else {
+      const word = document.createElement('b');
+      word.textContent = line.match;
+      text.append(line.text.slice(0, i), word, line.text.slice(i + line.match.length));
+    }
+    b.append(at, text);
+    b.addEventListener('click', () => {
+      onSeek?.(line.start);
+      closePopup();
+    });
+    el.appendChild(b);
+  }
+  if (lines.length > ALSO_SHOWN) {
+    const more = document.createElement('div');
+    more.className = 'also-more';
+    more.textContent = `and ${lines.length - ALSO_SHOWN} more — the transcript's search finds them all`;
+    el.appendChild(more);
+  }
 }
 
 /** A box in viewport coordinates — what getBoundingClientRect returns. */

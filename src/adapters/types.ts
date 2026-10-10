@@ -99,8 +99,8 @@ export interface SubtitleSource {
    * A URL that reopens this video at `seconds`.
    *
    * Goes on the card, so a review can jump straight back to the moment the
-   * word was mined — which is most of what makes a mined card better than a
-   * word list.
+   * word was heard — which is most of what makes a card from a video better
+   * than a word list.
    */
   deepLink(seconds: number): string | null;
 }

@@ -17,7 +17,7 @@ vi.mock('../content/settings-panel', () => {
       const root = document.createElement('div');
       const deck = document.createElement('select');
       deck.name = 'deck';
-      for (const name of ['Default', 'Mining']) {
+      for (const name of ['Default', 'Vocabulary']) {
         const o = document.createElement('option');
         o.value = o.textContent = name;
         deck.appendChild(o);
@@ -97,7 +97,7 @@ describe('the deck step', () => {
   it('ticks when the learner picks a deck from the list', async () => {
     await open({ configured: true, deck: '' });
     const sel = document.querySelector<HTMLSelectElement>('#settings select')!;
-    sel.value = 'Mining';
+    sel.value = 'Vocabulary';
     sel.dispatchEvent(new Event('change', { bubbles: true }));
     await vi.waitFor(() => expect(step().classList.contains('done')).toBe(true));
   });
@@ -106,7 +106,7 @@ describe('the deck step', () => {
     await open({ configured: true, deck: 'Default' }, 'Default');
     expect(step().classList.contains('done')).toBe(true);
     const { setSetting } = await import('../settings');
-    await setSetting('deck', 'Mining');
+    await setSetting('deck', 'Vocabulary');
     expect(step().classList.contains('done')).toBe(false);
   });
 

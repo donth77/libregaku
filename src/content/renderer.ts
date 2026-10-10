@@ -1,5 +1,6 @@
 import { furigana } from '../morphology/furigana';
 import type { Token } from '../morphology/types';
+import { selectedWords, textFrom } from './phrase';
 
 /**
  * The subtitle overlay.
@@ -107,6 +108,13 @@ const STYLE = `
    */
   .t[data-s="known"] { box-shadow: none; }
   .wrap.mark-known .t[data-s="known"] { box-shadow: inset 0 -1.5px 0 #63AF97; }
+  /*
+   * Listening practice: the line is there, unreadable, until the cursor
+   * reaches it. The words are blurred and their box is not, so it still
+   * shows when a line is being spoken and where to move the cursor to read it.
+   */
+  .wrap.blurred .primary > * { filter: blur(.3em); transition: filter .12s ease-out; }
+  .wrap.blurred .primary:hover > *, .wrap.blurred .primary:focus-within > * { filter: none; }
   .hidden { display: none; }
   /* Hug the text. The wrapper is a full-width flex column, so outlining it
      drew a box across the whole player. */
@@ -131,6 +139,10 @@ export class Overlay {
   #secondary: HTMLElement;
   #onToken?: (t: Token, el: HTMLElement) => void;
   #onHover?: (t: Token | null, el: HTMLElement | null) => void;
+  #onPhrase?: (tokens: Token[], text: string, el: HTMLElement) => void;
+  #onPress?: () => void;
+  /** A selection just ended on the line; the click that follows is not a word's. */
+  #selected = false;
   #statusOf: (t: Token) => string = () => 'unknown';
   #bottomPercent = 12;
   #bottomInset = 0;
@@ -157,13 +169,33 @@ export class Overlay {
     mount.appendChild(this.#host);
 
     this.#primary.addEventListener('click', (e) => {
+      if (this.#selected) {
+        this.#selected = false;
+        return;
+      }
       const el = (e.target as HTMLElement).closest('.t') as HTMLElement | null;
       if (!el || !this.#onToken) return;
       const raw = el.dataset.tok;
       if (raw) this.#onToken(JSON.parse(raw) as Token, el);
     });
 
+    // A selection across words is a phrase (src/content/phrase.ts).
+    this.#primary.addEventListener('mousedown', (e) => {
+      if (e.button === 0 && (e.target as HTMLElement).closest?.('.t')) this.#onPress?.();
+    });
+    this.#primary.addEventListener('mouseup', () => {
+      const picked = selectedWords(this.#root, this.#primary, '.t');
+      if (picked.length < 2) return;
+      const last = picked[picked.length - 1]!;
+      const text = textFrom(picked[0]!, last);
+      if (text === null) return;
+      this.#selected = true;
+      this.#onPhrase?.(picked.map((el) => JSON.parse(el.dataset.tok ?? '{}') as Token), text, last);
+    });
+
     this.#primary.addEventListener('mouseover', (e) => {
+      // A button held down is a selection being made, not a word being read.
+      if ((e as MouseEvent).buttons & 1) return;
       const el = (e.target as HTMLElement).closest('.t') as HTMLElement | null;
       if (!el?.dataset.tok) return;
       this.#onHover?.(JSON.parse(el.dataset.tok) as Token, el);
@@ -181,6 +213,22 @@ export class Overlay {
   onToken(cb: (t: Token, el: HTMLElement) => void): void {
     this.#onToken = cb;
   }
+
+  /**
+   * Fires when a selection on the line covers two words or more, with the
+   * words, the text from the first to the last as written (spaces and all),
+   * and the last word's element to anchor a card to.
+   */
+  onPhrase(cb: (tokens: Token[], text: string, el: HTMLElement) => void): void {
+    this.#onPhrase = cb;
+  }
+
+  /** Fires when a word is pressed — the start of a click, or of a selection. */
+  onPress(cb: () => void): void {
+    this.#onPress = cb;
+  }
+
+
 
   /**
    * How each token is coloured. Supplied rather than computed here so the
@@ -245,6 +293,11 @@ export class Overlay {
   /** Whether known words carry a green underline, as Migaku does. */
   setMarkKnown(on: boolean): void {
     this.#primary.parentElement?.classList.toggle('mark-known', on);
+  }
+
+  /** Blur the line until the cursor is on it. */
+  setBlurred(on: boolean): void {
+    this.#primary.parentElement?.classList.toggle('blurred', on);
   }
 
   setRubyMode(mode: 'always' | 'unknown' | 'never'): void {

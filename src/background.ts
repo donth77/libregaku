@@ -75,8 +75,10 @@ export async function ensureOffscreen(): Promise<void> {
     creating = chrome.offscreen
       .createDocument({
         url: OFFSCREEN_PATH,
-        reasons: [chrome.offscreen.Reason.WORKERS],
-        justification: 'Runs the morphological analyser (WASM) with OPFS-backed dictionaries.',
+        reasons: [chrome.offscreen.Reason.WORKERS, chrome.offscreen.Reason.USER_MEDIA],
+        justification:
+          'Runs the morphological analyser (WASM) with OPFS-backed dictionaries, and records a ' +
+          "tab's sound for sentence audio when the learner has turned that on.",
       })
       // Two callers can arrive together and both miss hasOffscreen(); the
       // loser is told a document already exists, which is what it wanted.
@@ -181,7 +183,28 @@ async function fetchAudio(url: string): Promise<{ ok: boolean; status?: number; 
   }
 }
 
-chrome.runtime.onMessage.addListener((msg: { type?: string; file?: string; action?: string; params?: Record<string, unknown>; url?: string }, sender, sendResponse) => {
+/** A message for the offscreen document, which is made if it is not there yet. */
+async function toOffscreen(msg: Record<string, unknown>): Promise<unknown> {
+  await ensureOffscreen();
+  return chrome.runtime.sendMessage({ target: 'offscreen', ...msg });
+}
+
+async function startTabCapture(tabId: number): Promise<unknown> {
+  if (typeof chrome.tabCapture?.getMediaStreamId !== 'function') {
+    return { ok: false, error: 'Allow sentence audio on this site in Libregaku’s settings first.' };
+  }
+  const streamId = await new Promise<string>((resolve, reject) => {
+    chrome.tabCapture.getMediaStreamId({ targetTabId: tabId }, (id) => {
+      // Refused when the learner has not invoked the extension on this tab.
+      const err = chrome.runtime.lastError;
+      if (err || !id) reject(new Error(err?.message ?? 'Chrome would not capture this tab'));
+      else resolve(id);
+    });
+  });
+  return toOffscreen({ type: 'capture-open', tabId, streamId });
+}
+
+chrome.runtime.onMessage.addListener((msg: { type?: string; file?: string; action?: string; params?: Record<string, unknown>; url?: string; tabId?: number }, sender, sendResponse) => {
   // Only this extension's own pages and content scripts. Nothing is
   // externally connectable today; this keeps it that way if that changes.
   if (sender.id !== chrome.runtime.id) return false;
@@ -213,6 +236,37 @@ chrome.runtime.onMessage.addListener((msg: { type?: string; file?: string; actio
       () => sendResponse({ ok: true }),
       (e: unknown) => sendResponse({ ok: false, error: String(e) }),
     );
+    return true;
+  }
+
+  // Sentence audio from a tab's sound (src/audio/tab-capture.ts). Started
+  // from the toolbar popup: Chrome only allows it after the learner has
+  // invoked the extension on that tab, and only with the optional
+  // tabCapture permission granted.
+  if (msg?.type === 'tab-capture-start' && typeof msg.tabId === 'number') {
+    startTabCapture(msg.tabId).then(sendResponse, (e: unknown) =>
+      sendResponse({ ok: false, error: e instanceof Error ? e.message : String(e) }));
+    return true;
+  }
+  // The rest are asked by a content script, always about its own tab.
+  const tabId = sender.tab?.id;
+  if ((msg?.type === 'capture-status' || msg?.type === 'record-start' || msg?.type === 'record-stop') && tabId != null) {
+    toOffscreen({ type: msg.type === 'capture-status' ? 'capture-has' : msg.type, tabId }).then(
+      sendResponse,
+      () => sendResponse({ ok: false, capturing: false }),
+    );
+    return true;
+  }
+  if (msg?.type === 'capture-permission') {
+    chrome.permissions.contains({ permissions: ['tabCapture'] }).then(
+      (granted) => sendResponse({ ok: true, granted }),
+      () => sendResponse({ ok: true, granted: false }),
+    );
+    return true;
+  }
+  if (msg?.type === 'open-options') {
+    void chrome.runtime.openOptionsPage();
+    sendResponse({ ok: true });
     return true;
   }
 

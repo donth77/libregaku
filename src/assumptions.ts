@@ -83,6 +83,13 @@ export const ASSUMPTIONS: Assumption[] = [
     fallback: null,
   },
   {
+    id: 'yt.capture-element',
+    site: 'youtube',
+    claim: "YouTube's <video> plays unencrypted media the page feeds it itself, so captureStream() records its sound and a canvas can copy a frame",
+    breaks: 'Sentence audio and pictures on cards made from YouTube',
+    fallback: "Sentence audio from the tab's sound, once allowed and started from the toolbar popup; no picture",
+  },
+  {
     id: 'yt.caption-dom',
     site: 'youtube',
     claim: 'Rendered captions live in .ytp-caption-window-container / .ytp-caption-segment',
@@ -109,6 +116,13 @@ export const ASSUMPTIONS: Assumption[] = [
     claim: 'The pinned jmdict-simplified release still serves jmdict-<edition>-<release>.json.tgz, and every redirect hop is a host in host_permissions',
     breaks: 'The dictionary download 404s on first run, so local lookups never work and every word goes to a remote API',
     fallback: 'Jotoba, then Jisho — remote, rate-limited, and needing connectivity',
+  },
+  {
+    id: 'dict.kanjidic-release',
+    site: 'external',
+    claim: 'The pinned jmdict-simplified release also carries kanjidic2-all-<release>.json.tgz: characters[] with literal, misc.strokeCounts, and readingMeaning.groups[] of ja_on/ja_kun readings and meanings by lang',
+    breaks: 'The kanji section of the lookup card — nothing else',
+    fallback: 'The card without it',
   },
   {
     id: 'dict.lindera-release',
@@ -181,6 +195,13 @@ export const ASSUMPTIONS: Assumption[] = [
     fallback: null,
   },
   {
+    id: 'nf.encrypted',
+    site: 'netflix',
+    claim: "Netflix's video is encrypted (EME): Chrome refuses captureStream() and blanks a canvas copy — and tabCapture still hands over the tab's sound once the extension is invoked on the tab",
+    breaks: 'Sentence audio on cards made from Netflix',
+    fallback: 'The card without it, saying how to start recording',
+  },
+  {
     id: 'nf.main-world-csp',
     site: 'netflix',
     claim: 'Unverified: Netflix CSP may block declared MAIN-world scripts, so the hook is also injected through chrome.scripting. Nothing depends on which of the two runs; the hook guards against running twice',
@@ -233,7 +254,7 @@ export const ASSUMPTIONS: Assumption[] = [
     id: 'anki.tag-children',
     site: 'external',
     claim: 'tag:libregaku also matches libregaku::… child tags, and note:"X" matches a note type by name and can be negated',
-    breaks: 'Mark notes count as mined words, or as cards the extension made',
+    breaks: 'Mark notes count as words with cards, or as cards the extension made',
     fallback: null,
   },
   {
@@ -260,9 +281,9 @@ export const ASSUMPTIONS: Assumption[] = [
   {
     id: 'anki.media',
     site: 'external',
-    claim: 'addNote stores each file in note.audio from its base64 data under its filename, and appends [sound:filename] to the fields it names',
-    breaks: 'Pronunciation on new cards',
-    fallback: 'The card is still added, without a recording',
+    claim: 'addNote stores each file in note.audio and note.picture from its base64 data under its filename, and appends [sound:filename] or <img src="filename"> to the fields it names, in order',
+    breaks: 'Pronunciation, sentence audio and pictures on new cards',
+    fallback: 'The card is still added, without them',
   },
   {
     id: 'anki.cors-default',

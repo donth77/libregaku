@@ -133,21 +133,21 @@ describe('relay', () => {
 
   it('carries a new note with a recording the extension fetched, under its own name', async () => {
     const fetch = marksAre();
-    const note = { deckName: 'Mining', audio: [{ data: 'SUQz', filename: 'libregaku_猫_ねこ.mp3', fields: ['Audio'] }] };
+    const note = { deckName: 'Vocabulary', audio: [{ data: 'SUQz', filename: 'libregaku_猫_ねこ.mp3', fields: ['Audio'] }] };
     expect(await relay('addNote', { note })).toMatchObject({ ok: true });
     expect(fetch).toHaveBeenCalledOnce();
   });
 
   it('refuses media AnkiConnect would fetch or read itself, or file under someone else\'s name', async () => {
     const fetch = marksAre();
-    const audio = (m: Record<string, unknown>) => ({ note: { deckName: 'Mining', audio: [{ fields: ['Audio'], ...m }] } });
+    const audio = (m: Record<string, unknown>) => ({ note: { deckName: 'Vocabulary', audio: [{ fields: ['Audio'], ...m }] } });
     for (const params of [
       audio({ url: 'https://example.org/a.mp3', filename: 'libregaku_a.mp3' }),
       audio({ path: '/Users/someone/.ssh/id_ed25519', filename: 'libregaku_a.mp3' }),
       audio({ data: 'SUQz', filename: 'their-image.jpg' }),
       audio({ data: 'SUQz', filename: 'libregaku_../../escape.mp3' }),
       audio({ filename: 'libregaku_a.mp3' }),
-      { note: { deckName: 'Mining', picture: { data: 'iVBO', filename: 'shared.png', fields: ['Image'] } } },
+      { note: { deckName: 'Vocabulary', picture: { data: 'iVBO', filename: 'shared.png', fields: ['Image'] } } },
     ]) {
       expect(await relay('addNote', params)).toMatchObject({ ok: false, kind: 'refused' });
     }

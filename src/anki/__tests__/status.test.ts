@@ -68,7 +68,7 @@ describe('Anki-derived status', () => {
     expect(notesInfoSizes()).toEqual([]);
   });
 
-  it('reads a word mined with Libregaku as learning from the moment it is added', async () => {
+  it('reads a word carded with Libregaku as learning from the moment it is added', async () => {
     note('分かる', [fresh()], { tags: ['libregaku', 'libregaku::youtube'] });
     expect((await buildStatusMap('')).get('分かる')).toBe('learning');
   });
@@ -117,7 +117,7 @@ describe('Anki-derived status', () => {
   });
 
   it('never counts a hand mark as a word being learned', async () => {
-    // Mark notes carry our tag, which reads as "mined"; a mark reviewed by
+    // Mark notes carry our tag, which reads as "carded"; a mark reviewed by
     // hand would read as studied. Neither is a card anyone learns from.
     fake.add({ Word: '猫', Reading: 'ねこ' }, {
       model: MARK_MODEL_NAME, deck: 'Libregaku::Marks', tags: ['libregaku', 'libregaku::mark::known'],
@@ -148,7 +148,7 @@ describe('deck scope', () => {
   });
 
   it('keeps :: so a parent deck covers its subdecks', async () => {
-    note('本', [reviewed(1)], { deck: 'Japanese::Mining' });
+    note('本', [reviewed(1)], { deck: 'Japanese::Netflix' });
     note('車', [reviewed(1)], { deck: 'Spanish' });
     const status = await buildStatusMap('Japanese');
     expect(status.get('本')).toBe('learning');

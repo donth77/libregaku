@@ -176,6 +176,9 @@ export class Header {
       // you would want them mid-episode: off, only what you don't know, all.
       void setSetting('ruby', nextRuby(settings().ruby)).then(() => this.update());
     });
+    add('blur', 'eyeOff', 'Blur the subtitle until hovered', () => {
+      void setSetting('blurPrimary', !settings().blurPrimary).then(() => this.update());
+    });
     add('dual', 'captions', 'Second subtitle line', () => {
       void setSetting('dualSubtitles', !settings().dualSubtitles).then(() => this.update());
     });
@@ -279,6 +282,9 @@ export class Header {
     };
 
     setOn('ruby', s.ruby !== 'never', `Furigana: ${rubyLabel(s.ruby)}`, { shown: 'R', aria: 'R' });
+    setOn('blur', s.blurPrimary, s.blurPrimary ? 'Stop blurring the subtitle' : 'Blur the subtitle until hovered',
+      { shown: 'H', aria: 'H' });
+    this.#buttons.get('blur')?.replaceChildren(icon(s.blurPrimary ? 'eye' : 'eyeOff', 20));
     setOn('dual', s.dualSubtitles, s.dualSubtitles ? 'Hide the second line' : 'Show a second line',
       { shown: '↑', aria: 'ArrowUp' });
     setOn('sidebar', this.#deps.sidebarOpen(), 'Transcript panel', { shown: 'S', aria: 'S' });

@@ -1,5 +1,6 @@
 import type { Token } from '../morphology/types';
 import type { Entry } from './jmdict';
+import { kanjiIn, type CharacterInfo } from './kanji';
 
 /** Content-script side of the dictionary. The store itself lives offscreen. */
 
@@ -140,4 +141,24 @@ export function lookupToken(token: Pick<Token, 'surface' | 'lemma' | 'lemmaReadi
 /** Forget negative results so a finished download takes effect immediately. */
 export function clearLookupCache(): void {
   cache.clear();
+}
+
+/** What the lookup card shows about the characters in a word, under its own heading. */
+export interface Characters {
+  label: string;
+  items: CharacterInfo[];
+}
+
+/**
+ * The kanji in a word, from KANJIDIC2, with meanings in the learner's own
+ * language where it has them. Empty for a word with no kanji, and while the
+ * data is still downloading — the card simply leaves the section out.
+ */
+export async function charactersOf(word: string, native: string): Promise<Characters> {
+  const chars = kanjiIn(word);
+  if (!chars.length) return { label: 'Kanji', items: [] };
+  const res = (await chrome.runtime.sendMessage({ target: 'offscreen', type: 'dict-kanji', chars, native })) as
+    | { ok?: boolean; characters?: CharacterInfo[] }
+    | undefined;
+  return { label: 'Kanji', items: res?.ok ? res.characters ?? [] : [] };
 }

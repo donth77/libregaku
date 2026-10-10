@@ -41,6 +41,9 @@ vi.mock('../store', () => ({
   isPopulated: vi.fn(async () => false),
   lexicon: vi.fn(async () => ({})),
   lookup: vi.fn(async () => []),
+  hasKanji: vi.fn(async () => false),
+  buildKanji: vi.fn(async () => 13000),
+  kanjiFor: vi.fn(async () => []),
 }));
 vi.mock('../jotoba', () => ({ jotobaLookup: vi.fn(async () => []) }));
 vi.mock('../jisho', () => ({ jishoLookup: vi.fn(async () => []) }));
@@ -246,5 +249,37 @@ describe('dictionary lookups', () => {
     vi.mocked(store.build).mockResolvedValue(200000);
     await Promise.all([send({ type: 'dict-load', edition: 'eng' }), send({ type: 'dict-load', edition: 'eng' })]);
     expect(store.build).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('kanji', () => {
+  it('loads KANJIDIC2 once JMdict is ready, and answers in the learner\'s language', async () => {
+    const { send, store } = await boot();
+    vi.mocked(store.isPopulated).mockResolvedValue(true);
+    vi.mocked(store.hasKanji).mockResolvedValue(false);
+    vi.mocked(store.buildKanji).mockResolvedValue(13000);
+    vi.mocked(store.kanjiFor).mockResolvedValue([
+      { char: '勉', meanings: { en: ['exertion'], fr: ['exercice'] }, on: ['ベン'], kun: ['つと.める'], strokes: 10 },
+    ]);
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    expect(await send({ type: 'dict-kanji', chars: ['勉'] })).toMatchObject({ ok: false });
+    await send({ type: 'dict-load', edition: 'eng' });
+    await vi.waitFor(() => expect(store.buildKanji).toHaveBeenCalledOnce());
+    await new Promise((r) => setTimeout(r, 0));
+    const r = await send({ type: 'dict-kanji', chars: ['勉'], native: 'fr' });
+    expect(r).toEqual({ ok: true, characters: [{ char: '勉', meanings: ['exercice'], on: ['ベン'], kun: ['つと.める'], strokes: 10 }] });
+  });
+
+  it('costs only the kanji when KANJIDIC2 will not download', async () => {
+    const { send, store } = await boot();
+    vi.mocked(store.isPopulated).mockResolvedValue(true);
+    vi.mocked(store.hasKanji).mockResolvedValue(false);
+    vi.mocked(store.buildKanji).mockRejectedValue(new Error('HTTP 404'));
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(await send({ type: 'dict-load', edition: 'eng' })).toMatchObject({ ok: true, ready: true });
+    await vi.waitFor(() => expect(store.buildKanji).toHaveBeenCalled());
+    await new Promise((r) => setTimeout(r, 0));
+    expect(await send({ type: 'dict-kanji', chars: ['勉'] })).toMatchObject({ ok: false, error: expect.stringContaining('404') });
   });
 });

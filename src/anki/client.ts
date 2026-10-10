@@ -95,6 +95,8 @@ export async function ensureNoteType(
   if (!names.includes(model.modelName)) {
     try {
       await call('createModel', model);
+      const made = (model as { inOrderFields?: readonly string[] }).inOrderFields ?? fields;
+      seenFields.set(model.modelName, made.map((f) => f.toLowerCase()));
       return 'created';
     } catch (e) {
       // Two callers on a first run can both miss it; the loser is told it
@@ -104,6 +106,7 @@ export async function ensureNoteType(
   }
   const have = (await call<string[]>('modelFieldNames', { modelName: model.modelName }))
     .map((f) => f.toLowerCase());
+  seenFields.set(model.modelName, have);
   // AnkiConnect matches field names without regard to case, so this does too.
   const missing = fields.filter((f) => !have.includes(f.toLowerCase()));
   if (missing.length) throw new NoteTypeMismatch(missing, model.modelName);
@@ -113,6 +116,14 @@ export async function ensureNoteType(
 /** The vocabulary note type cards are made with. */
 export async function ensureModel(): Promise<'created' | 'present'> {
   return ensureNoteType(MODEL, FIELDS);
+}
+
+/** The fields each note type was last seen to have, lower-cased, so a card can use the optional ones. */
+const seenFields = new Map<string, string[]>();
+
+/** Whether our note type, as last checked, has this field. */
+export function modelHas(field: string): boolean {
+  return seenFields.get(MODEL_NAME)?.includes(field.toLowerCase()) ?? false;
 }
 
 export interface NewCard {
@@ -131,6 +142,10 @@ export interface NewCard {
   tags: string[];
   /** A recording of the word, stored in Anki's media folder and played from the Audio field. */
   audio?: CardAudio | null;
+  /** The line, as it was said: in SentenceAudio, or after the word in Audio on an older note type. */
+  sentenceAudio?: CardAudio | null;
+  /** A still from the line, in the Image field. */
+  picture?: CardAudio | null;
 }
 
 export interface CardAudio {
@@ -216,10 +231,25 @@ export async function addSentence(s: SavedSentence): Promise<number> {
 /** Throws DuplicateNote when the deck already has this word in our note type. */
 export async function addNote(card: NewCard): Promise<number> {
   const reading = typeof card.reading === 'string' ? card.reading : toAnkiFurigana(card.reading);
-  // AnkiConnect stores the bytes and writes [sound:…] into the field itself.
-  const media = card.audio
-    ? { audio: [{ data: card.audio.data, filename: card.audio.filename, fields: ['Audio'] }] }
-    : {};
+  // AnkiConnect stores the bytes and writes [sound:…] or <img> into each
+  // field named, after whatever the field already holds — so the word's own
+  // recording goes first and the sentence's after it when they share Audio.
+  const audio = [
+    ...(card.audio ? [{ data: card.audio.data, filename: card.audio.filename, fields: ['Audio'] }] : []),
+    ...(card.sentenceAudio
+      ? [{
+          data: card.sentenceAudio.data,
+          filename: card.sentenceAudio.filename,
+          fields: [modelHas('SentenceAudio') ? 'SentenceAudio' : 'Audio'],
+        }]
+      : []),
+  ];
+  const media = {
+    ...(audio.length ? { audio } : {}),
+    ...(card.picture
+      ? { picture: [{ data: card.picture.data, filename: card.picture.filename, fields: ['Image'] }] }
+      : {}),
+  };
   return add({
     deckName: card.deck,
     modelName: MODEL_NAME,

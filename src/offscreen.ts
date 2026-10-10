@@ -4,7 +4,11 @@ import type { RankHint } from './dict/jmdict';
 import { jishoLookup } from './dict/jisho';
 import { jotobaLookup } from './dict/jotoba';
 import { remoteLookup } from './dict/remote';
-import { build as buildDict, hasStale, isPopulated, lexicon, lookup } from './dict/store';
+import { closeCapture, isCapturing, openCapture, startRecording, stopRecording } from './audio/tab-capture';
+import { forLanguage } from './dict/kanji';
+import {
+  build as buildDict, buildKanji, hasKanji, hasStale, isPopulated, kanjiFor, lexicon, lookup,
+} from './dict/store';
 import { LINDERA_DICTS as DICTS } from './morphology/dictionaries';
 import { lexiconQueries, type Morpheme } from './morphology/merge';
 
@@ -276,6 +280,36 @@ function ensureDict(edition: string): Promise<void> {
   return dictLoading;
 }
 
+/* ── KANJIDIC2 ─────────────────────────────────────────────────── */
+
+const kanji = { ready: false, error: null as string | null };
+let kanjiLoading: Promise<void> | null = null;
+
+/**
+ * KANJIDIC2 after JMdict, never before it: definitions matter more than the
+ * characters' detail, and the two downloads should not compete. A failure
+ * costs only the kanji section of the lookup card.
+ */
+function ensureKanji(): Promise<void> {
+  if (kanji.ready) return Promise.resolve();
+  kanjiLoading ??= (async () => {
+    try {
+      if (!(await hasKanji())) {
+        const n = await buildKanji();
+        console.log(`[libregaku] KANJIDIC2 ready — ${n} characters`);
+      }
+      kanji.ready = true;
+      kanji.error = null;
+    } catch (e) {
+      kanji.error = String(e);
+      console.warn('[libregaku] KANJIDIC2 failed to load:', e);
+    } finally {
+      kanjiLoading = null;
+    }
+  })();
+  return kanjiLoading;
+}
+
 const REMOTE_TIMEOUT_MS = 8000;
 
 const remote = remoteLookup({
@@ -311,6 +345,10 @@ interface Message {
   edition?: string;
   reading?: string;
   pos?: string;
+  chars?: string[];
+  native?: string;
+  tabId?: number;
+  streamId?: string;
 }
 
 chrome.runtime.onMessage.addListener((msg: Message, _s, respond) => {
@@ -363,7 +401,21 @@ chrome.runtime.onMessage.addListener((msg: Message, _s, respond) => {
     }
 
     case 'dict-load':
-      void ensureDict(msg.edition ?? 'eng').then(() => respond({ ok: !dict.error, ...dict }));
+      void ensureDict(msg.edition ?? 'eng').then(() => {
+        respond({ ok: !dict.error, ...dict });
+        if (dict.ready) void ensureKanji();
+      });
+      return true;
+
+    case 'dict-kanji':
+      if (!kanji.ready) {
+        respond({ ok: false, error: kanji.error ?? 'the kanji data is still loading' });
+        return true;
+      }
+      void kanjiFor((msg.chars ?? []).slice(0, 12)).then(
+        (found) => respond({ ok: true, characters: found.map((k) => forLanguage(k, msg.native ?? 'en')) }),
+        (e: unknown) => respond({ ok: false, error: String(e) }),
+      );
       return true;
 
     case 'dict-status':
@@ -372,6 +424,40 @@ chrome.runtime.onMessage.addListener((msg: Message, _s, respond) => {
 
     case 'dict-lookup':
       void answerLookup(msg.key ?? '', { reading: msg.reading, pos: msg.pos }).then(respond);
+      return true;
+
+    /* A tab's sound, for sentence audio (src/audio/tab-capture.ts). */
+    case 'capture-open':
+      if (typeof msg.tabId !== 'number' || !msg.streamId) {
+        respond({ ok: false, error: 'no tab to capture' });
+        return true;
+      }
+      void openCapture(msg.tabId, msg.streamId).then(
+        () => respond({ ok: true }),
+        (e: unknown) => respond({ ok: false, error: String(e) }),
+      );
+      return true;
+
+    case 'capture-has':
+      respond({ ok: true, capturing: typeof msg.tabId === 'number' && isCapturing(msg.tabId) });
+      return true;
+
+    case 'capture-close':
+      if (typeof msg.tabId === 'number') closeCapture(msg.tabId);
+      respond({ ok: true });
+      return true;
+
+    case 'record-start':
+      try {
+        startRecording(msg.tabId ?? -1);
+        respond({ ok: true });
+      } catch (e) {
+        respond({ ok: false, error: e instanceof Error ? e.message : String(e) });
+      }
+      return true;
+
+    case 'record-stop':
+      void stopRecording(msg.tabId ?? -1).then((media) => respond(media ? { ok: true, ...media } : { ok: false }));
       return true;
 
     default:

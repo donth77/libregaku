@@ -129,13 +129,33 @@ describe('settings panel selects', () => {
   it('lists the player\'s keys, so they can be found', () => {
     const root = buildSettings(() => {});
     const keys = Array.from(root.querySelectorAll('.keys dt')).map((dt) => dt.textContent);
-    expect(keys).toEqual(['←→', '↓', '↑', 'A', 'K', 'R', 'B', 'S', 'Esc']);
+    expect(keys).toEqual(['←→', '↓', '↑', 'A', 'K', 'R', 'H', 'B', 'S', 'Esc']);
     expect(root.querySelector('.keys dd')?.textContent).toBe('The line before, the line after');
   });
 
   it('offers pronunciation on cards, on unless turned off', () => {
     const root = buildSettings(() => {});
     expect(switchFor(root, 'Pronunciation on cards').checked).toBe(true);
+  });
+
+  it('offers sentence audio and pictures on cards, both on unless turned off', () => {
+    const root = buildSettings(() => {});
+    expect(switchFor(root, 'Sentence audio on cards').checked).toBe(true);
+    expect(switchFor(root, 'Picture on cards').checked).toBe(true);
+  });
+
+  it('sends the transcript panel to the settings page for the Netflix permission, which it cannot ask for', async () => {
+    const sent: unknown[] = [];
+    const runtime = (globalThis as unknown as { chrome: { runtime: Record<string, unknown> } }).chrome.runtime;
+    runtime.sendMessage = async (msg: unknown) => { sent.push(msg); return { ok: true, granted: false }; };
+    const root = buildSettings(() => {});
+    await flush();
+    const row = Array.from(root.querySelectorAll<HTMLElement>('.set')).find((r) => r.querySelector('.name')?.textContent === 'Sentence audio on Netflix')!;
+    const button = row.querySelector<HTMLButtonElement>('.perm')!;
+    expect(button.textContent).toBe('Allow in settings');
+    button.click();
+    expect(sent).toContainEqual({ type: 'open-options' });
+    delete runtime.sendMessage;
   });
 
   it('says that cards wait for Anki while it is closed', async () => {
@@ -174,7 +194,7 @@ describe('settings panel selects', () => {
 
 describe('settings panel decks', () => {
   it('never picks a deck for new cards on the learner\'s behalf', async () => {
-    anki.probe.mockResolvedValue(connected(['Core 2k', 'Mining']));
+    anki.probe.mockResolvedValue(connected(['Core 2k', 'Vocabulary']));
     const root = buildSettings(() => {});
     await flush();
     const deck = root.querySelector<HTMLSelectElement>('select[name=deck]')!;
@@ -184,24 +204,24 @@ describe('settings panel decks', () => {
     expect(shown(deck)).toBe('Choose a deck…');
     expect(hintOf(deck).classList.contains('warn')).toBe(true);
 
-    choose(deck, 'Mining');
-    expect(settings().deck).toBe('Mining');
+    choose(deck, 'Vocabulary');
+    expect(settings().deck).toBe('Vocabulary');
     expect(hintOf(deck).classList.contains('warn')).toBe(false);
     expect(hintOf(deck).textContent).toBe('One deck, for everything Libregaku creates.');
   });
 
   it('shows a stored deck Anki no longer has as missing, instead of swapping it', async () => {
-    await setSetting('deck', 'Old::Mining');
+    await setSetting('deck', 'Old::Vocabulary');
     await setSetting('statusScope', 'Old');
-    anki.probe.mockResolvedValue(connected(['Core 2k', 'Mining']));
+    anki.probe.mockResolvedValue(connected(['Core 2k', 'Vocabulary']));
     const root = buildSettings(() => {});
     await flush();
     const deck = root.querySelector<HTMLSelectElement>('select[name=deck]')!;
     const scope = root.querySelector<HTMLSelectElement>('select[name=statusScope]')!;
 
-    expect(settings().deck).toBe('Old::Mining');
-    expect(deck.value).toBe('Old::Mining');
-    expect(shown(deck)).toBe('Old::Mining — not in Anki');
+    expect(settings().deck).toBe('Old::Vocabulary');
+    expect(deck.value).toBe('Old::Vocabulary');
+    expect(shown(deck)).toBe('Old::Vocabulary — not in Anki');
     expect(hintOf(deck).classList.contains('warn')).toBe(true);
 
     // Not "Whole collection": the stored scope is still the one being read.
@@ -212,14 +232,14 @@ describe('settings panel decks', () => {
   });
 
   it('leaves a deck that exists exactly as it is', async () => {
-    await setSetting('deck', 'Mining');
-    anki.probe.mockResolvedValue(connected(['Core 2k', 'Mining']));
+    await setSetting('deck', 'Vocabulary');
+    anki.probe.mockResolvedValue(connected(['Core 2k', 'Vocabulary']));
     const root = buildSettings(() => {});
     await flush();
     const deck = root.querySelector<HTMLSelectElement>('select[name=deck]')!;
-    expect(deck.value).toBe('Mining');
+    expect(deck.value).toBe('Vocabulary');
     expect(hintOf(deck).classList.contains('warn')).toBe(false);
-    expect(Array.from(deck.options).map((o) => o.value)).toEqual(['Core 2k', 'Mining']);
+    expect(Array.from(deck.options).map((o) => o.value)).toEqual(['Core 2k', 'Vocabulary']);
   });
 
   it('says so when Check again reaches Anki, and only then', async () => {
@@ -232,7 +252,7 @@ describe('settings panel decks', () => {
     await flush();
     expect(onAnkiConnected).not.toHaveBeenCalled();   // still offline
 
-    anki.probe.mockResolvedValue(connected(['Mining']));
+    anki.probe.mockResolvedValue(connected(['Vocabulary']));
     recheck.click();
     await flush();
     expect(onAnkiConnected).toHaveBeenCalledOnce();

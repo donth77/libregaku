@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  MODEL, ROOT_TAG, fieldHtml, furiganaField, isOwnMedia, keyField, mediaFilename, tagsFor, toAnkiFurigana,
+  FIELDS, MODEL, ROOT_TAG, fieldHtml, furiganaField, isOwnMedia, keyField, lineMediaName, mediaFilename, tagsFor,
+  toAnkiFurigana,
 } from '../model';
 
 describe('tagsFor', () => {
@@ -78,6 +79,21 @@ describe('MODEL', () => {
     for (const f of ['Audio', 'Sentence']) {
       expect(MODEL.cardTemplates[0]?.Front).toContain(`{{#${f}}}`);
     }
+  });
+
+  it('makes new note types with SentenceAudio, without requiring it of older ones', () => {
+    expect(MODEL.inOrderFields).toContain('SentenceAudio');
+    expect(FIELDS).not.toContain('SentenceAudio');
+    expect(MODEL.cardTemplates[0]?.Back).toContain('{{#SentenceAudio}}');
+  });
+});
+
+describe('line media file names', () => {
+  it('names a line by its video and where it starts, under our prefix', () => {
+    expect(lineMediaName('uC8Mhixux3Q', 64.123, 'm4a')).toBe('libregaku_uC8Mhixux3Q_64123.m4a');
+    expect(lineMediaName('81035908', 12, 'jpg')).toBe('libregaku_81035908_12000.jpg');
+    expect(lineMediaName('a/../b', 1, 'jpg')).toBe('libregaku_a_b_1000.jpg');
+    expect(isOwnMedia(lineMediaName('a/../b', 1, 'jpg'))).toBe(true);
   });
 });
 

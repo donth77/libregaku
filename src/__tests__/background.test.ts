@@ -186,3 +186,15 @@ describe('page-world injection', () => {
     expect(executeScript).not.toHaveBeenCalled();
   });
 });
+
+describe('sentence audio from a tab', () => {
+  it('asks for the permission before anything else', async () => {
+    const r = await send({ type: 'tab-capture-start', tabId: 7 }) as { ok: boolean; error: string };
+    expect(r.ok).toBe(false);
+    expect(r.error).toMatch(/settings/);
+  });
+
+  it("reports a content script's own tab as not captured when nothing can be asked", async () => {
+    expect(await send({ type: 'capture-status' })).toEqual({ ok: false, capturing: false });
+  });
+});

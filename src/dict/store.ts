@@ -1,5 +1,6 @@
 import { fetchJsonTgz } from './archive';
 import { keysFor, rank, readingsOf, toEntry, type Entry, type RankHint, type RawWord } from './jmdict';
+import { toKanji, type StoredKanji } from './kanji';
 
 /**
  * The dictionary store.
@@ -10,10 +11,12 @@ import { keysFor, rank, readingsOf, toEntry, type Entry, type RankHint, type Raw
  */
 
 const DB = 'libregaku-dict';
-const VERSION = 2;
+const VERSION = 3;
 const ENTRIES = 'entries';
 const FORMS = 'forms';
 const META = 'meta';
+/** KANJIDIC2, one row per character. Added in version 3. */
+const KANJI = 'kanji';
 
 const RELEASE = '3.6.2+20260914172325';
 
@@ -59,6 +62,7 @@ function open(): Promise<IDBDatabase> {
         db.createObjectStore(FORMS, { keyPath: ['form', 'id'] }).createIndex('form', 'form');
       }
       if (!db.objectStoreNames.contains(META)) db.createObjectStore(META);
+      if (!db.objectStoreNames.contains(KANJI)) db.createObjectStore(KANJI, { keyPath: 'char' });
     };
     req.onsuccess = () => {
       const db = req.result;
@@ -252,4 +256,77 @@ export async function lexicon(forms: string[]): Promise<Record<string, Reading[]
     }),
   );
   return out;
+}
+
+/* ── KANJIDIC2 ──────────────────────────────────────────────────── */
+
+/** The shape `buildKanji` writes; bumped when toKanji changes what is stored. */
+const KANJI_FORMAT = 1;
+
+function kanjiMark(): string {
+  return `kanjidic2@${RELEASE}#${KANJI_FORMAT}`;
+}
+
+/** Every language KANJIDIC2 has meanings in, from the same pinned release as JMdict. */
+export function kanjidicUrl(): string {
+  return (
+    `https://github.com/scriptin/jmdict-simplified/releases/download/${RELEASE}/` +
+    `kanjidic2-all-${RELEASE}.json.tgz`
+  );
+}
+
+/** Complete, and exactly what this code would build. */
+export async function hasKanji(): Promise<boolean> {
+  const db = await open();
+  let stored: string | null;
+  try {
+    stored = (await request<string | undefined>(db.transaction(META).objectStore(META).get('kanji'))) ?? null;
+  } catch {
+    return false;
+  }
+  if (stored !== kanjiMark()) return false;
+  return (await request<number>(db.transaction(KANJI).objectStore(KANJI).count())) > 1000;
+}
+
+/** Download KANJIDIC2 and store it — 1.5 MB, once. Unmarked while it is written, as `build` is. */
+export async function buildKanji(): Promise<number> {
+  const data = (await fetchJsonTgz(kanjidicUrl())) as { characters?: unknown[] };
+  const chars = data.characters ?? [];
+  if (!chars.length) throw new Error('libregaku: KANJIDIC2 contained no characters');
+
+  const db = await open();
+  const reset = db.transaction([KANJI, META], 'readwrite');
+  reset.objectStore(KANJI).clear();
+  reset.objectStore(META).delete('kanji');
+  await done(reset);
+
+  const BATCH = 4000;
+  let written = 0;
+  for (let i = 0; i < chars.length; i += BATCH) {
+    const tx = db.transaction(KANJI, 'readwrite');
+    const store = tx.objectStore(KANJI);
+    for (const raw of chars.slice(i, i + BATCH)) {
+      const k = toKanji(raw);
+      if (!k) continue;
+      store.put(k);
+      written++;
+    }
+    await done(tx);
+  }
+
+  const marker = db.transaction(META, 'readwrite');
+  marker.objectStore(META).put(kanjiMark(), 'kanji');
+  await done(marker);
+  return written;
+}
+
+/** The stored entries for these characters, in the order asked; ones it lacks are left out. */
+export async function kanjiFor(chars: string[]): Promise<StoredKanji[]> {
+  if (!chars.length) return [];
+  const db = await open();
+  const store = db.transaction(KANJI).objectStore(KANJI);
+  const found = await Promise.all(
+    chars.map((c) => request<StoredKanji | undefined>(store.get(c)).catch(() => undefined)),
+  );
+  return found.filter((k): k is StoredKanji => Boolean(k));
 }

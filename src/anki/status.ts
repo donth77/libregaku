@@ -20,7 +20,7 @@ import { fits, phonetic, strip, toKana } from './text';
  *
  *   unknown   never studied, never marked — including a card that exists but
  *             has never been reviewed, as in a premade deck not reached yet
- *   learning  a card is being drilled, or the learner mined it with Libregaku
+ *   learning  a card is being drilled, or the learner made it with Libregaku
  *   known     the card is mature — Anki's own 21-day threshold, which is also
  *             where Migaku draws the line
  *   tracking  the learner wants this word to stand out: not new, not learned,
@@ -82,7 +82,7 @@ export function deckQuery(scope: string): string {
  * read as unknown. Searches are answered from Anki's own index:
  *
  *   studied  a card has been reviewed at least once          → learning
- *   mined    it carries our tag: added from a video           → learning
+ *   ours     it carries our tag: added from a video           → learning
  *   mature   a card's interval is 21 days or more            → known
  *
  * A note in none of these — an unreviewed card in a premade deck — is
@@ -91,15 +91,15 @@ export function deckQuery(scope: string): string {
  */
 export async function buildStatusMap(scope: string): Promise<StatusMap> {
   // Hand marks are notes too, tagged like everything else we make — so they
-  // would read as mined words. They are read on their own (marks.ts).
+  // would read as words with cards. They are read on their own (marks.ts).
   const deck = `${deckQuery(scope)} -${MARK_SEARCH}`;
   const studied = await call<number[]>('findNotes', { query: `${deck} -is:new` });
-  const mined = await call<number[]>('findNotes', { query: `${deck} tag:${ROOT_TAG}` });
+  const ours = await call<number[]>('findNotes', { query: `${deck} tag:${ROOT_TAG}` });
   const mature = new Set(
     await call<number[]>('findNotes', { query: `${deck} prop:ivl>=${MATURE_DAYS}` }),
   );
 
-  const wanted = [...new Set([...studied, ...mined])];
+  const wanted = [...new Set([...studied, ...ours])];
   const index = new StatusIndex();
   for (let i = 0; i < wanted.length; i += NOTES_PER_REQUEST) {
     const notes = await call<NoteInfo[]>('notesInfo', { notes: wanted.slice(i, i + NOTES_PER_REQUEST) });

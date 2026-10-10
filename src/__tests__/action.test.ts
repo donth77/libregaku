@@ -17,6 +17,7 @@ const PAGE = `
   <button id="openSettings"></button>
   <p id="status"></p>
   <section id="tracks" hidden><select id="track"></select><select id="second"></select></section>
+  <section id="capture" hidden><p id="captureText"></p><button id="captureGo" hidden></button></section>
   <section id="quick" hidden><button id="toggleSidebar"></button></section>
   <footer id="anki">Anki: checking…</footer>`;
 
@@ -78,7 +79,7 @@ describe('the Anki line', () => {
 
   it('says how many cards are waiting for Anki to open', async () => {
     answers.version = { ok: false, kind: 'offline', offline: true };
-    const waiting = (expression: string) => ({ card: { deck: 'Mining', expression }, word: expression, at: 1 });
+    const waiting = (expression: string) => ({ card: { deck: 'Vocabulary', expression }, word: expression, at: 1 });
     local['libregaku.cards.pending.a'] = waiting('猫');
     local['libregaku.cards.pending.b'] = waiting('犬');
     expect((await footer()).textContent).toBe('Anki not running — words show as unknown · 2 cards waiting for Anki');
@@ -101,5 +102,60 @@ describe('describeAnki', () => {
     expect(lines[0]).toBe('Anki connected · 1 card from Libregaku');
     expect(lines[2]).toContain('refused this extension');
     expect(lines[5]).toBe('collection is not available');
+  });
+});
+
+describe('sentence audio on a protected video', () => {
+  /** The popup on a tab whose video cannot be recorded directly. */
+  async function onProtectedTab(granted: boolean, capturing = false) {
+    document.body.innerHTML = PAGE;
+    const sent: unknown[] = [];
+    const openOptionsPage = vi.fn();
+    vi.stubGlobal('chrome', {
+      tabs: {
+        query: async () => [{ id: 5 }],
+        sendMessage: async () => ({ supported: true, site: 'netflix', title: 'x', rendering: true, tracks: [], track: null, second: null, sidebarOpen: true, capture: 'tab', capturing }),
+      },
+      permissions: { contains: async () => granted },
+      runtime: {
+        openOptionsPage,
+        sendMessage: async (msg: { type?: string; action?: string }) => {
+          sent.push(msg);
+          if (msg.type === 'tab-capture-start') return { ok: true };
+          return { ok: false, kind: 'offline', offline: true };
+        },
+      },
+      storage: { local: { get: async () => ({}) } },
+    });
+    vi.resetModules();
+    await import('../action');
+    await vi.waitFor(() => {
+      if (document.getElementById('capture')?.hidden !== false) throw new Error('not yet');
+      if (!document.getElementById('captureText')?.textContent) throw new Error('not yet');
+    });
+    return { sent, openOptionsPage, text: () => document.getElementById('captureText')!.textContent, go: document.getElementById('captureGo') as HTMLButtonElement };
+  }
+
+  it('sends the learner to settings for the permission first', async () => {
+    const { text, go, openOptionsPage } = await onProtectedTab(false);
+    expect(text()).toMatch(/permission/);
+    expect(go.textContent).toBe('Allow in settings');
+    go.click();
+    expect(openOptionsPage).toHaveBeenCalled();
+  });
+
+  it('starts capturing this tab from the button, once allowed', async () => {
+    const { text, go, sent } = await onProtectedTab(true);
+    expect(go.textContent).toBe('Record sentence audio here');
+    go.click();
+    await vi.waitFor(() => expect(text()).toBe('Recording sentence audio on this tab.'));
+    expect(sent).toContainEqual({ type: 'tab-capture-start', tabId: 5 });
+    expect(go.hidden).toBe(true);
+  });
+
+  it('says so when it already is', async () => {
+    const { text, go } = await onProtectedTab(true, true);
+    expect(text()).toBe('Recording sentence audio on this tab.');
+    expect(go.hidden).toBe(true);
   });
 });

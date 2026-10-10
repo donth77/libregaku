@@ -64,10 +64,11 @@ src/offscreen.{html,ts} WASM host — the only place the tokenizer runs. The lin
 src/adapters/           one module per subtitle source (youtube, netflix), their
                         parsers (ttml, json3), the DOM-reading fallback
 src/morphology/         Segmenter implementations, merge rules, furigana alignment
-src/dict/               JMdict download, storage and lookup; remote fallbacks
+src/dict/               JMdict and KANJIDIC2 download, storage and lookup; remote fallbacks
 src/anki/               AnkiConnect client, note type, word status, hand marks, cards
                         waiting for Anki
-src/audio/              pronunciation, and the recording a new card carries
+src/audio/              pronunciation, the recording a new card carries, and a tab's
+                        sound for sentence audio where the video is encrypted
 src/content/
   inject.ts             YouTube page world: captures signed caption URLs, reads the player
   inject-netflix.ts     Netflix page world: reads the manifest, drives the player's seek
@@ -76,6 +77,8 @@ src/content/
   sidebar.ts            transcript panel, saved lines, settings
   popup.ts              lookup card
   keys.ts               the player's keys
+  capture.ts            a line's sound and a still, for cards
+  phrase.ts             a selection across words, looked up as one
   header.ts             bar across the top of the player
   player-inset.ts       moves the picture beside the open panel
 src/options.*           options page (Anki setup)

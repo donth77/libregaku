@@ -70,7 +70,7 @@ function isStatus(v: unknown): v is OverrideStatus {
 function clean(raw: unknown): Marks {
   const out: Marks = {};
   if (!raw || typeof raw !== 'object') return out;
-  // Older versions persisted every mined word as "learning", masking Anki
+  // Older versions persisted every word given a card as "learning", masking Anki
   // forever. Drop those values; the next write removes them for good.
   for (const [word, status] of Object.entries(raw as Record<string, unknown>)) {
     if (isStatus(status)) out[word] = status;

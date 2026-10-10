@@ -60,6 +60,23 @@ vi.mock('../../adapters/netflix', () => ({
   },
 }));
 vi.mock('../player-inset', () => ({ PlayerInset: class { set() {} destroy() {} } }));
+/** The video's sound and pictures, as far as a test lets them be had. */
+const cap = vi.hoisted(() => ({
+  record: false,
+  encrypted: false,
+  starts: 0,
+  recorded: null as { data: string; type: string } | null,
+  still: null as { data: string; type: string } | null,
+}));
+vi.mock('../capture', async (original) => ({
+  ...await original<typeof import('../capture')>(),
+  isEncrypted: () => cap.encrypted,
+  elementRecorder: () => (cap.record && !cap.encrypted
+    ? { start: async () => { cap.starts++; }, stop: async () => cap.recorded, dispose: () => {} }
+    : null),
+  tabCaptured: async () => false,
+  stillOf: async () => (cap.encrypted ? null : cap.still),
+}));
 
 let stored: Record<string, unknown>;
 /** chrome.storage.local, where hand marks live. */
@@ -84,7 +101,7 @@ async function openWord(): Promise<ShadowRoot> {
 beforeEach(async () => {
   vi.resetModules();
   vi.useFakeTimers();
-  stored = { 'libregaku.settings': { deck: 'Mining' } };
+  stored = { 'libregaku.settings': { deck: 'Vocabulary' } };
   local = {};
   const read = (area: Record<string, unknown>) => async (keys: string | string[]) =>
     Object.fromEntries([keys].flat().map((k) => [k, area[k]]));
@@ -109,6 +126,7 @@ beforeEach(async () => {
   api.cues = { ja: [{ start: 0, end: 10, text: '食べる' }] };
   api.buildStatusMap.mockReset().mockResolvedValue(snapshot('unknown'));
   api.addNote.mockReset().mockResolvedValue(1);
+  Object.assign(cap, { record: false, encrypted: false, starts: 0, recorded: null, still: null });
   listeners = vi.spyOn(document, 'addEventListener');
   vi.spyOn(console, 'log').mockImplementation(() => {});
   document.body.innerHTML = '<div id="movie_player"><video></video></div>';
@@ -189,7 +207,7 @@ describe('vocabulary status in the player', () => {
     const { setSetting } = await import('../../settings');
     await setSetting('statusScope', 'Japanese');
     await flush();
-    await setSetting('statusScope', 'Japanese::Mining');
+    await setSetting('statusScope', 'Japanese::Netflix');
     await flush();
     expect(token().dataset.s).toBe('known');
     older(snapshot('unknown'));
@@ -223,7 +241,7 @@ describe('vocabulary status in the player', () => {
   });
 });
 
-describe('a card mined from the player', () => {
+describe('a card made from the player', () => {
   it("carries the line's translation, and links to where the line starts", async () => {
     // Reload with a second track, so the line on screen has a translation.
     api.navigate();
@@ -327,12 +345,25 @@ describe('keys in the player', () => {
     expect(flashed()).toContain('Second line off');
   });
 
+  it('blurs the subtitle until hovered with H, and says so', async () => {
+    await lines([[0, 2, '食べる']]);
+    const wrap = () => root('.libregaku-root').querySelector('.wrap')!;
+    expect(wrap().classList.contains('blurred')).toBe(false);
+    key('h');
+    await flush();
+    expect(wrap().classList.contains('blurred')).toBe(true);
+    expect(flashed()).toContain('blurred until you hover');
+    key('h');
+    await flush();
+    expect(wrap().classList.contains('blurred')).toBe(false);
+  });
+
   it("adds the open card's word with A, through the card", async () => {
     const popup = await openWord();
     key('a');
     await flush();
     expect(api.addNote).toHaveBeenCalledOnce();
-    expect(popup.querySelector('.toast')?.textContent).toContain('added to Mining');
+    expect(popup.querySelector('.toast')?.textContent).toContain('added to Vocabulary');
   });
 
   it('adds the last word looked up once its card has closed, and says so', async () => {
@@ -342,7 +373,7 @@ describe('keys in the player', () => {
     key('a');
     await flush();
     expect(api.addNote).toHaveBeenCalledOnce();
-    expect(flashed()).toContain('食べる · added to Mining');
+    expect(flashed()).toContain('食べる · added to Vocabulary');
   });
 
   it('asks for a word first when nothing has been looked up', async () => {
@@ -364,6 +395,32 @@ describe('keys in the player', () => {
   });
 });
 
+describe('selecting a phrase', () => {
+  it('cancels a card hovering was about to open, once a word is pressed', async () => {
+    await lines([[0, 2, '食べる']]);
+    const word = token();
+    word.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+    word.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 }));
+    await vi.advanceTimersByTimeAsync(400);
+    expect(document.querySelector('.libregaku-popup')).toBeNull();
+  });
+});
+
+describe('the word elsewhere in the video', () => {
+  it("lists the word's other lines on its card, and plays from one", async () => {
+    const { clock, play } = await lines([[0, 2, '食べる'], [3, 5, '食べた'], [6, 8, '食べよう']]);
+    clock.now = 1;
+    const popup = await openWord();
+    await flush();
+    const rows = Array.from(popup.querySelectorAll('.also-line'));
+    // The analyser stand-in reads every line as 食べる, so both others count.
+    expect(rows.map((r) => r.querySelector('.at')?.textContent)).toEqual(['0:03', '0:06']);
+    (rows[1] as HTMLButtonElement).click();
+    expect(clock.now).toBe(6);
+    expect(play).toHaveBeenCalled();
+  });
+});
+
 describe('a card made while Anki is closed', () => {
   it('waits in the browser, shows as on its way, and goes in when Anki answers', async () => {
     const { AnkiUnavailable } = await import('../../anki/rpc');
@@ -375,7 +432,7 @@ describe('a card made while Anki is closed', () => {
 
     const waiting = Object.keys(local).filter((k) => k.startsWith('libregaku.cards.pending.'));
     expect(waiting).toHaveLength(1);
-    expect(popup.querySelector('.toast')?.textContent).toContain('goes to Mining when it opens');
+    expect(popup.querySelector('.toast')?.textContent).toContain('goes to Vocabulary when it opens');
     expect(token().dataset.s).toBe('learning');
     expect(summary()).toContain('0 new');
 
@@ -400,5 +457,86 @@ describe('a card made while Anki is closed', () => {
     expect((api.addNote.mock.calls[1]?.[0] as Record<string, unknown>).expression).toBe('食べる');
     expect(Object.keys(local).filter((k) => k.startsWith('libregaku.cards.pending.'))).toEqual([]);
     expect(token().dataset.s).toBe('learning');
+  });
+});
+
+describe('a card with the line on it', () => {
+  /** A player that plays: seeking lands at once, and playing moves the clock on. */
+  async function player(texts: Array<[number, number, string]>, at: number) {
+    const { clock, play } = await lines(texts);
+    const video = document.querySelector('video')!;
+    let playing = false;
+    play.mockImplementation(async () => { playing = true; });
+    video.pause = vi.fn(() => { playing = false; });
+    Object.defineProperty(video, 'paused', { get: () => !playing, configurable: true });
+    Object.defineProperty(video, 'currentTime', {
+      get: () => clock.now,
+      set: (t: number) => { clock.now = t; queueMicrotask(() => video.dispatchEvent(new Event('seeked'))); },
+      configurable: true,
+    });
+    const ticking = setInterval(() => { if (playing) clock.now = Math.round((clock.now + 0.1) * 100) / 100; }, 100);
+    clock.now = at;
+    await vi.advanceTimersByTimeAsync(50);   // the line on screen catches up
+    return { clock, isPlaying: () => playing, setPlaying: (on: boolean) => { playing = on; }, stop: () => clearInterval(ticking) };
+  }
+
+  it('replays the line to record it, takes a still, and puts playback back as it was', async () => {
+    Object.assign(cap, { record: true, recorded: { data: 'TElORQ==', type: 'audio/mp4;codecs=mp4a.40.2' }, still: { data: 'SU1H', type: 'image/jpeg' } });
+    const p = await player([[0, 2, '食べる'], [3, 5, '飲む']], 3.5);
+    const popup = await openWord();
+    popup.querySelector<HTMLButtonElement>('.tb.add')!.click();
+    await vi.advanceTimersByTimeAsync(4000);
+    p.stop();
+
+    expect(cap.starts).toBe(1);
+    const card = api.addNote.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(card.sentenceAudio).toEqual({ data: 'TElORQ==', filename: 'libregaku_test_3000.m4a' });
+    expect(card.picture).toEqual({ data: 'SU1H', filename: 'libregaku_test_3000.jpg' });
+    expect(p.clock.now).toBe(3.5);
+    expect(p.isPlaying()).toBe(false);
+    expect(popup.querySelector('.toast')?.textContent).toBe('added to Vocabulary');
+  });
+
+  it('keeps no sound from a replay someone interrupted, and says so', async () => {
+    Object.assign(cap, { record: true, recorded: { data: 'TElORQ==', type: 'audio/mp4;codecs=mp4a.40.2' } });
+    const p = await player([[0, 2, '食べる'], [3, 5, '飲む']], 3.5);
+    const popup = await openWord();
+    popup.querySelector<HTMLButtonElement>('.tb.add')!.click();
+    await vi.advanceTimersByTimeAsync(700);
+    p.setPlaying(false);   // paused by hand, mid-line
+    await vi.advanceTimersByTimeAsync(4000);
+    p.stop();
+    const card = api.addNote.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(card.sentenceAudio).toBeNull();
+    expect(popup.querySelector('.toast')?.textContent).toBe('added to Vocabulary — without sentence audio');
+  });
+
+  it('says to click the icon where the video is protected, and takes no still there', async () => {
+    Object.assign(cap, { record: true, encrypted: true, still: { data: 'SU1H', type: 'image/jpeg' } });
+    const p = await player([[0, 2, '食べる']], 1);
+    const popup = await openWord();
+    popup.querySelector<HTMLButtonElement>('.tb.add')!.click();
+    await vi.advanceTimersByTimeAsync(100);
+    p.stop();
+    const card = api.addNote.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(card.sentenceAudio).toBeNull();
+    expect(card.picture).toBeNull();
+    expect(popup.querySelector('.toast')?.textContent).toContain('click the Libregaku icon to record here');
+  });
+
+  it('records nothing and touches nothing when both are switched off', async () => {
+    Object.assign(cap, { record: true, still: { data: 'SU1H', type: 'image/jpeg' } });
+    const { setSetting } = await import('../../settings');
+    await setSetting('cardSentenceAudio', false);
+    await setSetting('cardScreenshot', false);
+    const p = await player([[0, 2, '食べる']], 1);
+    const popup = await openWord();
+    popup.querySelector<HTMLButtonElement>('.tb.add')!.click();
+    await vi.advanceTimersByTimeAsync(100);
+    p.stop();
+    expect(cap.starts).toBe(0);
+    const card = api.addNote.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(card.picture).toBeNull();
+    expect(popup.querySelector('.toast')?.textContent).toBe('added to Vocabulary');
   });
 });

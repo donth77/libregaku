@@ -25,7 +25,7 @@ async function anki(action: string, params: Record<string, unknown> = {}): Promi
     case 'modelNames': return modelFields ? ['Basic', MODEL_NAME] : ['Basic'];
     case 'modelFieldNames': return modelFields ?? [];
     case 'createModel': modelFields = [...FIELDS]; return {};
-    case 'deckNames': return ['Default', 'Mining'];
+    case 'deckNames': return ['Default', 'Vocabulary'];
     case 'createDeck': return 1;
     case 'addNote': added.push(params.note as Record<string, unknown>); return 99;
     case 'findCards': return [1, 2, 3];
@@ -50,7 +50,7 @@ const fieldsOf = (i = 0) => (added[i]?.fields ?? {}) as Record<string, string>;
 describe('addNote', () => {
   it('escapes every field, keeping only the furigana brackets it built', async () => {
     await addNote({
-      deck: 'Mining',
+      deck: 'Vocabulary',
       expression: '<b>分かる</b>',
       reading: '分[わ]かる',
       meaning: 'to understand; R&D <i>',
@@ -74,13 +74,13 @@ describe('addNote', () => {
   });
 
   it('neutralises markup even in a reading string', async () => {
-    await addNote({ deck: 'Mining', expression: 'x', reading: 'x<img onerror=1>', meaning: '', tags: [] });
+    await addNote({ deck: 'Vocabulary', expression: 'x', reading: 'x<img onerror=1>', meaning: '', tags: [] });
     expect(fieldsOf().Reading).toBe('x&lt;img onerror=1&gt;');
   });
 
   it('builds the reading from segments, escaping their text', async () => {
     await addNote({
-      deck: 'Mining', expression: '食べる', meaning: '', tags: [],
+      deck: 'Vocabulary', expression: '食べる', meaning: '', tags: [],
       reading: [{ text: '食', ruby: 'た' }, { text: 'べる[' }],
     });
     expect(fieldsOf().Reading).toBe('食[た]べる&#91;');
@@ -88,17 +88,17 @@ describe('addNote', () => {
 
   it('turns a duplicate refusal into something a caller can recognise', async () => {
     vi.mocked(ankiCall).mockRejectedValueOnce(new Error('cannot create note because it is a duplicate'));
-    const e = await addNote({ deck: 'Mining', expression: '猫', reading: '猫', meaning: '', tags: [] })
+    const e = await addNote({ deck: 'Vocabulary', expression: '猫', reading: '猫', meaning: '', tags: [] })
       .catch((x: unknown) => x);
     expect(e).toBeInstanceOf(DuplicateNote);
     expect(isDuplicate(e)).toBe(true);
-    expect((e as DuplicateNote).deck).toBe('Mining');
-    expect((e as Error).message).toBe('Already in Mining.');
+    expect((e as DuplicateNote).deck).toBe('Vocabulary');
+    expect((e as Error).message).toBe('Already in Vocabulary.');
   });
 
   it('hands AnkiConnect a recording to store and play from the Audio field', async () => {
     await addNote({
-      deck: 'Mining', expression: '猫', reading: '猫[ねこ]', meaning: 'cat', tags: [],
+      deck: 'Vocabulary', expression: '猫', reading: '猫[ねこ]', meaning: 'cat', tags: [],
       audio: { data: 'SUQzBAAAAAAA', filename: 'libregaku_猫_ねこ.mp3' },
     });
     expect(added[0]?.audio).toEqual([{ data: 'SUQzBAAAAAAA', filename: 'libregaku_猫_ねこ.mp3', fields: ['Audio'] }]);
@@ -106,8 +106,33 @@ describe('addNote', () => {
     expect(fieldsOf().Audio).toBe('');
   });
 
+  it('puts the line in SentenceAudio and the still in Image, on a note type made with them', async () => {
+    modelFields = [...FIELDS, 'SentenceAudio'];
+    await ensureModel();
+    await addNote({
+      deck: 'Vocabulary', expression: '猫', reading: '猫', meaning: '', tags: [],
+      audio: { data: 'V09SRA==', filename: 'libregaku_猫.mp3' },
+      sentenceAudio: { data: 'TElORQ==', filename: 'libregaku_v_1000.m4a' },
+      picture: { data: 'SU1H', filename: 'libregaku_v_1000.jpg' },
+    });
+    expect(added[0]?.audio).toEqual([
+      { data: 'V09SRA==', filename: 'libregaku_猫.mp3', fields: ['Audio'] },
+      { data: 'TElORQ==', filename: 'libregaku_v_1000.m4a', fields: ['SentenceAudio'] },
+    ]);
+    expect(added[0]?.picture).toEqual([{ data: 'SU1H', filename: 'libregaku_v_1000.jpg', fields: ['Image'] }]);
+  });
+
+  it('puts the line after the word in Audio, on an older note type without SentenceAudio', async () => {
+    await ensureModel();
+    await addNote({
+      deck: 'Vocabulary', expression: '猫', reading: '猫', meaning: '', tags: [],
+      sentenceAudio: { data: 'TElORQ==', filename: 'libregaku_v_1000.m4a' },
+    });
+    expect(added[0]?.audio).toEqual([{ data: 'TElORQ==', filename: 'libregaku_v_1000.m4a', fields: ['Audio'] }]);
+  });
+
   it('sends no media when there is no recording', async () => {
-    await addNote({ deck: 'Mining', expression: '猫', reading: '猫', meaning: '', tags: [], audio: null });
+    await addNote({ deck: 'Vocabulary', expression: '猫', reading: '猫', meaning: '', tags: [], audio: null });
     expect(added[0]).not.toHaveProperty('audio');
   });
 
@@ -121,7 +146,7 @@ describe('addNote', () => {
 
 describe('addSentence', () => {
   it("escapes the line, and keeps the first field's line break raw for Anki's duplicate check", async () => {
-    await addSentence({ deck: 'Mining', text: 'ねえ[笑]\n<次>', translation: 'Hey & you', tags: [] });
+    await addSentence({ deck: 'Vocabulary', text: 'ねえ[笑]\n<次>', translation: 'Hey & you', tags: [] });
     expect(fieldsOf()).toMatchObject({
       Expression: 'ねえ&#91;笑&#93;\n&lt;次&gt;',
       Reading: 'ねえ&#91;笑&#93;<br>&lt;次&gt;',
@@ -131,7 +156,7 @@ describe('addSentence', () => {
 
   it('reports a line already added as a duplicate', async () => {
     vi.mocked(ankiCall).mockRejectedValueOnce(new Error('cannot create note because it is a duplicate'));
-    const e = await addSentence({ deck: 'Mining', text: 'はい', tags: [] }).catch((x: unknown) => x);
+    const e = await addSentence({ deck: 'Vocabulary', text: 'はい', tags: [] }).catch((x: unknown) => x);
     expect(isDuplicate(e)).toBe(true);
   });
 });
@@ -186,7 +211,7 @@ describe('probe', () => {
   });
 
   it('counts cards, not notes, when connected', async () => {
-    expect(await probe()).toEqual({ kind: 'connected', decks: ['Default', 'Mining'], cards: 3, installed: 'present' });
+    expect(await probe()).toEqual({ kind: 'connected', decks: ['Default', 'Vocabulary'], cards: 3, installed: 'present' });
     expect(seen.has('findCards')).toBe(true);
   });
 
@@ -202,8 +227,8 @@ describe('the relay allowlist', () => {
   it('carries every action the client and the status layer use', async () => {
     modelFields = null;
     await probe();
-    await addNote({ deck: 'Mining', expression: 'x', reading: 'x', meaning: '', tags: [] });
-    await addSentence({ deck: 'Mining', text: 'x', tags: [] });
+    await addNote({ deck: 'Vocabulary', expression: 'x', reading: 'x', meaning: '', tags: [] });
+    await addSentence({ deck: 'Vocabulary', text: 'x', tags: [] });
     await createDeck('New');
     await browseOurCards();
     await countOurCards();

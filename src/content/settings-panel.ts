@@ -161,6 +161,14 @@ export const PANEL_STYLE = `
     background: #12172A; border: 1px solid #2A3348; border-bottom-width: 2px; border-radius: 5px;
   }
 
+  .set .perm {
+    justify-self: end; font: 600 11px/1 ui-monospace, monospace; letter-spacing: .07em;
+    text-transform: uppercase; padding: 8px 12px; border-radius: 6px; cursor: pointer;
+    border: 1px solid #2A3348; background: #12172A; color: #B4BDD4;
+  }
+  .set .perm:hover { border-color: #8AA2E8; color: #E8ECF6; }
+  .set .perm:focus-visible { outline: 2px solid #8AA2E8; outline-offset: 2px; }
+
   .credits { padding: 4px 16px 0; margin: 0; }
   .credits dt { margin-top: 12px; font-size: 13px; }
   .credits dt:first-child { margin-top: 4px; }
@@ -316,6 +324,8 @@ export function buildSettings(onChange: Rerender, opts: SettingsPanelOptions = {
     ['unknown', 'On new words'], ['always', 'Always'], ['never', 'Never'],
   ]);
   check('markKnown', 'Underline known words', 'Off by default: the screen gets quieter as you learn.');
+  check('blurPrimary', 'Blur until hovered',
+    'Listening practice: the subtitle stays blurred until the cursor is on it. H switches it.');
   select('subtitleSize', 'Text size',
     ['70', '85', '100', '120', '140', '160'].map((v) => [v, `${v}%`]),
     'Relative to the player, so it holds its proportion in fullscreen.');
@@ -354,6 +364,11 @@ export function buildSettings(onChange: Rerender, opts: SettingsPanelOptions = {
   scopeRow.hidden = true;
   check('cardAudio', 'Pronunciation on cards',
     'A recording of the word, when there is one. Never a synthesised voice.');
+  check('cardSentenceAudio', 'Sentence audio on cards',
+    'The line plays once more while it records. Netflix needs a permission first, just below.');
+  check('cardScreenshot', 'Picture on cards',
+    "A still from the line. Not on Netflix: its protection blanks the picture.");
+  root.appendChild(capturePermission());
 
   const steps = ankiSteps();
   root.appendChild(steps);
@@ -504,7 +519,7 @@ function ankiControls(ui: AnkiUi, onChange: Rerender, opts: SettingsPanelOptions
    *
    * What is stored is what is shown, even when Anki no longer has it. The list
    * used to fall back to whichever deck sorted first and save that, which put
-   * mined cards in a deck nobody picked and ticked the first-run "pick a deck"
+   * new cards in a deck nobody picked and ticked the first-run "pick a deck"
    * step for them. A status scope that had gone missing showed as "Whole
    * collection" while still reading the missing deck, so every word read as
    * unknown with nothing on screen to say why.
@@ -646,13 +661,64 @@ function ankiControls(ui: AnkiUi, onChange: Rerender, opts: SettingsPanelOptions
   });
   browse.addEventListener('click', () => void browseOurCards());
   newDeck.addEventListener('click', () => {
-    const name = prompt('New deck name — use :: for subdecks, e.g. Japanese::Mining');
+    const name = prompt('New deck name — use :: for subdecks, e.g. Japanese::Netflix');
     if (!name?.trim()) return;
     void createDeck(name.trim()).then(() => setSetting('deck', name.trim())).then(refresh);
   });
 
   void refresh();
   return row;
+}
+
+/**
+ * Netflix's video is encrypted, so its sentence audio has to come from
+ * capturing the tab — an optional permission, asked for here and never at
+ * install. A content script cannot ask for a permission, so in the
+ * transcript panel this opens the settings page, which can.
+ */
+function capturePermission(): HTMLElement {
+  const el = document.createElement('div');
+  el.className = 'set';
+  const name = document.createElement('span');
+  name.className = 'name';
+  name.textContent = 'Sentence audio on Netflix';
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'perm';
+  const hint = document.createElement('span');
+  hint.className = 'hint';
+  el.append(name, button, hint);
+
+  const canAsk = typeof chrome.permissions?.request === 'function';
+  const PERM = { permissions: ['tabCapture'] };
+  const granted = async (): Promise<boolean> => {
+    try {
+      if (canAsk) return await chrome.permissions.contains(PERM);
+      const r = (await chrome.runtime.sendMessage({ type: 'capture-permission' })) as { granted?: boolean } | undefined;
+      return Boolean(r?.granted);
+    } catch {
+      return false;
+    }
+  };
+  const paint = async (): Promise<void> => {
+    const on = await granted();
+    button.dataset.on = String(on);
+    button.textContent = on ? 'Remove' : canAsk ? 'Allow' : 'Allow in settings';
+    button.hidden = on && !canAsk;
+    hint.textContent = on
+      ? 'Allowed. On a Netflix tab, click the Libregaku icon and choose Record here — Chrome asks for that once per tab.'
+      : "Netflix's video is protected, so a line's sound has to be captured from the tab, which Chrome asks you to allow.";
+  };
+  button.addEventListener('click', () => {
+    if (!canAsk) {
+      void chrome.runtime.sendMessage({ type: 'open-options' }).catch(() => {});
+      return;
+    }
+    const change = button.dataset.on === 'true' ? chrome.permissions.remove(PERM) : chrome.permissions.request(PERM);
+    void change.catch(() => false).then(paint);
+  });
+  void paint();
+  return el;
 }
 
 /** The player's keys (src/content/keys.ts), where someone looking for them will look. */
@@ -666,6 +732,7 @@ function keyList(): HTMLElement {
     [['A'], 'Add a card for the word looked up'],
     [['K'], 'Mark it known, while its card is open'],
     [['R'], 'Furigana: off, new words, all'],
+    [['H'], 'Blur the subtitle until hovered'],
     [['B'], 'Save the line'],
     [['S'], 'Show or hide this panel'],
     [['Esc'], 'Close the card'],
@@ -702,9 +769,9 @@ function credits(): HTMLElement {
     dl.append(dt, dd);
   };
 
-  entry('JMdict', 'https://www.edrdg.org/jmdict/j_jmdict.html',
-    'Dictionary data © the Electronic Dictionary Research and Development Group, used under ' +
-    'CC BY-SA 4.0. Repackaged as JSON by jmdict-simplified.');
+  entry('JMdict · KANJIDIC2', 'https://www.edrdg.org/jmdict/j_jmdict.html',
+    'Dictionary and kanji data © the Electronic Dictionary Research and Development Group, used ' +
+    'under CC BY-SA 4.0. Repackaged as JSON by jmdict-simplified.');
   entry('Lindera · IPADIC', 'https://github.com/lindera/lindera',
     'Morphological analysis. MIT; IPADIC carries its own terms.');
   entry('Jotoba · Jisho', 'https://jotoba.de/',

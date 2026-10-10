@@ -195,3 +195,46 @@ describe('store', () => {
     expect(lex['三匹']).toBeUndefined();
   });
 });
+
+describe('KANJIDIC2', () => {
+  const characters = Array.from({ length: 1001 }, (_, i) => ({
+    literal: String.fromCodePoint(0x4e00 + i),
+    misc: { strokeCounts: [3] },
+    readingMeaning: { groups: [{ readings: [{ type: 'ja_on', value: 'イチ' }], meanings: [{ lang: 'en', value: `m${i}` }] }] },
+  }));
+
+  async function withKanji() {
+    const store = await fresh();
+    const archive = await import('../archive');
+    vi.mocked(archive.fetchJsonTgz).mockImplementation(async (url: string) =>
+      (url.includes('kanjidic2') ? { characters } : { words: [...filler] }));
+    return store;
+  }
+
+  it('builds from the pinned release, marks itself complete, and finds characters', async () => {
+    const store = await withKanji();
+    expect(store.kanjidicUrl()).toMatch(/kanjidic2-all-.+\.json\.tgz$/);
+    expect(await store.hasKanji()).toBe(false);
+    expect(await store.buildKanji()).toBe(1001);
+    expect(await store.hasKanji()).toBe(true);
+    const [first, second] = await store.kanjiFor(['一', '丁', '!']);
+    expect(first).toMatchObject({ char: '一', on: ['イチ'], meanings: { en: ['m0'] } });
+    expect(second?.char).toBe('丁');
+  });
+
+  it('lives beside JMdict without disturbing it', async () => {
+    const store = await withKanji();
+    await store.build('eng');
+    await store.buildKanji();
+    expect(await store.isPopulated('eng')).toBe(true);
+    expect(await store.hasKanji()).toBe(true);
+  });
+
+  it('is not complete when the data is empty', async () => {
+    const store = await fresh();
+    const archive = await import('../archive');
+    vi.mocked(archive.fetchJsonTgz).mockResolvedValue({ characters: [] });
+    await expect(store.buildKanji()).rejects.toThrow(/no characters/);
+    expect(await store.hasKanji()).toBe(false);
+  });
+});

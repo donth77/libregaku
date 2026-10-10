@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { describeFailure } from '../../src/assumptions';
 import { toEntries as jishoEntries } from '../../src/dict/jisho';
 import { toEntries as jotobaEntries } from '../../src/dict/jotoba';
-import { jmdictUrl } from '../../src/dict/store';
+import { jmdictUrl, kanjidicUrl } from '../../src/dict/store';
 import { LINDERA_DICTS } from '../../src/morphology/dictionaries';
 import { fetchCheckingHops } from './hosts';
 
@@ -22,6 +22,11 @@ describe('dictionary contract', () => {
       const res = await fetchCheckingHops(jmdictUrl(edition), { method: 'HEAD' }, describeFailure('dict.jmdict-release'));
       expect(res.ok, `${jmdictUrl(edition)} returned HTTP ${res.status}.\n${describeFailure('dict.jmdict-release')}`).toBe(true);
     }
+  }, 60_000);
+
+  it('dict.kanjidic-release — the pinned KANJIDIC2 file is still downloadable', async () => {
+    const res = await fetchCheckingHops(kanjidicUrl(), { method: 'HEAD' }, describeFailure('dict.kanjidic-release'));
+    expect(res.ok, `${kanjidicUrl()} returned HTTP ${res.status}.\n${describeFailure('dict.kanjidic-release')}`).toBe(true);
   }, 60_000);
 
   it('dict.lindera-release — the pinned IPADIC build is still downloadable', async () => {

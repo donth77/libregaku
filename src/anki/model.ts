@@ -9,7 +9,7 @@
  *   tags       — "where did this come from?"  Filterable in Anki's own browser,
  *                hierarchical, survives editing, and syncs.
  *   Source     — "which moment, exactly?"  A per-card link back to the video
- *                and timestamp the word was mined from.
+ *                and timestamp the word was taken from.
  *
  * A deliberate non-use: none of these scope the *status* query. Words a learner
  * knows live all over their collection, usually in decks that predate this
@@ -32,6 +32,14 @@ export const FIELDS = [
 ] as const;
 
 /**
+ * Fields a note type made now has, but one made earlier may not — and is
+ * never changed to add, since adding a field to a note type forces a full
+ * sync. A card for an older note type puts what would go here somewhere it
+ * has room: the sentence's sound goes in Audio, after the word's.
+ */
+export const OPTIONAL_FIELDS = ['SentenceAudio'] as const;
+
+/**
  * `{{furigana:…}}` renders 漢字[かんじ] as ruby, and is why Reading is stored
  * in bracket form rather than as bare kana.
  */
@@ -46,6 +54,7 @@ const BACK = `
 <hr id="answer">
 <div class="meaning">{{Meaning}}</div>
 {{#SentenceMeaning}}<div class="sentence-meaning">{{SentenceMeaning}}</div>{{/SentenceMeaning}}
+{{#SentenceAudio}}<div class="audio">{{SentenceAudio}}</div>{{/SentenceAudio}}
 {{#Image}}<div class="image">{{Image}}</div>{{/Image}}
 {{#Source}}<div class="source">{{Source}}</div>{{/Source}}
 `.trim();
@@ -73,7 +82,7 @@ hr#answer { border: 0; border-top: 1px solid #ddd; margin: 16px 0; }
 
 export const MODEL = {
   modelName: MODEL_NAME,
-  inOrderFields: [...FIELDS],
+  inOrderFields: [...FIELDS, ...OPTIONAL_FIELDS],
   css: CSS,
   isCloze: false,
   cardTemplates: [{ Name: 'Recognition', Front: FRONT, Back: BACK }],
@@ -140,6 +149,12 @@ export function mediaFilename(word: string, reading: string | undefined, type: s
   const ext = MEDIA_TYPES[type.split(';')[0]?.trim().toLowerCase() ?? ''] ?? 'mp3';
   const parts = [safe(word) || 'word', reading && reading !== word ? safe(reading) : ''].filter(Boolean);
   return `${MEDIA_PREFIX}${parts.join('_')}.${ext}`;
+}
+
+/** A line's sound or still: one file per line of a video, whichever word the card is for. */
+export function lineMediaName(video: string, seconds: number, ext: string): string {
+  const id = video.replace(/[^A-Za-z0-9_-]+/g, '_').slice(0, 40) || 'video';
+  return `${MEDIA_PREFIX}${id}_${Math.round(seconds * 1000)}.${ext}`;
 }
 
 /** Whether a media file name is one the extension would have made. */

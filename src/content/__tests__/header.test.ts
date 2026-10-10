@@ -52,12 +52,14 @@ describe('Header', () => {
 
   it('names the keys for its switches in their tooltips', async () => {
     await setSetting('ruby', 'unknown');
+    await setSetting('blurPrimary', false);
     await setSetting('dualSubtitles', true);
     const { host } = build();
     const tips = Array.from(host.shadowRoot!.querySelectorAll('button[aria-keyshortcuts]'))
       .map((b) => [b.getAttribute('aria-keyshortcuts'), b.getAttribute('title'), b.getAttribute('aria-label')]);
     expect(tips).toEqual([
       ['R', 'Furigana: new words (R)', 'Furigana: new words'],
+      ['H', 'Blur the subtitle until hovered (H)', 'Blur the subtitle until hovered'],
       ['ArrowUp', 'Hide the second line (↑)', 'Hide the second line'],
       ['S', 'Transcript panel (S)', 'Transcript panel'],
     ]);

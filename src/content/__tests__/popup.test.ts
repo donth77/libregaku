@@ -42,7 +42,7 @@ function open(over: Partial<Parameters<typeof showPopup>[3]> = {}, surface = '�
     sentence: '毎日勉強する',
     status: 'unknown',
     onMark: () => {},
-    onAddCard: async () => 'added to Mining',
+    onAddCard: async () => 'added to Vocabulary',
     ...over,
   });
   return document.querySelector('.libregaku-popup')!.shadowRoot!;
@@ -204,12 +204,12 @@ describe('adding from the card', () => {
 
   it('is what the A key presses, when a card is open', async () => {
     expect(pressAdd()).toBe(false);
-    const onAddCard = vi.fn(async () => 'added to Mining');
+    const onAddCard = vi.fn(async () => 'added to Vocabulary');
     const card = open({ onAddCard });
     expect(pressAdd()).toBe(true);
     await flush();
     expect(onAddCard).toHaveBeenCalledWith(expect.objectContaining({ expression: '勉強', reading: 'べんきょう' }));
-    expect(card.querySelector('.toast')?.textContent).toBe('added to Mining');
+    expect(card.querySelector('.toast')?.textContent).toBe('added to Vocabulary');
   });
 
   it('adds one card however many times it is pressed while adding', async () => {
@@ -218,7 +218,7 @@ describe('adding from the card', () => {
     open({ onAddCard });
     pressAdd();
     pressAdd();
-    finish('added to Mining');
+    finish('added to Vocabulary');
     await flush();
     expect(onAddCard).toHaveBeenCalledOnce();
   });
@@ -238,5 +238,81 @@ describe('adding from the card', () => {
     expect(known.getAttribute('title')).toBe('Known (K)');
     expect(known.getAttribute('aria-keyshortcuts')).toBe('K');
     expect(card.querySelector('.mk.track')?.hasAttribute('aria-keyshortcuts')).toBe(false);
+  });
+});
+
+describe('the word elsewhere in the video', () => {
+  const lines = (n: number) => Array.from({ length: n }, (_, i) => ({ start: 60 * i + 5, text: `毎日勉強した${i}`, match: '勉強' }));
+
+  it('lists the other lines once they are found, each with the word picked out', async () => {
+    const card = open({ elsewhere: Promise.resolve(lines(2)) });
+    expect(card.querySelector<HTMLElement>('.also')?.hidden).toBe(true);
+    await flush();
+    const also = card.querySelector<HTMLElement>('.also')!;
+    expect(also.hidden).toBe(false);
+    expect(also.querySelector('.also-head')?.textContent).toBe('2 more times in this video');
+    const rows = Array.from(also.querySelectorAll('.also-line'));
+    expect(rows.map((r) => r.querySelector('.at')?.textContent)).toEqual(['0:05', '1:05']);
+    expect(rows[0]?.querySelector('b')?.textContent).toBe('勉強');
+  });
+
+  it('plays from a line when it is clicked, and closes the card', async () => {
+    const onSeek = vi.fn();
+    const card = open({ elsewhere: Promise.resolve(lines(1)), onSeek });
+    await flush();
+    expect(card.querySelector('.also-head')?.textContent).toBe('Once more in this video');
+    card.querySelector<HTMLButtonElement>('.also-line')!.click();
+    expect(onSeek).toHaveBeenCalledWith(5);
+    expect(popupIsOpen()).toBe(false);
+  });
+
+  it('lists four and counts the rest', async () => {
+    const card = open({ elsewhere: Promise.resolve(lines(7)) });
+    await flush();
+    expect(card.querySelectorAll('.also-line')).toHaveLength(4);
+    expect(card.querySelector('.also-more')?.textContent).toContain('and 3 more');
+  });
+
+  it('shows nothing when the word is nowhere else, or the card has moved on', async () => {
+    const none = open({ elsewhere: Promise.resolve([]) });
+    await flush();
+    expect(none.querySelector<HTMLElement>('.also')?.hidden).toBe(true);
+
+    let found!: (v: ReturnType<typeof lines>) => void;
+    open({ elsewhere: new Promise((r) => { found = r; }) }, '勉強');
+    const next = open({}, '学校');
+    found(lines(2));
+    await flush();
+    expect(next.querySelector('.also')).toBeNull();
+  });
+});
+
+describe("the word's kanji", () => {
+  it('lists each with its meanings and readings, once looked up', async () => {
+    const card = open({
+      characters: Promise.resolve({
+        label: 'Kanji',
+        items: [
+          { char: '勉', meanings: ['exertion', 'endeavour', 'encourage', 'strive'], on: ['ベン'], kun: ['つと.める'] },
+          { char: '強', meanings: ['strong'], on: ['キョウ', 'ゴウ', 'ショウ'], kun: ['つよ.い'] },
+        ],
+      }),
+    });
+    expect(card.querySelector<HTMLElement>('.chars')?.hidden).toBe(true);
+    await flush();
+    const chars = card.querySelector<HTMLElement>('.chars')!;
+    expect(chars.hidden).toBe(false);
+    expect(chars.querySelector('.chars-head')?.textContent).toBe('Kanji');
+    expect(Array.from(chars.querySelectorAll('.kanji')).map((k) => k.textContent)).toEqual(['勉', '強']);
+    const [ben, tsuyoi] = Array.from(chars.querySelectorAll('.kanji-mean'));
+    // Three meanings at most, and two readings of each kind.
+    expect(ben?.firstChild?.textContent).toBe('exertion, endeavour, encourage');
+    expect(tsuyoi?.querySelector('.kanji-read')?.textContent).toBe('キョウ · ゴウ · つよ.い');
+  });
+
+  it('leaves the section out for a word with no kanji', async () => {
+    const card = open({ characters: Promise.resolve({ label: 'Kanji', items: [] }) });
+    await flush();
+    expect(card.querySelector<HTMLElement>('.chars')?.hidden).toBe(true);
   });
 });

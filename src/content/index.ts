@@ -6,11 +6,11 @@ import { IntlSegmenter } from '../morphology/intl';
 import { LinderaSegmenter } from '../morphology/lindera';
 import type { Segmenter, Token } from '../morphology/types';
 import { DomCaptionSource } from '../adapters/dom-captions';
-import { clearLookupCache, ensureDictionary, lookupToken, type LookupResult } from '../dict/client';
+import { charactersOf, clearLookupCache, ensureDictionary, lookupToken, type Characters, type LookupResult } from '../dict/client';
 import { bottomOffset, namedMatches, occupiedBands } from './coexist';
 import { addNote, ensureModel, isDuplicate, type NewCard } from '../anki/client';
 import { flushCards, isQueueKey, queueCard, queuedCards } from '../anki/card-queue';
-import { tagsFor, toAnkiFurigana } from '../anki/model';
+import { lineMediaName, tagsFor, toAnkiFurigana } from '../anki/model';
 import { AnkiUnavailable } from '../anki/rpc';
 import { cardAudio } from '../audio/card-audio';
 import { sourceField } from '../anki/source';
@@ -25,8 +25,12 @@ import {
   cancelPopupClose, closePopup, closePopupSoon, draftFor, popupKey, pressAdd, showPopup, type CardDraft,
 } from './popup';
 import { clearFlash, flash as flashOn } from './flash';
+import { phraseToken } from './phrase';
+import {
+  elementRecorder, extensionFor, isEncrypted, stillOf, tabCaptured, tabRecorder, type LineRecorder, type Media,
+} from './capture';
 import { isLineKey, isTyping, keyAction, type KeyAction } from './keys';
-import { Sidebar } from './sidebar';
+import { Sidebar, type WordContext } from './sidebar';
 import { PlayerInset } from './player-inset';
 import * as bookmarks from './bookmarks';
 import { Header } from './header';
@@ -66,6 +70,12 @@ let overlay: Overlay | null = null;
 let cues: Cue[] = [];
 let cueIndex = new CueIndex([]);
 let segmented = new Map<number, Token[]>();
+/**
+ * Every transcript line's words, by text, as the overlay and the panel's
+ * counting analyse them. What "also in this video" searches, so a lookup
+ * never re-analyses a film to answer it.
+ */
+let lineTokens = new Map<string, Token[]>();
 /** The cues on screen, as their indexes joined — '' when none. */
 let activeKey = '';
 /** An impossible key, to force the next frame to repaint. */
@@ -312,6 +322,7 @@ async function makeSegmenter(): Promise<Segmenter | null> {
           // Merging consults the dictionary — for counters, prefixes and the
           // like — so lines analysed before it arrived carry guesses. Again.
           segmented = new Map();
+          lineTokens = new Map();
           activeKey = STALE;
           sidebar?.refreshAnalysis();
         }
@@ -341,6 +352,7 @@ async function makeSegmenter(): Promise<Segmenter | null> {
       if (segmenterFor !== lang) return;
       segmenter = new LinderaSegmenter();
       segmented = new Map();   // re-segment with lemmas and readings
+      lineTokens = new Map();
       activeKey = STALE;
       sidebar?.refreshAnalysis();
       log('upgraded to tier 2 — lemmas, readings and furigana are live');
@@ -399,15 +411,74 @@ function joined(parts: Token[][]): Token[] {
 function segmentCue(i: number): Token[] | Promise<Token[]> {
   const cached = segmented.get(i);
   if (cached) return cached;
-  const result = segmentText(cues[i]?.text ?? '');
+  const text = cues[i]?.text ?? '';
+  const result = segmentText(text);
   if (Array.isArray(result)) {
     segmented.set(i, result);
+    lineTokens.set(text, result);
     return result;
   }
   return result.then((toks) => {
     segmented.set(i, toks);
+    lineTokens.set(text, toks);
     return toks;
   });
+}
+
+/** Tokens standing for a selected phrase rather than one word. */
+const phrases = new WeakSet<Token>();
+
+/** Where a word also turns up in this video. */
+export interface AlsoLine {
+  start: number;
+  text: string;
+  /** The word as it was written in that line, to pick it out. */
+  match: string;
+}
+
+/**
+ * Every other line of this video with the word in it, by dictionary form —
+ * so 見た finds 見る wherever it was said. A phrase is found by its text.
+ * Lines not analysed yet are analysed now, a batch at a time.
+ */
+async function alsoInVideo(token: Token, here?: number): Promise<AlsoLine[]> {
+  const key = token.lemma ?? token.surface;
+  const phrase = phrases.has(token);
+  const lines = transcript.lines.filter((l) => here === undefined || Math.abs(l.start - here) > 0.01);
+  const missing = [...new Set(lines.map((l) => l.text))].filter((t) => !lineTokens.has(t));
+  for (let i = 0; i < missing.length; i += 32) {
+    await Promise.all(missing.slice(i, i + 32).map(async (text) => {
+      lineTokens.set(text, await segmentText(text));
+    }));
+  }
+  const out: AlsoLine[] = [];
+  for (const line of lines) {
+    if (phrase) {
+      if (line.text.includes(token.surface)) out.push({ start: line.start, text: line.text, match: token.surface });
+      continue;
+    }
+    const hit = lineTokens.get(line.text)?.find((t) => !t.punct && (t.lemma ?? t.surface) === key);
+    if (hit) out.push({ start: line.start, text: line.text, match: hit.surface });
+  }
+  return out;
+}
+
+/**
+ * The kanji of the word a card is about — its headword's, which may be
+ * written differently from what was on screen. Only where the language has a
+ * dictionary behind it, as with lookups themselves.
+ */
+function charactersFor(token: Token, result: LookupResult): Promise<Characters> | undefined {
+  if (!DICTIONARIES[targetLang()]) return undefined;
+  return charactersOf(draftFor(result, token, '').expression, settings().native)
+    .catch(() => ({ label: '', items: [] }));
+}
+
+/** Play from a line the lookup card points to. */
+function playFrom(t: number): void {
+  lineSeek = { to: t, at: Date.now() };
+  seekTo(t);
+  void activeVideo?.play().catch(() => {});
 }
 
 function paint(idx: number[]): void {
@@ -879,11 +950,41 @@ function makeOverlay(mount: HTMLElement, adapter: SubtitleSource): Overlay {
   applyAnchor(o, mount, adapter);
   o.setSize(settings().subtitleSize);
   o.setRubyMode(settings().ruby);
+  o.setBlurred(settings().blurPrimary);
   o.setMarkKnown(settings().markKnown);
   o.setStatusSource(statusOf);
   o.onToken((tok, el) => void openLookup(mount, el, tok));
+  o.onPhrase((words, text, el) => void openLookup(mount, el, phrase(words, text)));
+  o.onPress(() => {
+    // A press starts a click or a selection; a hover card that was about to
+    // open for the word under it would replace the phrase's.
+    clearTimeout(hoverTimer);
+    pressPause();
+  });
   wireHover(o, mount);
   return o;
+}
+
+/** A selected run of words as one token to look up, remembered as a phrase. */
+function phrase(words: Token[], text: string): Token {
+  const tok = phraseToken(words, text);
+  phrases.add(tok);
+  return tok;
+}
+
+/**
+ * A word pressed is a lookup or a selection starting: hold the line still for
+ * it, as hovering does — a phrase cannot be dragged across a line that has
+ * already gone. If no card comes of it, play on.
+ */
+function pressPause(): void {
+  if (!settings().hoverPause) return;
+  pauseForHover();
+  document.addEventListener('mouseup', () => {
+    window.setTimeout(() => {
+      if (!popupKey()) resumeAfterHover();
+    }, 400);
+  }, { once: true, capture: true });
 }
 
 function wireHover(o: Overlay, mount: HTMLElement): void {
@@ -899,6 +1000,8 @@ function wireHover(o: Overlay, mount: HTMLElement): void {
       return;
     }
     if (settings().interaction !== 'hover') return;
+    // A line replaying to be recorded passes under the cursor; it is not being read.
+    if (recordingLine) return;
 
     // Already showing this word — do not restart anything.
     if (popupKey() === `${tok.start}:${tok.surface}`) {
@@ -919,7 +1022,7 @@ const onCardClosed = (why: 'closed' | 'replaced'): void => {
 };
 
 function pauseForHover(): void {
-  if (!settings().hoverPause || !activeVideo || activeVideo.paused) return;
+  if (recordingLine || !settings().hoverPause || !activeVideo || activeVideo.paused) return;
   activeVideo.pause();
   pausedForHover = true;
 }
@@ -930,10 +1033,12 @@ function resumeAfterHover(): void {
   void activeVideo.play().catch(() => {});
 }
 
-/** Where a word being mined was said, and what the second line said then. */
+/** Where a word being carded was said, and what the second line said then. */
 interface LineContext {
   /** Start of the line, in seconds. */
   start?: number;
+  /** Its end, for recording it. */
+  end?: number;
   translation?: string;
 }
 
@@ -943,7 +1048,11 @@ function lineHere(): LineContext {
   if (!/^\d+(,\d+)*$/.test(activeKey)) return {};
   const shown = activeKey.split(',').map((i) => cues[Number(i)]).filter((c): c is Cue => Boolean(c));
   if (!shown.length) return {};
-  return { start: shown[0]!.start, translation: shown.map((c) => c.secondary).filter(Boolean).join('\n') || undefined };
+  return {
+    start: shown[0]!.start,
+    end: Math.max(...shown.map((c) => c.end)),
+    translation: shown.map((c) => c.secondary).filter(Boolean).join('\n') || undefined,
+  };
 }
 
 /**
@@ -967,7 +1076,7 @@ async function addCard(draft: CardDraft, token: Token, line: LineContext): Promi
   const adapter = pickAdapter();
   // The line's own start, so the card links back to where the word was said —
   // not to wherever playback has drifted to by the time Add is pressed, and
-  // not to the playhead at all for a word mined from further down the
+  // not to the playhead at all for a word picked from further down the
   // transcript.
   const at = line.start ?? activeVideo?.currentTime ?? 0;
 
@@ -1003,9 +1112,19 @@ async function addCard(draft: CardDraft, token: Token, line: LineContext): Promi
   // The headword and its reading: the pair recordings are filed under.
   const audio = settings().cardAudio ? { word: draft.expression, reading, lang: targetLang() } : undefined;
 
+  let missing: string[] = [];
   try {
     await ensureModel();
-    await addNote({ ...card, audio: audio ? await cardAudio(audio) : null });
+    const [wordAudio, media] = await Promise.all([audio ? cardAudio(audio) : Promise.resolve(null), lineMedia(line)]);
+    missing = media.missing;
+    const video = adapter?.videoId() ?? 'video';
+    const name = (ext: string): string => lineMediaName(video, line.start ?? at, ext);
+    await addNote({
+      ...card,
+      audio: wordAudio,
+      sentenceAudio: media.audio ? { data: media.audio.data, filename: name(extensionFor(media.audio.type)) } : null,
+      picture: media.picture ? { data: media.picture.data, filename: name(extensionFor(media.picture.type)) } : null,
+    });
   } catch (e) {
     // Anki already has it. Not a failure: say so, and let status catch up.
     if (isDuplicate(e)) {
@@ -1036,7 +1155,114 @@ async function addCard(draft: CardDraft, token: Token, line: LineContext): Promi
   // A card now speaks for the word; a hand mark would hide what it says.
   await setMark(word, null);
   void refreshStatus();
-  return `added to ${deck}`;
+  return missing.length ? `added to ${deck} — without ${missing.join(' or ')}` : `added to ${deck}`;
+}
+
+/** While a line replays to be recorded: hover must neither pause it nor open cards over it. */
+let recordingLine = false;
+
+/** The longest stretch recorded for one line; a longer one is cut here. */
+const LONGEST_LINE = 30;
+
+/** Once the video says it has finished seeking, or after `ms` regardless. */
+function seeked(video: HTMLVideoElement, ms = 1500): Promise<void> {
+  return new Promise((resolve) => {
+    let timer = 0;
+    const done = (): void => {
+      window.clearTimeout(timer);
+      video.removeEventListener('seeked', done);
+      resolve();
+    };
+    timer = window.setTimeout(done, ms);
+    video.addEventListener('seeked', done);
+  });
+}
+
+/**
+ * The line's sound and a still from it, for a card (src/content/capture.ts).
+ *
+ * Chrome records in real time, so the line plays once more while it is
+ * captured, and playback then goes back to where it was, paused or not. A
+ * still of the line on screen is just the frame showing; one further down
+ * the transcript is visited for as long as copying a frame takes. Whatever
+ * the site will not give is named in `missing`, and the card goes in without.
+ */
+async function lineMedia(line: LineContext): Promise<{ audio: Media | null; picture: Media | null; missing: string[] }> {
+  const out = { audio: null as Media | null, picture: null as Media | null, missing: [] as string[] };
+  const video = activeVideo;
+  const wantAudio = settings().cardSentenceAudio;
+  const wantPicture = settings().cardScreenshot && Boolean(video) && !isEncrypted(video!);
+  if (!video || line.start === undefined || (!wantAudio && !wantPicture)) return out;
+  const start = line.start;
+  const end = Math.min(line.end ?? start + 5, start + LONGEST_LINE);
+  const back = video.currentTime;
+  const wasPaused = video.paused;
+
+  let recorder: LineRecorder | null = null;
+  if (wantAudio) {
+    recorder = elementRecorder(video) ?? ((await tabCaptured()) ? tabRecorder() : null);
+    if (!recorder) {
+      out.missing.push(isEncrypted(video) ? 'sentence audio (click the Libregaku icon to record here)' : 'sentence audio');
+    }
+  }
+
+  if (!recorder) {
+    if (!wantPicture) return out;
+    if (back >= start - 0.25 && back <= end + 0.25) {
+      out.picture = await stillOf(video);
+      return out;
+    }
+    video.pause();
+    seekTo(start + 0.3);
+    await seeked(video);
+    out.picture = await stillOf(video);
+    seekTo(back);
+    if (!wasPaused) void video.play().catch(() => {});
+    return out;
+  }
+
+  const gen = generation;
+  recordingLine = true;
+  if (currentMount) flash(currentMount, 'Recording the line…', (end - start + 3) * 1000);
+  try {
+    seekTo(Math.max(0, start - 0.15));
+    await seeked(video);
+    await recorder.start();
+    await video.play().catch(() => {});
+    const limit = Date.now() + (end - start + 4) * 1000;
+    let pictured = !wantPicture;
+    let whole = false;
+    for (;;) {
+      await new Promise((resolve) => window.setTimeout(resolve, 50));
+      const t = video.currentTime;
+      if (!pictured && t >= start + 0.3) {
+        pictured = true;
+        out.picture = await stillOf(video);
+      }
+      if (t >= end + 0.15) {
+        whole = true;
+        break;
+      }
+      // Moved by someone else — a seek, a pause, an advert, another video:
+      // what was recorded is no longer this line.
+      if (gen !== generation || video.paused || pickAdapter()?.isAd?.() || t < start - 1.5 || t > end + 3) break;
+      if (Date.now() > limit) break;
+    }
+    const recorded = await recorder.stop();
+    out.audio = whole ? recorded : null;
+  } catch (e) {
+    log('could not record the line:', e);
+  } finally {
+    recorder.dispose();
+    recordingLine = false;
+    if (gen === generation) {
+      video.pause();
+      seekTo(back);
+      if (!wasPaused) void video.play().catch(() => {});
+    }
+  }
+  if (!out.audio) out.missing.push('sentence audio');
+  return out;
 }
 
 /**
@@ -1076,6 +1302,9 @@ async function openLookup(mount: HTMLElement, el: HTMLElement, token: Token, byH
       onAddCard: (draft) => addCard(draft, token, line),
       hasCard: hasCardFor(token),
       queued: queuedWords.has(token.lemma ?? token.surface),
+      elsewhere: alsoInVideo(token, line.start),
+      onSeek: playFrom,
+      characters: charactersFor(token, result),
       onClose: onCardClosed,
     });
   } catch (e) {
@@ -1122,6 +1351,7 @@ function mountSidebar(mount: HTMLElement, video: HTMLVideoElement, adapter: Subt
     measure: async (text) => {
       if (!segmenter) return { unknown: 0, words: 0 };
       const toks = await segmentText(text);
+      lineTokens.set(text, toks);
       const words = toks.filter((t) => t.content && !t.punct);
       return {
         words: words.length,
@@ -1131,30 +1361,38 @@ function mountSidebar(mount: HTMLElement, video: HTMLVideoElement, adapter: Subt
     seek: seekTo,
     currentTime: () => activeVideo?.currentTime ?? 0,
     context: videoContext,
-    onWordClick: (token, el, sentence, context) => {
-      const seq = ++lookupSeq;
-      void lookupFor(token).then((result) => {
-        if (seq !== lookupSeq || !el.isConnected) return;
-        const host = el.getRootNode() as ShadowRoot;
-        // The line the word was clicked in, which may be far from the playhead.
-        const line = { start: context?.start, translation: context?.translation };
-        rememberLookup(token, result, sentence, line);
-        showPopup((host.host as HTMLElement).parentElement ?? mount, el, result, {
-          token,
-          sentence,
-          status: statusOf(token),
-          onMark: (word, next) => mark(word, next, lemmaReading(word, token.surface, token.reading)),
-          onAddCard: (draft) => addCard(draft, token, line),
-          hasCard: hasCardFor(token),
-          queued: queuedWords.has(token.lemma ?? token.surface),
-          onClose: onCardClosed,
-        });
-      });
-    },
+    onWordClick: (token, el, sentence, context) => openFromTranscript(token, el, sentence, context),
+    onPhrase: (words, text, el, sentence, context) =>
+      openFromTranscript(phrase(words, text), el, sentence, context),
     // "Check again" found Anki: what the words' colours say is now out of date.
     onAnkiConnected: () => void refreshStatus(),
     lookup: lookupFor,
   });
+  /** A card for a word, or a phrase, picked in the transcript. */
+  function openFromTranscript(token: Token, el: HTMLElement, sentence: string, context?: WordContext): void {
+    const seq = ++lookupSeq;
+    void lookupFor(token).then((result) => {
+      if (seq !== lookupSeq || !el.isConnected) return;
+      const host = el.getRootNode() as ShadowRoot;
+      // The line the word was clicked in, which may be far from the playhead.
+      const line = { start: context?.start, end: context?.end, translation: context?.translation };
+      rememberLookup(token, result, sentence, line);
+      showPopup((host.host as HTMLElement).parentElement ?? mount, el, result, {
+        token,
+        sentence,
+        status: statusOf(token),
+        onMark: (word, next) => mark(word, next, lemmaReading(word, token.surface, token.reading)),
+        onAddCard: (draft) => addCard(draft, token, line),
+        hasCard: hasCardFor(token),
+        queued: queuedWords.has(token.lemma ?? token.surface),
+        elsewhere: alsoInVideo(token, line.start),
+        onSeek: playFrom,
+        characters: charactersFor(token, result),
+        onClose: onCardClosed,
+      });
+    });
+  }
+
   // Stop above the site's control bar, and follow it: YouTube's grows in
   // fullscreen, and the player resizes under theater mode and window changes.
   // Netflix only puts its bar on the page while the controls show, which
@@ -1242,6 +1480,7 @@ function reset(): void {
   cues = [];
   cueIndex = new CueIndex([]);
   segmented = new Map();
+  lineTokens = new Map();
   activeKey = '';
   // Hand the site its own subtitles back. Both classes hide them, and nothing
   // removed either, so after one Japanese video the site's captions stayed
@@ -1400,6 +1639,12 @@ function act(action: KeyAction): void {
       if (mount) flash(mount, `Furigana: ${rubyLabel(next)}`);
       return;
     }
+    case 'blur': {
+      const on = !settings().blurPrimary;
+      void setSetting('blurPrimary', on).then(() => header?.update());
+      if (mount) flash(mount, on ? 'Subtitle blurred until you hover it' : 'Subtitle shown');
+      return;
+    }
     case 'add':
     case 'known':
       keyOnWord(action);
@@ -1496,6 +1741,7 @@ onSettingsChange((s) => {
   if (s.subtitleSize !== appearance.size) overlay?.setSize(s.subtitleSize);
   if (s.subtitleBottom !== appearance.bottom) replace?.();
   overlay?.setRubyMode(s.ruby);
+  overlay?.setBlurred(s.blurPrimary);
   overlay?.setMarkKnown(s.markKnown);
 
   const languageChanged = s.target !== languages.target || s.native !== languages.native;
@@ -1552,7 +1798,11 @@ let knownTracks: TrackInfo[] = [];
 chrome.runtime.onMessage.addListener((msg: { type?: string; track?: string; second?: string }, _s, respond) => {
   if (msg?.type === 'lg-state') {
     const adapter = pickAdapter();
-    respond({
+    // How a line's sound can be had here, for the popup's record button.
+    const capture = activeVideo && settings().cardSentenceAudio
+      ? (isEncrypted(activeVideo) ? 'tab' : 'element')
+      : null;
+    void (capture === 'tab' ? tabCaptured() : Promise.resolve(false)).then((capturing) => respond({
       supported: Boolean(adapter),
       site: adapter?.id ?? null,
       title: adapter?.title() ?? null,
@@ -1563,7 +1813,9 @@ chrome.runtime.onMessage.addListener((msg: { type?: string; track?: string; seco
       // deliberate "None" — the popup must not echo one back as the other.
       second: activeSecond,
       sidebarOpen: sidebar?.isOpen ?? false,
-    });
+      capture,
+      capturing,
+    }));
     return true;
   }
 

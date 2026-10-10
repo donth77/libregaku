@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { clearLookupCache, lookupToken, lookupWord } from '../client';
+import { charactersOf, clearLookupCache, lookupToken, lookupWord } from '../client';
 import type { Entry } from '../jmdict';
 
 /**
@@ -85,5 +85,22 @@ describe('when nothing answers', () => {
         : { ready: false, phase: 'downloading', percent: 40, error: null } as unknown as Reply,
     );
     expect(await lookupWord('食べる', '食べる')).toEqual({ state: 'loading', percent: 40 });
+  });
+});
+
+describe('charactersOf', () => {
+  it("asks for the word's kanji in the learner's language", async () => {
+    offscreen(() => ({ ok: true, characters: [{ char: '勉', meanings: ['exertion'], on: ['ベン'], kun: [] }] } as unknown as Reply));
+    const c = await charactersOf('勉強する', 'fr');
+    expect(sent).toEqual([{ target: 'offscreen', type: 'dict-kanji', chars: ['勉', '強'], native: 'fr' }]);
+    expect(c.label).toBe('Kanji');
+    expect(c.items.map((k) => k.char)).toEqual(['勉']);
+  });
+
+  it('asks nothing for a word with no kanji, and has nothing while the data loads', async () => {
+    offscreen(() => ({ ok: false, error: 'the kanji data is still loading' }));
+    expect((await charactersOf('ありがとう', 'en')).items).toEqual([]);
+    expect(sent).toEqual([]);
+    expect((await charactersOf('猫', 'en')).items).toEqual([]);
   });
 });

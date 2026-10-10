@@ -548,7 +548,7 @@ describe('Sidebar word clicks', () => {
       expect.objectContaining({ surface: '食べる' }),
       expect.anything(),
       '食べる',
-      { start: 8, translation: 'eat' },
+      { start: 8, end: 11, translation: 'eat' },
     );
     expect(seek).not.toHaveBeenCalled();
   });
@@ -1064,5 +1064,32 @@ describe('Sidebar at the length of a film', { timeout: 30_000 }, () => {
     await q.drain();
     expect(root.querySelectorAll('.line')).toHaveLength(2);
     expect(sidebar.stats).not.toBeNull();
+  });
+});
+
+describe('Sidebar phrases', () => {
+  it('reports a selection across words in one line as a phrase, and does not seek', async () => {
+    const transcript = new Transcript();
+    transcript.setFull([{ start: 0, end: 3, text: '気 に する' }, { start: 8, end: 11, text: '勉強 です', secondary: 'study' }]);
+    const onPhrase = vi.fn();
+    const onWordClick = vi.fn();
+    const { root } = await build({ transcript, onPhrase, onWordClick, segmenter: () => segmenter });
+    const words = Array.from(root.querySelectorAll<HTMLElement>('.line[data-i="1"] .w'));
+    expect(words.map((w) => w.textContent?.replace(/べんきょう/, ''))).toEqual(['勉強', 'です']);
+    const range = document.createRange();
+    range.setStart(words[0]!, 0);
+    range.setEnd(words[1]!, words[1]!.childNodes.length);
+    (root as unknown as { getSelection: () => unknown }).getSelection = () => ({ isCollapsed: false, rangeCount: 1, getRangeAt: () => range });
+    words[1]!.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    words[1]!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(onPhrase).toHaveBeenCalledOnce();
+    const [toks, text, el, sentence, context] = onPhrase.mock.calls[0]!;
+    expect((toks as Token[]).map((t) => t.surface)).toEqual(['勉強', 'です']);
+    expect(text).toBe('勉強です');
+    expect(el).toBe(words[1]);
+    expect(sentence).toBe('勉強 です');
+    expect(context).toEqual({ start: 8, end: 11, translation: 'study' });
+    expect(onWordClick).not.toHaveBeenCalled();
+    expect(seek).not.toHaveBeenCalled();
   });
 });

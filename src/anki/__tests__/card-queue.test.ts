@@ -20,7 +20,7 @@ const fake = new FakeAnki();
 const store = new FakeStorage();
 vi.stubGlobal('chrome', { storage: store.api });
 
-const card = (expression: string, deck = 'Mining'): NewCard => ({
+const card = (expression: string, deck = 'Vocabulary'): NewCard => ({
   deck, expression, reading: expression, meaning: `${expression} meaning`, tags: ['libregaku'],
 });
 const waiting = () => Object.keys(store.local).filter((k) => k.startsWith('libregaku.cards.pending.'));
@@ -30,7 +30,7 @@ beforeEach(() => {
   fake.notes = [];
   fake.calls = [];
   fake.models = { [MODEL_NAME]: [...FIELDS] };
-  fake.decks = new Set(['Default', 'Mining']);
+  fake.decks = new Set(['Default', 'Vocabulary']);
   fake.offline = false;
   fake.refuseWords.clear();
   fake.media.clear();
@@ -117,7 +117,7 @@ describe('adding the waiting cards', () => {
   });
 
   it('drops a card Anki already has, and still reports the word as carded', async () => {
-    fake.add({ Expression: '猫', Reading: '', Meaning: '', Sentence: '', SentenceMeaning: '', Source: '', Audio: '', Image: '' }, { deck: 'Mining' });
+    fake.add({ Expression: '猫', Reading: '', Meaning: '', Sentence: '', SentenceMeaning: '', Source: '', Audio: '', Image: '' }, { deck: 'Vocabulary' });
     await queueCard({ card: card('猫'), word: '猫' });
     expect(await flushCards()).toEqual({ words: ['猫'], added: 0, duplicates: 1, remaining: 0 });
     expect(waiting()).toEqual([]);
@@ -137,9 +137,9 @@ describe('adding the waiting cards', () => {
 
   it('makes the deck again when it is gone', async () => {
     fake.decks = new Set(['Default']);
-    await queueCard({ card: card('猫', 'Japanese::Mining'), word: '猫' });
+    await queueCard({ card: card('猫', 'Japanese::Netflix'), word: '猫' });
     expect((await flushCards())?.added).toBe(1);
-    expect(fake.decks.has('Japanese::Mining')).toBe(true);
+    expect(fake.decks.has('Japanese::Netflix')).toBe(true);
   });
 
   it('stops where Anki went away, and keeps the rest', async () => {

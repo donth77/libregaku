@@ -2,7 +2,7 @@
  * The Source field: where a card came from.
  *
  * Two jobs. It tells you at review time which scene a word is from, which is
- * most of what makes a mined card better than a word list. And it links back,
+ * most of what makes a card from a video better than a word list. And it links back,
  * so a half-remembered word can be re-heard in context in one click.
  */
 

@@ -9,6 +9,7 @@ import { copyText, downloadText, tsvCell } from './share';
 import { readablePos } from '../dict/pos';
 import type { Segmenter, Token } from '../morphology/types';
 import { onSettingsChange, setSetting, settings, type Settings } from '../settings';
+import { selectedWords, textFrom } from './phrase';
 import { furigana } from '../morphology/furigana';
 import { PANEL_STYLE, buildSettings, syncSettingsControls } from './settings-panel';
 import { popupIsOpen } from './popup';
@@ -24,7 +25,7 @@ import { TokenCache, countWords, estimateRowHeight, nextFrame, now, whenIdle, ty
  *
  * Plain DOM rather than Preact, which the design nominated: this is a list and
  * a search box, and a framework would earn its place only once there is more
- * state than that. Revisit when mining controls land.
+ * state than that. Revisit when card-making controls land.
  *
  * Hover previews a definition here, unlike the overlay, which requires a click.
  * The distinction is deliberate — the overlay sits over playing video where a
@@ -81,10 +82,12 @@ interface Block {
   height: number;
 }
 
-/** Where a transcript word came from, for a card mined from it. */
+/** Where a transcript word came from, for a card made from it. */
 export interface WordContext {
   /** When the line starts, in seconds — the card's timestamp and link. */
   start?: number;
+  /** When it ends, for recording it. */
+  end?: number;
   /** The line's second-track translation. */
   translation?: string;
 }
@@ -347,8 +350,8 @@ const STYLE = `
 
   /*
    * Filters float rather than occupying a permanent strip. They matter while
-   * mining and never while reading, and the transcript is what the panel is
-   * for.
+   * choosing words to learn and never while reading, and the transcript is
+   * what the panel is for.
    */
   .fab {
     position: absolute; right: 16px; bottom: 16px; z-index: 3;
@@ -452,10 +455,12 @@ export interface SidebarDeps {
   currentTime: () => number;
   /**
    * A word in the transcript was clicked. The line it sits on is not the one
-   * playing, so its own start time and translation come with it — a card mined
+   * playing, so its own start time and translation come with it — a card made
    * here should point at this line, not wherever playback happens to be.
    */
   onWordClick: (token: Token, el: HTMLElement, sentence: string, context?: WordContext) => void;
+  /** A selection across words in one line: the words, the text they span, and where to anchor a card. */
+  onPhrase?: (words: Token[], text: string, el: HTMLElement, sentence: string, context?: WordContext) => void;
   /**
    * Enough about this video to find a saved line again months later. Given a
    * time, the link points there rather than at wherever playback happens to be.
@@ -761,7 +766,27 @@ export class Sidebar {
    * else on a card seeks. A listener per row was thousands of them.
    */
   #installClicks(): void {
+    // A selection across words in one line is a phrase (src/content/phrase.ts),
+    // and the click that ends it is not a word's or a seek.
+    let selected = false;
+    this.#list.addEventListener('mouseup', () => {
+      const picked = selectedWords(this.#root, this.#list, '.w');
+      if (picked.length < 2 || !this.#deps.onPhrase) return;
+      const last = picked[picked.length - 1]!;
+      const text = textFrom(picked[0]!, last);
+      if (text === null) return;
+      selected = true;
+      this.#hideHover();
+      this.#deps.onPhrase(
+        picked.map((w) => JSON.parse(w.dataset.tok ?? '{}') as Token),
+        text, last, last.dataset.line ?? '', this.#contextOf(last),
+      );
+    });
     this.#list.addEventListener('click', (e) => {
+      if (selected) {
+        selected = false;
+        return;
+      }
       const target = e.target as Element | null;
       const row = target?.closest?.('.line') as HTMLElement | null;
       const line = row ? this.#lineOf.get(row) : undefined;
@@ -2420,7 +2445,7 @@ export class Sidebar {
     const row = w.closest<HTMLElement>('.line');
     const line = row ? this.#lineOf.get(row) : undefined;
     if (!line || line.text !== w.dataset.line) return {};
-    return { start: line.start, translation: line.secondary };
+    return { start: line.start, end: line.end, translation: line.secondary };
   }
 
   async #showHover(w: HTMLElement): Promise<void> {

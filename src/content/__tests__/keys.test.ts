@@ -17,6 +17,7 @@ describe('keyAction', () => {
     expect(press('A', { shiftKey: true })).toBe('add');
     expect(press('k')).toBe('known');
     expect(press('r')).toBe('furigana');
+    expect(press('h')).toBe('blur');
     expect(press('b')).toBe('save');
     expect(press('s')).toBe('panel');
   });
@@ -36,7 +37,7 @@ describe('keyAction', () => {
 
   it('knows which keys need a whole track', () => {
     expect(['previous', 'next', 'replay', 'second'].every((a) => isLineKey(a as never))).toBe(true);
-    expect(['add', 'known', 'furigana', 'save', 'panel'].some((a) => isLineKey(a as never))).toBe(false);
+    expect(['add', 'known', 'furigana', 'blur', 'save', 'panel'].some((a) => isLineKey(a as never))).toBe(false);
   });
 });
 

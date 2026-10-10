@@ -14,6 +14,7 @@ export type KeyAction =
   | 'replay'     // ↓ this line again
   | 'second'     // ↑ the second line, on or off
   | 'furigana'   // R furigana: off, new words, all
+  | 'blur'       // H blur the line until hovered
   | 'add'        // A a card for the word looked up
   | 'known'      // K mark it known
   | 'save'       // B save the line
@@ -28,6 +29,7 @@ const ARROWS: Record<string, KeyAction> = {
 
 const LETTERS: Record<string, KeyAction> = {
   r: 'furigana',
+  h: 'blur',
   a: 'add',
   k: 'known',
   b: 'save',

@@ -4,7 +4,7 @@ import { AnkiUnavailable, ankiTry } from './rpc';
 /**
  * Cards made while Anki was closed, kept until it opens.
  *
- * Words get mined while watching, and Anki is a desktop program that is often
+ * Cards get made while watching, and Anki is a desktop program that is often
  * not running — so Add used to fail at exactly the moment it mattered, and
  * the word was gone unless the learner wrote it down. Now the card waits in
  * the browser and goes into Anki the next time it answers.

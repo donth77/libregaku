@@ -79,6 +79,11 @@ export interface Settings {
   hoverPause: boolean;
   /** Ruby over unknown words only, always, or never. */
   ruby: 'unknown' | 'always' | 'never';
+  /**
+   * Blur the subtitle until the cursor is on it — listening practice. The
+   * second line is left alone; ↑ hides that.
+   */
+  blurPrimary: boolean;
   /** Preview definitions on hover in the transcript panel. */
   sidebarHover: boolean;
   /**
@@ -87,6 +92,10 @@ export interface Settings {
   deck: string;
   /** Put a recording of the word on each new card, when one exists. */
   cardAudio: boolean;
+  /** Record the line itself onto each new card; it plays once more while it records. */
+  cardSentenceAudio: boolean;
+  /** A still from the line on each new card, where the site's video can be copied. */
+  cardScreenshot: boolean;
   /**
    * Which deck is read to decide what you already know. Empty means the whole
    * collection.
@@ -94,11 +103,11 @@ export interface Settings {
    * Separate from `deck` on purpose. A learner's known words live all over
    * their collection — a core deck, an old textbook deck, a JLPT deck — while
    * new cards belong in one place. Using a single setting for both forces a
-   * bad trade: scope status to the mining deck and thousands of known words
+   * bad trade: scope status to the deck new cards go to and thousands of known words
    * read as unknown, or dump new cards into a broad parent deck.
    *
    * Anki's `deck:` search includes subdecks, so choosing "Japanese" covers
-   * "Japanese::Mining" and everything beside it.
+   * "Japanese::Netflix" and everything beside it.
    */
   statusScope: string;
   /** Show comprehension and per-line counts in the transcript panel. */
@@ -156,9 +165,12 @@ export const DEFAULTS: Settings = {
   hoverDelay: 220,
   hoverPause: true,
   ruby: 'unknown',
+  blurPrimary: false,
   sidebarHover: true,
   deck: '',
   cardAudio: true,
+  cardSentenceAudio: true,
+  cardScreenshot: true,
   statusScope: '',
   sidebarStats: true,
   sidebarFollow: true,

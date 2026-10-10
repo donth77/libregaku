@@ -25,6 +25,10 @@ interface PageState {
   track: string | null;
   second: string | null;
   sidebarOpen: boolean;
+  /** How a line's sound can be recorded here: from the video, from the tab, or not at all. */
+  capture?: 'element' | 'tab' | null;
+  /** Whether the tab's sound is already being captured. */
+  capturing?: boolean;
 }
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
@@ -115,6 +119,8 @@ async function main(): Promise<void> {
     second.addEventListener('change', () => apply('second', second.value));
   }
 
+  if (state?.supported && state.capture === 'tab' && tab?.id != null) void offerCapture(tab.id, state);
+
   if (state?.supported) {
     $('quick').hidden = false;
     $('toggleSidebar').addEventListener('click', () => {
@@ -127,6 +133,43 @@ async function main(): Promise<void> {
   const { text: said, cls: tone } = describeAnki(ankiState, waiting.length);
   anki.className = tone;
   anki.textContent = said;
+}
+
+/**
+ * Sentence audio where the video cannot be recorded directly. Chrome lets an
+ * extension capture a tab's sound only after the learner invokes it on that
+ * tab — opening this popup is that — and only with the permission granted,
+ * which is asked for on the settings page: a permission prompt closes the
+ * popup that asked.
+ */
+async function offerCapture(tabId: number, state: PageState): Promise<void> {
+  const text = $('captureText');
+  const go = $<HTMLButtonElement>('captureGo');
+  $('capture').hidden = false;
+  const granted = await chrome.permissions.contains({ permissions: ['tabCapture'] }).catch(() => false);
+  if (!granted) {
+    text.textContent = "Sentence audio here needs Chrome's permission to capture this tab's sound.";
+    go.textContent = 'Allow in settings';
+    go.hidden = false;
+    go.onclick = () => void chrome.runtime.openOptionsPage();
+    return;
+  }
+  if (state.capturing) {
+    text.textContent = 'Recording sentence audio on this tab.';
+    return;
+  }
+  text.textContent = 'Chrome lets Libregaku hear a tab only after you click its icon there.';
+  go.textContent = 'Record sentence audio here';
+  go.hidden = false;
+  go.onclick = async () => {
+    go.disabled = true;
+    const r = (await chrome.runtime.sendMessage({ type: 'tab-capture-start', tabId }).catch(() => null)) as
+      | { ok?: boolean; error?: string }
+      | null;
+    text.textContent = r?.ok ? 'Recording sentence audio on this tab.' : (r?.error ?? 'Chrome would not capture this tab.');
+    go.hidden = Boolean(r?.ok);
+    go.disabled = false;
+  };
 }
 
 /**
