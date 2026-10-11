@@ -22,6 +22,8 @@ pnpm test:contract   # vitest against the live sites
 node scripts/check-captions.mjs --lang ja <url-or-id>   # screen a test video
 node scripts/smoke-youtube.mjs                          # load dist/ on a YouTube video; passes when the overlay draws a word
 node scripts/compare-words.mjs                          # IPADIC with and without JMdict's added words
+node scripts/build-zh-readings.mjs                      # which reading a Chinese character shows first
+node scripts/build-ko-fixture.mjs <ko-dic directory>    # what the analyser returns for the Korean tests' lines
 ```
 
 ### Tests
@@ -54,6 +56,16 @@ JMdict — and writes out every line that changes. Run it before changing what
 goes into that list or how it is scored, and when JMdict or IPADIC is bumped:
 every change it reports should be a misreading put right.
 
+`build-zh-readings` writes `src/dict/zh-readings.ts`: for each Chinese character
+with more than one reading in CC-CEDICT, the one drawn above it by default, from
+Unihan's `kMandarin` and a short list of exceptions in the script. Run it when
+CC-CEDICT or Unihan is bumped, and read the diff.
+
+`build-ko-fixture` writes `src/morphology/__tests__/fixtures/ko-dic.ts`: what the
+analyser really returns for the lines in `scripts/ko-fixture-lines.txt`, misreadings
+included, which the Korean merge tests stand on. Run it when a line is added to that
+list, and when lindera or ko-dic is bumped.
+
 `check-captions` lists a YouTube video's subtitle tracks and marks each human or
 auto-generated (`kind="asr"`). Use it before testing segmentation against a video —
 ASR output has no punctuation and invents words, so it tells you nothing about
@@ -72,9 +84,13 @@ src/offscreen.{html,ts} WASM host — the only place the tokenizer runs. The lin
                         dictionary lives in OPFS; JMdict in IndexedDB
 src/adapters/           one module per subtitle source (youtube, netflix, disney, prime), their
                         parsers (ttml, json3, hls), the DOM-reading fallback
-src/morphology/         Segmenter implementations, merge rules, furigana alignment, and the
-                        words from JMdict that IPADIC misreads, added to the analyser
-src/dict/               JMdict and KANJIDIC2 download, storage and lookup; remote fallbacks
+src/morphology/         Segmenter implementations and which language gets which (index.ts),
+                        merge rules for Japanese and Korean, furigana and pinyin alignment,
+                        Spanish dictionary forms, and the words from JMdict that IPADIC
+                        misreads, added to the analyser
+src/dict/               one dictionary per language (sources.ts): download, storage and
+                        lookup for JMdict, KANJIDIC2, CC-CEDICT and Wiktionary; remote
+                        fallbacks for Japanese
 src/anki/               AnkiConnect client, note type, word status, hand marks, cards
                         waiting for Anki
 src/audio/              pronunciation, the recording a new card carries, and a tab's
@@ -110,7 +126,8 @@ src/icons/              extension icons, 16/32/48/128 PNG, exported from brand/
 src/logo.ts             the logo in the popup, options page and player bar, imported
                         from brand/ as markup (the build loads .svg as text)
 brand/                  logo masters (SVG), PNG exports, and how to use them
-scripts/                check-captions.mjs, diagnose.js, compare-words.mjs
+scripts/                check-captions.mjs, diagnose.js, compare-words.mjs, build-zh-readings.mjs,
+                        build-ko-fixture.mjs and the lines it reads (ko-fixture-lines.txt)
 tests/contract/         the canaries
 ```
 
@@ -126,17 +143,27 @@ override store exists only for states Anki can't express ("known, but I don't wa
 card"), and those reconcile back into Anki as tagged suspended notes.
 
 How that works (`src/anki/marks.ts`): each mark is a note of the "Libregaku Mark"
-type in the `Libregaku::Marks` deck, its card suspended so it never reaches a review,
-its status a tag (`libregaku::mark::known` and so on). Marking writes to the browser
-at once and queues the change; each sync with Anki flushes the queue and reads every
-mark back, so a mark made on one device reaches the others through Anki's own sync.
+type, its card suspended so it never reaches a review, its status a tag
+(`libregaku::mark::known` and so on). Marking writes to the browser at once and queues
+the change; each sync with Anki flushes the queue and reads every mark back, so a mark
+made on one device reaches the others through Anki's own sync.
+
+A mark belongs to one language, and so does every list the learner sees: 人 known in
+Japanese says nothing about 人 in Chinese. A mark's language is a tag, the one a card
+carries (`libregaku::lang::ja`), and its deck is that language's own
+(`Libregaku::Marks::JA`). The page holds only the marks of the language being learned,
+and saved lines are listed the same way. Decks never mix languages by default either:
+until the learner chooses one, a language's cards go to its own deck (`Libregaku-JA`,
+made by its first card). A mark from before marks had a language is given one once —
+Japanese for kana and kanji, the script's own language for Hangul and Thai, and the
+language being learned for anything else — then tagged and moved to that deck.
 A learner can turn "Keep marks in Anki" off: marks then stay in this browser's queue, and go
 in when it comes back on — the one case where a mark is not in Anki, and their choice.
 The status searches exclude the mark note type, and the service worker lets the page
-delete, retag or suspend only notes of that type — with one exception, Undo: it may
-delete a note of the Libregaku type made in the last 15 minutes whose cards have never
-been studied (a note's id is its creation time). Nothing else the learner has in Anki
-can be removed through it.
+delete, retag or suspend only notes of that type, and move them only into a mark deck
+— with one exception, Undo: it may delete a note of the Libregaku type made in the
+last 15 minutes whose cards have never been studied (a note's id is its creation
+time). Nothing else the learner has in Anki can be removed or moved through it.
 
 Cards made while Anki is closed are not status either: they are writes that have not
 happened yet (`src/anki/card-queue.ts`), one storage key each, sent the next time Anki
@@ -161,12 +188,20 @@ the overlay, the sidebar, the popup, the status layer, or the Anki integration. 
 change would put a language check in any of those, the abstraction is in the wrong
 place — fix the seam instead.
 
-*Known leaks, to close rather than copy:* there is no `Dictionary` interface yet —
-`index.ts` calls the JMdict client directly and hands the sidebar the same lookup,
-and the popup reads JMdict's part-of-speech codes — and the overlay and sidebar
-call the Japanese furigana aligner themselves. Tier 2 is offered
-for Japanese only (`TIER2_LANGS` in `settings.ts`) because the analyser reads
-IPADIC's feature columns, which ko-dic and cc-cedict lay out differently.
+How a language plugs in: its analysis is a line in `src/morphology/index.ts` with a
+`Segmenter` behind it, and its dictionary is a `Source` in `src/dict/sources.ts`,
+named in `DICTIONARIES` in `settings.ts` and kept in an IndexedDB database of its
+own. The analyser reads each Lindera dictionary through its own reader in
+`offscreen.ts`, because IPADIC, ko-dic and cc-cedict lay their columns out
+differently. Whatever draws a word asks the segmenter how its reading goes above
+it (`Segmenter.ruby`), and a control only some languages have a use for is asked
+about by feature (`featuresOf`), never by the language's name.
+
+*Known leaks, to close rather than copy:* the lookup card names an entry's kind
+through one table of every dictionary's codes (`ui.popup.partOfSpeech`), the status
+layer matches readings for kana only (`src/anki/text.ts`), and a mark from before
+marks had a language is sorted by its script, which is a guess for Latin letters
+(`languageOf` in `src/anki/marks.ts`).
 
 **5. Adapters are thin, isolated, and expected to break occasionally.**
 Netflix and YouTube are both first-class and both have our own adapters. A site

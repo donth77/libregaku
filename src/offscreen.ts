@@ -6,9 +6,10 @@ import { jotobaLookup } from './dict/jotoba';
 import { remoteLookup } from './dict/remote';
 import { closeCapture, isCapturing, openCapture, startRecording, stopRecording } from './audio/tab-capture';
 import { forLanguage } from './dict/kanji';
+import { SOURCES } from './dict/sources';
 import {
-  build as buildDict, buildKanji, dataMark, eachEntry, hasKanji, hasStale, isPopulated, kanjiFor, lexicon, lookup,
-  storedWords, storeWords,
+  JMDICT, build as buildDict, buildKanji, dataMark, eachEntry, formsOf, hasKanji, hasStale, isPopulated, kanjiFor,
+  lexicon, lookup, storedWords, storeWords, type Source,
 } from './dict/store';
 import { EXTRA_COST, EXTRA_FORMAT, extraCollector, extraRows, misreads, type ExtraWord } from './morphology/extra-words';
 import { LINDERA_DICTS as DICTS } from './morphology/dictionaries';
@@ -23,34 +24,60 @@ import { lexiconQueries, type Morpheme } from './morphology/merge';
  * origin, our CSP, persistent, with OPFS.
  */
 
-/** Where a dictionary keeps what `analyse` reads, as indices into `details`. */
-interface Layout {
-  pos: number;
-  pos1: number;
-  conjForm: number;
-  base: number;
-  reading: number;
-}
+/** Where IPADIC keeps what is read from it, as indices into `details`. */
+const IPADIC = { pos: 0, pos1: 1, conjForm: 5, base: 6, reading: 7 };
 
-/**
- * IPADIC only, deliberately.
- *
- * ko-dic and cc-cedict lay their columns out differently — cc-cedict's
- * column 7 is an English definition, ko-dic's column 6 a part-of-speech tag —
- * and reading them as IPADIC put definitions up as ruby and tags down as
- * lemmas. A dictionary joins this table once its columns are mapped, and until
- * then is refused by name rather than misread.
- */
-const LAYOUTS: Record<string, Layout> = {
-  ipadic: { pos: 0, pos1: 1, conjForm: 5, base: 6, reading: 7 },
+/** `details[i]`, or undefined for the "*" a dictionary writes where it has nothing. */
+const col = (d: string[], i: number): string | undefined => {
+  const v = d[i];
+  return v && v !== '*' ? v : undefined;
 };
 
-/** Lindera's names for the columns a layout relies on; details[i] is field i + 4. */
-const EXPECTED: Array<[keyof Layout, string]> = [
-  ['pos', 'part_of_speech'],
-  ['base', 'base_form'],
-  ['reading', 'reading'],
-];
+/**
+ * How one of Lindera's dictionaries is read.
+ *
+ * Each lays its columns out its own way. IPADIC's seventh is a dictionary
+ * form; ko-dic's is a part-of-speech tag and cc-cedict's a definition — read
+ * as IPADIC, Chinese came out with English glosses as its "readings" and
+ * Korean with tags as lemmas. So a dictionary is read only through the entry
+ * it has here, and one with no entry is refused by name rather than misread.
+ */
+interface Reader {
+  /** Lindera's names for the columns relied on, by their place in `details`. */
+  columns: Array<[number, string]>;
+  /** One row as the language's merge rules take it. */
+  read(surface: string, details: string[]): unknown;
+}
+
+const READERS: Record<string, Reader> = {
+  ipadic: {
+    columns: [[IPADIC.pos, 'part_of_speech'], [IPADIC.base, 'base_form'], [IPADIC.reading, 'reading']],
+    read(surface, d): Morpheme {
+      // Unknown words carry no lemma or reading — "*", or a short row.
+      const usable = d.length > IPADIC.reading;
+      return {
+        surface,
+        lemma: usable ? col(d, IPADIC.base) : undefined,
+        reading: usable ? col(d, IPADIC.reading) : undefined,
+        pos: col(d, IPADIC.pos),
+        pos1: col(d, IPADIC.pos1),
+        conjForm: col(d, IPADIC.conjForm),
+      };
+    },
+  },
+  // KoMorpheme, src/morphology/merge-ko.ts: the tag, and for a unit of more
+  // than one morpheme, what it is made of (가/VV/*+았/EP/*).
+  'ko-dic': {
+    columns: [[0, 'part_of_speech_tag'], [4, 'type'], [7, 'expression']],
+    read: (surface, d) => ({ surface, tag: col(d, 0), type: col(d, 4), expression: col(d, 7) }),
+  },
+  // Where the words are, and nothing else: its one reading per word is not
+  // to be trusted (src/morphology/dictionaries.ts). The dictionary adds them.
+  'cc-cedict': {
+    columns: [],
+    read: (surface) => ({ surface }),
+  },
+};
 
 interface State {
   ready: boolean;
@@ -64,7 +91,7 @@ interface State {
 const state: State = { ready: false, loading: false, dict: null, phase: 'idle', percent: 0, error: null };
 
 let tokenizer: Tokenizer | null = null;
-let layout: Layout | null = null;
+let reader: Reader | null = null;
 let wasmReady: Promise<void> | null = null;
 let loading: Promise<void> | null = null;
 
@@ -81,8 +108,8 @@ function initWasm(): Promise<void> {
 }
 
 async function download(name: string, url: string): Promise<void> {
-  // ~10 MB, once. Kept in OPFS so a reinstall is the only thing that
-  // triggers it again.
+  // 7 to 20 MB, once for each language. Kept in OPFS so a reinstall is the
+  // only thing that triggers it again.
   await downloadDictionary(url, name, {
     onProgress: (p) => {
       state.phase = p.phase;
@@ -91,34 +118,44 @@ async function download(name: string, url: string): Promise<void> {
   });
 }
 
-/** Refuse a dictionary whose columns are not where the layout says. */
-function checkLayout(name: string, metadata: Uint8Array, l: Layout): void {
+/** Give an analyser's memory back: each holds its whole dictionary, tens of megabytes. */
+function release(t: Tokenizer): void {
+  try {
+    t.free();
+  } catch {
+    /* already gone */
+  }
+}
+
+/** Refuse a dictionary whose columns are not where its reader says. */
+function checkLayout(name: string, metadata: Uint8Array, r: Reader): void {
   let fields: unknown;
   try {
     fields = (JSON.parse(new TextDecoder().decode(metadata)) as { dictionary_schema?: { fields?: unknown } })
       .dictionary_schema?.fields;
   } catch {
-    return;   // no readable schema to check against; the layout stands
+    return;   // no readable schema to check against; the reader stands
   }
   if (!Array.isArray(fields)) return;
-  for (const [column, want] of EXPECTED) {
-    if (fields[l[column] + 4] !== want) {
+  // details[i] is field i + 4: the surface, two context ids and a cost come first.
+  for (const [column, want] of r.columns) {
+    if (fields[column + 4] !== want) {
       throw new Error(
-        `the ${name} dictionary has "${String(fields[l[column] + 4])}" where the analyser expects ${want}`,
+        `the ${name} dictionary has "${String(fields[column + 4])}" where the analyser expects ${want}`,
       );
     }
   }
 }
 
-async function tokenizerFor(name: string, l: Layout): Promise<Tokenizer> {
+async function tokenizerFor(name: string, r: Reader): Promise<Tokenizer> {
   state.phase = 'loading';
-  return buildTokenizer(name, l);
+  return buildTokenizer(name, r);
 }
 
 /** The analyser from its stored files, with `words` added when given (Lindera's user dictionary, as CSV). */
-async function buildTokenizer(name: string, l: Layout, words?: string): Promise<Tokenizer> {
+async function buildTokenizer(name: string, r: Reader, words?: string): Promise<Tokenizer> {
   const f = await loadDictionaryFiles(name);
-  checkLayout(name, f.metadata, l);
+  checkLayout(name, f.metadata, r);
   const dict = loadDictionaryFromBytes(
     f.metadata, f.dictTrie, f.dictValsIdx, f.dictVals,
     f.dictWordsIdx, f.dictWords, f.matrixMtx, f.charDef, f.unk,
@@ -141,9 +178,9 @@ async function loadNow(name: string): Promise<void> {
 
   try {
     const url = DICTS[name];
-    const l = LAYOUTS[name];
-    if (!url || !l) {
-      throw new Error(`no analyser for dictionary "${name}" — only ${Object.keys(LAYOUTS).join(', ')} can be read`);
+    const r = READERS[name];
+    if (!url || !r) {
+      throw new Error(`no analyser for dictionary "${name}" — only ${Object.keys(READERS).join(', ')} can be read`);
     }
 
     await initWasm();
@@ -156,7 +193,7 @@ async function loadNow(name: string): Promise<void> {
 
     let t: Tokenizer;
     try {
-      t = await tokenizerFor(name, l);
+      t = await tokenizerFor(name, r);
     } catch (e) {
       if (fresh) throw e;
       /*
@@ -168,11 +205,17 @@ async function loadNow(name: string): Promise<void> {
       console.warn('[libregaku] stored dictionary would not load; downloading it again:', e);
       await removeDictionary(name).catch(() => undefined);
       await download(name, url);
-      t = await tokenizerFor(name, l);
+      t = await tokenizerFor(name, r);
     }
 
+    // One language is read at a time; the analyser for the one before goes.
+    const before = tokenizer;
     tokenizer = t;
-    layout = l;
+    reader = r;
+    if (before) release(before);
+    // The words added from JMdict were in the analyser just replaced.
+    extras.state = 'none';
+    extras.count = 0;
     state.ready = true;
     state.phase = 'ready';
     state.percent = 100;
@@ -207,45 +250,41 @@ interface RawToken {
   details?: string[];
 }
 
-function analyse(text: string): Morpheme[] {
-  const l = layout;
-  if (!tokenizer || !l) return [];
-  return (tokenizer.tokenize(text) as RawToken[]).map((t) => {
-    const d = t.details ?? [];
-    const col = (i: number): string | undefined => {
-      const v = d[i];
-      return v && v !== '*' ? v : undefined;
-    };
-    // Unknown words carry no lemma or reading — "*", or a short row.
-    const usable = d.length > l.reading;
-    return {
-      surface: t.surface,
-      lemma: usable ? col(l.base) : undefined,
-      reading: usable ? col(l.reading) : undefined,
-      pos: col(l.pos),
-      pos1: col(l.pos1),
-      conjForm: col(l.conjForm),
-    };
-  });
+function analyse(text: string): unknown[] {
+  const r = reader;
+  if (!tokenizer || !r) return [];
+  return (tokenizer.tokenize(text) as RawToken[]).map((t) => r.read(t.surface, t.details ?? []));
 }
 
-/* ── JMdict ─────────────────────────────────────────────────────── */
+/* ── The word dictionary ────────────────────────────────────────── */
+
+/**
+ * The dictionary in use: the one for the language being learned. Each is kept
+ * in a database of its own (src/dict/store.ts), so going back to a language
+ * finds its dictionary where it was left.
+ */
+let active: Source = JMDICT;
 
 const dict = {
   ready: false, loading: false, phase: 'idle', percent: 0,
-  error: null as string | null, edition: 'eng',
+  error: null as string | null, source: JMDICT.id, edition: 'eng',
   /** Serving an older release while its replacement downloads. */
   stale: false,
 };
 
 let dictLoading: Promise<void> | null = null;
 
-async function buildNow(edition: string): Promise<void> {
+async function buildNow(source: Source, edition: string): Promise<void> {
   dict.loading = true;
   dict.error = null;
+  dict.source = source.id;
   dict.edition = edition;
+  // Nothing answers from the dictionary before until this one has been looked at.
+  dict.ready = false;
+  active = source;
+  readings.clear();
   try {
-    if (await isPopulated(edition)) {
+    if (await isPopulated(edition, source)) {
       dict.ready = true;
       dict.stale = false;
       dict.phase = 'ready';
@@ -254,39 +293,109 @@ async function buildNow(edition: string): Promise<void> {
     }
     // Complete data from an older release of this edition keeps answering
     // until the new one starts replacing it — better than a remote API.
-    dict.stale = await hasStale(edition);
+    dict.stale = await hasStale(edition, source);
     dict.ready = dict.stale;
     const n = await buildDict(edition, (phase, percent) => {
       dict.phase = phase;
       dict.percent = percent;
       if (phase === 'indexing') dict.ready = false;   // the old data is going
-    });
+    }, source);
+    readings.clear();
     dict.ready = true;
     dict.stale = false;
     dict.phase = 'ready';
     dict.percent = 100;
-    console.log(`[libregaku] JMdict ready — ${n} entries`);
+    console.log(`[libregaku] ${source.id} ready — ${n} entries`);
   } catch (e) {
     dict.error = String(e);
     dict.phase = 'error';
-    console.warn('[libregaku] JMdict failed to load:', e);
+    console.warn(`[libregaku] ${source.id} failed to load:`, e);
   } finally {
     dict.loading = false;
   }
 }
 
 /**
- * A different edition is a different dictionary, so a language change has to
- * rebuild rather than be treated as already loaded. Callers share the build
- * in flight and are answered when it is done.
+ * A different edition is a different dictionary, and so is another
+ * language's: a change of either has to load rather than be treated as
+ * already there. Callers share the build in flight and are answered when it
+ * is done.
  */
-function ensureDict(edition: string): Promise<void> {
-  if (dict.ready && !dict.stale && dict.edition === edition) return Promise.resolve();
-  if (dictLoading) return dict.edition === edition ? dictLoading : dictLoading.then(() => ensureDict(edition));
-  dictLoading = buildNow(edition).finally(() => {
+function ensureDict(id: string, edition: string): Promise<void> {
+  const source = SOURCES[id];
+  if (!source) {
+    dict.error = `no dictionary called "${id}"`;
+    dict.phase = 'error';
+    return Promise.resolve();
+  }
+  const same = dict.source === id && dict.edition === edition;
+  if (dict.ready && !dict.stale && same) return Promise.resolve();
+  if (dictLoading) return same ? dictLoading : dictLoading.then(() => ensureDict(id, edition));
+  dictLoading = buildNow(source, edition).finally(() => {
     dictLoading = null;
   });
   return dictLoading;
+}
+
+/** The dictionary is the whole of this source, and current. */
+const complete = (source: Source): boolean => active === source && dict.ready && !dict.stale;
+
+/* ── What an analysis still wants from the dictionary ───────────── */
+
+interface Analysis {
+  ok: true;
+  tokens: unknown[];
+  lexicon?: unknown;
+  /** False when the dictionary could not be consulted, so asking again later may know more. */
+  complete: boolean;
+}
+
+/** The reading each Chinese word is given. Remembered: a few hundred words make up most lines. */
+const readings = new Map<string, string | undefined>();
+const HAN = /\p{sc=Han}/u;
+
+/**
+ * Chinese words with their readings, from the dictionary: the top entry's,
+ * which is the one a word is most often read by (src/dict/cedict.ts). The
+ * analyser's own dictionary has a reading too, and it is not asked.
+ */
+async function withReadings(tokens: Array<{ surface: string }>, source: Source): Promise<unknown[]> {
+  if (readings.size > 20000) readings.clear();
+  const unread = [...new Set(tokens.map((t) => t.surface))].filter((s) => HAN.test(s) && !readings.has(s));
+  await Promise.all(unread.map(async (s) => {
+    readings.set(s, (await lookup(s, undefined, source))[0]?.reading);
+  }));
+  return tokens.map((t) => ({ surface: t.surface, reading: readings.get(t.surface) }));
+}
+
+/**
+ * One analysed line, with what the word dictionary adds to it — by the
+ * analyser's dictionary, since each language wants something different.
+ */
+async function finished(tokens: unknown[]): Promise<Analysis> {
+  const plain: Analysis = { ok: true, tokens, complete: true };
+  if (state.dict === 'ipadic') {
+    // Numbers, prefixed and suffixed nouns: merging reads these better with
+    // the dictionary's view of them, and says so when it had to do without.
+    const forms = lexiconQueries(tokens as Morpheme[]);
+    if (!forms.length) return plain;
+    if (active !== JMDICT || !dict.ready) return { ...plain, complete: false };
+    try {
+      return { ...plain, lexicon: await lexicon(forms), complete: !dict.stale };
+    } catch {
+      return { ...plain, complete: false };
+    }
+  }
+  if (state.dict === 'cc-cedict') {
+    const source = SOURCES.cedict;
+    if (!source || !complete(source)) return { ...plain, complete: false };
+    try {
+      return { ...plain, tokens: await withReadings(tokens as Array<{ surface: string }>, source) };
+    } catch {
+      return { ...plain, complete: false };
+    }
+  }
+  return plain;
 }
 
 /* ── Words IPADIC misreads, from JMdict (src/morphology/extra-words.ts) ── */
@@ -302,7 +411,7 @@ let extrasLoading: Promise<void> | null = null;
  * exactly as it was.
  */
 function ensureExtras(): Promise<void> {
-  if (!tokenizer || !layout || state.dict !== 'ipadic' || !dict.ready || dict.stale) return Promise.resolve();
+  if (!tokenizer || state.dict !== 'ipadic' || !complete(JMDICT)) return Promise.resolve();
   if (extras.state === 'ready' || extras.state === 'failed') return Promise.resolve();
   extrasLoading ??= loadExtras().finally(() => {
     extrasLoading = null;
@@ -312,9 +421,9 @@ function ensureExtras(): Promise<void> {
 
 async function loadExtras(): Promise<void> {
   const name = state.dict;
-  const l = layout;
+  const r = reader;
   const plain = tokenizer;
-  if (!name || !l || !plain) return;
+  if (!name || !r || !plain) return;
   extras.state = 'building';
   try {
     const data = await dataMark();
@@ -326,10 +435,10 @@ async function loadExtras(): Promise<void> {
       await eachEntry((e) => collect.add(e));
       const words: ExtraWord[] = [];
       for (const w of collect.words()) {
-        const pieces = (plain.tokenize(w.surface) as RawToken[]).map((t) => {
-          const r = t.details?.[l.reading];
-          return { surface: t.surface, reading: r && r !== '*' ? r : undefined };
-        });
+        const pieces = (plain.tokenize(w.surface) as RawToken[]).map((t) => ({
+          surface: t.surface,
+          reading: col(t.details ?? [], IPADIC.reading),
+        }));
         if (misreads(w, pieces)) words.push(w);
       }
       csv = extraRows(words);
@@ -337,9 +446,15 @@ async function loadExtras(): Promise<void> {
     }
     const count = csv ? csv.split('\n').length : 0;
     if (count) {
-      const t = await buildTokenizer(name, l, csv);
-      // The language may have changed while this was built.
-      if (state.dict === name) tokenizer = t;
+      const t = await buildTokenizer(name, r, csv);
+      if (tokenizer !== plain) {
+        // Another language's analyser took its place while this was built.
+        release(t);
+        extras.state = 'none';
+        return;
+      }
+      tokenizer = t;
+      release(plain);
     }
     extras.state = 'ready';
     extras.count = count;
@@ -396,12 +511,19 @@ const remote = remoteLookup({
  * could stand in for the local entry of the next key.
  */
 async function answerLookup(key: string, hint: RankHint): Promise<unknown> {
+  const source = active;
+  let failed: string | null = null;
   if (dict.ready) {
     try {
-      return { ok: true, entries: await lookup(key, hint), source: 'local' };
+      return { ok: true, entries: await lookup(key, hint, source), source: 'local' };
     } catch (e) {
-      console.warn('[libregaku] local lookup failed; asking remotely:', e);
+      console.warn('[libregaku] local lookup failed:', e);
+      failed = String(e);
     }
+  }
+  // Japanese has a dictionary to ask elsewhere meanwhile; nothing else does.
+  if (source !== JMDICT) {
+    return failed ? { ok: false, error: failed } : { ok: false, error: 'the dictionary is still loading', reason: 'dictionaryLoading' };
   }
   return remote(key, dict.edition);
 }
@@ -412,10 +534,12 @@ interface Message {
   text?: string;
   dict?: string;
   key?: string;
+  source?: string;
   edition?: string;
   reading?: string;
   pos?: string;
   chars?: string[];
+  forms?: string[];
   native?: string;
   tabId?: number;
   streamId?: string;
@@ -440,56 +564,59 @@ chrome.runtime.onMessage.addListener((msg: Message, _s, respond) => {
 
     case 'tokenize': {
       if (!state.ready) {
+        // `reason` is a code the page words in its own language; this page has no language tables.
         respond({
           ok: false,
           error: state.error ?? (state.loading ? 'the analyser is still loading' : 'the analyser is not loaded'),
+          ...(!state.error && state.loading ? { reason: 'analyserLoading' } : {}),
         });
         return true;
       }
-      let tokens: Morpheme[];
+      let tokens: unknown[];
       try {
         tokens = analyse(msg.text ?? '');
       } catch (e) {
         respond({ ok: false, error: String(e) });
         return true;
       }
-      // Numbers, prefixed and suffixed nouns: merging reads these better with
-      // the dictionary's view of them, and says so when it had to do without.
-      const forms = lexiconQueries(tokens);
-      if (!forms.length) {
-        respond({ ok: true, tokens, complete: true });
-        return true;
-      }
-      if (!dict.ready) {
-        respond({ ok: true, tokens, complete: false });
-        return true;
-      }
-      void lexicon(forms).then(
-        (answers) => respond({ ok: true, tokens, lexicon: answers, complete: !dict.stale }),
-        () => respond({ ok: true, tokens, complete: false }),
-      );
+      void finished(tokens).then(respond, () => respond({ ok: true, tokens, complete: false }));
       return true;
     }
 
     case 'dict-load':
       // Answered once the analyser has JMdict's words too, if it is loaded:
       // the page re-reads its lines on this answer.
-      void ensureDict(msg.edition ?? 'eng').then(ensureExtras).then(() => {
+      void ensureDict(msg.source ?? JMDICT.id, msg.edition ?? 'eng').then(ensureExtras).then(() => {
         respond({ ok: !dict.error, ...dict });
-        if (dict.ready) void ensureKanji();
+        if (dict.ready && active === JMDICT) void ensureKanji();
       });
       return true;
 
-    case 'dict-kanji':
+    case 'dict-kanji': {
+      const chars = (msg.chars ?? []).slice(0, 12);
+      // A dictionary that lists single characters answers for them itself.
+      const own = active.characters;
+      if (own) {
+        if (!dict.ready) {
+          respond({ ok: false, error: 'the dictionary is still loading' });
+          return true;
+        }
+        void own(chars).then(
+          (characters) => respond({ ok: true, characters }),
+          (e: unknown) => respond({ ok: false, error: String(e) }),
+        );
+        return true;
+      }
       if (!kanji.ready) {
         respond({ ok: false, error: kanji.error ?? 'the kanji data is still loading' });
         return true;
       }
-      void kanjiFor((msg.chars ?? []).slice(0, 12)).then(
+      void kanjiFor(chars).then(
         (found) => respond({ ok: true, characters: found.map((k) => forLanguage(k, msg.native ?? 'en')) }),
         (e: unknown) => respond({ ok: false, error: String(e) }),
       );
       return true;
+    }
 
     case 'dict-status':
       respond({ ok: true, ...dict });
@@ -498,6 +625,20 @@ chrome.runtime.onMessage.addListener((msg: Message, _s, respond) => {
     case 'dict-lookup':
       void answerLookup(msg.key ?? '', { reading: msg.reading, pos: msg.pos }).then(respond);
       return true;
+
+    /* What written forms are forms of, for a language found by its word boundaries (src/morphology/lemma.ts). */
+    case 'dict-forms': {
+      const source = active;
+      if (!complete(source)) {
+        respond({ ok: false, error: dict.error ?? 'the dictionary is still loading', ...(dict.error ? {} : { reason: 'dictionaryLoading' }) });
+        return true;
+      }
+      void formsOf((msg.forms ?? []).slice(0, 400), source).then(
+        (forms) => respond({ ok: true, forms }),
+        (e: unknown) => respond({ ok: false, error: String(e) }),
+      );
+      return true;
+    }
 
     /* A tab's sound, for sentence audio (src/audio/tab-capture.ts). */
     case 'capture-open':

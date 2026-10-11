@@ -41,4 +41,14 @@ export const errors = {
   // A track's name in the toolbar popup's subtitle menus, and in notices. The name itself comes from the site
   /** A Netflix track that only translates writing shown on screen, not what is said. `track` is its name, from Netflix. */
   forcedTrack: (track: string): string => `${track} (forced)`,
+
+  // The dictionary and the analyser, which splits a line into words. Both run in a page of the extension's own. Shown on the lookup card after "Dictionary unavailable:", or under the notice that says words cannot be matched to their dictionary forms
+  /** Nothing answered at all: the extension's own page has stopped. Reloading the video's tab starts it again. */
+  noAnswer: 'no answer from the extension — reload the page to restart it',
+  /** The analyser has not finished loading; the first time, it is downloading. */
+  analyserLoading: 'the analyser is still loading',
+  /** The dictionary has not finished downloading. */
+  dictionaryLoading: 'the dictionary is still loading',
+  /** A lookup failed and nothing says why. */
+  lookupFailed: 'lookup failed',
 };

@@ -14,7 +14,7 @@
  */
 
 import { ANKI_PORT, ENDPOINT, extensionOrigin } from './endpoint';
-import { MARK_SEARCH, MEDIA_PREFIX, MODEL_NAME, isOwnMedia } from './model';
+import { MARK_SEARCH, MEDIA_PREFIX, MODEL_NAME, isMarkDeck, isOwnMedia } from './model';
 
 const VERSION = 6;
 
@@ -61,6 +61,9 @@ export type AnkiReason =
   /** A change, held to the hand marks, that named `count` notes or cards that are not marks. */
   | { code: 'notMarks'; count: number; ids: 'notes' | 'cards'; change: 'delete' | 'suspend' | 'retag' };
 
+/** What was asked of notes that are not marks, as a refusal names it. */
+type MarkChange = Extract<AnkiReason, { code: 'notMarks' }>['change'];
+
 export interface AnkiResult<T> {
   ok: boolean;
   result?: T;
@@ -100,6 +103,7 @@ export const RELAYED_ACTIONS: ReadonlySet<string> = new Set([
   'removeTags',
   'suspend',
   'deleteNotes',
+  'changeDeck',
 ]);
 
 export function isRelayed(action: unknown): action is string {
@@ -120,13 +124,20 @@ export function notRelayed(action: unknown): AnkiResult<never> {
  * ids each one takes. The extension only ever points them at its own hand
  * marks, so the relay holds them to that: it looks the marks up itself and
  * refuses a request naming anything else. Whatever reaches the relay, the
- * learner's real cards cannot be deleted, suspended or retagged through it.
+ * learner's real cards cannot be deleted, suspended, retagged or moved
+ * through it.
+ *
+ * A mark can be moved, and only into a deck marks are kept in (isMarkDeck):
+ * each language's marks have their own, and those made before that sit in
+ * the one deck they all shared. A refusal says "retag" for a move — both
+ * only file a mark, and the words for it are in every language already.
  */
-const MARKS_ONLY: Record<string, { ids: 'notes' | 'cards'; find: 'findNotes' | 'findCards' }> = {
-  deleteNotes: { ids: 'notes', find: 'findNotes' },
-  suspend: { ids: 'cards', find: 'findCards' },
-  addTags: { ids: 'notes', find: 'findNotes' },
-  removeTags: { ids: 'notes', find: 'findNotes' },
+const MARKS_ONLY: Record<string, { ids: 'notes' | 'cards'; find: 'findNotes' | 'findCards'; change: MarkChange }> = {
+  deleteNotes: { ids: 'notes', find: 'findNotes', change: 'delete' },
+  suspend: { ids: 'cards', find: 'findCards', change: 'suspend' },
+  addTags: { ids: 'notes', find: 'findNotes', change: 'retag' },
+  removeTags: { ids: 'notes', find: 'findNotes', change: 'retag' },
+  changeDeck: { ids: 'cards', find: 'findCards', change: 'retag' },
 };
 
 /**
@@ -195,6 +206,8 @@ export async function relay<T>(action: unknown, params: unknown): Promise<AnkiRe
   }
   const rule = MARKS_ONLY[action];
   if (rule) {
+    // Into a deck of the learner's own is not a move the extension ever makes.
+    if (action === 'changeDeck' && !isMarkDeck(p.deck)) return notRelayed(action);
     const raw = p[rule.ids];
     const ids: unknown[] = Array.isArray(raw) ? (raw as unknown[]) : [];
     if (!Array.isArray(raw) || !ids.every((id): id is number => Number.isInteger(id))) {
@@ -214,8 +227,11 @@ export async function relay<T>(action: unknown, params: unknown): Promise<AnkiRe
     }
     const foreign = others.length;
     if (foreign) {
-      const change = action === 'deleteNotes' ? 'delete' : action === 'suspend' ? 'suspend' : 'retag';
-      return { ok: false, kind: 'refused', reason: { code: 'notMarks', count: foreign, ids: rule.ids, change } };
+      return {
+        ok: false,
+        kind: 'refused',
+        reason: { code: 'notMarks', count: foreign, ids: rule.ids, change: rule.change },
+      };
     }
   }
   return ankiDirect<T>(action, p);

@@ -210,11 +210,18 @@ async function storedTemplate(): Promise<string | null> {
   }
 }
 
+/**
+ * Where human recordings of a language's words can be had, by language.
+ * JapanesePod101 has Japanese only; a language with no source here goes
+ * straight to the learner's own, if they set one.
+ */
+const RECORDED: Record<string, (word: string, reading?: string) => Promise<Recording | null>> = {
+  ja: tryJpod,
+};
+
 async function lookFor(word: string, reading: string | undefined, lang: string): Promise<Recording | null> {
-  if (lang === 'ja') {
-    const jpod = await tryJpod(word, reading);
-    if (jpod) return jpod;
-  }
+  const recorded = await RECORDED[lang]?.(word, reading);
+  if (recorded) return recorded;
   const template = await storedTemplate();
   return template ? tryTemplate(template, word, reading) : null;
 }
@@ -244,24 +251,40 @@ export async function findRecording(word: string, reading?: string, lang = 'ja')
   return rec;
 }
 
-function synthesise(word: string): void {
+/**
+ * The voice a language is spoken in when nothing says which country's: the
+ * one most courses teach. Any other language is asked for by its own code.
+ */
+const VOICES: Record<string, string> = {
+  ja: 'ja-JP', ko: 'ko-KR', zh: 'zh-CN', es: 'es-ES', fr: 'fr-FR', de: 'de-DE', it: 'it-IT', pt: 'pt-BR', th: 'th-TH',
+};
+
+function synthesise(word: string, lang: string): void {
   if (!('speechSynthesis' in window)) return;
   const u = new SpeechSynthesisUtterance(word);
-  u.lang = 'ja-JP';
+  const locale = VOICES[lang] ?? lang;
+  u.lang = locale;
   u.rate = 0.85;
-  // Prefer a real Japanese voice over whatever the browser defaults to.
-  const voice = speechSynthesis.getVoices().find((v) => v.lang.startsWith('ja'));
+  // Prefer a real voice for the language over whatever the browser defaults
+  // to: that country's first, then any of the language's.
+  const voices = speechSynthesis.getVoices();
+  const voice = voices.find((v) => v.lang.replace('_', '-') === locale) ?? voices.find((v) => v.lang.startsWith(lang));
   if (voice) u.voice = voice;
   stop();
   speechSynthesis.speak(u);
 }
 
-export async function pronounce(word: string, reading?: string): Promise<Spoken> {
-  const rec = await findRecording(word, reading);
+/**
+ * Say a word: a recording where one exists, the browser's voice for the
+ * language otherwise. `lang` is the language being learned — a Spanish word
+ * read by a Japanese voice is no model at all.
+ */
+export async function pronounce(word: string, reading?: string, lang = 'ja'): Promise<Spoken> {
+  const rec = await findRecording(word, reading, lang);
   if (rec) {
     await play(rec);
     return { source: rec.source, human: true };
   }
-  synthesise(word);
+  synthesise(word, lang);
   return { source: 'synthesis', human: false };
 }

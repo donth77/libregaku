@@ -4,9 +4,10 @@ import { uiLanguageFor } from '../i18n/languages';
  * The help page's words, in English here and in each translation beside it.
  *
  * Everything the page says is here and nowhere in its code. Text is plain,
- * with two marks: a word in `backticks` is drawn as a key, and {Settings →
+ * with three marks: a word in `backticks` is drawn as a key, {Settings →
  * Anki → Screenshot} as the path to a setting, which names the setting as the
- * settings do in that language. A paragraph that is a list is numbered steps;
+ * settings do in that language, and a web address, https://…, as a link to it
+ * that leaves the https:// off. A paragraph that is a list is numbered steps;
  * one that is { tip } is set apart; { head, rows } is a table. Keywords are
  * what someone might search for that the text itself does not say.
  *
@@ -153,7 +154,7 @@ const en: HelpContent = {
                 ['`B`', 'Save the current line'],
                 ['`S`', 'Show or hide the transcript panel'],
                 ['`H`', 'Blur or unblur subtitles'],
-                ['`R`', 'Switch furigana: off, new words, all (Japanese)'],
+                ['`R`', 'Switch furigana or pinyin: off, new words, all (Japanese, Chinese)'],
                 ['`Shift`', 'Hold to look up the word under the pointer, when {Settings → Looking words up → Look words up on} is set to Hover with Shift held'],
                 ['`Esc`', 'Close the popup'],
               ],
@@ -202,6 +203,7 @@ const en: HelpContent = {
           title: 'Choose the deck',
           body: [
             'New cards go to the deck in {Settings → Anki → New cards go to}.',
+            'Each language you learn has its own deck. Until you choose one, its cards go to a deck made for it with the first card: Libregaku-JA for Japanese, Libregaku-ES for Spanish. Change {Settings → Languages → I\'m learning} and the deck changes with it.',
             'To switch while watching, turn on {Settings → Word popup → Deck menu}. A ▾ appears beside Add to Anki; “Add to” a deck adds the card there and sends the next ones there too.',
             { tip: 'Word status is read from {Settings → Anki → Read known words from}. If new cards go to a deck it does not read, Settings says so.' },
           ],
@@ -233,6 +235,7 @@ const en: HelpContent = {
           title: 'See and change your marked words',
           body: [
             'In the transcript panel, the Words tab lists the words you track, mark known or ignore, one list each. Every word has a button to take its mark off — Stop ignoring, for an ignored one — and a tracked word can become a card from there.',
+            'Each language has its own lists. The Words tab and the Saved tab show the ones for the language you are learning, and a word marked in one language is not marked in another.',
             'Each list has a search box, and Copy and Export file buttons that give you the list as a file Anki and spreadsheets open.',
           ],
           keywords: ['track', 'watchlist', 'list', 'ignored', 'known', 'unignore', 'remove mark', 'words'],
@@ -302,7 +305,7 @@ const en: HelpContent = {
           id: 'q-marks-deck',
           title: 'Why is there a Libregaku::Marks deck in Anki?',
           body: [
-            'Known, Track and Ignore are kept there as hidden notes, suspended so they never come up for review, so they reach your other devices through Anki’s sync. {Settings → Anki → Open marks in Anki} shows them.',
+            'Known, Track and Ignore are kept there as hidden notes, suspended so they never come up for review, so they reach your other devices through Anki’s sync. Each language has a deck of its own inside it, such as Libregaku::Marks::JA. {Settings → Anki → Open marks in Anki} shows them.',
             { tip: 'Turn off {Settings → Anki → Keep marks in Anki} to keep marks in this browser only.' },
           ],
           keywords: ['marks', 'deck', 'suspended', 'sync'],
@@ -352,8 +355,19 @@ const en: HelpContent = {
           title: 'Why can definitions only be in some languages?',
           body: [
             'For Japanese they come from JMdict, which has definitions in nine languages. If yours is not one of them, {Settings → Languages} shows a second row, Definitions in, for the language to use instead.',
+            'The Chinese, Korean and Spanish dictionaries are written in English only.',
           ],
           keywords: ['definitions', 'languages', 'jmdict', 'hungarian', 'slovenian', 'english', 'cc-cedict', 'wiktionary'],
+        },
+        {
+          id: 'q-languages',
+          title: 'Which languages can I learn?',
+          body: [
+            'Japanese, Chinese, Korean and Spanish have a dictionary, and a word is matched to its card in whatever form it is said: 갔어요 finds a card for 가다, and hablábamos one for hablar. Japanese shows furigana above words, and Chinese shows pinyin.',
+            'The other languages under {Settings → Languages → I\'m learning} are marked limited. Their words are split, and there is no dictionary yet.',
+            'A language’s dictionary is downloaded the first time you choose it. The download is 11 to 27 MB; on disk it takes 100 MB for Chinese, 200 MB for Korean and 470 MB for Spanish.',
+          ],
+          keywords: ['language', 'korean', 'chinese', 'mandarin', 'spanish', 'japanese', 'pinyin', 'limited', 'supported'],
         },
         {
           id: 'q-data',

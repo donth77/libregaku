@@ -133,8 +133,22 @@ export const ASSUMPTIONS: Assumption[] = [
   {
     id: 'dict.lindera-release',
     site: 'external',
-    claim: 'The pinned lindera IPADIC dictionary zip (src/morphology/dictionaries.ts) is still published at its URL, matching the pinned lindera-wasm',
-    breaks: 'The analyser never loads: no readings, no dictionary forms, and cards matched by exact spelling only — which the page now says',
+    claim: 'The pinned lindera dictionary zips — IPADIC, ko-dic and cc-cedict (src/morphology/dictionaries.ts) — are still published at their URLs, matching the pinned lindera-wasm',
+    breaks: 'The analyser for that language never loads: no readings, no dictionary forms, and cards matched by exact spelling only — which the page now says',
+    fallback: null,
+  },
+  {
+    id: 'dict.wty-release',
+    site: 'external',
+    claim: 'The pinned commit of the wiktionary-to-yomitan files on Hugging Face (src/dict/sources.ts) still serves wty-<language>-en.zip, every redirect hop is a host in host_permissions, and a term bank is rows of [term, reading, tags, rules, score, definitions, …] with an inflected form tagged non-lemma and pointing at its word; a word\'s meanings are the list items of the node marked glosses, their labels sit in a div marked tags, and another spelling of a word is filed under the word, marked alt-of',
+    breaks: 'The Korean or Spanish dictionary never downloads: no definitions, and Spanish words are never traced to their dictionary forms, so none matches its card',
+    fallback: null,
+  },
+  {
+    id: 'dict.cedict',
+    site: 'external',
+    claim: 'www.mdbg.net still serves the current CC-CEDICT as cedict_1_0_ts_utf-8_mdbg.txt.gz, one entry a line: traditional simplified [pin1 yin1] /meaning/meaning/',
+    breaks: 'The Chinese dictionary never downloads: no definitions, and no pinyin above the words',
     fallback: null,
   },
   {
@@ -285,20 +299,6 @@ export const ASSUMPTIONS: Assumption[] = [
     fallback: null,
   },
   {
-    id: 'anki.media',
-    site: 'external',
-    claim: 'addNote stores each file in note.audio and note.picture from its base64 data under its filename, and appends [sound:filename] or <img src="filename"> to the fields it names, in order',
-    breaks: 'Word audio, sentence audio and screenshots on new cards',
-    fallback: 'The card is still added, without them',
-  },
-  {
-    id: 'anki.cors-default',
-    site: 'external',
-    claim: 'AnkiConnect\'s default webCorsOriginList admits a chrome-extension:// origin',
-    breaks: 'The first connection, before the learner has edited AnkiConnect\'s config',
-    fallback: 'The "blocked" state names the line to add',
-  },
-  {
     id: 'dp.master-playlist',
     site: 'disney',
     claim: 'The player fetches an HLS master playlist (.m3u8, by fetch or XMLHttpRequest, readable as text) that lists each subtitle track as #EXT-X-MEDIA:TYPE=SUBTITLES with LANGUAGE, NAME, FORCED, CHARACTERISTICS and a URI relative to it',
@@ -360,6 +360,20 @@ export const ASSUMPTIONS: Assumption[] = [
     claim: 'The player opens over the title\'s /detail/<id> page without changing the address; the player and its <video> are inside #dv-web-player, apart from the trailer on the page, which is drawn with the same classes outside it. Unverified: setting its currentTime seeks, and adverts do not play in it',
     breaks: 'Nothing renders (the wrong element), or lines show over an advert, or clicking a transcript line does nothing',
     fallback: null,
+  },
+  {
+    id: 'anki.media',
+    site: 'external',
+    claim: 'addNote stores each file in note.audio and note.picture from its base64 data under its filename, and appends [sound:filename] or <img src="filename"> to the fields it names, in order',
+    breaks: 'Word audio, sentence audio and screenshots on new cards',
+    fallback: 'The card is still added, without them',
+  },
+  {
+    id: 'anki.cors-default',
+    site: 'external',
+    claim: 'AnkiConnect\'s default webCorsOriginList admits a chrome-extension:// origin',
+    breaks: 'The first connection, before the learner has edited AnkiConnect\'s config',
+    fallback: 'The "blocked" state names the line to add',
   },
 ];
 

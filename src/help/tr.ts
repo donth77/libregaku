@@ -83,7 +83,7 @@ export const tr: HelpTranslation = {
                 ['`B`', 'Geçerli satırı kaydet'],
                 ['`S`', 'Transkript panelini göster veya gizle'],
                 ['`H`', 'Altyazıları bulanıklaştır veya netleştir'],
-                ['`R`', 'Furiganayı değiştir: kapalı, yeni kelimeler, tümü (Japonca)'],
+                ['`R`', 'Furiganayı veya pinyini değiştir: kapalı, yeni kelimeler, tümü (Japonca, Çince)'],
                 ['`Shift`', 'İmlecin altındaki kelimeyi aramak için basılı tutun; {Ayarlar → Kelime arama → Arama yöntemi} “Shift basılıyken üzerine gelme” olarak ayarlıysa'],
                 ['`Esc`', 'Pencereyi kapat'],
               ],
@@ -132,6 +132,7 @@ export const tr: HelpTranslation = {
           title: 'Desteyi seçme',
           body: [
             'Yeni kartlar, {Ayarlar → Anki → Yeni kart destesi} ayarındaki desteye gider.',
+            'Öğrendiğiniz her dilin kendi destesi vardır. Siz bir deste seçene kadar, o dilin kartları ilk kartla birlikte onun için oluşturulan bir desteye gider: Japonca için Libregaku-JA, İspanyolca için Libregaku-ES. {Ayarlar → Diller → Öğrendiğim dil} ayarını değiştirdiğinizde deste de onunla değişir.',
             "İzlerken değiştirmek için {Ayarlar → Kelime penceresi → Deste menüsü} ayarını açın. “Anki'ye ekle” düğmesinin yanında bir ▾ belirir; menüden bir desteye eklemek kartı oraya ekler ve sonraki kartları da oraya gönderir.",
             { tip: 'Kelime durumu, {Ayarlar → Anki → Bilinen kelimelerin kaynağı} ayarındaki destelerden okunur. Yeni kartlar okunmayan bir desteye gidiyorsa Ayarlar bunu belirtir.' },
           ],
@@ -163,6 +164,7 @@ export const tr: HelpTranslation = {
           title: 'İşaretli kelimelerinizi görme ve değiştirme',
           body: [
             'Transkript panelindeki Kelimeler sekmesi, takip ettiğiniz, bilinen olarak işaretlediğiniz ve yok saydığınız kelimeleri ayrı listelerde gösterir. Her kelimenin işaretini kaldıran bir düğmesi vardır — yok sayılan bir kelime için “Yok saymayı bırak” — ve takip edilen bir kelime oradan karta dönüştürülebilir.',
+            'Her dilin kendi listeleri vardır. Kelimeler ve Kaydedilenler sekmeleri, öğrendiğiniz dilin listelerini gösterir; bir dilde işaretlediğiniz kelime başka bir dilde işaretlenmiş olmaz.',
             "Her listenin bir arama kutusu ve listeyi Anki'nin ve elektronik tabloların açabildiği bir dosya olarak veren “Kopyala” ile “Dışa aktar” düğmeleri vardır.",
           ],
           keywords: ['takip listesi', 'liste', 'yok sayılanlar', 'bilinenler', 'işareti kaldır', 'kelimeler', 'excel', 'watchlist'],
@@ -281,8 +283,19 @@ export const tr: HelpTranslation = {
           title: 'Tanımlar neden yalnızca bazı dillerde?',
           body: [
             "Japonca için tanımlar, dokuz dilde tanım içeren JMdict'ten gelir. Diliniz bunlardan biri değilse {Ayarlar → Diller} bölümünde ikinci bir satır, “Tanım dili”, yerine kullanılacak dili seçmenizi sağlar.",
+            'Çince, Korece ve İspanyolca sözlükler yalnızca İngilizce yazılmıştır.',
           ],
           keywords: ['tanımlar', 'diller', 'türkçe', 'ingilizce', 'macarca', 'jmdict', 'cc-cedict', 'wiktionary'],
+        },
+        {
+          id: 'q-languages',
+          title: 'Hangi dilleri öğrenebilirim?',
+          body: [
+            'Japonca, Çince, Korece ve İspanyolca için sözlük vardır ve bir kelime, hangi biçimde söylenirse söylensin kartıyla eşleşir: 갔어요, 가다 kartını; hablábamos da hablar kartını bulur. Japonca kelimelerin üstünde furigana, Çince ise pinyin gösterir.',
+            '{Ayarlar → Diller → Öğrendiğim dil} altındaki diğer diller “sınırlı” olarak işaretlidir. Kelimeleri ayrılır ama henüz sözlükleri yoktur.',
+            'Bir dilin sözlüğü, o dili ilk seçtiğinizde indirilir. İndirme boyutu 11 ile 27 MB arasındadır; diskte Çince için 100 MB, Korece için 200 MB, İspanyolca için 470 MB yer kaplar.',
+          ],
+          keywords: ['dil', 'japonca', 'çince', 'mandarin', 'korece', 'ispanyolca', 'pinyin', 'sınırlı', 'desteklenen', 'boyut'],
         },
         {
           id: 'q-data',

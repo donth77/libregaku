@@ -1,4 +1,4 @@
-import type { Segmenter, Token } from './types';
+import type { RubySegment, Segmenter, Token } from './types';
 
 /**
  * Tier 0 — `Intl.Segmenter`, built into the browser.
@@ -35,5 +35,10 @@ export class IntlSegmenter implements Segmenter {
       });
     }
     return out;
+  }
+
+  /** Boundaries know no readings. */
+  ruby(surface: string): RubySegment[] {
+    return [{ text: surface }];
   }
 }

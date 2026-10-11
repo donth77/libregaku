@@ -1,5 +1,6 @@
 import { lookupToken, type LookupResult } from '../dict/client';
 import { addSentence, isDuplicate, probe } from '../anki/client';
+import { readyDeck } from '../anki/deck';
 import { ROOT_TAG, tagsFor } from '../anki/model';
 import { sourceField } from '../anki/source';
 import { icon } from './icons';
@@ -11,7 +12,7 @@ import type { Segmenter, Token } from '../morphology/types';
 import type { OverrideStatus } from '../anki/status';
 import { applyVars, onSettingsChange, setSetting, settings, underlineVars, type Settings } from '../settings';
 import { markPhrase, phraseAt, phraseToken, selectWhole, selectedWords, textFrom } from './phrase';
-import { furigana } from '../morphology/furigana';
+import { rubyOf } from '../morphology/ruby';
 import { PANEL_STYLE, buildSettings, keysView, syncSettingsControls } from './settings-panel';
 import { partsOfSpeech, popupIsOpen } from './popup';
 import type { Transcript, Line } from './transcript';
@@ -1436,7 +1437,8 @@ export class Sidebar {
       if (el) el.textContent = n ? String(n) : '';
     };
     set('words', this.#deps.marked?.().filter((m) => isListed(m.status)).length ?? null);
-    void bookmarks.list().then((all) => set('saved', all.length), () => {});
+    // The lines saved in the language being learned, which is what the view lists.
+    void bookmarks.inLanguage(settings().target).then((mine) => set('saved', mine.length), () => {});
   }
 
   /** The line as a card, from its row's button: busy while it goes, then a tick. */
@@ -1527,12 +1529,6 @@ export class Sidebar {
    * twice is the normal way to add what has been saved since last time.
    */
   async #savedToAnki(lines: Bookmark[], said: HTMLElement, btn: HTMLButtonElement): Promise<void> {
-    const deck = settings().deck;
-    if (!deck) {
-      said.textContent = ui.sidebar.chooseDeck;
-      return;
-    }
-
     btn.disabled = true;
     said.textContent = ui.sidebar.checkingAnki;
     const state = await probe();
@@ -1544,6 +1540,16 @@ export class Sidebar {
           : state.kind === 'blocked'
             ? ui.sidebar.ankiBlocked
             : ui.sidebar.ankiUnreachable;
+      return;
+    }
+
+    let deck: string;
+    try {
+      // The deck chosen, or the language's own, which its first card makes.
+      deck = await readyDeck();
+    } catch (e) {
+      btn.disabled = false;
+      said.textContent = e instanceof Error ? e.message : String(e);
       return;
     }
 
@@ -1836,7 +1842,8 @@ export class Sidebar {
   async #renderSaved(): Promise<void> {
     const host = this.#settingsEl;
     if (!host) return;
-    const groups = await bookmarks.grouped();
+    // Only the language being learned: its lines, for its deck.
+    const groups = await bookmarks.grouped(settings().target);
     host.replaceChildren();
 
     if (!groups.length) {
@@ -1867,7 +1874,7 @@ export class Sidebar {
 
         const tx = document.createElement('span');
         tx.className = 'tx';
-        tx.lang = settings().target;
+        tx.lang = b.lang;
         tx.textContent = b.text;
         row.appendChild(tx);
 
@@ -3046,7 +3053,7 @@ export class Sidebar {
 
       // Readings and status belong here too: a transcript that renders the
       // same words differently from the overlay is two tools, not one.
-      const segs = furigana(tok.surface, tok.reading);
+      const segs = rubyOf(this.#deps.segmenter(), tok);
       const annotated = segs.some((x) => x.ruby);
       if (annotated) {
         this.#annotated.add(w);
@@ -3162,7 +3169,7 @@ export class Sidebar {
     if (top) {
       const hp = document.createElement('div');
       hp.className = 'hp';
-      hp.textContent = partsOfSpeech(top.senses[0]?.pos ?? []);
+      hp.textContent = partsOfSpeech(top.kind ?? top.senses[0]?.pos ?? []);
       const hd = document.createElement('div');
       hd.className = 'hd';
       // Preview only: one gloss, no buttons. Acting on a word means clicking.

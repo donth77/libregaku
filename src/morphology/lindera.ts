@@ -1,6 +1,8 @@
+import { analyse as ask, analyserStatus, ensureAnalyser, LineCache, type AnalyserStatus } from './analyser';
 import { furigana } from './furigana';
 import { mergeMorphemes, type Lexicon, type LexiconEntry, type Morpheme } from './merge';
-import type { Segmenter, Token } from './types';
+import { place, runsOf } from './place';
+import type { RubySegment, Segmenter, Token } from './types';
 
 /**
  * Tier 2 — real morphological analysis.
@@ -27,26 +29,14 @@ export class LinderaSegmenter implements Segmenter {
   readonly tier = 2 as const;
   readonly hasLemma = true;
 
-  readonly #cache = new Map<string, Token[]>();
+  readonly #cache = new LineCache();
 
-  static async ensure(dict = 'ipadic'): Promise<{ ok: boolean; error?: string }> {
-    await chrome.runtime.sendMessage({ type: 'ensure-offscreen' });
-    const res = (await chrome.runtime.sendMessage({
-      target: 'offscreen',
-      type: 'load',
-      dict,
-    })) as { ok?: boolean; error?: string } | undefined;
-    // No reply at all is a different fault from a refusal, and reporting it as
-    // `undefined` is how it went unread for so long.
-    if (!res) return { ok: false, error: 'the offscreen document did not answer' };
-    return { ok: Boolean(res.ok), error: res.error };
+  static ensure(dict = 'ipadic'): Promise<{ ok: boolean; error?: string }> {
+    return ensureAnalyser(dict);
   }
 
-  static async status(): Promise<{ ready: boolean; phase: string; percent: number; error: string | null }> {
-    const res = (await chrome.runtime.sendMessage({ target: 'offscreen', type: 'status' })) as
-      | { ready: boolean; phase: string; percent: number; error: string | null }
-      | undefined;
-    return res ?? { ready: false, phase: 'unavailable', percent: 0, error: null };
+  static status(): Promise<AnalyserStatus> {
+    return analyserStatus();
   }
 
   async segment(text: string): Promise<Token[]> {
@@ -56,12 +46,13 @@ export class LinderaSegmenter implements Segmenter {
     // An analysis made before the dictionary loaded reads numbers and prefixed
     // words less well; keep it for this call only, so the line improves once
     // the dictionary is there.
-    if (complete) {
-      // Bounded: a long film is a few thousand lines, and they are short.
-      if (this.#cache.size > 4000) this.#cache.clear();
-      this.#cache.set(text, tokens);
-    }
+    if (complete) this.#cache.set(text, tokens);
     return tokens;
+  }
+
+  /** Kana over the kanji they read. */
+  ruby(surface: string, reading?: string): RubySegment[] {
+    return furigana(surface, reading);
   }
 }
 
@@ -103,13 +94,8 @@ export async function segmentWith(text: string, analyse: Analyse): Promise<{ tok
 }
 
 /** One request to the offscreen document's analyser. */
-async function analyse(text: string): Promise<Analysis & { tokens: Analysed[] }> {
-  const res = (await chrome.runtime.sendMessage({ target: 'offscreen', type: 'tokenize', text })) as
-    | Analysis
-    | undefined;
-  if (!res) throw new Error('the offscreen document did not answer');
-  if (!res.ok || !res.tokens) throw new Error(res.error ?? 'tokenizer unavailable');
-  return res as Analysis & { tokens: Analysed[] };
+function analyse(text: string): Promise<Analysis & { tokens: Analysed[] }> {
+  return ask<Analysed>(text) as Promise<Analysis & { tokens: Analysed[] }>;
 }
 
 /** Marks that stretch a vowel in casual writing: は〜い, う～ん, ね~. */
@@ -222,14 +208,6 @@ export function restretched(tokens: readonly Token[], text: string, at: readonly
   });
 }
 
-/**
- * Nothing but punctuation, symbols, spaces or a long-vowel mark: never a word,
- * whatever the analyser called it. IPADIC's pass over characters it has no
- * entry for groups ？ with the space after it, and reads ～ and ? on their
- * own, as nouns — which underlined them as new words.
- */
-const MARKS_ONLY = /^[\p{P}\p{S}\p{Z}\sー]+$/u;
-
 /** The offscreen document's answers as the merge pass consumes them. */
 export function lexiconFrom(answers?: Record<string, LexiconEntry[]>): Lexicon | undefined {
   if (!answers) return undefined;
@@ -237,68 +215,12 @@ export function lexiconFrom(answers?: Record<string, LexiconEntry[]>): Lexicon |
 }
 
 /**
- * Merge morphemes into words, then locate each in the original text.
- *
- * Lindera reports byte offsets; the DOM needs UTF-16 ones. Rather than convert,
- * walk the text and find each surface in order — which also survives the
- * analyser normalising a character away.
+ * Merge morphemes into words, then locate each in the original text
+ * (src/morphology/place.ts). IPADIC files punctuation under 記号, mostly.
  */
 export function toTokens(text: string, analysed: Analysed[], lexicon?: Lexicon): Token[] {
-  const merged = spaced(text, analysed).flatMap((run) => mergeMorphemes(run, lexicon));
-  const out: Token[] = [];
-  let cursor = 0;
-
-  for (const t of merged) {
-    if (!t.surface) continue;
-    const at = text.indexOf(t.surface, cursor);
-    if (at < 0) continue;   // normalised; skip rather than misalign the rest
-    cursor = at + t.surface.length;
-
-    // IPADIC files punctuation under 記号, mostly.
-    const punct = t.pos === '記号' || MARKS_ONLY.test(t.surface);
-    out.push({
-      surface: t.surface,
-      start: at,
-      end: cursor,
-      lemma: t.lemma,
-      reading: t.reading,
-      pos: t.pos,
-      content: t.content && !punct,
-      punct,
-      parts: t.parts.length > 1 ? t.parts : undefined,
-      inflections: t.inflections.length ? t.inflections : undefined,
-      lemmaReading: t.lemmaReading,
-      lookup: t.lookup.length ? t.lookup : undefined,
-    });
-  }
-  return out;
-}
-
-/**
- * The morphemes in the stretches a line writes without a space.
- *
- * The analyser drops spaces, so ありがとう ございます comes back as if it
- * were written together. A word merged across the space was then nowhere in
- * the line, and toTokens left it out — the whole phrase went missing. A space
- * the subtitle put there is a boundary, and merging stays inside it.
- */
-function spaced(text: string, analysed: Analysed[]): Analysed[][] {
-  const runs: Analysed[][] = [];
-  let run: Analysed[] = [];
-  let cursor = 0;
-  for (const m of analysed) {
-    const at = m.surface ? text.indexOf(m.surface, cursor) : -1;
-    if (at >= 0) {
-      if (run.length && /\s/.test(text.slice(cursor, at))) {
-        runs.push(run);
-        run = [];
-      }
-      cursor = at + m.surface.length;
-    }
-    run.push(m);
-  }
-  if (run.length) runs.push(run);
-  return runs;
+  const merged = runsOf(text, analysed).flatMap((run) => mergeMorphemes(run, lexicon));
+  return place(text, merged, { isPunct: (t) => t.pos === '記号' });
 }
 
 /** Ruby segments for a token, for the renderer. */

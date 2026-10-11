@@ -20,6 +20,40 @@
 export const MODEL_NAME = 'Libregaku';
 export const ROOT_TAG = 'libregaku';
 
+/** What says which language a card or a mark is in: libregaku::lang::ja. */
+export const LANG_TAG = `${ROOT_TAG}::lang`;
+
+export function langTag(lang: string): string {
+  return `${LANG_TAG}::${lang}`;
+}
+
+/**
+ * The language a note's tags name, in lower case, or null when none does.
+ * Anki keeps a tag in whatever capitals it first met it with, so the tag read
+ * back is not always the one written.
+ */
+export function langOfTags(tags: readonly string[] = []): string | null {
+  const prefix = `${LANG_TAG}::`;
+  for (const tag of tags) {
+    const t = tag.toLowerCase();
+    if (!t.startsWith(prefix)) continue;
+    const lang = t.slice(prefix.length);
+    // A language code and nothing else: marks are kept under it.
+    if (/^[a-z]{2,3}(-[a-z0-9]{1,8})*$/.test(lang)) return lang;
+  }
+  return null;
+}
+
+/**
+ * The deck a language's cards go to until the learner chooses one: its own,
+ * named by its code — Libregaku-JA — so that two languages never share a deck
+ * unless someone puts them in one. The code rather than the language's name,
+ * which would differ with the language the interface is in.
+ */
+export function defaultDeck(lang: string): string {
+  return `${MODEL_NAME}-${lang.toUpperCase()}`;
+}
+
 export const FIELDS = [
   'Expression',      // 勉強する
   'Reading',         // 勉強[べんきょう]する — Anki's furigana syntax
@@ -94,19 +128,42 @@ export const MODEL = {
  * Its own note type rather than a flag on a vocabulary card, because a mark
  * is usually exactly what has no card: marking is not carding. Word is the
  * key the extension looks words up by, and so also the field Anki's
- * duplicate check reads, which keeps one note per word. The card exists only
- * because Anki has no note without one; it is suspended as soon as it is made
- * and never reviewed.
+ * duplicate check reads, which keeps one note per word in each language's
+ * deck. The card exists only because Anki has no note without one; it is
+ * suspended as soon as it is made and never reviewed.
  *
  * The status is a tag, not a field: tags are cheap to change in bulk, visible
- * in Anki's browser, and searchable — `tag:libregaku::mark::known`.
+ * in Anki's browser, and searchable — `tag:libregaku::mark::known`. The
+ * language is a tag too, the one a card carries: `tag:libregaku::lang::ja`.
  */
 export const MARK_MODEL_NAME = 'Libregaku Mark';
 export const MARK_FIELDS = ['Word', 'Reading'] as const;
+/** The deck every language's marks are kept under, each in a deck of its own (markDeck). */
 export const MARK_DECK = 'Libregaku::Marks';
 /** Anki's search for every mark note, whatever deck it has been moved to. */
 export const MARK_SEARCH = `note:"${MARK_MODEL_NAME}"`;
+/**
+ * Anki's search for the marks still in MARK_DECK itself, where every
+ * language's were kept before each had its own deck. Never one a learner has
+ * moved somewhere else.
+ */
+export const MARK_UNSORTED = `${MARK_SEARCH} deck:"${MARK_DECK}" -deck:"${MARK_DECK}::*"`;
 export const MARK_TAG = `${ROOT_TAG}::mark`;
+
+/**
+ * Where one language's marks go: Libregaku::Marks::JA. A deck each, so that
+ * no deck holds two languages, and so that Anki's duplicate check — kept to
+ * the deck — lets 人 be known in Japanese and tracked in Chinese.
+ */
+export function markDeck(lang: string): string {
+  return `${MARK_DECK}::${lang.toUpperCase()}`;
+}
+
+/** Whether a deck is one marks are kept in: all the service worker lets a mark be moved to. */
+export function isMarkDeck(name: unknown): boolean {
+  return typeof name === 'string' && name.startsWith(`${MARK_DECK}::`) && name.length <= 60 &&
+    /^[A-Za-z0-9-]+$/.test(name.slice(MARK_DECK.length + 2));
+}
 
 export const MARK_MODEL = {
   modelName: MARK_MODEL_NAME,
@@ -168,7 +225,7 @@ export function isOwnMedia(name: unknown): boolean {
  * everything, `tag:libregaku::netflix` for one source.
  */
 export function tagsFor(opts: { source: string; lang: string }): string[] {
-  return [ROOT_TAG, `${ROOT_TAG}::${opts.source}`, `${ROOT_TAG}::lang::${opts.lang}`];
+  return [ROOT_TAG, `${ROOT_TAG}::${opts.source}`, langTag(opts.lang)];
 }
 
 /**

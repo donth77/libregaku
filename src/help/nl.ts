@@ -83,7 +83,7 @@ export const nl: HelpTranslation = {
                 ['`B`', 'Huidige regel opslaan'],
                 ['`S`', 'Transcriptpaneel tonen of verbergen'],
                 ['`H`', 'Ondertitels vervagen of scherp maken'],
-                ['`R`', 'Furigana wisselen: uit, nieuwe woorden, alle (Japans)'],
+                ['`R`', 'Furigana of pinyin wisselen: uit, nieuwe woorden, alle (Japans, Chinees)'],
                 ['`Shift`', 'Ingedrukt houden om het woord onder de muis op te zoeken, als {Instellingen → Woorden opzoeken → Opzoeken bij} op “Aanwijzen met Shift” staat'],
                 ['`Esc`', 'Pop-up sluiten'],
               ],
@@ -132,6 +132,7 @@ export const nl: HelpTranslation = {
           title: 'De set kiezen',
           body: [
             'Nieuwe kaarten gaan naar de set in {Instellingen → Anki → Set voor nieuwe kaarten}.',
+            'Elke taal die je leert, heeft een eigen set. Tot je er een kiest, gaan de kaarten naar een set die bij de eerste kaart voor die taal wordt gemaakt: Libregaku-JA voor Japans, Libregaku-ES voor Spaans. Wijzig je {Instellingen → Talen → Ik leer}, dan verandert de set mee.',
             'Wil je tijdens het kijken wisselen, zet dan {Instellingen → Woordpop-up → Setmenu} aan. Naast “Toevoegen aan Anki” verschijnt een ▾; “Toevoegen aan” een set zet de kaart daar en stuurt ook de volgende kaarten daarheen.',
             { tip: 'De woordstatus wordt gelezen uit {Instellingen → Anki → Bekende woorden uit}. Gaan nieuwe kaarten naar een set die daar niet onder valt, dan meldt Instellingen dat.' },
           ],
@@ -163,6 +164,7 @@ export const nl: HelpTranslation = {
           title: 'Je gemarkeerde woorden bekijken en wijzigen',
           body: [
             'In het transcriptpaneel toont het tabblad “Woorden” de woorden die je volgt, als bekend hebt gemarkeerd of negeert, elk in een eigen lijst. Elk woord heeft een knop om de markering te verwijderen – “Niet meer negeren” bij een genegeerd woord – en van een gevolgd woord kun je daar een kaart maken.',
+            'Elke taal heeft eigen lijsten. De tabbladen “Woorden” en “Opgeslagen” tonen die van de taal die je leert, en een woord dat je in de ene taal hebt gemarkeerd, is in een andere taal niet gemarkeerd.',
             'Elke lijst heeft een zoekvak en de knoppen “Kopiëren” en “Bestand exporteren”, die je de lijst geven als bestand dat Anki en spreadsheets kunnen openen.',
           ],
           keywords: ['volglijst', 'watchlist', 'lijst', 'genegeerd', 'bekend', 'markering verwijderen', 'woorden', 'spreadsheet', 'excel'],
@@ -281,8 +283,19 @@ export const nl: HelpTranslation = {
           title: 'Waarom zijn definities maar in sommige talen?',
           body: [
             'Voor Japans komen ze uit JMdict, dat definities in negen talen heeft. Staat jouw taal daar niet bij, dan toont {Instellingen → Talen} een tweede rij, “Definities in”, voor de taal die in plaats daarvan wordt gebruikt.',
+            'De woordenboeken voor Chinees, Koreaans en Spaans zijn alleen in het Engels.',
           ],
           keywords: ['definities', 'betekenissen', 'talen', 'jmdict', 'hongaars', 'sloveens', 'engels', 'cc-cedict', 'wiktionary'],
+        },
+        {
+          id: 'q-languages',
+          title: 'Welke talen kan ik leren?',
+          body: [
+            'Japans, Chinees, Koreaans en Spaans hebben een woordenboek, en een woord wordt aan de kaart gekoppeld in elke vorm waarin het gezegd wordt: 갔어요 vindt een kaart voor 가다, en hablábamos een voor hablar. Japans toont furigana boven woorden, en Chinees pinyin.',
+            'De andere talen onder {Instellingen → Talen → Ik leer} zijn gemarkeerd als beperkt. Hun woorden worden gesplitst, maar er is nog geen woordenboek.',
+            'Het woordenboek van een taal wordt gedownload als je die taal voor het eerst kiest. Het is 11 tot 27 MB.',
+          ],
+          keywords: ['taal', 'koreaans', 'chinees', 'mandarijn', 'spaans', 'japans', 'pinyin', 'beperkt', 'ondersteund'],
         },
         {
           id: 'q-data',

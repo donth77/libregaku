@@ -1,7 +1,8 @@
 import { ui } from '../i18n';
 import { createDeck, ensureNoteType } from './client';
 import {
-  MARK_DECK, MARK_FIELDS, MARK_MODEL, MARK_MODEL_NAME, MARK_SEARCH, ROOT_TAG, fieldHtml, keyField, markTag,
+  MARK_FIELDS, MARK_MODEL, MARK_MODEL_NAME, MARK_SEARCH, MARK_UNSORTED, ROOT_TAG, fieldHtml, keyField, langOfTags,
+  langTag, markDeck, markTag,
 } from './model';
 import { AnkiUnavailable, ankiCall as call, ankiTry } from './rpc';
 import type { OverrideStatus } from './status';
@@ -17,20 +18,32 @@ import { phonetic, strip } from './text';
  * enters review, with its status in a tag. It then syncs wherever the
  * collection does, and survives anything that happens to the extension.
  *
+ * A mark belongs to a language. 人 known in Japanese says nothing about 人 in
+ * Chinese, and a list of the words marked in two languages is a list of
+ * neither. So marks are kept by language here, and in Anki each carries its
+ * language as a tag — the one a card carries — in that language's own deck.
+ *
  * Offline first. The page reads a cache in chrome.storage.local and never
  * waits on Anki: marking updates the cache and a queue at once, and a sync
  * — whenever Anki next answers — writes the queue into Anki and reads every
  * mark back. What Anki holds is the truth; what is still queued is newer.
  */
 
-/** word → status: what the page reads, instantly. */
-const OVERRIDES = 'libregaku.overrides';
-/** Set once the old chrome.storage.sync item has been brought over on this machine. */
-const MIGRATED = 'libregaku.overrides.migrated';
-/** word → the change still to be written into Anki. */
-const PENDING = 'libregaku.marks.pending';
+/** language → word → status: what the page reads, instantly. */
+const CACHE = 'libregaku.marks.byLanguage';
+/** language → word → the change still to be written into Anki. */
+const QUEUE = 'libregaku.marks.pending.byLanguage';
 /** Set once the marks this browser had before Anki kept them have been queued for it. */
 const SEEDED = 'libregaku.marks.migrated';
+
+/*
+ * From before a mark had a language: word → status, and word → change. Read
+ * one last time, each word given a language (languageOf), and removed.
+ */
+const FLAT_CACHE = 'libregaku.overrides';
+const FLAT_QUEUE = 'libregaku.marks.pending';
+/** Set once the still older chrome.storage.sync item has been brought over on this machine. */
+const SYNC_IMPORTED = 'libregaku.overrides.migrated';
 
 /** Ids and notes per AnkiConnect request, so no one call is ever unbounded. */
 const BATCH = 500;
@@ -46,8 +59,10 @@ interface Pending {
   at: number;
 }
 
-type Queue = Record<string, Pending>;
-type Marks = Record<string, OverrideStatus>;
+/** By language, then by word. */
+type ByLanguage<T> = Map<string, Map<string, T>>;
+type Marks = ByLanguage<OverrideStatus>;
+type Queue = ByLanguage<Pending>;
 
 interface Local {
   cache: Marks;
@@ -56,88 +71,191 @@ interface Local {
 }
 
 export interface MarkSync {
-  /** Every mark: Anki's, with whatever is still queued laid over them. */
-  marks: Map<string, OverrideStatus>;
+  /** Every mark, by language and then by word: Anki's, with whatever is still queued laid over them. */
+  marks: Map<string, Map<string, OverrideStatus>>;
   /** Changes not yet in Anki. */
   pending: number;
   /** What to tell the user when Anki refused part of the sync. The queue is kept. */
   error?: string;
 }
 
+function put<T>(all: ByLanguage<T>, lang: string, word: string, value: T): void {
+  let words = all.get(lang);
+  if (!words) all.set(lang, (words = new Map()));
+  words.set(word, value);
+}
+
+function take<T>(all: ByLanguage<T>, lang: string, word: string): void {
+  const words = all.get(lang);
+  if (words?.delete(word) && !words.size) all.delete(lang);
+}
+
+function* each<T>(all: ByLanguage<T>): Generator<[lang: string, word: string, value: T]> {
+  for (const [lang, words] of all) {
+    for (const [word, value] of words) yield [lang, word, value];
+  }
+}
+
+function count(all: ByLanguage<unknown>): number {
+  let n = 0;
+  for (const words of all.values()) n += words.size;
+  return n;
+}
+
+function copy<T>(all: ByLanguage<T>): ByLanguage<T> {
+  return new Map([...all].map(([lang, words]) => [lang, new Map(words)]));
+}
+
+/** As chrome.storage keeps it: language → word → value, in plain objects. */
+function stored<T>(all: ByLanguage<T>): Record<string, Record<string, T>> {
+  return Object.fromEntries([...all].map(([lang, words]) => [lang, Object.fromEntries(words)]));
+}
+
+function push<K, V>(lists: Map<K, V[]>, key: K, value: V): void {
+  const list = lists.get(key);
+  if (list) list.push(value);
+  else lists.set(key, [value]);
+}
+
+/** A language as marks are kept under it: its code, in lower case. */
+function code(lang: string): string {
+  return lang.trim().toLowerCase();
+}
+
+/**
+ * The language of a mark made before marks had one.
+ *
+ * Japanese was then the only language with word forms and a dictionary, so a
+ * word in kana or kanji is Japanese. A word in a script Japanese is never
+ * written in names its own language. Anything else — a word in Latin
+ * letters, above all — could be in any of several, and is taken to be in the
+ * one being learned now.
+ */
+function languageOf(word: string, learning: string): string {
+  if (/[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u.test(word)) return 'ja';
+  if (/\p{Script=Hangul}/u.test(word)) return 'ko';
+  if (/\p{Script=Thai}/u.test(word)) return 'th';
+  return learning;
+}
+
 function isStatus(v: unknown): v is OverrideStatus {
   return v === 'known' || v === 'tracking' || v === 'unknown' || v === 'ignored';
 }
 
-function clean(raw: unknown): Marks {
-  const out: Marks = {};
-  if (!raw || typeof raw !== 'object') return out;
-  // Older versions persisted every word given a card as "learning", masking Anki
-  // forever. Drop those values; the next write removes them for good.
-  for (const [word, status] of Object.entries(raw as Record<string, unknown>)) {
-    if (isStatus(status)) out[word] = status;
-  }
-  return out;
+/**
+ * A stored status. Older versions persisted every word given a card as
+ * "learning", masking Anki forever: that is no status here, so it is dropped
+ * as it is read, and the next write removes it for good.
+ */
+function statusOf(v: unknown): OverrideStatus | null {
+  return isStatus(v) ? v : null;
 }
 
-function cleanQueue(raw: unknown): Queue {
-  const out: Queue = {};
-  if (!raw || typeof raw !== 'object') return out;
-  for (const [word, entry] of Object.entries(raw as Record<string, unknown>)) {
-    if (!entry || typeof entry !== 'object') continue;
-    const { status, reading, at } = entry as Record<string, unknown>;
-    if (status !== null && !isStatus(status)) continue;
-    out[word] = {
-      status,
-      at: typeof at === 'number' ? at : 0,
-      ...(typeof reading === 'string' && reading ? { reading } : {}),
-    };
-  }
-  return out;
-}
-
-/** Everything stored here. Throws when storage cannot be read. */
-async function readLocal(): Promise<Local> {
-  const got = await chrome.storage.local.get([OVERRIDES, MIGRATED, PENDING, SEEDED]);
-  const cache = clean(got[OVERRIDES]);
+function pendingOf(v: unknown): Pending | null {
+  if (!v || typeof v !== 'object') return null;
+  const { status, reading, at } = v as Record<string, unknown>;
+  if (status !== null && !isStatus(status)) return null;
   return {
-    cache: got[MIGRATED] ? cache : await migrate(cache),
-    queue: cleanQueue(got[PENDING]),
-    seeded: Boolean(got[SEEDED]),
+    status,
+    at: typeof at === 'number' ? at : 0,
+    ...(typeof reading === 'string' && reading ? { reading } : {}),
   };
 }
 
-/**
- * One time: bring the old chrome.storage.sync item over, then remove it. Its
- * 8 KB limit is why marks left sync storage. The flag, not the removal, is
- * what stops a second import — so a failed removal can never bring back a
- * mark cleared since.
- */
-async function migrate(local: Marks): Promise<Marks> {
-  let legacy: Marks;
-  try {
-    legacy = clean((await chrome.storage.sync.get(OVERRIDES))[OVERRIDES]);
-  } catch {
-    return local;   // sync unreadable just now; try again next time
+/** What is stored by language, with anything that is not one of `valueOf`'s left out. */
+function read<T>(raw: unknown, valueOf: (v: unknown) => T | null): ByLanguage<T> {
+  const out: ByLanguage<T> = new Map();
+  if (!raw || typeof raw !== 'object') return out;
+  for (const [lang, words] of Object.entries(raw as Record<string, unknown>)) {
+    if (!words || typeof words !== 'object') continue;
+    for (const [word, v] of Object.entries(words as Record<string, unknown>)) {
+      const value = valueOf(v);
+      if (value !== null) put(out, lang, word, value);
+    }
   }
-  // Anything already local was written after the sync copy, so it wins.
-  const merged = { ...legacy, ...local };
-  try {
-    await chrome.storage.local.set({ [OVERRIDES]: merged, [MIGRATED]: true });
-  } catch {
-    return merged;   // shown this session; the import is retried next time
+  return out;
+}
+
+/** The same from before marks had a language — word → value — each word under its own. */
+function readFlat<T>(raw: unknown, valueOf: (v: unknown) => T | null, learning: string): ByLanguage<T> {
+  const out: ByLanguage<T> = new Map();
+  if (!raw || typeof raw !== 'object') return out;
+  for (const [word, v] of Object.entries(raw as Record<string, unknown>)) {
+    const value = valueOf(v);
+    if (value !== null) put(out, languageOf(word, learning), word, value);
   }
-  try {
-    await chrome.storage.sync.remove(OVERRIDES);
-  } catch {
-    /* the flag already prevents a second import */
-  }
-  return merged;
+  return out;
 }
 
 /**
- * Local writes from this page, one at a time, each reading the one before it.
- * A sync's final write joins the same line, so a mark made while Anki was
- * being written to is never overwritten by the sync that started before it.
+ * Everything stored here. Throws when storage cannot be read.
+ *
+ * Always in line with the local writes (serial), because the first read
+ * after an update is one itself: marks from before they had a language are
+ * stored by language. `learning` is the language being learned, which is
+ * what such a mark is taken to be in when its spelling does not say.
+ */
+async function readLocal(learning: string): Promise<Local> {
+  const got = await chrome.storage.local.get([CACHE, QUEUE, SEEDED, FLAT_CACHE, FLAT_QUEUE, SYNC_IMPORTED]);
+  // Nothing by language yet: whatever is here is from before marks had one.
+  const flat = got[CACHE] === undefined && got[QUEUE] === undefined;
+  const local: Local = {
+    cache: flat ? readFlat(got[FLAT_CACHE], statusOf, learning) : read(got[CACHE], statusOf),
+    queue: flat ? readFlat(got[FLAT_QUEUE], pendingOf, learning) : read(got[QUEUE], pendingOf),
+    seeded: Boolean(got[SEEDED]),
+  };
+  if (flat || !got[SYNC_IMPORTED]) await bringOver(local, flat, !got[SYNC_IMPORTED], learning);
+  return local;
+}
+
+/**
+ * One time each: marks from before they had a language are stored by
+ * language, and the chrome.storage.sync item older still is brought over —
+ * its 8 KB limit is why marks left sync storage. What is written here, not
+ * the removals after it, is what stops either happening twice — so a failed
+ * removal can never bring back a mark cleared since.
+ */
+async function bringOver(local: Local, flat: boolean, fromSync: boolean, learning: string): Promise<void> {
+  let imported = false;
+  if (fromSync) {
+    try {
+      const legacy = readFlat((await chrome.storage.sync.get(FLAT_CACHE))[FLAT_CACHE], statusOf, learning);
+      // Anything already local was written after the sync copy, so it wins.
+      for (const [lang, word, status] of each(legacy)) {
+        if (!local.cache.get(lang)?.has(word)) put(local.cache, lang, word, status);
+      }
+      imported = true;
+    } catch {
+      /* sync unreadable just now; tried again next time */
+    }
+  }
+  if (!flat && !imported) return;
+  try {
+    await chrome.storage.local.set({
+      [CACHE]: stored(local.cache),
+      [QUEUE]: stored(local.queue),
+      ...(imported ? { [SYNC_IMPORTED]: true } : {}),
+    });
+  } catch {
+    return;   // shown this session; brought over again next time
+  }
+  try {
+    if (imported) await chrome.storage.sync.remove(FLAT_CACHE);
+  } catch {
+    /* the flag already prevents a second import */
+  }
+  try {
+    if (flat) await chrome.storage.local.remove([FLAT_CACHE, FLAT_QUEUE]);
+  } catch {
+    /* never read again: the marks by language are there now */
+  }
+}
+
+/**
+ * Local reads and writes from this page, one at a time, each seeing the one
+ * before it. A sync's final write joins the same line, so a mark made while
+ * Anki was being written to is never overwritten by the sync that started
+ * before it.
  *
  * The line is per page. Two tabs writing within the same few milliseconds can
  * still overwrite each other's local write; closing that means one writer for
@@ -145,9 +263,10 @@ async function migrate(local: Marks): Promise<Marks> {
  */
 let writing: Promise<unknown> = Promise.resolve();
 
-function serial<T>(work: () => Promise<T>, fallback: (e: unknown) => T): Promise<T> {
-  const run = writing.then(work).catch((e: unknown) => fallback(e));
-  writing = run;
+function serial<T>(work: () => Promise<T>): Promise<T> {
+  const run = writing.then(work);
+  // The next in line goes ahead whatever became of this one.
+  writing = run.catch(() => undefined);
   return run;
 }
 
@@ -159,48 +278,59 @@ function stamp(): number {
 }
 
 /**
- * Record a mark, or clear it with null, without waiting on Anki. Resolves
- * false only when browser storage refused it — the one case in which the mark
- * will not outlive this page.
+ * Record a mark on a word of one language, or clear it with null, without
+ * waiting on Anki. Resolves false only when browser storage refused it — the
+ * one case in which the mark will not outlive this page.
  */
-export function setMark(word: string, status: OverrideStatus | null, reading?: string): Promise<boolean> {
+export function setMark(
+  lang: string,
+  word: string,
+  status: OverrideStatus | null,
+  reading?: string,
+): Promise<boolean> {
+  const language = code(lang);
   return serial(async () => {
-    // Read strictly: writing back a map that failed to load would erase
-    // every other mark.
-    const { cache, queue } = await readLocal();
+    // Read strictly: writing back marks that failed to load would erase
+    // every other one.
+    const { cache, queue } = await readLocal(language);
     // Already so — including clearing a word that was never marked, which
     // adding a card does for every word it adds.
-    if ((cache[word] ?? null) === status) return true;
-    if (status) cache[word] = status;
-    else delete cache[word];
+    if ((cache.get(language)?.get(word) ?? null) === status) return true;
+    if (status) put(cache, language, word, status);
+    else take(cache, language, word);
     const kana = reading ? phonetic(reading.trim()) : null;
-    queue[word] = { status, at: stamp(), ...(kana ? { reading: kana } : {}) };
-    await chrome.storage.local.set({ [OVERRIDES]: cache, [PENDING]: queue });
+    put(queue, language, word, { status, at: stamp(), ...(kana ? { reading: kana } : {}) });
+    await chrome.storage.local.set({ [CACHE]: stored(cache), [QUEUE]: stored(queue) });
     return true;
-  }, (e) => {
+  }).catch((e: unknown) => {
     console.warn('[libregaku] could not store the mark for', word, e);
     return false;
   });
 }
 
-/** The marks as this page should show them now: Anki's last word, plus anything queued since. */
-export async function loadOverrides(): Promise<Map<string, OverrideStatus>> {
+/**
+ * One language's marks as this page should show them now: Anki's last word,
+ * plus anything queued since. Never another language's: the same spelling
+ * there is another word.
+ */
+export async function loadOverrides(lang: string): Promise<Map<string, OverrideStatus>> {
+  const language = code(lang);
   try {
-    return new Map(Object.entries((await readLocal()).cache));
+    return new Map((await serial(() => readLocal(language))).cache.get(language));
   } catch {
     return new Map();
   }
 }
 
-/** The older name for setMark, kept for its callers. */
-export function setOverride(word: string, status: OverrideStatus | null): Promise<boolean> {
-  return setMark(word, status);
+/** One language's marks out of a sync's, as loadOverrides gives them. */
+export function marksIn(marks: MarkSync['marks'], lang: string): Map<string, OverrideStatus> {
+  return new Map(marks.get(code(lang)));
 }
 
-/** How many changes are still waiting for Anki. */
-export async function pendingMarks(): Promise<number> {
+/** How many changes are still waiting for Anki, in every language. `learning` as for readLocal. */
+export async function pendingMarks(learning: string): Promise<number> {
   try {
-    return Object.keys((await readLocal()).queue).length;
+    return count((await serial(() => readLocal(code(learning)))).queue);
   } catch {
     return 0;
   }
@@ -220,10 +350,13 @@ interface AnkiMark {
   /** Null when the note carries no status tag — someone removed it. */
   status: OverrideStatus | null;
   mod: number;
+  /** False for a note from before marks had a language: the next flush gives it its tag. */
+  tagged: boolean;
 }
 
 interface AnkiMarks {
-  byWord: Map<string, AnkiMark>;
+  /** One note for each word of each language. */
+  byWord: ByLanguage<AnkiMark>;
   /** Older notes for a word that has a newer one: deleted on the next flush. */
   stale: number[];
 }
@@ -243,15 +376,18 @@ function newer(a: AnkiMark, b: AnkiMark): boolean {
 }
 
 /**
- * Every mark note, one per word.
+ * Every mark note, one per word of each language.
  *
  * Two devices that marked the same word offline each add a note; Anki's sync
  * then holds both. The most recently modified one is the mark, and the rest
  * are left in `stale` for deletion.
+ *
+ * A note's language is its tag. One with none is from before marks had a
+ * language, and is read as languageOf says until a flush has tagged it.
  */
-async function readAnkiMarks(): Promise<AnkiMarks> {
+async function readAnkiMarks(learning: string): Promise<AnkiMarks> {
   const ids = await call<number[]>('findNotes', { query: MARK_SEARCH });
-  const byWord = new Map<string, AnkiMark>();
+  const byWord: ByLanguage<AnkiMark> = new Map();
   const stale: number[] = [];
   for (let i = 0; i < ids.length; i += BATCH) {
     const notes = await call<MarkNoteInfo[]>('notesInfo', { notes: ids.slice(i, i + BATCH) });
@@ -260,18 +396,21 @@ async function readAnkiMarks(): Promise<AnkiMarks> {
       if (typeof note?.noteId !== 'number' || !note.fields) continue;
       const word = strip(fieldValue(note.fields, 'Word'));
       if (!word) continue;
+      const tagged = langOfTags(note.tags);
+      const lang = tagged ?? languageOf(word, learning);
       // Older AnkiConnect has no `mod`; a note id is its creation time in ms.
       const mark: AnkiMark = {
         noteId: note.noteId,
         status: statusFromTags(note.tags),
         mod: note.mod ?? Math.floor(note.noteId / 1000),
+        tagged: tagged !== null,
       };
-      const prev = byWord.get(word);
+      const prev = byWord.get(lang)?.get(word);
       if (!prev) {
-        byWord.set(word, mark);
+        put(byWord, lang, word, mark);
       } else if (newer(mark, prev)) {
         stale.push(prev.noteId);
-        byWord.set(word, mark);
+        put(byWord, lang, word, mark);
       } else {
         stale.push(mark.noteId);
       }
@@ -289,6 +428,20 @@ function messageOf(e: unknown): string {
 }
 
 /**
+ * Every language's marks sat in one deck before each had its own. Those
+ * still there move to their language's deck, found by the tag each carries.
+ * One search when there are none, which is always but once.
+ */
+async function sortDecks(langs: Iterable<string>): Promise<void> {
+  if (!(await call<number[]>('findCards', { query: MARK_UNSORTED })).length) return;
+  for (const lang of langs) {
+    const cards = await call<number[]>('findCards', { query: `${MARK_UNSORTED} tag:${langTag(lang)}` });
+    // AnkiConnect makes the deck when it is not there yet.
+    await inBatches(cards, (batch) => call('changeDeck', { cards: batch, deck: markDeck(lang) }));
+  }
+}
+
+/**
  * Write the queue into Anki, in as few calls as the changes allow: one
  * deleteNotes, one addNotes, and an addTags/removeTags pair per status.
  *
@@ -299,18 +452,25 @@ function messageOf(e: unknown): string {
  * addNotes differently. Anki going away mid-flush is rethrown.
  */
 async function flush(queue: Queue, anki: AnkiMarks): Promise<string | undefined> {
-  const add: Array<{ word: string; status: OverrideStatus; reading?: string }> = [];
+  const add: Array<{ lang: string; word: string; status: OverrideStatus; reading?: string }> = [];
   const retag = new Map<OverrideStatus, number[]>();
   const remove = [...anki.stale];
-  for (const [word, change] of Object.entries(queue)) {
-    const have = anki.byWord.get(word);
+  for (const [lang, word, change] of each(queue)) {
+    const have = anki.byWord.get(lang)?.get(word);
     if (change.status === null) {
       if (have) remove.push(have.noteId);
     } else if (!have) {
-      add.push({ word, status: change.status, reading: change.reading });
+      add.push({ lang, word, status: change.status, reading: change.reading });
     } else if (have.status !== change.status) {
-      retag.set(change.status, [...(retag.get(change.status) ?? []), have.noteId]);
+      push(retag, change.status, have.noteId);
     }
+  }
+  // Notes from before marks had a language, less any about to go: each is
+  // given its own, so every device reads it the same from now on.
+  const going = new Set(remove);
+  const untagged = new Map<string, number[]>();
+  for (const [lang, , mark] of each(anki.byWord)) {
+    if (!mark.tagged && !going.has(mark.noteId)) push(untagged, lang, mark.noteId);
   }
 
   let error: string | undefined;
@@ -330,17 +490,18 @@ async function flush(queue: Queue, anki: AnkiMarks): Promise<string | undefined>
     let missed = 0;
     await attempt(async () => {
       await ensureNoteType(MARK_MODEL, MARK_FIELDS);
-      await createDeck(MARK_DECK);
+      for (const lang of new Set(add.map((m) => m.lang))) await createDeck(markDeck(lang));
       await inBatches(add, async (batch) => {
         const ids = await call<Array<number | null>>('addNotes', {
           notes: batch.map((m) => ({
-            deckName: MARK_DECK,
+            deckName: markDeck(m.lang),
             modelName: MARK_MODEL_NAME,
             fields: { Word: keyField(m.word), Reading: m.reading ? fieldHtml(m.reading) : '' },
-            tags: [ROOT_TAG, markTag(m.status)],
-            // One note per word. A note another device added since the read
-            // is refused here, stays queued, and is retagged next time.
-            options: { allowDuplicate: false },
+            tags: [ROOT_TAG, markTag(m.status), langTag(m.lang)],
+            // One note per word in a language's deck. A note another device
+            // added since the read is refused here, stays queued, and is
+            // retagged next time.
+            options: { allowDuplicate: false, duplicateScope: 'deck' },
           })),
         });
         // Older AnkiConnect reports a refused note as null, with no reason.
@@ -358,6 +519,10 @@ async function flush(queue: Queue, anki: AnkiMarks): Promise<string | undefined>
       await call('removeTags', { notes: ids, tags: others });
     }));
   }
+  for (const [lang, notes] of untagged) {
+    await attempt(() => inBatches(notes, (ids) => call('addTags', { notes: ids, tags: langTag(lang) })));
+  }
+  await attempt(() => sortDecks(anki.byWord.keys()));
   // New notes' cards, and any a learner unsuspended by hand: a mark is never
   // something to review.
   await attempt(async () => {
@@ -368,18 +533,20 @@ async function flush(queue: Queue, anki: AnkiMarks): Promise<string | undefined>
 }
 
 /** Whether Anki now holds what a queued change asked for. */
-function done(anki: AnkiMarks, word: string, change: Pending): boolean {
-  const have = anki.byWord.get(word);
+function done(anki: AnkiMarks, lang: string, word: string, change: Pending): boolean {
+  const have = anki.byWord.get(lang)?.get(word);
   return change.status === null ? !have : have?.status === change.status;
 }
 
 /** Anki's marks with the queue laid over them: a queued change is newer. */
 function layered(anki: AnkiMarks, queue: Queue): Marks {
-  const out: Marks = {};
-  for (const [word, mark] of anki.byWord) if (mark.status) out[word] = mark.status;
-  for (const [word, change] of Object.entries(queue)) {
-    if (change.status) out[word] = change.status;
-    else delete out[word];
+  const out: Marks = new Map();
+  for (const [lang, word, mark] of each(anki.byWord)) {
+    if (mark.status) put(out, lang, word, mark.status);
+  }
+  for (const [lang, word, change] of each(queue)) {
+    if (change.status) put(out, lang, word, change.status);
+    else take(out, lang, word);
   }
   return out;
 }
@@ -389,34 +556,42 @@ function layered(anki: AnkiMarks, queue: Queue): Marks {
  * the queue what Anki now holds — only if it has not changed since — keep
  * anything first-run seeding added, and store the new cache.
  */
-function commit(attempted: Queue, seeded: Queue, after: AnkiMarks | null, error?: string): Promise<MarkSync> {
+function commit(
+  learning: string,
+  attempted: Queue,
+  seeded: Queue,
+  after: AnkiMarks | null,
+  error?: string,
+): Promise<MarkSync> {
   return serial(async () => {
-    const now = await readLocal();
+    const now = await readLocal(learning);
     const queue = now.queue;
-    for (const [word, change] of Object.entries(seeded)) queue[word] ??= change;
+    for (const [lang, word, change] of each(seeded)) {
+      if (!queue.get(lang)?.has(word)) put(queue, lang, word, change);
+    }
     if (after) {
-      for (const [word, tried] of Object.entries(attempted)) {
-        const current = queue[word];
-        if (current && current.at === tried.at && current.status === tried.status && done(after, word, current)) {
-          delete queue[word];
+      for (const [lang, word, tried] of each(attempted)) {
+        const current = queue.get(lang)?.get(word);
+        if (current && current.at === tried.at && current.status === tried.status && done(after, lang, word, current)) {
+          take(queue, lang, word);
         }
       }
     }
     const cache = after ? layered(after, queue) : now.cache;
-    await chrome.storage.local.set({ [OVERRIDES]: cache, [PENDING]: queue, [SEEDED]: true });
+    await chrome.storage.local.set({ [CACHE]: stored(cache), [QUEUE]: stored(queue), [SEEDED]: true });
     return {
-      marks: new Map(Object.entries(cache)),
-      pending: Object.keys(queue).length,
+      marks: cache,
+      pending: count(queue),
       ...(error ? { error } : {}),
     };
-  }, (e): MarkSync => ({
-    marks: new Map(Object.entries(after ? layered(after, attempted) : {})),
-    pending: Object.keys(attempted).length,
+  }).catch((e: unknown): MarkSync => ({
+    marks: after ? layered(after, attempted) : new Map(),
+    pending: count(attempted),
     error: ui.anki.marksNotStored(messageOf(e)),
   }));
 }
 
-async function runSync(): Promise<MarkSync | null> {
+async function runSync(learning: string): Promise<MarkSync | null> {
   const hello = await ankiTry<number>('version');
   // Closed, blocked, another program on the port, or no answer: the caller
   // keeps the cache, which already shows every mark made here.
@@ -424,27 +599,30 @@ async function runSync(): Promise<MarkSync | null> {
 
   let local: Local;
   try {
-    local = await readLocal();
+    local = await serial(() => readLocal(learning));
   } catch (e) {
     return { marks: new Map(), pending: 0, error: ui.anki.storageUnreadable(messageOf(e)) };
   }
 
   let before: AnkiMarks;
   try {
-    before = await readAnkiMarks();
+    before = await readAnkiMarks(learning);
   } catch (e) {
     if (e instanceof AnkiUnavailable) return null;
-    return { marks: new Map(Object.entries(local.cache)), pending: Object.keys(local.queue).length, error: messageOf(e) };
+    return { marks: local.cache, pending: count(local.queue), error: messageOf(e) };
   }
 
   // First run: marks this browser had before Anki kept them go to Anki,
   // except where Anki already has the word — Anki is where marks are shared.
-  const attempted: Queue = { ...local.queue };
-  const seeded: Queue = {};
+  const attempted = copy(local.queue);
+  const seeded: Queue = new Map();
   if (!local.seeded) {
     const at = stamp();
-    for (const [word, status] of Object.entries(local.cache)) {
-      if (!before.byWord.has(word) && !attempted[word]) attempted[word] = seeded[word] = { status, at };
+    for (const [lang, word, status] of each(local.cache)) {
+      if (before.byWord.get(lang)?.has(word) || attempted.get(lang)?.has(word)) continue;
+      const change: Pending = { status, at };
+      put(attempted, lang, word, change);
+      put(seeded, lang, word, change);
     }
   }
 
@@ -453,12 +631,12 @@ async function runSync(): Promise<MarkSync | null> {
   let gone = false;
   try {
     error = await flush(attempted, before);
-    after = await readAnkiMarks();
+    after = await readAnkiMarks(learning);
   } catch (e) {
     if (e instanceof AnkiUnavailable) gone = true;
     else error ??= messageOf(e);
   }
-  const result = await commit(attempted, seeded, after, error);
+  const result = await commit(learning, attempted, seeded, after, error);
   return gone ? null : result;
 }
 
@@ -466,16 +644,19 @@ let running: Promise<MarkSync | null> | null = null;
 let following: Promise<MarkSync | null> | null = null;
 
 /**
- * Write every queued change into Anki and read all marks back. Call it
- * whenever Anki answers. Null when Anki cannot be reached; the queue is
- * untouched and loadOverrides() still has every mark made here.
+ * Write every queued change into Anki and read all marks back — every
+ * language's, since one collection holds them all. Call it whenever Anki
+ * answers, with the language being learned. Null when Anki cannot be
+ * reached; the queue is untouched and loadOverrides() still has every mark
+ * made here.
  *
  * One sync at a time per page. Asking during one queues exactly one more,
  * which picks up anything marked meanwhile.
  */
-export function syncMarks(): Promise<MarkSync | null> {
+export function syncMarks(lang: string): Promise<MarkSync | null> {
+  const learning = code(lang);
   if (!running) {
-    running = runSync().finally(() => {
+    running = runSync(learning).finally(() => {
       running = null;
     });
     return running;
@@ -483,11 +664,11 @@ export function syncMarks(): Promise<MarkSync | null> {
   following ??= running.then(
     () => {
       following = null;
-      return syncMarks();
+      return syncMarks(learning);
     },
     () => {
       following = null;
-      return syncMarks();
+      return syncMarks(learning);
     },
   );
   return following;

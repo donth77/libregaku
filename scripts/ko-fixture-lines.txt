@@ -1,0 +1,82 @@
+# The lines of src/morphology/__tests__/fixtures/ko-dic.ts, by the rule each is there for.
+# scripts/build-ko-fixture.mjs writes the fixture from them: one line here is one line there.
+# A # opens a comment, and \uXXXX stands for a character that cannot be seen.
+# A line with no mark at its end is deliberate: ko-dic reads it differently from the same line with one.
+# Two sentences on a line are two rules sharing it; the fixture is kept to 60 lines.
+# one word: a stem and its endings
+갔어요
+서울에 사는 친구가 예쁜 꽃을 샀어요.
+# 하다 words
+도서관에서 공부하고 있어요.
+이 단어는 자주 사용됩니다.
+자랑스러워요. 무서워해요.
+# particles and the copula
+학교에서는 공부만 해요.
+저는 학생이에요.
+그건 제 책이 아니에요.
+# helper verbs
+한번 해보자! 잘 들어 봐.
+케이크를 먹고 싶어요.
+도와주세요
+가야 했잖아요.
+# fused words
+그게 뭐예요? 누군가가 문을 열었어요.
+언젠간 알게 될 거야.
+# compounds, numbers, other scripts
+사과 3개와 커피 한 잔 주세요.
+OK! 일석이조 (一石二鳥), 100% 확실해.
+# suffixes and prefixes
+선생님들께 개인적으로 물어봤어요. 비공식적으로 만났어요.
+# what ko-dic misreads where a line ends without a mark
+만 원만 빌려 주세요
+내일 갈 거야
+네 조언을 따를게. 걱정 마.
+먹을 남은 음식이 없어요. 학교에 가요
+# what ko-dic misreads after a space
+가지 마
+가지 샀어?
+저는 학교에 가지 않아요.
+사람 많은 게 싫어요.
+숙제 다 하고 잘 자
+오늘은 별로 안 바빠요.
+나는 이 노래를 좋아해요.
+이 책 어떻게 읽어요?
+수영할 줄 알아요?
+네가 한 짓을 봤어요.
+# 네: "yes", "your" or "four", whatever ko-dic calls it
+네 이름도 몰라
+네 거야
+- 네 감사합니다
+아 그렇군요 네 감사합니다
+아 네 네 선생님
+네, 엄마가 그랬어 하고 대답했다.
+아이 두 명이 고양이 네 마리를 키워.
+네 잘못이 아니니까. 제가 아는 네 사람이에요.
+이건 네 거
+네 오늘은 김치찌개를 만들고.
+네 숙제는... 해야지
+맛있 네.
+# a word alone where a clause opens, which ko-dic calls an ending or the copula after a dash
+- 야! 어서 이리 와.
+# 르: the ㄹ doubled, and what ko-dic cuts it into
+사실 저희가 한국 음식은 잘 몰라서요
+달라서요
+이름을 불러서요
+깜짝 놀라요.
+# connectives
+하지만 저는 운동은 잘 하지만 수영은 못해요.
+외로운데, 그래도 재미있었어요.
+# ㄷ and ㅅ
+어제 많이 걸었어요. 걸을 수 있어요.
+걸으면 건강해져요. 그제야 깨달았어요.
+집을 지었어요. 이제 가야지.
+# forms said in more than one word
+한국에 가 본 적이 있어요. 비가 오는 것 같아요.
+시간이 없기 때문에 못 가요.
+여기 앉아도 돼요? 들어가면 안 돼요.
+# where a sentence ends, where a comma says it goes on, and a particle after a quotation
+가니
+가니,.
+"어디 가니?" 라고 물었다.
+# what ko-dic does not know
+횐색 토끼의 증인\u200b은 많다.

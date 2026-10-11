@@ -83,7 +83,7 @@ export const fr: HelpTranslation = {
                 ['`B`', 'Ajouter la ligne en cours aux favoris'],
                 ['`S`', 'Afficher ou masquer le panneau de transcription'],
                 ['`H`', 'Activer ou désactiver le flou des sous-titres'],
-                ['`R`', 'Changer le furigana : désactivé, nouveaux mots, tous les mots (japonais)'],
+                ['`R`', 'Changer le furigana ou le pinyin : désactivé, nouveaux mots, tous les mots (japonais, chinois)'],
                 ['`Shift`', 'Maintenir pour rechercher le mot sous le pointeur, quand {Paramètres → Recherche de mots → Rechercher les mots} est réglé sur Au survol avec Shift enfoncé'],
                 ['`Esc`', 'Fermer la fenêtre contextuelle'],
               ],
@@ -132,6 +132,7 @@ export const fr: HelpTranslation = {
           title: 'Choisir le paquet',
           body: [
             'Les nouvelles cartes vont dans le paquet choisi dans {Paramètres → Anki → Paquet des nouvelles cartes}.',
+            'Chaque langue apprise a son propre paquet. Tant que vous n’en avez pas choisi, ses cartes vont dans un paquet créé pour elle avec la première carte : Libregaku-JA pour le japonais, Libregaku-ES pour l’espagnol. Changez {Paramètres → Langues → J’apprends} et le paquet change avec elle.',
             'Pour en changer pendant la lecture, activez {Paramètres → Fenêtre contextuelle → Menu des paquets}. Un ▾ apparaît à côté du bouton Ajouter à Anki ; « Ajouter à » un paquet y ajoute la carte et y envoie aussi les suivantes.',
             { tip: 'Le statut des mots est lu dans {Paramètres → Anki → Lire les mots connus dans}. Si les nouvelles cartes vont dans un paquet qui n’y est pas lu, Paramètres vous le signale.' },
           ],
@@ -163,6 +164,7 @@ export const fr: HelpTranslation = {
           title: 'Voir et modifier vos mots marqués',
           body: [
             'Dans le panneau de transcription, l’onglet Mots liste les mots que vous suivez, marquez comme connus ou ignorez, une liste pour chacun. Chaque mot a un bouton pour retirer sa marque (Ne plus ignorer, pour un mot ignoré), et un mot suivi peut devenir une carte depuis cet onglet.',
+            'Chaque langue a ses propres listes. Les onglets Mots et Favoris affichent celles de la langue que vous apprenez, et un mot marqué dans une langue ne l’est pas dans une autre.',
             'Chaque liste a une zone de recherche, et des boutons Copier et Exporter qui vous donnent la liste dans un fichier qu’Anki et les tableurs savent ouvrir.',
           ],
           keywords: ['liste de suivi', 'watchlist', 'suivis', 'connus', 'ignorés', 'retirer la marque', 'démarquer', 'tableur', 'excel'],
@@ -281,8 +283,19 @@ export const fr: HelpTranslation = {
           title: 'Pourquoi les définitions ne sont-elles disponibles que dans certaines langues ?',
           body: [
             'Pour le japonais, elles viennent de JMdict, qui propose des définitions dans neuf langues. Si la vôtre n’en fait pas partie, {Paramètres → Langues} affiche une deuxième ligne, Définitions en, pour choisir la langue à utiliser à la place.',
+            'Les dictionnaires de chinois, de coréen et d’espagnol sont rédigés uniquement en anglais.',
           ],
           keywords: ['dictionnaire', 'sens', 'hongrois', 'slovène', 'anglais', 'cc-cedict', 'wiktionary', 'wiktionnaire'],
+        },
+        {
+          id: 'q-languages',
+          title: 'Quelles langues puis-je apprendre ?',
+          body: [
+            'Le japonais, le chinois, le coréen et l’espagnol ont un dictionnaire, et un mot est relié à sa carte quelle que soit la forme sous laquelle il est dit : 갔어요 trouve une carte de 가다, et hablábamos une carte de hablar. Le japonais affiche le furigana au-dessus des mots, et le chinois le pinyin.',
+            'Les autres langues de {Paramètres → Langues → J’apprends} sont marquées comme limitées. Leurs mots sont séparés, mais elles n’ont pas encore de dictionnaire.',
+            'Le dictionnaire d’une langue est téléchargé la première fois que vous la choisissez. Il pèse de 11 à 27 Mo.',
+          ],
+          keywords: ['coréen', 'mandarin', 'espagnol', 'japonais', 'limité', 'prise en charge', 'disponibles', 'taille'],
         },
         {
           id: 'q-data',

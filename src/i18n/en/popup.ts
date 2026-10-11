@@ -6,8 +6,14 @@ export const popup = {
   /** A small badge under the word, when the dictionary marks it as a common word. */
   commonBadge: 'common',
   /**
-   * Parts of speech, under the word, keyed by the dictionary's (JMdict's)
-   * code for each. Several show separated by commas, and a name two codes
+   * The heading over the characters a word is written with, by what the
+   * language being learned calls them: kanji in Japanese, and for Chinese
+   * simply its characters.
+   */
+  characterNames: { kanji: 'Kanji', hanzi: 'Characters' },
+  /**
+   * Parts of speech, under the word, keyed by the dictionary's code for each:
+   * JMdict's for Japanese, then Wiktionary's for Korean and Spanish. Several show separated by commas, and a name two codes
    * share shows once. They are the names Japanese grammar gives them: godan
    * and ichidan verbs are its two regular conjugations, suru and kuru verbs
    * are する and 来る, and an i-, na- or no-adjective is named for its ending.
@@ -25,6 +31,24 @@ export const popup = {
     v5m: 'godan verb', v5n: 'godan verb', v5r: 'godan verb', 'v5r-i': 'godan verb',
     v5s: 'godan verb', v5t: 'godan verb', v5u: 'godan verb', 'v5u-s': 'godan verb',
     v5aru: 'godan verb',
+    // Wiktionary's codes, for Korean and Spanish words. Where one is also
+    // JMdict's (n, adv, conj, num, pref, suf, vt, vi, aux) the name above
+    // serves both. What kind of word, then its grammar:
+    name: 'proper noun', v: 'verb', adj: 'adjective', pron: 'pronoun', det: 'determiner', artic: 'article',
+    counter: 'counter', prep: 'preposition', 'prep-phrase': 'prepositional phrase', ptcl: 'particle',
+    intj: 'interjection', phrase: 'phrase', prov: 'proverb', r: 'root', char: 'character', adn: 'adnominal',
+    ptcpl: 'participle', contr: 'contraction',
+    masc: 'masculine', fem: 'feminine', neut: 'neuter', sg: 'singular', pl: 'plural', 'pl-only': 'plural only',
+    count: 'countable', uncount: 'uncountable', vr: 'reflexive', vdt: 'ditransitive', impers: 'impersonal',
+    irreg: 'irregular', reltnl: 'relational', reltv: 'relative', interr: 'interrogative', poss: 'possessive',
+    dim: 'diminutive', aug: 'augmentative', onoma: 'onomatopoeic',
+    // And how or when the word is used:
+    idio: 'idiomatic', fig: 'figurative', literal: 'literal', col: 'colloquial', inf: 'informal', fam: 'familiar',
+    formal: 'formal', polite: 'polite', lit: 'literary', poet: 'poetic', rhet: 'rhetorical', sl: 'slang',
+    vulg: 'vulgar', derog: 'derogatory', offens: 'offensive', humor: 'humorous', euph: 'euphemistic',
+    child: 'childish', net: 'Internet', neol: 'neologism', cmn: 'common', uncmmn: 'uncommon', rare: 'rare',
+    dated: 'dated', arch: 'archaic', obs: 'obsolete', hist: 'historical', 'non-std': 'nonstandard',
+    dialect: 'dialectal', regio: 'regional',
   },
 
   // The row of icon buttons under the word, each named in its tooltip

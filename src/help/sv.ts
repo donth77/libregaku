@@ -83,7 +83,7 @@ export const sv: HelpTranslation = {
                 ['`B`', 'Spara den aktuella raden'],
                 ['`S`', 'Visa eller dölj transkriptionspanelen'],
                 ['`H`', 'Gör undertexter suddiga eller skarpa'],
-                ['`R`', 'Växla furigana: av, nya ord, alla (japanska)'],
+                ['`R`', 'Växla furigana eller pinyin: av, nya ord, alla (japanska, kinesiska)'],
                 ['`Shift`', 'Håll ned för att slå upp ordet under pekaren, när {Inställningar → Slå upp ord → Slå upp ord vid} är inställt på Hovring + Shift'],
                 ['`Esc`', 'Stäng ordrutan'],
               ],
@@ -132,6 +132,7 @@ export const sv: HelpTranslation = {
           title: 'Välj kortlek',
           body: [
             'Nya kort hamnar i kortleken i {Inställningar → Anki → Nya kort hamnar i}.',
+            'Varje språk du lär dig har sin egen kortlek. Tills du väljer en hamnar dess kort i en kortlek som skapas för språket med det första kortet: Libregaku-JA för japanska, Libregaku-ES för spanska. Ändra {Inställningar → Språk → Jag lär mig} så byts kortleken också.',
             'För att byta medan du tittar, slå på {Inställningar → Ordruta → Kortleksmeny}. En ▾ visas bredvid Lägg till i Anki; ”Lägg till i” en kortlek lägger kortet där och skickar dit nästa kort också.',
             { tip: 'Ordens status läses från {Inställningar → Anki → Läs kända ord från}. Om nya kort hamnar i en kortlek som inte läses säger Inställningar det.' },
           ],
@@ -163,6 +164,7 @@ export const sv: HelpTranslation = {
           title: 'Se och ändra dina markerade ord',
           body: [
             'I transkriptionspanelen listar fliken Ord orden du följer, markerar som kända eller ignorerar, i en lista var. Varje ord har en knapp som tar bort markeringen – Sluta ignorera för ett ignorerat ord – och ett följt ord kan bli ett kort därifrån.',
+            'Varje språk har sina egna listor. Flikarna Ord och Sparade visar listorna för språket du lär dig, och ett ord som är markerat i ett språk är inte markerat i ett annat.',
             'Varje lista har en sökruta och knapparna Kopiera och Exportera fil, som ger dig listan som en fil som Anki och kalkylprogram kan öppna.',
           ],
           keywords: ['bevakningslista', 'watchlist', 'lista', 'följda', 'ignorerade', 'kända', 'ta bort markering', 'ord', 'kalkylark', 'excel'],
@@ -281,8 +283,19 @@ export const sv: HelpTranslation = {
           title: 'Varför finns definitionerna bara på vissa språk?',
           body: [
             'För japanska kommer de från JMdict, som har definitioner på nio språk. Om ditt inte är ett av dem visar {Inställningar → Språk} en andra rad, Definitioner på, för språket som ska användas i stället.',
+            'Ordböckerna för kinesiska, koreanska och spanska är bara skrivna på engelska.',
           ],
           keywords: ['ordbok', 'betydelser', 'svenska', 'ungerska', 'slovenska', 'engelska', 'jmdict', 'cc-cedict', 'wiktionary'],
+        },
+        {
+          id: 'q-languages',
+          title: 'Vilka språk kan jag lära mig?',
+          body: [
+            'Japanska, kinesiska, koreanska och spanska har en ordbok, och ett ord matchas mot sitt kort i vilken form det än sägs: 갔어요 hittar ett kort för 가다, och hablábamos ett för hablar. Japanska visar furigana ovanför orden, och kinesiska visar pinyin.',
+            'De andra språken under {Inställningar → Språk → Jag lär mig} är markerade med begränsat stöd. Deras ord delas upp, och det finns ingen ordbok än.',
+            'Ett språks ordbok laddas ned första gången du väljer språket. Den är 11 till 27 MB.',
+          ],
+          keywords: ['koreanska', 'kinesiska', 'mandarin', 'spanska', 'japanska', 'begränsat', 'stöd', 'storlek'],
         },
         {
           id: 'q-data',

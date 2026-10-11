@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  FIELDS, MODEL, ROOT_TAG, fieldHtml, furiganaField, isOwnMedia, keyField, lineMediaName, mediaFilename, tagsFor,
-  toAnkiFurigana,
+  FIELDS, MARK_UNSORTED, MODEL, ROOT_TAG, defaultDeck, fieldHtml, furiganaField, isMarkDeck, isOwnMedia, keyField,
+  langOfTags, langTag, lineMediaName, markDeck, mediaFilename, tagsFor, toAnkiFurigana,
 } from '../model';
 
 describe('tagsFor', () => {
@@ -17,6 +17,45 @@ describe('tagsFor', () => {
     for (const src of ['netflix', 'youtube', 'file']) {
       expect(tagsFor({ source: src, lang: 'ja' })).toContain(ROOT_TAG);
     }
+  });
+});
+
+describe('a language in Anki', () => {
+  it('reads a language back from the tag that names it, in whatever capitals Anki kept', () => {
+    expect(langOfTags(tagsFor({ source: 'netflix', lang: 'ja' }))).toBe('ja');
+    expect(langOfTags(['Libregaku', 'Libregaku::Lang::ZH'])).toBe('zh');
+    expect(langOfTags(['libregaku', langTag('pt-br')])).toBe('pt-br');
+  });
+
+  it('finds none on a note from before marks had one, or in a tag that is not a language', () => {
+    expect(langOfTags(['libregaku', 'libregaku::mark::known'])).toBeNull();
+    expect(langOfTags(['libregaku::lang::'])).toBeNull();
+    expect(langOfTags(['libregaku::lang::__proto__', 'libregaku::lang::ja::old', 'libregaku::language::ja'])).toBeNull();
+    expect(langOfTags(undefined)).toBeNull();
+  });
+
+  it('gives each language a deck of its own for cards, named by its code', () => {
+    // The code, not the language's name: the name changes with the interface language.
+    expect(defaultDeck('ja')).toBe('Libregaku-JA');
+    expect(defaultDeck('es')).toBe('Libregaku-ES');
+    expect(defaultDeck('ja')).not.toBe(defaultDeck('zh'));
+  });
+
+  it('gives each language a deck of its own for marks, inside the one they all shared', () => {
+    expect(markDeck('ja')).toBe('Libregaku::Marks::JA');
+    expect(markDeck('ko')).toBe('Libregaku::Marks::KO');
+    for (const lang of ['ja', 'ko', 'zh', 'es', 'pt-br']) expect(isMarkDeck(markDeck(lang))).toBe(true);
+  });
+
+  it('counts only a language’s mark deck as one', () => {
+    for (const deck of ['Libregaku::Marks', 'Libregaku::Marks::', 'Libregaku::Marks::JA::Mine', 'Libregaku-JA',
+      'Japanese', 'Libregaku::Marksmanship::JA', '', null, undefined, 7]) {
+      expect(isMarkDeck(deck)).toBe(false);
+    }
+  });
+
+  it('searches for marks in the shared deck itself, and never in a language’s', () => {
+    expect(MARK_UNSORTED).toBe('note:"Libregaku Mark" deck:"Libregaku::Marks" -deck:"Libregaku::Marks::*"');
   });
 });
 

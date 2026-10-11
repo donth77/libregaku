@@ -5,7 +5,8 @@ import { mergeRepeats, pairCues } from '../adapters/pair';
 import { YouTubeAdapter } from '../adapters/youtube';
 import type { Cue, SubtitleSource, TrackInfo } from '../adapters/types';
 import { IntlSegmenter } from '../morphology/intl';
-import { LinderaSegmenter } from '../morphology/lindera';
+import { analyserFor, type Analyser } from '../morphology';
+import { rubyOf } from '../morphology/ruby';
 import type { Segmenter, Token } from '../morphology/types';
 import { DomCaptionSource } from '../adapters/dom-captions';
 import { charactersOf, clearLookupCache, ensureDictionary, lookupToken, type Characters, type LookupResult } from '../dict/client';
@@ -14,15 +15,15 @@ import {
   addNote, browseWord, createDeck, deckNames, ensureModel, isDuplicate, takeBack, type NewCard,
 } from '../anki/client';
 import { flushCards, isQueueKey, queueCard, queuedCards, unqueueCard } from '../anki/card-queue';
-import { ROOT_TAG, lineMediaName, tagsFor, toAnkiFurigana } from '../anki/model';
+import { readyDeck } from '../anki/deck';
+import { ROOT_TAG, langOfTags, lineMediaName, tagsFor, toAnkiFurigana } from '../anki/model';
 import { AnkiUnavailable } from '../anki/rpc';
 import { cardAudio } from '../audio/card-audio';
 import { sourceField } from '../anki/source';
 import { buildStatusMap, lemmaReading, type OverrideStatus, type Status, type StatusMap } from '../anki/status';
-import { loadOverrides, setMark, syncMarks, type MarkSync } from '../anki/marks';
-import { furigana } from '../morphology/furigana';
+import { loadOverrides, marksIn, setMark, syncMarks, type MarkSync } from '../anki/marks';
 import {
-  DICTIONARIES, TIER2_LANGS, definitionLanguage, featuresOf, jmdictEditionFor, loadSettings, nextRuby,
+  DICTIONARIES, cardDeck, definitionLanguage, dictionaryOf, featuresOf, loadSettings, nextRuby,
   onSettingsChange, trackLanguageMatch,
   setSetting, settings, underlineVars,
 } from '../settings';
@@ -109,6 +110,7 @@ let currentMount: HTMLElement | null = null;
 const transcript = new Transcript();
 let activeVideo: HTMLVideoElement | null = null;
 let status: StatusMap | null = null;
+/** The hand marks of the language being learned — never another's, where the same spelling is another word. */
 let overrides = new Map<string, OverrideStatus>();
 /** Successful additions awaiting the next Anki snapshot; never persisted. */
 const addedCards = new Set<string>();
@@ -186,7 +188,7 @@ async function mark(word: string, next: OverrideStatus | null, reading?: string)
   repaint();
   // The mark shows at once either way; a failed write only costs it on reload,
   // which the learner should hear now rather than discover then.
-  if (!(await setMark(word, next, reading))) {
+  if (!(await setMark(targetLang(), word, next, reading))) {
     if (currentMount) showNotice(currentMount, 'mark-not-saved');
     return;
   }
@@ -217,10 +219,10 @@ async function pushMarks(): Promise<MarkSync | null | 'here'> {
   // Kept in this browser by choice: they wait, and go in if the setting comes back on.
   if (!settings().marksInAnki) return 'here';
   const revision = manualRevision;
-  const synced = await syncMarks();
+  const synced = await syncMarks(targetLang());
   if (!synced) return null;   // Anki closed: the marks wait in the browser
   // A mark made while this was in flight is newer than what came back.
-  if (revision === manualRevision) overrides = synced.marks;
+  if (revision === manualRevision) overrides = marksIn(synced.marks, targetLang());
   if (synced.error) {
     log('marks could not be saved to Anki:', synced.error);
     if (currentMount) showNotice(currentMount, 'marks-not-synced', synced.error);
@@ -243,7 +245,8 @@ function repaint(): void {
 async function refreshStatus(): Promise<void> {
   const request = ++statusRequest;
   const revision = manualRevision;
-  const nextOverrides = await loadOverrides();
+  const lang = targetLang();
+  const nextOverrides = await loadOverrides(lang);
   const scope = settings().statusScope;
   try {
     const next = await buildStatusMap(scope);
@@ -266,8 +269,23 @@ async function refreshStatus(): Promise<void> {
     status = null;
     log('Anki not reachable — words will show as unknown until it is running');
   }
-  // A manual mark made during the fetch is newer than the storage read.
-  if (revision === manualRevision) overrides = nextOverrides;
+  // A manual mark made during the fetch is newer than the storage read, and
+  // a language changed to during it has marks of its own.
+  if (revision === manualRevision && lang === targetLang()) overrides = nextOverrides;
+  repaint();
+}
+
+/**
+ * The marks of the language being learned, read again from this browser:
+ * what a change of language needs at once, without waiting on Anki.
+ */
+async function reloadMarks(): Promise<void> {
+  // Whatever is still in flight was read for the language just left.
+  const revision = ++manualRevision;
+  const lang = targetLang();
+  const next = await loadOverrides(lang);
+  if (revision !== manualRevision || lang !== targetLang()) return;
+  overrides = next;
   repaint();
 }
 
@@ -299,7 +317,9 @@ function flash(mount: HTMLElement, text: string, ms?: number): void {
 /** Re-read which words have a card waiting, and keep looking for Anki while any do. */
 async function reloadQueued(): Promise<void> {
   const waiting = await queuedCards();
-  queuedWords = new Set(waiting.map((q) => q.word));
+  // Only cards in the language being learned: the same spelling in another is another word.
+  const here = targetLang().toLowerCase();
+  queuedWords = new Set(waiting.filter((q) => (langOfTags(q.card.tags) ?? here) === here).map((q) => q.word));
   repaint();
   watchQueue(waiting.length > 0);
 }
@@ -324,11 +344,21 @@ function pickAdapter(): SubtitleSource | null {
 let segmenter: Segmenter | null = null;
 /** The language `segmenter` was built for; a change of target rebuilds it. */
 let segmenterFor = '';
+/** The language's analyser, once it has loaded: what a fresh segmenter is made from. */
+let analyser: Analyser | null = null;
+
+/** Forget every line's words, so each is analysed again by the segmenter now in place. */
+function reanalyse(): void {
+  segmented = new Map();
+  lineTokens = new Map();
+  activeKey = STALE;
+  sidebar?.refreshAnalysis();
+}
 
 /**
- * Prefer real morphology, but never block on it. The dictionary is a ~10 MB
- * one-time download; until it lands, tier 0 renders boundaries so the overlay
- * is useful immediately rather than blank.
+ * Prefer real morphology, but never block on it. What the analyser reads
+ * with is a one-time download of 7 to 20 MB; until it lands, tier 0 renders
+ * boundaries so the overlay is useful immediately rather than blank.
  */
 async function makeSegmenter(): Promise<Segmenter | null> {
   const lang = targetLang();
@@ -340,30 +370,32 @@ async function makeSegmenter(): Promise<Segmenter | null> {
   }
   segmenter = new IntlSegmenter(lang);
   segmenterFor = lang;
+  analyser = null;
 
   // The dictionary is independent of the analyser: a failure to load lindera
   // must not also cost us definitions. Only languages that have one fetch it —
-  // there is no point downloading JMdict to look up Spanish.
-  if (DICTIONARIES[lang]) {
+  // and each its own, never JMdict to look up Spanish.
+  const dictionary = dictionaryOf(lang, settings());
+  if (dictionary) {
     void (async () => {
       try {
-        const d = await ensureDictionary(jmdictEditionFor(definitionLanguage(settings())));
+        const d = await ensureDictionary(dictionary.edition, dictionary.source);
+        // The learner may have switched language while this downloaded.
+        if (segmenterFor !== lang) return;
         log(
           d.ready
-            ? 'JMdict ready — click a word to look it up'
+            ? `${dictionary.source} ready — click a word to look it up`
             : `dictionary unavailable: ${d.error ?? d.phase}`,
         );
         clearLookupCache();   // drop anything looked up before it was ready
         if (d.ready) {
-          // Merging consults the dictionary — for counters, prefixes and the
-          // like — so lines analysed before it arrived carry guesses. Again.
-          // The analyser itself knows more now too (JMdict's words), so its
-          // own cache of lines goes with them.
-          if (segmenter instanceof LinderaSegmenter) segmenter = new LinderaSegmenter();
-          segmented = new Map();
-          lineTokens = new Map();
-          activeKey = STALE;
-          sidebar?.refreshAnalysis();
+          // Analysis consults the dictionary — for Japanese counters and
+          // prefixes, for Chinese readings, for every Spanish dictionary form —
+          // so lines analysed before it arrived carry guesses. Again, by a
+          // segmenter that remembers none of them.
+          const loaded = analyser as Analyser | null;   // set by the upgrade below, once it has finished
+          if (loaded) segmenter = loaded.make();
+          reanalyse();
         }
       } catch (e) {
         log('dictionary unavailable:', e);
@@ -373,28 +405,23 @@ async function makeSegmenter(): Promise<Segmenter | null> {
 
   // Upgrade in the background.
   void (async () => {
-    const dictName = TIER2_LANGS[lang];
-    if (!dictName) {
+    const found = analyserFor(lang);
+    if (!found) {
       log(`no analyser for "${lang}" — staying on tier 0 (boundaries only)`);
       return;
     }
     try {
-      const status = await LinderaSegmenter.status();
-      if (!status.ready) log('downloading the Japanese dictionary (~10 MB, once)…');
-
-      const r = await LinderaSegmenter.ensure(dictName);
+      const r = await found.load();
       if (!r.ok) {
         analyserDown(r.error);
         return;
       }
       // The learner may have switched language while this downloaded.
       if (segmenterFor !== lang) return;
-      segmenter = new LinderaSegmenter();
-      segmented = new Map();   // re-segment with lemmas and readings
-      lineTokens = new Map();
-      activeKey = STALE;
-      sidebar?.refreshAnalysis();
-      log('upgraded to tier 2 — lemmas, readings and furigana are live');
+      analyser = found;
+      segmenter = found.make();
+      reanalyse();   // with dictionary forms, and readings where the language has them
+      log(`upgraded to tier ${segmenter.tier} — dictionary forms are live`);
     } catch (e) {
       analyserDown(String(e));
     }
@@ -510,8 +537,9 @@ async function alsoInVideo(token: Token, here?: number): Promise<AlsoLine[]> {
  */
 function charactersFor(token: Token, result: LookupResult): Promise<Characters> | undefined {
   // Only where the language has characters to list, and the card is set to show them.
-  if (!DICTIONARIES[targetLang()] || !featuresOf(targetLang()).characters || !settings().cardKanji) return undefined;
-  return charactersOf(draftFor(result, token, '').expression, definitionLanguage(settings()))
+  const kind = featuresOf(targetLang()).characters;
+  if (!DICTIONARIES[targetLang()] || !kind || !settings().cardKanji) return undefined;
+  return charactersOf(draftFor(result, token, '').expression, definitionLanguage(settings()), kind)
     .catch(() => ({ label: '', items: [] }));
 }
 
@@ -965,6 +993,8 @@ let appearance = { size: 0, bottom: 0, dual: true };
 let languages = { target: '', native: '', definitions: '' };
 /** The status scope last read from Anki. */
 let scopeRead: string | null = null;
+/** The language whose hand marks are in `overrides`. */
+let marksRead: string | null = null;
 
 /** The second line only while it is wanted — the switch can flip mid-video. */
 function secondLine(shown: Array<{ secondary?: string }>): string | undefined {
@@ -1008,6 +1038,7 @@ function makeOverlay(mount: HTMLElement, adapter: SubtitleSource): Overlay {
   o.setMarkKnown(settings().markKnown);
   o.setColors(underlineVars(settings()));
   o.setLanguages(settings().target, settings().native);
+  o.setRuby((tok) => rubyOf(segmenter, tok));
   o.setStatusSource(statusOf);
   o.onToken((tok, el) => void openLookup(mount, el, tok));
   o.onPhrase((words, text, el, again) => {
@@ -1157,8 +1188,8 @@ async function lookupFor(token: Token): Promise<LookupResult> {
 
 /** Turn a lookup into an Anki note, with everything needed to review it. */
 async function addCard(draft: CardDraft, token: Token, line: LineContext): Promise<Added> {
-  const deck = settings().deck;
-  if (!deck) throw new Error(ui.player.pickDeck);
+  // The deck chosen, or the language's own until one is: never another language's.
+  const deck = cardDeck(settings());
 
   const adapter = pickAdapter();
   // The line's own start, so the card links back to where the word was said —
@@ -1184,7 +1215,7 @@ async function addCard(draft: CardDraft, token: Token, line: LineContext): Promi
     deck,
     expression: draft.expression,
     // Anki renders 勉強[べんきょう] as ruby, so store the bracket form.
-    reading: toAnkiFurigana(furigana(draft.expression, reading)),
+    reading: toAnkiFurigana(rubyOf(segmenter, { surface: draft.expression, reading })),
     meaning: draft.meaning,
     sentence: draft.sentence,
     sentenceMeaning: line.translation,
@@ -1203,6 +1234,7 @@ async function addCard(draft: CardDraft, token: Token, line: LineContext): Promi
   let id = 0;
   try {
     await ensureModel();
+    await readyDeck();   // the language's own deck is made by its first card
     const [wordAudio, media] = await Promise.all([audio ? cardAudio(audio) : Promise.resolve(null), lineMedia(line)]);
     missing = media.missing;
     const video = adapter?.videoId() ?? 'video';
@@ -1228,7 +1260,7 @@ async function addCard(draft: CardDraft, token: Token, line: LineContext): Promi
     overrides.delete(word);
     queuedWords.add(word);
     repaint();
-    await setMark(word, null);
+    await setMark(targetLang(), word, null);
     watchQueue(true);
     return { said: ui.player.queued(deck), undo: unqueued(card, word) };
   }
@@ -1241,7 +1273,7 @@ async function addCard(draft: CardDraft, token: Token, line: LineContext): Promi
   addedCards.add(word);
   repaint();
   // A card now speaks for the word; a hand mark would hide what it says.
-  await setMark(word, null);
+  await setMark(targetLang(), word, null);
   void refreshStatus();
   return {
     said: ui.player.added(deck, missing),
@@ -1313,8 +1345,7 @@ function showInAnki(token: Token): void {
  * to the moment behind. Saving the same line twice is the same card.
  */
 async function addLineCard(text: string, line: LineContext): Promise<Added> {
-  const deck = settings().deck;
-  if (!deck) throw new Error(ui.player.pickDeck);
+  const deck = cardDeck(settings());
 
   const adapter = pickAdapter();
   const at = line.start ?? playhead();
@@ -1328,7 +1359,7 @@ async function addLineCard(text: string, line: LineContext): Promise<Added> {
     expression: text,
     // The front shows Reading: with no analysis, it is the line as written,
     // since a card whose front is empty is one Anki refuses.
-    reading: tokens.length ? lineReading(tokens, shows) : [{ text }],
+    reading: tokens.length ? lineReading(tokens, shows, (t) => rubyOf(segmenter, t)) : [{ text }],
     meaning: line.translation ?? '',
     source: sourceField({
       title: adapter?.title() ?? null,
@@ -1342,6 +1373,7 @@ async function addLineCard(text: string, line: LineContext): Promise<Added> {
   let id = 0;
   try {
     await ensureModel();
+    await readyDeck();
     const media = await lineMedia(line);
     missing = media.missing;
     const video = adapter?.videoId() ?? 'video';
@@ -1521,7 +1553,7 @@ async function openLookup(mount: HTMLElement, el: HTMLElement, token: Token, byH
       onAddCard: (draft) => addCard(draft, token, line),
       onAddLine: settings().cardAddLine && sentence.trim() ? () => addLineCard(sentence, line) : undefined,
       onShowInAnki: () => showInAnki(token),
-      deck: settings().deck,
+      deck: cardDeck(settings()),
       decks: settings().cardDeckMenu ? deckList() : undefined,
       onDeck: settings().cardDeckMenu ? chooseDeck : undefined,
       track: settings().cardTrack,
@@ -1651,7 +1683,7 @@ function mountSidebar(mount: HTMLElement, video: HTMLVideoElement, adapter: Subt
         onAddCard: (draft) => addCard(draft, token, line),
         onAddLine: settings().cardAddLine && sentence.trim() ? () => addLineCard(sentence, line) : undefined,
         onShowInAnki: () => showInAnki(token),
-        deck: settings().deck,
+        deck: cardDeck(settings()),
         decks: settings().cardDeckMenu ? deckList() : undefined,
         onDeck: settings().cardDeckMenu ? chooseDeck : undefined,
         track: settings().cardTrack,
@@ -1926,7 +1958,8 @@ function act(action: KeyAction): void {
     case 'furigana': {
       const next = nextRuby(settings().ruby);
       void setSetting('ruby', next).then(() => header?.update());
-      if (mount) flash(mount, ui.common.furigana(next));
+      // Named for what the language draws above its words: furigana, pinyin.
+      if (mount) flash(mount, ui.common[featuresOf(targetLang()).readings || 'furigana'](next));
       return;
     }
     case 'blur': {
@@ -2031,6 +2064,7 @@ void loadSettings().then(async (s) => {
   appearance = { size: s.subtitleSize, bottom: s.subtitleBottom, dual: s.dualSubtitles };
   languages = { target: s.target, native: s.native, definitions: definitionLanguage(s) };
   scopeRead = s.statusScope;
+  marksRead = s.target;
   settingsReady = true;
   void start();
   await refreshStatus();
@@ -2041,6 +2075,14 @@ onSettingsChange((s) => {
   if (s.statusScope === scopeRead) return;
   scopeRead = s.statusScope;
   void refreshStatus();
+});
+// Hand marks are kept by language. Another language's come in with it, even
+// when both read the same decks and nothing else is read again.
+onSettingsChange((s) => {
+  if (s.target === marksRead) return;
+  marksRead = s.target;
+  void reloadMarks();
+  void reloadQueued();
 });
 onSettingsChange((s) => {
   if (s.interaction !== 'hover') closePopup();

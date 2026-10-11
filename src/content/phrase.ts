@@ -129,6 +129,9 @@ export function phraseToken(words: Token[], text: string): Token {
     end: last?.end ?? text.length,
     content: true,
     parts: words.map((w) => w.surface),
-    ...(readings.every(Boolean) && !/\s/.test(text) ? { reading: readings.join('') } : {}),
+    // Readings written as spaced syllables, as pinyin is, stay spaced when joined.
+    ...(readings.every(Boolean) && !/\s/.test(text)
+      ? { reading: readings.join(readings.some((r) => /\s/.test(r ?? '')) ? ' ' : '') }
+      : {}),
   };
 }

@@ -394,7 +394,7 @@ interface Context {
   onSearch?: (query: string, forms: string[]) => void;
   /** The characters the word is written with, once looked up. */
   characters?: Promise<Characters>;
-  /** The language being learned: the word and its lines are in it, so the browser draws them in its fonts. */
+  /** The language being learned, so the word is said in a voice for it. */
   lang?: string;
   /**
    * What the card should stay clear of, most important first — the subtitle
@@ -487,11 +487,20 @@ export function showPopup(
       b.textContent = ui.popup.commonBadge;
       meta.appendChild(b);
     }
-    const pos = partsOfSpeech(top.senses[0]?.pos ?? []);
+    // What the entry says it is, where one entry gathers several parts of speech.
+    const pos = partsOfSpeech(top.kind ?? top.senses[0]?.pos ?? []);
     if (pos) {
       const p = document.createElement('span');
       p.textContent = pos;
       meta.appendChild(p);
+    }
+    // The word in the language's other script: the traditional form of a simplified word.
+    if (top.alt) {
+      const a = document.createElement('span');
+      a.className = 'alt';
+      a.lang = learned;
+      a.textContent = top.alt;
+      meta.appendChild(a);
     }
     card.appendChild(meta);
   }
@@ -533,7 +542,7 @@ export function showPopup(
   button('volume', ui.popup.pronounce, (b) => {
     b.classList.add('busy');
     b.replaceChildren(icon('loader', 16));
-    void pronounce(sayWord, sayReading)
+    void pronounce(sayWord, sayReading, ctx.lang)
       .then((spoken) => {
         // Say which source was used: a human recording and a synthesised one
         // are not equally trustworthy models to imitate.
@@ -698,7 +707,7 @@ export function showPopup(
     void ctx.characters.then((c) => {
       if (host !== mine || !c.items.length) return;
       fold(body.querySelector('.trace') ? body.querySelector('.trace')! : null, 'kanji',
-        `${c.label} · ${c.items.map((k) => k.char).join(' ')}`, chars, () => fillCharacters(chars, c, learned));
+        `${characterName(c.label)} · ${c.items.map((k) => k.char).join(' ')}`, chars, () => fillCharacters(chars, c, learned));
     }, () => {});
   }
 
@@ -985,6 +994,13 @@ const markTip = (mark: CardMark): string =>
 /** The same buttons once pressed: pressing again takes the mark off. */
 const unmarkTip = (mark: CardMark): string =>
   ({ known: ui.popup.unmarkKnownTip, tracking: ui.popup.stopTrackingTip, ignored: ui.popup.stopIgnoringTip })[mark];
+
+/** What a language calls the characters it is written with, for the heading over a word's. */
+function characterName(id: string): string {
+  const names: Record<string, unknown> = ui.popup.characterNames;
+  const name = names[id];
+  return typeof name === 'string' ? name : id;
+}
 
 /**
  * The parts of speech of a sense, by name. JMdict's codes ("v5k", "adj-na")

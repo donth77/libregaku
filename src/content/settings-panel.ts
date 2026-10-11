@@ -1,11 +1,12 @@
 import { flushCards, queuedCards } from '../anki/card-queue';
 import { browseMarks, browseOurCards, createDeck, probe, type AnkiState } from '../anki/client';
 import { ADDON_CODE, ADDON_URL, ANKI_PORT, ANKI_URL, extensionOrigin } from '../anki/endpoint';
+import { defaultDeck } from '../anki/model';
 import { cardAudio } from '../audio/card-audio';
 import { fill, languageLabel, languageName, ownName, ui, uiLocale } from '../i18n';
 import { copyText } from './share';
 import {
-  DEFAULTS, DEFINITION_LANGUAGES, featuresOf, setSetting, settings, type Settings, TARGET_LANGUAGES,
+  DEFAULTS, DEFINITION_LANGUAGES, cardDeck, featuresOf, setSetting, settings, type Settings, TARGET_LANGUAGES,
   TRANSLATION_LANGUAGES, UNDERLINES, type UnderlineKey,
 } from '../settings';
 
@@ -252,10 +253,11 @@ export interface SettingsPanelOptions {
  * bar's furigana switch, the options page, another tab — and a control still
  * showing the old value is worse than none: using it writes that old value.
  * Only the rows built from a setting are touched; the deck lists have their
- * own rules.
+ * own rules, and are drawn again by them.
  */
 export function syncSettingsControls(root: ParentNode): void {
   const cur = settings();
+  redrawDecks(root);
   for (const el of Array.from(root.querySelectorAll<HTMLInputElement | HTMLSelectElement>('[data-setting]'))) {
     const value = cur[el.dataset.setting as keyof Settings];
     if (el.tagName === 'INPUT' && (el as HTMLInputElement).type === 'checkbox') {
@@ -268,6 +270,18 @@ export function syncSettingsControls(root: ParentNode): void {
   showFor(root, cur.target);
 }
 
+/**
+ * How to draw a panel's deck lists again, by its "New cards go to" list. Each
+ * language has decks of its own, so the lists change with the language being
+ * learned — which can be changed on the page they are on.
+ */
+const deckLists = new WeakMap<Element, () => void>();
+
+function redrawDecks(root: ParentNode): void {
+  const list = root.querySelector('select[name=deck]');
+  if (list) deckLists.get(list)?.();
+}
+
 /** Underline a colour row's name in the colour its picker holds. */
 function swatch(input: HTMLInputElement): void {
   input.closest<HTMLElement>('.set')?.style.setProperty('--c', input.value);
@@ -276,12 +290,26 @@ function swatch(input: HTMLInputElement): void {
 /** A setting only some languages have a use for, such as Furigana. */
 type Feature = 'readings' | 'characters' | 'definitions';
 
+/** Give a setting's row its name and its hint. */
+function named(root: ParentNode, setting: keyof Settings, [name, hint]: [string, string]): void {
+  const row = root.querySelector(`[data-setting=${setting}]`)?.closest('.set');
+  const label = row?.querySelector('.name');
+  if (label) label.textContent = name;
+  const said = row?.querySelector('.hint');
+  if (said) said.textContent = hint;
+}
+
 /** Rows that need what the target language lacks are hidden, and come back with it. */
 function showFor(root: ParentNode, target: string, native = settings().native): void {
   const has = featuresOf(target);
   for (const row of Array.from(root.querySelectorAll<HTMLElement>('[data-needs]'))) {
     row.hidden = !has[row.dataset.needs as Feature];
   }
+  // Two rows are named for what the language has: furigana or pinyin above
+  // its words, kanji or simply characters on a card.
+  const t = ui.settings;
+  named(root, 'ruby', has.readings === 'pinyin' ? [t.pinyin, t.pinyinHint] : [t.ruby, t.rubyHint]);
+  named(root, 'cardKanji', has.characters === 'hanzi' ? [t.cardHanzi, t.cardHanziHint] : [t.cardKanji, t.cardKanjiHint]);
   // Definitions follow your language; a language of their own only where the dictionary has none in it.
   const defs = root.querySelector('select[name=definitions]')?.closest<HTMLElement>('.set');
   if (!defs) return;
@@ -295,12 +323,15 @@ function showFor(root: ParentNode, target: string, native = settings().native): 
  * Say plainly what each language actually gets. Tier 0 finds word boundaries
  * and nothing else, which means lookups match on the surface form — so an
  * inflected word may not find a card you already have. Better stated up
- * front than discovered as flakiness. Read in the interface language when it
- * is shown.
+ * front than discovered as flakiness. Above that, the note goes by what the
+ * language has — readings to draw, and of which kind — never by its name.
+ * Read in the interface language when it is shown.
  */
 export function tierNote(code: string): string {
   const tier = TARGET_LANGUAGES.find((l) => l.code === code)?.tier ?? 0;
-  return tier === 2 ? ui.settings.supportFull : ui.settings.supportBasic;
+  if (tier === 0) return ui.settings.supportBasic;
+  const readings = featuresOf(code).readings;
+  return ui.settings[readings === 'furigana' ? 'supportFull' : readings === 'pinyin' ? 'supportPinyin' : 'supportWords'];
 }
 
 let seq = 0;
@@ -312,6 +343,8 @@ export function buildSettings(onChange: Rerender, opts: SettingsPanelOptions = {
   root.addEventListener('change', (e) => {
     const which = (e.target as HTMLElement | null)?.dataset?.setting;
     if (which === 'target') showFor(root, (e.target as HTMLSelectElement).value);
+    // The language's own decks, in place of those of the one just left.
+    if (which === 'target') redrawDecks(root);
     if (which === 'native') showFor(root, settings().target, (e.target as HTMLSelectElement).value);
   });
 
@@ -448,7 +481,7 @@ export function buildSettings(onChange: Rerender, opts: SettingsPanelOptions = {
   group('languages', t.languagesHeading, t.languagesAbout);
   const target = select('target', t.target,
     // Limited is boundaries alone: no dictionary forms, so no lookups and no matching a word to its card.
-    TARGET_LANGUAGES.map((l) => [l.code, l.tier === 2 ? languageLabel(l.code) : t.targetLimited(languageLabel(l.code))]),
+    TARGET_LANGUAGES.map((l) => [l.code, l.tier > 0 ? languageLabel(l.code) : t.targetLimited(languageLabel(l.code))]),
     tierNote(settings().target));
   target.addEventListener('change', () => {
     const hint = target.closest('.set')?.querySelector('.hint');
@@ -655,8 +688,8 @@ function chip(value: string): HTMLElement {
   return wrap;
 }
 
-/** A stored deck against Anki's list: fine, never chosen, or gone from Anki. */
-type DeckPick = 'ok' | 'unset' | 'missing';
+/** A stored deck against Anki's list: fine, or gone from Anki. */
+type DeckPick = 'ok' | 'missing';
 
 interface AnkiUi {
   state: HTMLElement;
@@ -714,6 +747,10 @@ function ankiControls(els: AnkiUi, onChange: Rerender, opts: SettingsPanelOption
    * step for them. A status scope that had gone missing showed as "Whole
    * collection" while still reading the missing deck, so every word read as
    * unknown with nothing on screen to say why.
+   *
+   * One deck is listed before Anki has it: the language's own (cardDeck),
+   * where new cards go until another is picked. Its first card makes it, so
+   * it is never one that has gone missing.
    */
   const fillDecks = (el: HTMLSelectElement, withAll: boolean, decks: string[], value: string): DeckPick => {
     el.replaceChildren();
@@ -725,12 +762,10 @@ function ankiControls(els: AnkiUi, onChange: Rerender, opts: SettingsPanelOption
       el.appendChild(o);
     };
     let pick: DeckPick = 'ok';
+    const own = withAll ? null : defaultDeck(settings().target);
     if (withAll) add('', t.wholeCollection);
-    else if (!value) {
-      add('', t.chooseDeck, true);
-      pick = 'unset';
-    }
-    if (value && !decks.includes(value)) {
+    else if (own && !decks.includes(own)) add(own, own);
+    if (value && value !== own && !decks.includes(value)) {
       add(value, t.deckNotInAnki(value), true);
       pick = 'missing';
     }
@@ -739,6 +774,27 @@ function ankiControls(els: AnkiUi, onChange: Rerender, opts: SettingsPanelOption
     el.disabled = false;
     return pick;
   };
+
+  /** Both lists, from Anki's decks and what is kept for the language being learned. */
+  const fill = (decks: string[]): void => {
+    const cur = settings();
+    const pick = fillDecks(deck, false, decks, cardDeck(cur));
+    warn(deckRow, pick === 'missing' ? t.deckMissing(cur.deck) : null);
+    const scoped = fillDecks(scope, true, decks, cur.statusScope);
+    warn(scopeRow, scoped === 'missing' ? t.statusScopeMissing(cur.statusScope) : apart());
+  };
+  /** Anki's decks as it last listed them, and what the lists were last drawn for. */
+  let listed: string[] | null = null;
+  let drawnFor = '';
+  const drawn = (): string => {
+    const cur = settings();
+    return [cur.target, cur.deck, cur.statusScope].join('\n');
+  };
+  deckLists.set(deck, () => {
+    if (!listed || drawn() === drawnFor) return;
+    drawnFor = drawn();
+    fill(listed);
+  });
 
   /** Swap a row's explanation for a warning while something needs choosing. */
   const warn = (setting: HTMLElement, text: string | null): void => {
@@ -764,20 +820,10 @@ function ankiControls(els: AnkiUi, onChange: Rerender, opts: SettingsPanelOption
     browse.disabled = !connected || s.cards === 0;
     marks.disabled = !connected;
 
+    listed = s.kind === 'connected' ? s.decks : null;
     if (s.kind === 'connected') {
-      const cur = settings();
-      const pick = fillDecks(deck, false, s.decks, cur.deck);
-      warn(deckRow,
-        pick === 'unset'
-          ? t.deckUnset
-          : pick === 'missing'
-            ? t.deckMissing(cur.deck)
-            : null);
-      const scoped = fillDecks(scope, true, s.decks, cur.statusScope);
-      warn(scopeRow,
-        scoped === 'missing'
-          ? t.statusScopeMissing(cur.statusScope)
-          : apart());
+      drawnFor = drawn();
+      fill(s.decks);
       state.className = 'state ok';
       state.textContent = line(
         t.ankiConnected,
@@ -840,8 +886,9 @@ function ankiControls(els: AnkiUi, onChange: Rerender, opts: SettingsPanelOption
 
   /** The two decks disagree: cards would go where word status never looks. */
   const apart = (): string | null => {
-    const { deck: to, statusScope: read } = settings();
-    return outsideScope(to, read) ? t.statusScopeOutside(to) : null;
+    const cur = settings();
+    const to = cardDeck(cur);
+    return outsideScope(to, cur.statusScope) ? t.statusScopeOutside(to) : null;
   };
   deck.addEventListener('change', () => {
     void setSetting('deck', deck.value).then(() => warn(scopeRow, apart()));
@@ -954,7 +1001,7 @@ function keyList(): HTMLElement {
     [['K'], t.keyKnown],
     // Named for what the language draws above its words; no key where it draws nothing.
     ...(featuresOf(settings().target).readings
-      ? [[['R'], t.keyFurigana]] as Array<[string[], string]>
+      ? [[['R'], featuresOf(settings().target).readings === 'pinyin' ? t.keyPinyin : t.keyFurigana]] as Array<[string[], string]>
       : []),
     [['H'], t.keyBlur],
     [['B'], t.keySave],
@@ -995,7 +1042,10 @@ function credits(): HTMLElement {
 
   // The names are the projects' own, the same in every language.
   entry('JMdict · KANJIDIC2', 'https://www.edrdg.org/jmdict/j_jmdict.html', ui.settings.creditJmdict);
-  entry('Lindera · IPADIC', 'https://github.com/lindera/lindera', ui.settings.creditLindera);
+  entry('CC-CEDICT', 'https://www.mdbg.net/chinese/dictionary?page=cc-cedict', ui.settings.creditCedict);
+  entry('Wiktionary', 'https://kaikki.org/', ui.settings.creditWiktionary);
+  entry('Lindera · IPADIC · mecab-ko-dic', 'https://github.com/lindera/lindera', ui.settings.creditLindera);
+  entry('Unihan', 'https://www.unicode.org/reports/tr38/', ui.settings.creditUnihan);
   entry('Jotoba · Jisho', 'https://jotoba.de/', ui.settings.creditJotoba);
   entry('Lucide', 'https://lucide.dev/', ui.settings.creditLucide);
 

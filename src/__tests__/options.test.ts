@@ -5,6 +5,8 @@ import { en } from '../i18n/en';
  * The first-run checklist's deck step. It used to tick as soon as any deck was
  * in settings — and the settings panel filled one in by itself, so the step
  * that asks a learner to choose where cards go was done before they looked.
+ * Then it opened again whenever the deck changed, which is every time another
+ * language is learned: "Get started", for someone long since started.
  */
 
 // The panel itself is tested on its own; here it only needs a deck list that
@@ -159,18 +161,38 @@ describe('the deck step', () => {
     await vi.waitFor(() => expect(step().classList.contains('done')).toBe(true));
   });
 
-  it('reopens if the deck changes without anyone choosing it', async () => {
-    await open({ configured: true, deck: 'Default' }, 'Default');
+  it('stays done when another language is learned, which has decks of its own', async () => {
+    await open({ configured: true, target: 'ja', deck: 'Default' }, 'Default');
+    expect(setup().hidden).toBe(true);
+    const { setSetting, settings } = await import('../settings');
+    await setSetting('target', 'es');
+    // Spanish has no deck chosen yet, and that is not a first run.
+    expect(settings().deck).toBe('');
     expect(step().classList.contains('done')).toBe(true);
-    const { setSetting } = await import('../settings');
-    await setSetting('deck', 'Vocabulary');
-    expect(step().classList.contains('done')).toBe(false);
+    expect(setup().hidden).toBe(true);
+    expect(keep().hidden).toBe(true);
   });
 
-  it('has nothing to keep when no deck is set', async () => {
-    await open({ configured: true, deck: '' });
+  it('stays done when the deck is changed afterwards', async () => {
+    await open({ configured: true, deck: 'Default' }, 'Default');
+    const { setSetting } = await import('../settings');
+    await setSetting('deck', 'Vocabulary');
+    expect(step().classList.contains('done')).toBe(true);
+    expect(setup().hidden).toBe(true);
+  });
+
+  it('offers the language’s own deck when none is set, and writes nothing for it', async () => {
+    await open({ configured: true, target: 'ko', deck: '' });
     expect(step().classList.contains('done')).toBe(false);
-    expect(keep().hidden).toBe(true);
+    expect(keep().hidden).toBe(false);
+    expect(keep().textContent).toBe('Use Libregaku-KO for new cards');
+    keep().click();
+    expect(step().classList.contains('done')).toBe(true);
+    expect(setup().hidden).toBe(true);
+    // Still no deck in settings: the language's own is made by its first card.
+    const { settings } = await import('../settings');
+    expect(settings().deck).toBe('');
+    await vi.waitFor(() => expect(local['libregaku.deckChosen']).toBe('Libregaku-KO'));
   });
 });
 

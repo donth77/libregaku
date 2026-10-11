@@ -39,6 +39,7 @@ const MEDIA_EMPTY: Record<Media, string> = {
 export const nl: Translation = {
   common: {
     furigana: (mode: Settings['ruby']): string => `Furigana: ${RUBY[mode]}`,
+    pinyin: (mode: Settings['ruby']): string => `Pinyin: ${RUBY[mode]}`,
     sentenceGap: ' ',
   },
 
@@ -49,6 +50,8 @@ export const nl: Translation = {
     target: 'Ik leer',
     targetLimited: (language: string): string => `${language} – beperkt`,
     supportFull: 'Volledige ondersteuning, met lezingen en furigana.',
+    supportPinyin: 'Volledige ondersteuning, met pinyin. Definities zijn in het Engels.',
+    supportWords: 'Volledige ondersteuning. Definities zijn in het Engels.',
     supportBasic: 'Basisondersteuning: woorden worden gesplitst, maar er is nog geen woordenboek en er zijn geen lezingen.',
     native: 'Jouw taal',
     nativeHint: 'Vertalingen en definities worden in deze taal getoond, als de video en het woordenboek die hebben.',
@@ -85,6 +88,8 @@ export const nl: Translation = {
     cardAddLineHint: 'Voegt een knop toe die van de hele zin een kaart maakt, met de audio en een screenshot.',
     cardKanji: 'Kanjidetails',
     cardKanjiHint: 'Toont de betekenissen en lezingen van elke kanji.',
+    cardHanzi: 'Karakterdetails',
+    cardHanziHint: 'Toont de betekenissen en lezingen van elk karakter.',
     lookupElsewhere: 'Voorbeelden uit deze video',
     lookupElsewhereHint: 'Toont andere zinnen in deze video met het woord. Klik op een zin om hem af te spelen.',
 
@@ -96,6 +101,8 @@ export const nl: Translation = {
     rubyAlways: 'Alle',
     rubyNever: 'Uit',
     rubyHint: 'Lezingen boven kanji. Druk op R om tijdens het kijken te wisselen.',
+    pinyin: 'Pinyin',
+    pinyinHint: 'Lezingen boven karakters. Druk op R om tijdens het kijken te wisselen.',
     blurPrimary: 'Ondertitels vervagen',
     blurPrimaryHint: 'Om luisteren te oefenen: ondertitels blijven vaag tot je ze aanwijst. Druk op H om te wisselen.',
     subtitleSize: 'Tekstgrootte',
@@ -236,7 +243,13 @@ export const nl: Translation = {
       'Woordenboek- en kanjigegevens © Electronic Dictionary Research and Development Group, gebruikt onder ' +
       'CC BY-SA 4.0. Als JSON verpakt door jmdict-simplified.',
     creditLindera:
-      'Splitst Japans in woorden. MIT-licentie; IPADIC heeft eigen voorwaarden.',
+      'Splitst Japans, Koreaans en Chinees in woorden. MIT-licentie; IPADIC, mecab-ko-dic en CC-CEDICT hebben ' +
+      'hun eigen voorwaarden.',
+    creditCedict: 'Chinees woordenboek © MDBG en bijdragers, gebruikt onder CC BY-SA 4.0.',
+    creditWiktionary:
+      'Woordenboeken voor Koreaans en Spaans, uit Wiktionary via kaikki.org en wiktionary-to-yomitan. CC BY-SA 4.0.',
+    creditUnihan:
+      'Welke lezing van een Chinees karakter eerst wordt getoond. © Unicode, Inc., gebruikt onder de Unicode License.',
     creditJotoba: 'Gebruikt voor opzoeken zolang het woordenboek downloadt. Beide gebruiken JMdict.',
     creditLucide: 'Iconen. ISC-licentie.',
     licence: 'Libregaku heeft een MIT-licentie. Woordenboekgegevens worden van hun bronnen gedownload, niet meegeleverd.',
@@ -250,6 +263,7 @@ export const nl: Translation = {
     keyAdd: 'Woord in de pop-up toevoegen aan Anki',
     keyKnown: 'Woord in de pop-up markeren als bekend',
     keyFurigana: 'Furigana wisselen: uit, nieuwe woorden, alle',
+    keyPinyin: 'Pinyin wisselen: uit, nieuwe woorden, alle',
     keyBlur: 'Ondertitels vervagen of scherp maken',
     keySave: 'Huidige regel opslaan',
     keyTranscript: 'Transcriptpaneel tonen of verbergen',
@@ -433,6 +447,7 @@ export const nl: Translation = {
     // De pop-up en het woord
     cardLabel: (word: string): string => `${word} – woordenboek`,
     commonBadge: 'veelgebruikt',
+    characterNames: { kanji: 'Kanji', hanzi: 'Karakters' },
     partOfSpeech: {
       n: 'zelfstandig naamwoord', 'n-adv': 'bijwoordelijk naamwoord', 'n-t': 'tijdsnaamwoord',
       'n-suf': 'achtervoegsel bij naamwoord', 'n-pref': 'voorvoegsel bij naamwoord', pn: 'voornaamwoord',
@@ -448,6 +463,23 @@ export const nl: Translation = {
       v5m: 'godan-werkwoord', v5n: 'godan-werkwoord', v5r: 'godan-werkwoord', 'v5r-i': 'godan-werkwoord',
       v5s: 'godan-werkwoord', v5t: 'godan-werkwoord', v5u: 'godan-werkwoord', 'v5u-s': 'godan-werkwoord',
       v5aru: 'godan-werkwoord',
+      // De codes van Wiktionary, voor Koreaanse en Spaanse woorden. Eerst de woordsoort, dan de grammatica:
+      name: 'eigennaam', v: 'werkwoord', adj: 'bijvoeglijk naamwoord', pron: 'voornaamwoord', det: 'determinator',
+      artic: 'lidwoord', counter: 'maatwoord', prep: 'voorzetsel', 'prep-phrase': 'voorzetselgroep',
+      ptcl: 'partikel', intj: 'tussenwerpsel', phrase: 'uitdrukking', prov: 'spreekwoord', r: 'stam',
+      char: 'karakter', adn: 'adnominaal', ptcpl: 'deelwoord', contr: 'samentrekking',
+      masc: 'mannelijk', fem: 'vrouwelijk', neut: 'onzijdig', sg: 'enkelvoud', pl: 'meervoud',
+      'pl-only': 'alleen meervoud', count: 'telbaar', uncount: 'ontelbaar', vr: 'wederkerend',
+      vdt: 'ditransitief', impers: 'onpersoonlijk', irreg: 'onregelmatig', reltnl: 'relationeel',
+      reltv: 'betrekkelijk', interr: 'vragend', poss: 'bezittelijk', dim: 'verkleinwoord', aug: 'vergrotend',
+      onoma: 'klanknabootsend',
+      // En hoe of wanneer het woord gebruikt wordt:
+      idio: 'idiomatisch', fig: 'figuurlijk', literal: 'letterlijk', col: 'spreektaal', inf: 'informeel',
+      fam: 'familiair', formal: 'formeel', polite: 'beleefd', lit: 'literair', poet: 'poëtisch',
+      rhet: 'retorisch', sl: 'slang', vulg: 'vulgair', derog: 'denigrerend', offens: 'beledigend',
+      humor: 'schertsend', euph: 'eufemistisch', child: 'kindertaal', net: 'internet', neol: 'neologisme',
+      cmn: 'gangbaar', uncmmn: 'ongebruikelijk', rare: 'zeldzaam', dated: 'gedateerd', arch: 'archaïsch',
+      obs: 'verouderd', hist: 'historisch', 'non-std': 'niet-standaard', dialect: 'dialect', regio: 'regionaal',
     },
 
     // De knoppen onder het woord
@@ -708,6 +740,12 @@ export const nl: Translation = {
 
     // De naam van een spoor
     forcedTrack: (track: string): string => `${track} (geforceerd)`,
+
+    // Het woordenboek en de analysator
+    noAnswer: 'geen antwoord van de extensie – laad de pagina opnieuw om haar te herstarten',
+    analyserLoading: 'de analysator wordt nog geladen',
+    dictionaryLoading: 'het woordenboek wordt nog geladen',
+    lookupFailed: 'opzoeken mislukt',
   },
 
   grammar: {
@@ -794,5 +832,76 @@ export const nl: Translation = {
     thoroughly: 'grondig',
     around: 'rond',
     'non-stop': 'aan één stuk',
+
+    // Vormen van een Spaans woord
+    or: 'of',
+    'first-person': 'eerste persoon',
+    'second-person': 'tweede persoon',
+    'third-person': 'derde persoon',
+    singular: 'enkelvoud',
+    plural: 'meervoud',
+    masculine: 'mannelijk',
+    feminine: 'vrouwelijk',
+    present: 'presens',
+    preterite: 'preteritum',
+    imperfect: 'imperfectum',
+    'imperfect-se': 'imperfectum (-se)',
+    future: 'futurum',
+    'conditional-mood': 'conditionalis',
+    indicative: 'indicatief',
+    subjunctive: 'subjunctief',
+    infinitive: 'infinitief',
+    gerund: 'gerundium',
+    participle: 'deelwoord',
+    formal: 'formeel',
+    informal: 'informeel',
+    'with-tú': 'met tú',
+    'with-vos': 'met vos',
+    'vos-form': 'vos-vorm',
+    voseo: 'voseo',
+    'second-person-semantically': 'in de zin van “u”',
+    accusative: 'met lijdend voorwerp',
+    dative: 'met meewerkend voorwerp',
+    'object-first-person': 'voorwerp eerste persoon',
+    'object-second-person': 'voorwerp tweede persoon',
+    'object-third-person': 'voorwerp derde persoon',
+    'object-singular': 'enkelvoudig voorwerp',
+    'object-plural': 'meervoudig voorwerp',
+    diminutive: 'verkleinwoord',
+    augmentative: 'augmentatief',
+    superlative: 'overtreffende trap',
+    alternative: 'variant',
+    'alt-of': 'andere spelling',
+
+    // Koreaanse uitgangen
+    honorific: 'honorifiek',
+    'future or guess': 'toekomst of vermoeden',
+    'formal polite': 'formeel beleefd',
+    question: 'vraag',
+    but: 'maar',
+    "let's": 'laten we',
+    plain: 'eenvoudig',
+    'shall we, or I wonder': 'zullen we, of ik vraag me af',
+    'I will': 'belofte',
+    'just noticed': 'net gemerkt',
+    'as you know': 'zoals je weet',
+    and: 'en',
+    'because, or and then': 'omdat, of en dan',
+    'but, or given that': 'maar, of aangezien',
+    'even if': 'zelfs als',
+    whether: 'indirecte vraag',
+    'adverb form': 'bijwoordelijke vorm',
+    quoting: 'indirecte rede',
+    'used to': 'vroeger',
+    topic: 'thema',
+    subject: 'onderwerp',
+    object: 'lijdend voorwerp',
+    possessive: 'bezittelijk',
+    'come to': 'ertoe komen',
+    when: 'wanneer',
+    modifier: 'bijvoeglijke vorm',
+    'noun form': 'nominalisering',
+    becomes: 'worden',
+    'have done before': 'al eens gedaan',
   },
 };

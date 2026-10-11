@@ -54,28 +54,47 @@ pnpm typecheck
 
 ## Languages
 
-Japanese is fully supported. Other languages are only split into words for now.
+Japanese, Chinese, Korean and Spanish are fully supported. Other languages are only
+split into words for now.
 
 | Languages | Support | When |
 |---|---|---|
-| Japanese | Full | Now (v1) |
-| Spanish, French, German, Italian, Portuguese | Planned | v1.1 |
-| Korean, Chinese | Planned | v1.2 |
+| Japanese | Full, with furigana | Now (v1) |
+| Chinese (Mandarin) | Full, with pinyin | Now |
+| Korean, Spanish | Full | Now |
+| French, German, Italian, Portuguese | Planned | v1.1 |
 | Thai | Planned | v1.3 |
 | Any other language Wiktionary covers | Basic | v1.1 |
 
+"Full" means a word is looked up, and matched to its card, in whatever form it is said:
+`갔어요` finds `가다`, and `hablábamos` finds `hablar`. Definitions for Chinese, Korean
+and Spanish are in English.
+
 "Basic" means you can look words up, but an inflected word (say, "went" for "go") may
 not match its card. Libregaku tells you when this applies.
+
+Each language's dictionary is downloaded the first time you choose it. The download is
+11 to 27 MB; on disk it takes 100 MB for Chinese, 200 MB for Korean and 470 MB for
+Spanish.
 
 ## Licence
 
 The code is MIT. See [`LICENSE`](LICENSE).
 
 Dictionary data has its own licences. It's downloaded when you use it, not shipped with
-the extension. The one exception is a small JMdict sample used in tests
-(`src/dict/__tests__/fixtures/jmdict-frequent.ts`), which keeps JMdict's licence:
+the extension. There are two exceptions, and each keeps its source's licence:
+
+- Small samples used in tests: JMdict (`src/dict/__tests__/fixtures/jmdict-frequent.ts`),
+  and a few lines of the other dictionaries inside their tests.
+- `src/dict/zh-readings.ts`, a 9 KB table of which reading a Chinese character shows
+  first. It is built from Unihan and CC-CEDICT by `scripts/build-zh-readings.mjs`.
+
+The sources:
 
 - [JMdict / KANJIDIC2](https://www.edrdg.org/): Electronic Dictionary Research and
   Development Group, CC BY-SA 4.0
-- [kaikki.org](https://kaikki.org/): Wiktionary via Wiktextract, CC BY-SA
+- [CC-CEDICT](https://www.mdbg.net/chinese/dictionary?page=cc-cedict): MDBG, CC BY-SA 4.0
+- [kaikki.org](https://kaikki.org/): Wiktionary via Wiktextract, CC BY-SA, as packaged
+  by [wiktionary-to-yomitan](https://github.com/yomidevs/wiktionary-to-yomitan)
+- [Unihan](https://www.unicode.org/reports/tr38/): Unicode, Inc., Unicode License
 - [Lindera](https://github.com/lindera/lindera) dictionaries: each has its own terms

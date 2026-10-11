@@ -83,7 +83,7 @@ export const pl: HelpTranslation = {
                 ['`B`', 'Zapisz bieżącą linijkę'],
                 ['`S`', 'Pokaż lub ukryj panel transkrypcji'],
                 ['`H`', 'Rozmyj lub wyostrz napisy'],
-                ['`R`', 'Przełącz furiganę: wyłączone, nowe słowa, wszystkie (japoński)'],
+                ['`R`', 'Przełącz furiganę lub pinyin: wyłączone, nowe słowa, wszystkie (japoński, chiński)'],
                 ['`Shift`', 'Przytrzymaj, by sprawdzić słowo pod kursorem, gdy ustawienie {Ustawienia → Sprawdzanie słów → Sprawdzaj słowa przez} ma wartość „Najechanie + Shift”'],
                 ['`Esc`', 'Zamknij okienko'],
               ],
@@ -132,6 +132,7 @@ export const pl: HelpTranslation = {
           title: 'Wybierz talię',
           body: [
             'Nowe karty trafiają do talii ustawionej tutaj: {Ustawienia → Anki → Nowe karty trafiają do}.',
+            'Każdy język, którego się uczysz, ma własną talię. Dopóki jej nie wybierzesz, jego karty trafiają do talii tworzonej dla niego razem z pierwszą kartą: Libregaku-JA dla japońskiego, Libregaku-ES dla hiszpańskiego. Zmień {Ustawienia → Języki → Uczę się}, a talia zmieni się razem z nim.',
             'Aby zmieniać talię podczas oglądania, włącz {Ustawienia → Okienko słowa → Menu talii}. Obok Dodaj do Anki pojawi się ▾; „Dodaj do talii…” dodaje kartę do wybranej talii i kieruje tam też kolejne.',
             { tip: 'Stan słów jest odczytywany z talii ustawionych tutaj: {Ustawienia → Anki → Odczytuj znane słowa z}. Jeśli nowe karty trafiają do talii, której to ustawienie nie obejmuje, Ustawienia o tym informują.' },
           ],
@@ -163,6 +164,7 @@ export const pl: HelpTranslation = {
           title: 'Zobacz i zmień oznaczone słowa',
           body: [
             'W panelu transkrypcji zakładka Słowa wymienia słowa, które śledzisz, oznaczasz jako znane lub ignorujesz, każde na osobnej liście. Każde słowo ma przycisk do usunięcia oznaczenia — przy ignorowanym jest to Przestań ignorować — a śledzone słowo można stamtąd zamienić w kartę.',
+            'Każdy język ma własne listy. Zakładki Słowa i Zapisane pokazują listy języka, którego się uczysz, a słowo oznaczone w jednym języku nie jest oznaczone w innym.',
             'Każda lista ma pole wyszukiwania oraz przyciski Kopiuj i Eksportuj plik, które dają listę jako plik do otwarcia w Anki i w arkuszach kalkulacyjnych.',
           ],
           keywords: ['lista obserwowanych', 'watchlist', 'lista', 'śledzone', 'ignorowane', 'znane', 'usuń oznaczenie', 'słowa', 'arkusz', 'excel'],
@@ -281,8 +283,19 @@ export const pl: HelpTranslation = {
           title: 'Dlaczego definicje są tylko w niektórych językach?',
           body: [
             'Dla japońskiego pochodzą z JMdict, który ma definicje w dziewięciu językach. Jeśli twojego wśród nich nie ma, {Ustawienia → Języki} pokazuje drugi wiersz, Język definicji, w którym wybierasz język zastępczy.',
+            'Słowniki chiński, koreański i hiszpański są napisane tylko po angielsku.',
           ],
           keywords: ['słownik', 'znaczenia', 'polski', 'węgierski', 'słoweński', 'angielski', 'jmdict', 'cc-cedict', 'wiktionary'],
+        },
+        {
+          id: 'q-languages',
+          title: 'Jakich języków mogę się uczyć?',
+          body: [
+            'Japoński, chiński, koreański i hiszpański mają słownik, a słowo jest dopasowywane do swojej karty w każdej formie, w jakiej padnie: 갔어요 znajdzie kartę dla 가다, a hablábamos — dla hablar. Japoński pokazuje furiganę nad słowami, a chiński — pinyin.',
+            'Pozostałe języki na liście {Ustawienia → Języki → Uczę się} są oznaczone jako ograniczona obsługa. Ich słowa są rozdzielane, ale nie ma jeszcze słownika.',
+            'Słownik danego języka pobiera się przy pierwszym wyborze tego języka. Ma od 11 do 27 MB.',
+          ],
+          keywords: ['koreański', 'chiński', 'mandaryński', 'hiszpański', 'japoński', 'ograniczona', 'obsługiwane', 'rozmiar'],
         },
         {
           id: 'q-data',

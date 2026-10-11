@@ -93,7 +93,8 @@ describe('charactersOf', () => {
     offscreen(() => ({ ok: true, characters: [{ char: '勉', meanings: ['exertion'], on: ['ベン'], kun: [] }] } as unknown as Reply));
     const c = await charactersOf('勉強する', 'fr');
     expect(sent).toEqual([{ target: 'offscreen', type: 'dict-kanji', chars: ['勉', '強'], native: 'fr' }]);
-    expect(c.label).toBe('Kanji');
+    // An id for what the language calls its characters; the card puts the name to it.
+    expect(c.label).toBe('kanji');
     expect(c.items.map((k) => k.char)).toEqual(['勉']);
   });
 

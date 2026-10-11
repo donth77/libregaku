@@ -305,7 +305,8 @@ export class Header {
       ruby.hidden = !featuresOf(s.target).readings;
       ruby.replaceChildren(icon(s.ruby === 'always' ? 'rubyAll' : s.ruby === 'never' ? 'rubyOff' : 'rubySome', 20));
     }
-    setOn('ruby', s.ruby !== 'never', ui.common.furigana(s.ruby), { shown: 'R', aria: 'R' });
+    // Named for what the language draws above its words: furigana, pinyin.
+    setOn('ruby', s.ruby !== 'never', ui.common[featuresOf(s.target).readings || 'furigana'](s.ruby), { shown: 'R', aria: 'R' });
     setOn('blur', s.blurPrimary, s.blurPrimary ? ui.header.unblurSubtitle : ui.header.blurSubtitle,
       { shown: 'H', aria: 'H' });
     this.#buttons.get('blur')?.replaceChildren(icon(s.blurPrimary ? 'eye' : 'eyeOff', 20));

@@ -5,6 +5,7 @@ const api = vi.hoisted(() => ({
   buildStatusMap: vi.fn<() => Promise<StatusMap>>(),
   addNote: vi.fn<(card: Record<string, unknown>) => Promise<number>>(),
   takeBack: vi.fn<(id: number) => Promise<void>>(),
+  createDeck: vi.fn<(name: string) => Promise<void>>(),
   navigate: () => {},
   /** The video's tracks, and what each one says — one Japanese track unless a test says otherwise. */
   tracks: [{ id: 'ja', lang: 'ja', label: 'Japanese' }] as Array<{ id: string; lang: string; label: string }>,
@@ -20,11 +21,16 @@ vi.mock('../../anki/client', async (original) => ({
   ensureModel: async () => 'present',
   addNote: api.addNote,
   takeBack: api.takeBack,
+  createDeck: api.createDeck,
 }));
 vi.mock('../../dict/client', async (original) => ({
   ...await original<typeof import('../../dict/client')>(),
   ensureDictionary: async () => ({ ready: true }),
   lookupToken: async () => ({ state: 'empty' }),
+}));
+vi.mock('../../morphology/analyser', async (original) => ({
+  ...await original<typeof import('../../morphology/analyser')>(),
+  ensureAnalyser: async () => ({ ok: true }),
 }));
 vi.mock('../../morphology/lindera', () => ({
   LinderaSegmenter: class {
@@ -32,6 +38,7 @@ vi.mock('../../morphology/lindera', () => ({
     hasLemma = true;
     static async status() { return { ready: true }; }
     static async ensure() { return { ok: true }; }
+    ruby(surface: string) { return [{ text: surface }]; }
     segment(text: string) {
       return [{ surface: text, lemma: '食べる', start: 0, end: text.length, content: true }];
     }
@@ -129,6 +136,7 @@ beforeEach(async () => {
   api.buildStatusMap.mockReset().mockResolvedValue(snapshot('unknown'));
   api.addNote.mockReset().mockResolvedValue(1);
   api.takeBack.mockReset().mockResolvedValue(undefined);
+  api.createDeck.mockReset().mockResolvedValue(undefined);
   Object.assign(cap, { record: false, encrypted: false, starts: 0, recorded: null, still: null });
   listeners = vi.spyOn(document, 'addEventListener');
   vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -160,7 +168,9 @@ describe('vocabulary status in the player', () => {
     expect(api.addNote).toHaveBeenCalledOnce();
     expect(token().dataset.s).toBe('learning');
     expect(summary()).toContain('0 new');
-    expect(local['libregaku.overrides']).toEqual({});
+    expect(local['libregaku.marks.byLanguage']).toEqual({});
+    // Into the deck chosen, which is never made on the learner's behalf.
+    expect(api.createDeck).not.toHaveBeenCalled();
 
     answer(snapshot('known'));
     await flush();
@@ -238,9 +248,9 @@ describe('vocabulary status in the player', () => {
     await flush();
     expect(token().dataset.s).toBe('unknown');
     expect(summary()).toContain('1 new');
-    // The first read migrates marks into local storage, so the key may exist;
+    // The first read stores the marks by language, so the key may exist;
     // what matters is that the failed add left no mark in it.
-    expect(local['libregaku.overrides'] ?? {}).toEqual({});
+    expect(local['libregaku.marks.byLanguage'] ?? {}).toEqual({});
   });
 });
 
@@ -482,9 +492,73 @@ describe('K on a word Anki already knows', () => {
     key('k');
     await flush();
     expect(flashed()).toContain('食べる · already known in Anki');
-    expect(JSON.stringify(local['libregaku.overrides'] ?? {})).not.toContain('食べる');
-    expect(JSON.stringify(local['libregaku.marks.pending'] ?? [])).not.toContain('食べる');
+    expect(JSON.stringify(local['libregaku.marks.byLanguage'] ?? {})).not.toContain('食べる');
+    expect(JSON.stringify(local['libregaku.marks.pending.byLanguage'] ?? {})).not.toContain('食べる');
     expect(token().dataset.s).toBe('known');
+  });
+});
+
+describe('each language keeps its own', () => {
+  /** How many words the panel's Words tab says are marked. */
+  const marked = (): string => root('.libregaku-sidebar').querySelector('[data-mode="words"] .n')?.textContent ?? '';
+
+  it('shows a mark only while the language it was made in is being learned', async () => {
+    const popup = await openWord();
+    popup.querySelector<HTMLButtonElement>('.mk.known')!.click();
+    await flush();
+    expect(token().dataset.s).toBe('known');
+    expect(marked()).toBe('1');
+    expect(local['libregaku.marks.byLanguage']).toEqual({ ja: { 食べる: 'known' } });
+
+    // French, on a video that has it: its lists start empty, and Japanese's mark is none of its business.
+    api.tracks = [...api.tracks, { id: 'fr', lang: 'fr', label: 'French' }];
+    api.cues = { ...api.cues, fr: [{ start: 0, end: 10, text: 'chat' }] };
+    const { setSetting } = await import('../../settings');
+    await setSetting('target', 'fr');
+    await vi.advanceTimersByTimeAsync(1500);
+    expect(token().textContent).toBe('chat');
+    expect(marked()).toBe('');
+    expect(token().dataset.s).toBe('unknown');
+
+    // And back: the mark was Japanese's all along.
+    await setSetting('target', 'ja');
+    await vi.advanceTimersByTimeAsync(1500);
+    expect(marked()).toBe('1');
+    expect(token().dataset.s).toBe('known');
+    expect(local['libregaku.marks.byLanguage']).toEqual({ ja: { 食べる: 'known' } });
+  });
+
+  it("sends a card to the language's own deck when none was chosen, and makes that deck first", async () => {
+    const { setSetting } = await import('../../settings');
+    await setSetting('deck', '');
+    await flush();
+    const popup = await openWord();
+    popup.querySelector<HTMLButtonElement>('button.add')!.click();
+    await flush();
+    await flush();
+    expect(api.createDeck).toHaveBeenCalledWith('Libregaku-JA');
+    expect(api.createDeck.mock.invocationCallOrder[0]).toBeLessThan(api.addNote.mock.invocationCallOrder[0]!);
+    const card = api.addNote.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(card.deck).toBe('Libregaku-JA');
+    expect(card.tags).toContain('libregaku::lang::ja');
+    expect(popup.querySelector('.toast')?.textContent).toBe('added to Libregaku-JA');
+  });
+
+  it("keeps a card for the language's own deck while Anki is closed, as for any deck", async () => {
+    const { AnkiUnavailable } = await import('../../anki/rpc');
+    api.createDeck.mockRejectedValueOnce(new AnkiUnavailable('Nothing is listening on port 8765.'));
+    const { setSetting } = await import('../../settings');
+    await setSetting('deck', '');
+    await flush();
+    const popup = await openWord();
+    popup.querySelector<HTMLButtonElement>('button.add')!.click();
+    await flush();
+    await flush();
+    expect(api.addNote).not.toHaveBeenCalled();
+    const waiting = Object.entries(local).filter(([k]) => k.startsWith('libregaku.cards.pending.'));
+    expect(waiting).toHaveLength(1);
+    expect((waiting[0]?.[1] as { card: { deck: string } }).card.deck).toBe('Libregaku-JA');
+    expect(popup.querySelector('.toast')?.textContent).toContain('goes to Libregaku-JA when it opens');
   });
 });
 

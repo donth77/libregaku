@@ -1,10 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ankiCall, ankiTry } from '../rpc';
 import { MARK_MODEL_NAME } from '../model';
-import {
-  MATURE_DAYS, NOTES_PER_REQUEST, buildStatusMap, deckQuery, lemmaReading, loadOverrides, setOverride,
-} from '../status';
-import { FakeAnki, FakeStorage, type FakeCard } from './fake-anki';
+import { MATURE_DAYS, NOTES_PER_REQUEST, buildStatusMap, deckQuery, lemmaReading } from '../status';
+import { FakeAnki, type FakeCard } from './fake-anki';
 
 vi.mock('../rpc', async () => {
   const { AnkiUnavailable } = await vi.importActual<typeof import('../rpc')>('../rpc');
@@ -17,8 +15,6 @@ vi.mock('../rpc', async () => {
  * asking something else, the fake refuses rather than guessing.
  */
 const fake = new FakeAnki();
-const store = new FakeStorage();
-vi.stubGlobal('chrome', { storage: store.api });
 
 function note(
   expression: string,
@@ -39,7 +35,6 @@ beforeEach(() => {
   fake.notes = [];
   fake.calls = [];
   fake.onCall = null;
-  store.reset();
   vi.mocked(ankiCall).mockReset().mockImplementation(fake.call as typeof ankiCall);
   vi.mocked(ankiTry).mockReset().mockImplementation(fake.try as typeof ankiTry);
 });
@@ -225,6 +220,30 @@ describe('kana and kanji', () => {
   });
 });
 
+describe('capitals and accents', () => {
+  it('matches a word to its card whatever their capitals', async () => {
+    note('Hola', [reviewed(30)]);
+    note('el Madrid', [reviewed(2)]);
+    const status = await buildStatusMap('');
+    expect(status.get('hola')).toBe('known');
+    expect(status.get('HOLA')).toBe('known');
+    expect(status.get('El Madrid')).toBe('learning');
+    expect(status.get('adiós')).toBe('unknown');
+  });
+
+  it('matches an accent typed as one character to the same accent typed as two', async () => {
+    // é as e + a combining accent, as some keyboards and exports write it.
+    note('cafe\u0301', [reviewed(30)]);
+    note('한국어'.normalize('NFD'), [reviewed(30)]);
+    const status = await buildStatusMap('');
+    expect(status.get('café')).toBe('known');
+    expect(status.get('한국어')).toBe('known');
+    // An accent is still part of the spelling: si is not sí.
+    note('sí', [reviewed(30)]);
+    expect((await buildStatusMap('')).get('si')).toBe('unknown');
+  });
+});
+
 describe('lemmaReading', () => {
   it('turns the reading of an inflected surface into the reading of its dictionary form', () => {
     expect(lemmaReading('食べる', '食べた', 'タベタ')).toBe('たべる');
@@ -245,57 +264,5 @@ describe('lemmaReading', () => {
     expect(lemmaReading('食べる', '食べた')).toBeUndefined();
     expect(lemmaReading('分かる', '判った', 'ワカッタ')).toBeUndefined();
     expect(lemmaReading('食べる', '食べた', 'tabeta')).toBeUndefined();
-  });
-});
-
-describe('hand marks', () => {
-  it('keeps marks in local storage, not sync, whose 8 KB item limit a few hundred marks exhausted', async () => {
-    expect(await setOverride('猫', 'known')).toBe(true);
-    expect(store.local['libregaku.overrides']).toEqual({ 猫: 'known' });
-    expect(store.api.sync.set).not.toHaveBeenCalled();
-    expect(await loadOverrides()).toEqual(new Map([['猫', 'known']]));
-  });
-
-  it('brings the old sync item over once, dropping legacy learning values, then removes it', async () => {
-    store.sync['libregaku.overrides'] = { 食べる: 'learning', 猫: 'known', 犬: 'ignored' };
-    expect(await loadOverrides()).toEqual(new Map([['猫', 'known'], ['犬', 'ignored']]));
-    expect(store.local['libregaku.overrides']).toEqual({ 猫: 'known', 犬: 'ignored' });
-    expect(store.local['libregaku.overrides.migrated']).toBe(true);
-    expect(store.sync['libregaku.overrides']).toBeUndefined();
-  });
-
-  it('lets a mark written locally win over the sync copy', async () => {
-    store.sync['libregaku.overrides'] = { 猫: 'known' };
-    store.local['libregaku.overrides'] = { 猫: 'ignored' };
-    expect((await loadOverrides()).get('猫')).toBe('ignored');
-  });
-
-  it('never brings back a cleared mark, even when the sync copy could not be removed', async () => {
-    store.sync['libregaku.overrides'] = { 猫: 'known' };
-    store.api.sync.remove.mockRejectedValueOnce(new Error('sync unavailable'));
-    expect(await setOverride('猫', null)).toBe(true);
-    expect(store.sync['libregaku.overrides']).toEqual({ 猫: 'known' });
-    expect(await loadOverrides()).toEqual(new Map());
-  });
-
-  it('reports a write that failed instead of swallowing it', async () => {
-    store.api.local.set.mockRejectedValueOnce(new Error('QUOTA_BYTES quota exceeded'));
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
-    store.local['libregaku.overrides.migrated'] = true;
-    expect(await setOverride('猫', 'known')).toBe(false);
-  });
-
-  it('never writes back a map it failed to read, which would erase every other mark', async () => {
-    store.local = { 'libregaku.overrides': { 犬: 'ignored' }, 'libregaku.overrides.migrated': true };
-    store.api.local.get.mockRejectedValueOnce(new Error('storage unavailable'));
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
-    expect(await setOverride('猫', 'known')).toBe(false);
-    expect(store.local['libregaku.overrides']).toEqual({ 犬: 'ignored' });
-  });
-
-  it('does not let two quick marks overwrite each other', async () => {
-    const both = await Promise.all([setOverride('猫', 'known'), setOverride('犬', 'ignored')]);
-    expect(both).toEqual([true, true]);
-    expect(store.local['libregaku.overrides']).toEqual({ 猫: 'known', 犬: 'ignored' });
   });
 });

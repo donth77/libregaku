@@ -83,7 +83,7 @@ export const vi: HelpTranslation = {
                 ['`B`', 'Lưu dòng hiện tại'],
                 ['`S`', 'Hiện hoặc ẩn bảng chép lời'],
                 ['`H`', 'Làm mờ hoặc bỏ làm mờ phụ đề'],
-                ['`R`', 'Chuyển furigana: tắt, từ mới, tất cả (Tiếng Nhật)'],
+                ['`R`', 'Chuyển furigana hoặc pinyin: tắt, từ mới, tất cả (tiếng Nhật, tiếng Trung)'],
                 ['`Shift`', 'Giữ để tra từ dưới con trỏ, khi {Cài đặt → Tra từ → Tra từ khi} được đặt là “Di chuột qua khi giữ Shift”'],
                 ['`Esc`', 'Đóng cửa sổ tra từ'],
               ],
@@ -132,6 +132,7 @@ export const vi: HelpTranslation = {
           title: 'Chọn bộ thẻ',
           body: [
             'Thẻ mới được thêm vào bộ thẻ trong {Cài đặt → Anki → Thêm thẻ mới vào}.',
+            'Mỗi ngôn ngữ bạn học có bộ thẻ riêng. Cho đến khi bạn chọn một bộ thẻ, thẻ của ngôn ngữ đó được thêm vào bộ thẻ tạo riêng cho nó cùng với thẻ đầu tiên: Libregaku-JA cho tiếng Nhật, Libregaku-ES cho tiếng Tây Ban Nha. Đổi {Cài đặt → Ngôn ngữ → Ngôn ngữ đang học} thì bộ thẻ cũng đổi theo.',
             'Để đổi trong lúc xem, hãy bật {Cài đặt → Cửa sổ tra từ → Menu bộ thẻ}. Nút ▾ sẽ xuất hiện cạnh “Thêm vào Anki”; chọn “Thêm vào” một bộ thẻ sẽ thêm thẻ vào đó, và các thẻ tiếp theo cũng vào đó.',
             { tip: 'Trạng thái của từ được xác định theo {Cài đặt → Anki → Nguồn từ đã biết}. Nếu thẻ mới được thêm vào một bộ thẻ không nằm trong nguồn này, Cài đặt sẽ báo cho bạn.' },
           ],
@@ -163,6 +164,7 @@ export const vi: HelpTranslation = {
           title: 'Xem và đổi các từ đã đánh dấu',
           body: [
             'Trong bảng chép lời, tab “Từ” liệt kê các từ bạn theo dõi, đánh dấu đã biết hoặc bỏ qua, mỗi loại một danh sách. Mỗi từ có một nút để bỏ đánh dấu — “Không bỏ qua nữa”, với từ đã bỏ qua — và từ đang theo dõi có thể được tạo thẻ ngay tại đó.',
+            'Mỗi ngôn ngữ có danh sách riêng. Tab “Từ” và tab “Đã lưu” hiển thị danh sách của ngôn ngữ bạn đang học, và một từ được đánh dấu ở ngôn ngữ này không được đánh dấu ở ngôn ngữ khác.',
             'Mỗi danh sách có ô tìm kiếm, cùng nút “Sao chép” và “Xuất tệp” để lấy danh sách dưới dạng tệp mà Anki và bảng tính mở được.',
           ],
           keywords: ['danh sách theo dõi', 'danh sách', 'đã bỏ qua', 'đã biết', 'bỏ đánh dấu', 'từ', 'excel', 'watchlist'],
@@ -281,8 +283,19 @@ export const vi: HelpTranslation = {
           title: 'Sao nghĩa chỉ có ở một số ngôn ngữ?',
           body: [
             'Với tiếng Nhật, nghĩa lấy từ JMdict, vốn có nghĩa bằng chín ngôn ngữ. Nếu ngôn ngữ của bạn không nằm trong số đó, {Cài đặt → Ngôn ngữ} sẽ có thêm một hàng thứ hai, “Hiện nghĩa bằng”, để chọn ngôn ngữ dùng thay thế.',
+            'Từ điển tiếng Trung, tiếng Hàn và tiếng Tây Ban Nha chỉ được viết bằng tiếng Anh.',
           ],
           keywords: ['nghĩa', 'định nghĩa', 'ngôn ngữ', 'jmdict', 'tiếng hungary', 'tiếng slovenia', 'tiếng anh', 'cc-cedict', 'wiktionary'],
+        },
+        {
+          id: 'q-languages',
+          title: 'Tôi có thể học những ngôn ngữ nào?',
+          body: [
+            'Tiếng Nhật, tiếng Trung, tiếng Hàn và tiếng Tây Ban Nha có từ điển, và một từ được khớp với thẻ của nó dù được nói ở dạng nào: 갔어요 tìm thấy thẻ của 가다, còn hablábamos tìm thấy thẻ của hablar. Tiếng Nhật hiện furigana phía trên từ, còn tiếng Trung hiện pinyin.',
+            'Các ngôn ngữ khác trong {Cài đặt → Ngôn ngữ → Ngôn ngữ đang học} được ghi là “hạn chế”. Từ của các ngôn ngữ này được tách ra, nhưng chưa có từ điển.',
+            'Từ điển của một ngôn ngữ được tải về vào lần đầu bạn chọn ngôn ngữ đó. Dung lượng từ 11 đến 27 MB.',
+          ],
+          keywords: ['ngôn ngữ', 'tiếng hàn', 'tiếng trung', 'tiếng quan thoại', 'tiếng tây ban nha', 'tiếng nhật', 'pinyin', 'hạn chế', 'được hỗ trợ'],
         },
         {
           id: 'q-data',

@@ -46,6 +46,18 @@ export interface Entry {
   uk?: boolean;
   /** The kanji spelling behind a kana headword, for display beside it. */
   kanji?: string;
+  /**
+   * What kind of word it is, for the card to say under the headword, as the
+   * dictionary's own codes: ['v', 'n', 'masc'] for a word that is a verb and
+   * a masculine noun. For a dictionary whose entry gathers several parts of
+   * speech; without it the card names the first sense's.
+   */
+  kind?: string[];
+  /**
+   * The headword in the language's other script, where it has two: the
+   * traditional form of a simplified Chinese word, or the reverse.
+   */
+  alt?: string;
 }
 
 /**

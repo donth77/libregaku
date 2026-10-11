@@ -38,9 +38,23 @@ export interface Token {
   punct?: boolean;
 }
 
+/** A stretch of a word, and the reading drawn above it. */
+export interface RubySegment {
+  text: string;
+  /** Absent when the stretch needs no annotation. */
+  ruby?: string;
+}
+
 export interface Segmenter {
   readonly tier: 0 | 1 | 2;
   /** Whether this segmenter can supply `lemma`. The UI must say when it can't. */
   readonly hasLemma: boolean;
   segment(text: string): Token[] | Promise<Token[]>;
+  /**
+   * A word in pieces, each with the reading that goes above it: kana over
+   * kanji, a syllable of pinyin over each character. One bare piece where the
+   * language draws nothing above its words. What draws a line asks this, so
+   * it never has to know which language it is drawing.
+   */
+  ruby(surface: string, reading?: string): RubySegment[];
 }

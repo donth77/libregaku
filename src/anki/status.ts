@@ -127,6 +127,16 @@ function raise(map: Map<string, Status>, key: string, status: Status): void {
 }
 
 /**
+ * A spelling as cards are matched by it: capitals and the way an accent is
+ * encoded say nothing about which word it is. A card written Hola is the hola
+ * in a subtitle, and é typed as one character is the é typed as two. Scripts
+ * with neither are left exactly as they are.
+ */
+function spelled(word: string): string {
+  return word.normalize('NFC').toLowerCase();
+}
+
+/**
  * Notes indexed by how the word is written and by how it is read.
  *
  * Exact spelling alone missed the commonest case in subtitles: a word the
@@ -156,7 +166,7 @@ class StatusIndex implements StatusMap {
     if (!raw) return;
     const word = strip(raw);
     if (!word) return;
-    raise(this.#byWord, word, status);
+    raise(this.#byWord, spelled(word), status);
 
     const kana = phonetic(word);
     if (kana) {
@@ -169,7 +179,7 @@ class StatusIndex implements StatusMap {
   }
 
   get(word: string, reading?: string): Status {
-    let best = this.#byWord.get(word);
+    let best = this.#byWord.get(spelled(word));
     const kana = phonetic(word);
     if (kana) {
       best = higher(best, this.#byReading.get(kana));
@@ -257,12 +267,5 @@ export function lemmaReading(lemma: string, surface: string, surfaceReading?: st
   if (st === null || lt === null || !reading.endsWith(st)) return undefined;
   return reading.slice(0, reading.length - st.length) + lt;
 }
-
-/*
- * Words marked by hand live in marks.ts, which keeps them in this browser and
- * writes them into Anki as notes of their own. Re-exported so callers that
- * predate it keep working.
- */
-export { loadOverrides, setOverride } from './marks';
 
 export { ROOT_TAG };

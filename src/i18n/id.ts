@@ -21,6 +21,7 @@ const MEDIA_NAME = { audio: 'Audio', video: 'Video', picture: 'Gambar' } as cons
 export const id: Translation = {
   common: {
     furigana: (mode: Settings['ruby']): string => `Furigana: ${RUBY[mode]}`,
+    pinyin: (mode: Settings['ruby']): string => `Pinyin: ${RUBY[mode]}`,
     sentenceGap: ' ',
   },
 
@@ -31,6 +32,8 @@ export const id: Translation = {
     target: 'Saya belajar',
     targetLimited: (language: string): string => `${language} — terbatas`,
     supportFull: 'Dukungan penuh, termasuk cara baca dan furigana.',
+    supportPinyin: 'Dukungan penuh, termasuk pinyin. Definisi dalam bahasa Inggris.',
+    supportWords: 'Dukungan penuh. Definisi dalam bahasa Inggris.',
     supportBasic: 'Dukungan dasar: kata-kata dipisahkan, tetapi belum ada kamus atau cara baca.',
     native: 'Bahasa Anda',
     nativeHint: 'Terjemahan dan definisi ditampilkan dalam bahasa ini, jika video dan kamus menyediakannya.',
@@ -65,6 +68,8 @@ export const id: Translation = {
     cardAddLineHint: 'Menambahkan tombol yang membuat kartu dari seluruh kalimat, lengkap dengan audio dan screenshot.',
     cardKanji: 'Rincian kanji',
     cardKanjiHint: 'Menampilkan arti dan cara baca setiap kanji.',
+    cardHanzi: 'Rincian karakter',
+    cardHanziHint: 'Menampilkan arti dan cara baca setiap karakter.',
     lookupElsewhere: 'Contoh dari video ini',
     lookupElsewhereHint: 'Menampilkan kalimat lain di video ini yang memakai kata tersebut. Klik salah satunya untuk memutarnya.',
 
@@ -76,6 +81,8 @@ export const id: Translation = {
     rubyAlways: 'Semua',
     rubyNever: 'Nonaktif',
     rubyHint: 'Cara baca di atas kanji. Tekan R untuk beralih saat menonton.',
+    pinyin: 'Pinyin',
+    pinyinHint: 'Cara baca di atas karakter. Tekan R untuk beralih saat menonton.',
     blurPrimary: 'Buramkan subtitel',
     blurPrimaryHint:
       'Untuk latihan mendengar: subtitel tetap buram sampai Anda mengarahkan kursor ke sana. Tekan H untuk beralih.',
@@ -211,7 +218,12 @@ export const id: Translation = {
       'Data kamus dan kanji © Electronic Dictionary Research and Development Group, digunakan dengan lisensi ' +
       'CC BY-SA 4.0. Dikemas ulang sebagai JSON oleh jmdict-simplified.',
     creditLindera:
-      'Memecah bahasa Jepang menjadi kata. Lisensi MIT; IPADIC memiliki ketentuannya sendiri.',
+      'Memisahkan bahasa Jepang, Korea, dan Tionghoa menjadi kata. Lisensi MIT; IPADIC, mecab-ko-dic, dan CC-CEDICT ' +
+      'punya ketentuan sendiri.',
+    creditCedict: 'Kamus bahasa Tionghoa © MDBG dan para kontributornya, digunakan dengan lisensi CC BY-SA 4.0.',
+    creditWiktionary:
+      'Kamus bahasa Korea dan Spanyol, dari Wiktionary melalui kaikki.org dan wiktionary-to-yomitan. CC BY-SA 4.0.',
+    creditUnihan: 'Cara baca karakter Tionghoa yang ditampilkan pertama. © Unicode, Inc., digunakan dengan Unicode License.',
     creditJotoba: 'Dipakai untuk pencarian selama kamus diunduh. Keduanya memakai JMdict.',
     creditLucide: 'Ikon. Lisensi ISC.',
     licence: 'Libregaku berlisensi MIT. Data kamus diunduh dari sumbernya, tidak disertakan.',
@@ -225,6 +237,7 @@ export const id: Translation = {
     keyAdd: 'Tambahkan kata di pop-up ke Anki',
     keyKnown: 'Tandai kata di pop-up sebagai dikenal',
     keyFurigana: 'Ganti furigana: nonaktif, kata baru, semua',
+    keyPinyin: 'Ganti pinyin: nonaktif, kata baru, semua',
     keyBlur: 'Buramkan atau perjelas subtitel',
     keySave: 'Simpan baris saat ini',
     keyTranscript: 'Tampilkan atau sembunyikan panel transkrip',
@@ -405,6 +418,7 @@ export const id: Translation = {
     // The card, and the word at its head
     cardLabel: (word: string): string => `${word} — kamus`,
     commonBadge: 'umum',
+    characterNames: { kanji: 'Kanji', hanzi: 'Karakter' },
     partOfSpeech: {
       n: 'kata benda', 'n-adv': 'kata benda adverbial', 'n-t': 'kata benda waktu', 'n-suf': 'sufiks kata benda',
       'n-pref': 'prefiks kata benda', pn: 'kata ganti', 'adj-i': 'kata sifat -i', 'adj-na': 'kata sifat -na',
@@ -418,6 +432,22 @@ export const id: Translation = {
       v5m: 'kata kerja godan', v5n: 'kata kerja godan', v5r: 'kata kerja godan', 'v5r-i': 'kata kerja godan',
       v5s: 'kata kerja godan', v5t: 'kata kerja godan', v5u: 'kata kerja godan', 'v5u-s': 'kata kerja godan',
       v5aru: 'kata kerja godan',
+      // Wiktionary's codes, for Korean and Spanish words: what kind of word, then its grammar
+      name: 'nama diri', v: 'kata kerja', adj: 'kata sifat', pron: 'kata ganti', det: 'penentu', artic: 'kata sandang',
+      counter: 'kata penggolong', prep: 'kata depan', 'prep-phrase': 'frasa preposisional', ptcl: 'partikel',
+      intj: 'kata seru', phrase: 'frasa', prov: 'peribahasa', r: 'akar kata', char: 'karakter', adn: 'adnominal',
+      ptcpl: 'partisip', contr: 'kontraksi',
+      masc: 'maskulin', fem: 'feminin', neut: 'netral', sg: 'tunggal', pl: 'jamak', 'pl-only': 'hanya jamak',
+      count: 'terbilang', uncount: 'tak terbilang', vr: 'refleksif', vdt: 'dwitransitif', impers: 'impersonal',
+      irreg: 'tak beraturan', reltnl: 'relasional', reltv: 'relatif', interr: 'interogatif', poss: 'posesif',
+      dim: 'diminutif', aug: 'augmentatif', onoma: 'onomatope',
+      // And how or when the word is used
+      idio: 'idiomatis', fig: 'kiasan', literal: 'harfiah', col: 'percakapan', inf: 'informal', fam: 'akrab',
+      formal: 'formal', polite: 'sopan', lit: 'sastra', poet: 'puitis', rhet: 'retoris', sl: 'slang',
+      vulg: 'vulgar', derog: 'merendahkan', offens: 'kasar', humor: 'jenaka', euph: 'eufemisme',
+      child: 'bahasa anak', net: 'internet', neol: 'neologisme', cmn: 'umum', uncmmn: 'kurang umum', rare: 'jarang',
+      dated: 'agak kuno', arch: 'arkais', obs: 'usang', hist: 'historis', 'non-std': 'tidak baku',
+      dialect: 'dialek', regio: 'regional',
     },
 
     // The row of icon buttons under the word
@@ -669,6 +699,12 @@ export const id: Translation = {
 
     // A track's name
     forcedTrack: (track: string): string => `${track} (paksa)`,
+
+    // The dictionary and the analyser
+    noAnswer: 'ekstensi tidak menjawab — muat ulang halaman untuk memulainya lagi',
+    analyserLoading: 'penganalisis masih dimuat',
+    dictionaryLoading: 'kamus masih dimuat',
+    lookupFailed: 'pencarian gagal',
   },
 
   grammar: {
@@ -755,5 +791,76 @@ export const id: Translation = {
     thoroughly: 'mendalam',
     around: 'ke sana kemari',
     'non-stop': 'tanpa henti',
+
+    // Forms of a Spanish word
+    or: 'atau',
+    'first-person': 'orang pertama',
+    'second-person': 'orang kedua',
+    'third-person': 'orang ketiga',
+    singular: 'tunggal',
+    plural: 'jamak',
+    masculine: 'maskulin',
+    feminine: 'feminin',
+    present: 'kala kini',
+    preterite: 'preterit',
+    imperfect: 'imperfek',
+    'imperfect-se': 'imperfek (-se)',
+    future: 'kala depan',
+    'conditional-mood': 'kondisional',
+    indicative: 'indikatif',
+    subjunctive: 'subjungtif',
+    infinitive: 'infinitif',
+    gerund: 'gerundium',
+    participle: 'partisip',
+    formal: 'formal',
+    informal: 'informal',
+    'with-tú': 'dengan tú',
+    'with-vos': 'dengan vos',
+    'vos-form': 'bentuk vos',
+    voseo: 'voseo',
+    'second-person-semantically': 'bermakna “Anda”',
+    accusative: 'dengan objek langsung',
+    dative: 'dengan objek tak langsung',
+    'object-first-person': 'objek orang pertama',
+    'object-second-person': 'objek orang kedua',
+    'object-third-person': 'objek orang ketiga',
+    'object-singular': 'objek tunggal',
+    'object-plural': 'objek jamak',
+    diminutive: 'diminutif',
+    augmentative: 'augmentatif',
+    superlative: 'superlatif',
+    alternative: 'varian',
+    'alt-of': 'ejaan lain',
+
+    // Korean endings
+    honorific: 'honorifik',
+    'future or guess': 'akan atau dugaan',
+    'formal polite': 'sopan formal',
+    question: 'pertanyaan',
+    but: 'tetapi',
+    "let's": 'ajakan',
+    plain: 'bentuk biasa',
+    'shall we, or I wonder': 'bagaimana kalau, atau kira-kira',
+    'I will': 'janji',
+    'just noticed': 'baru sadar',
+    'as you know': 'seperti kamu tahu',
+    and: 'dan',
+    'because, or and then': 'karena, atau lalu',
+    'but, or given that': 'tetapi, atau mengingat',
+    'even if': 'meskipun',
+    whether: 'apakah',
+    'adverb form': 'bentuk kata keterangan',
+    quoting: 'kutipan',
+    'used to': 'dulu biasa',
+    topic: 'topik',
+    subject: 'subjek',
+    object: 'objek',
+    possessive: 'posesif',
+    'come to': 'akhirnya',
+    when: 'ketika',
+    modifier: 'penjelas kata benda',
+    'noun form': 'bentuk kata benda',
+    becomes: 'menjadi',
+    'have done before': 'pernah',
   },
 };

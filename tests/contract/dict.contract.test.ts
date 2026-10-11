@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { describeFailure } from '../../src/assumptions';
 import { toEntries as jishoEntries } from '../../src/dict/jisho';
 import { toEntries as jotobaEntries } from '../../src/dict/jotoba';
+import { parseLine } from '../../src/dict/cedict';
+import { gunzipText } from '../../src/dict/download';
+import { CEDICT_URL, wtyUrl } from '../../src/dict/sources';
 import { jmdictUrl, kanjidicUrl } from '../../src/dict/store';
+import { readRow } from '../../src/dict/wty';
+import { zipFiles } from '../../src/dict/zip';
 import { LINDERA_DICTS } from '../../src/morphology/dictionaries';
 import { fetchCheckingHops } from './hosts';
 
@@ -29,12 +34,44 @@ describe('dictionary contract', () => {
     expect(res.ok, `${kanjidicUrl()} returned HTTP ${res.status}.\n${describeFailure('dict.kanjidic-release')}`).toBe(true);
   }, 60_000);
 
-  it('dict.lindera-release — the pinned IPADIC build is still downloadable', async () => {
+  it('dict.lindera-release — the pinned analyser dictionaries are still downloadable', async () => {
     for (const [name, url] of Object.entries(LINDERA_DICTS)) {
       const res = await fetchCheckingHops(url, { method: 'HEAD' }, describeFailure('dict.lindera-release'));
       expect(res.ok, `${name}: ${url} returned HTTP ${res.status}.\n${describeFailure('dict.lindera-release')}`).toBe(true);
     }
   }, 60_000);
+
+  it('dict.wty-release — the pinned Wiktionary dictionaries are still downloadable, and read as the reader reads them', async () => {
+    const why = describeFailure('dict.wty-release');
+    for (const language of ['es', 'ko'] as const) {
+      const res = await fetchCheckingHops(wtyUrl(language, 'en'), { method: 'HEAD' }, why);
+      expect(res.ok, `${wtyUrl(language, 'en')} returned HTTP ${res.status}.\n${why}`).toBe(true);
+    }
+    // The real file, not only its address: the smaller of the two, whole.
+    const res = await fetchCheckingHops(wtyUrl('ko', 'en'), {}, why);
+    const number = (name: string): number => Number(/(\d+)\.json$/.exec(name)?.[1] ?? 0);
+    const banks = zipFiles(new Uint8Array(await res.arrayBuffer()))
+      .filter((f) => /^term_bank_\d+\.json$/.test(f.name))
+      .sort((a, b) => number(a.name) - number(b.name));
+    expect(banks.length, why).toBeGreaterThan(1);
+    // The file holds its words first, then their inflected forms.
+    const read = async (bank: (typeof banks)[number]) =>
+      (JSON.parse(new TextDecoder().decode(await bank.bytes())) as unknown[]).map((row, i) => readRow(row, String(i)));
+    const words = await read(banks[0]!);
+    const forms = await read(banks[banks.length - 1]!);
+    expect(words.filter((r) => r && 'entry' in r).length, why).toBeGreaterThan(100);
+    expect(forms.filter((r) => r && 'inflection' in r).length, why).toBeGreaterThan(100);
+  }, 240_000);
+
+  it('dict.cedict — CC-CEDICT is still published, an entry to a line', async () => {
+    const why = describeFailure('dict.cedict');
+    const res = await fetchCheckingHops(CEDICT_URL, {}, why);
+    expect(res.ok, `${CEDICT_URL} returned HTTP ${res.status}.\n${why}`).toBe(true);
+    const text = await gunzipText(new Uint8Array(await res.arrayBuffer()));
+    const rows = text.split('\n').map(parseLine).filter((r) => r !== null);
+    expect(rows.length, why).toBeGreaterThan(100_000);
+    expect(rows.find((r) => r.simplified === '学校'), why).toMatchObject({ traditional: '學校', pinyin: 'xue2 xiao4' });
+  }, 240_000);
 
   it('dict.jotoba — word search still answers in the shape we read', async () => {
     const res = await fetchCheckingHops(

@@ -6,6 +6,7 @@ import {
 import { localeOf } from '../languages';
 import { grammar } from '../en/grammar';
 import { GRAMMAR_LABELS } from '../../morphology/merge';
+import { KO_GRAMMAR_LABELS } from '../../morphology/merge-ko';
 import { browserLanguage, trackLanguageMatch } from '../../settings';
 
 /**
@@ -91,6 +92,7 @@ describe("an ending's name", () => {
   it('is in the table for every ending the Japanese and Korean analysers name', () => {
     const names = Object.keys(grammar);
     expect(names).toEqual(expect.arrayContaining([...GRAMMAR_LABELS]));
+    expect(names).toEqual(expect.arrayContaining([...KO_GRAMMAR_LABELS]));
   });
 
   it('is its own where it has one, and otherwise each word named alone', () => {

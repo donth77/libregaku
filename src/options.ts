@@ -1,7 +1,7 @@
 import { PANEL_STYLE, buildSettings } from './content/settings-panel';
 import { loadUiLanguage, localize, onUiLanguageChange, setTranslationLoader, setUiLanguage, ui } from './i18n';
 import { logo } from './logo';
-import { loadSettings, onSettingsChange, setSetting, settings, type Settings } from './settings';
+import { cardDeck, loadSettings, onSettingsChange, setSetting, settings } from './settings';
 
 /**
  * Options page.
@@ -18,8 +18,12 @@ import { loadSettings, onSettingsChange, setSetting, settings, type Settings } f
  * A deck in settings is not proof anyone chose it: the settings panel used to
  * fill in the first deck Anki listed, and the checklist ticked itself on
  * that. So the step waits for a choice made here — picking from the list, or
- * confirming the deck already set — and stays open if the deck later changes
- * without one.
+ * confirming the deck on offer.
+ *
+ * Once made, it stays made. The step used to open again whenever the deck in
+ * settings was not the one chosen here, which is every time another language
+ * is learned: each has decks of its own. That brought "Get started" back for
+ * someone long since started.
  */
 const CHOSEN = 'libregaku.deckChosen';
 
@@ -40,9 +44,9 @@ async function saveChosen(deck: string): Promise<void> {
   }
 }
 
-/** Done once a deck is set and it is the one the learner chose. */
-export function deckStepDone(cur: Pick<Settings, 'deck'>, chosen: string): boolean {
-  return Boolean(cur.deck) && cur.deck === chosen;
+/** Done once the learner has chosen a deck here, whichever deck and language are in use now. */
+export function deckStepDone(chosen: string): boolean {
+  return Boolean(chosen);
 }
 
 /**
@@ -223,9 +227,10 @@ async function main(): Promise<void> {
 
   /*
    * A first run needs two decisions and nothing else. The language pair cannot
-   * be guessed; the deck cannot either, and without one the Add button has
-   * nowhere to put a card. Everything else on this page has a defensible
-   * default, so the checklist covers exactly these two and then disappears.
+   * be guessed. Nor can the deck: each language has one of its own for new
+   * cards (cardDeck), and whether to use it or one the learner already has is
+   * theirs to say. Everything else on this page has a defensible default, so
+   * the checklist covers exactly these two and then disappears for good.
    */
   const setup = document.getElementById('setup') as HTMLElement;
   const stepLang = document.getElementById('step-lang') as HTMLElement;
@@ -249,24 +254,22 @@ async function main(): Promise<void> {
     const t = e.target as HTMLSelectElement | null;
     if (t?.name === 'deck' && t.value) choose(t.value);
   });
-  // Keeping the deck already set is one too, but only an explicit one.
-  confirmDeck.addEventListener('click', () => {
-    const deck = settings().deck;
-    if (deck) choose(deck);
-  });
+  // Keeping the deck on offer is one too, but only an explicit one. Nothing
+  // is written for the language's own deck: its first card makes it.
+  confirmDeck.addEventListener('click', () => choose(cardDeck(settings())));
 
   function refreshSetup(): void {
     const cur = settings();
     const langDone = Boolean(cur.configured);
-    const ankiDone = deckStepDone(cur, chosen);
+    const ankiDone = deckStepDone(chosen);
     stepLang.classList.toggle('done', langDone);
     stepAnki.classList.toggle('done', ankiDone);
     (stepLang.querySelector('.tick') as HTMLElement).textContent = langDone ? '✓' : '1';
     (stepAnki.querySelector('.tick') as HTMLElement).textContent = ankiDone ? '✓' : '2';
     confirm.hidden = langDone;
-    // Offer to keep a deck only when there is one to keep.
-    confirmDeck.hidden = ankiDone || !cur.deck;
-    confirmDeck.textContent = cur.deck ? ui.options.keepDeck(cur.deck) : '';
+    // The deck to keep: the one set, or the language's own until one is.
+    confirmDeck.hidden = ankiDone;
+    confirmDeck.textContent = ui.options.keepDeck(cardDeck(cur));
     setup.hidden = langDone && ankiDone;
   }
 

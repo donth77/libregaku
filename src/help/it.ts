@@ -83,7 +83,7 @@ export const it: HelpTranslation = {
                 ['`B`', 'Salva la riga corrente'],
                 ['`S`', 'Mostra o nascondi il pannello della trascrizione'],
                 ['`H`', 'Attiva o disattiva la sfocatura dei sottotitoli'],
-                ['`R`', 'Cambia furigana: disattivato, parole nuove, tutte le parole (giapponese)'],
+                ['`R`', 'Cambia furigana o pinyin: disattivato, parole nuove, tutte le parole (giapponese, cinese)'],
                 ['`Shift`', 'Tieni premuto per cercare la parola sotto il puntatore, quando {Impostazioni → Ricerca delle parole → Cerca le parole con} è impostato su Passaggio del mouse con Shift premuto'],
                 ['`Esc`', 'Chiudi il popup'],
               ],
@@ -132,6 +132,7 @@ export const it: HelpTranslation = {
           title: 'Scegliere il mazzo',
           body: [
             'Le nuove carte vanno nel mazzo scelto in {Impostazioni → Anki → Mazzo per le nuove carte}.',
+            'Ogni lingua che studi ha il suo mazzo. Finché non ne scegli uno, le sue carte vanno in un mazzo creato per quella lingua con la prima carta: Libregaku-JA per il giapponese, Libregaku-ES per lo spagnolo. Se cambi {Impostazioni → Lingue → Sto imparando} cambia anche il mazzo.',
             'Per cambiarlo mentre guardi, attiva {Impostazioni → Popup della parola → Menu dei mazzi}. Accanto ad Aggiungi ad Anki compare un ▾; “Aggiungi a” un mazzo aggiunge lì la carta e ci manda anche le successive.',
             { tip: 'Lo stato delle parole viene letto da {Impostazioni → Anki → Leggi le parole conosciute da}. Se le nuove carte vanno in un mazzo che non viene letto, Impostazioni te lo segnala.' },
           ],
@@ -163,6 +164,7 @@ export const it: HelpTranslation = {
           title: 'Vedere e cambiare le parole segnate',
           body: [
             'Nel pannello della trascrizione, la scheda Parole elenca le parole che segui, che hai segnato come conosciute o che ignori, un elenco per ciascun tipo. Ogni parola ha un pulsante per togliere il suo contrassegno (Smetti di ignorare, per una parola ignorata), e da lì una parola seguita può diventare una carta.',
+            'Ogni lingua ha i suoi elenchi. Le schede Parole e Salvate mostrano quelli della lingua che stai imparando, e una parola contrassegnata in una lingua non lo è in un’altra.',
             'Ogni elenco ha una casella di ricerca e i pulsanti Copia ed Esporta, che ti danno l’elenco in un file che Anki e i fogli di calcolo sanno aprire.',
           ],
           keywords: ['lista', 'watchlist', 'seguite', 'conosciute', 'ignorate', 'togliere contrassegno', 'foglio di calcolo', 'excel'],
@@ -281,8 +283,19 @@ export const it: HelpTranslation = {
           title: 'Perché le definizioni sono solo in alcune lingue?',
           body: [
             'Per il giapponese vengono da JMdict, che ha definizioni in nove lingue. Se la tua non è tra queste, {Impostazioni → Lingue} mostra una seconda riga, Definizioni in, per scegliere la lingua da usare al suo posto.',
+            'I dizionari di cinese, coreano e spagnolo sono scritti solo in inglese.',
           ],
           keywords: ['dizionario', 'significati', 'italiano', 'ungherese', 'sloveno', 'cc-cedict', 'wiktionary', 'wikizionario'],
+        },
+        {
+          id: 'q-languages',
+          title: 'Quali lingue posso imparare?',
+          body: [
+            'Giapponese, cinese, coreano e spagnolo hanno un dizionario, e una parola viene collegata alla sua carta in qualunque forma sia detta: 갔어요 trova una carta di 가다, e hablábamos una di hablar. Il giapponese mostra il furigana sopra le parole, e il cinese il pinyin.',
+            'Le altre lingue in {Impostazioni → Lingue → Sto imparando} sono indicate come limitate. Le loro parole vengono separate, ma non hanno ancora un dizionario.',
+            'Il dizionario di una lingua viene scaricato la prima volta che la scegli. Pesa da 11 a 27 MB.',
+          ],
+          keywords: ['coreano', 'mandarino', 'spagnolo', 'giapponese', 'limitate', 'supportate', 'disponibili', 'dimensione'],
         },
         {
           id: 'q-data',

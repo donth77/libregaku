@@ -96,10 +96,25 @@ describe('saved lines', () => {
     await bm.add({ ...line(20, 'new'), id: 'b', site: 'youtube', video: 'v2', savedAt: 900 });
     await bm.add({ ...line(5, 'older same video'), id: 'c', site: 'netflix', video: 'v1', savedAt: 50 });
 
-    const groups = await bm.grouped();
+    const groups = await bm.grouped('ja');
     expect(groups.map((g) => g.video)).toEqual(['v2', 'v1']);
     // Inside a group the lines read like a shortened transcript.
     expect(groups[1]!.lines.map((b) => b.start)).toEqual([5, 10]);
+  });
+
+  it('keeps each language’s lines apart', async () => {
+    // A learner of two languages: the saved view lists the one being learned,
+    // and its lines all go to that language's deck.
+    const bm = await load();
+    await bm.add({ ...line(10, 'これは'), id: 'a', video: 'v1' });
+    await bm.add({ ...line(20, 'hola'), id: 'b', video: 'v2', lang: 'es' });
+    await bm.add({ ...line(30, 'adiós'), id: 'c', video: 'v1', lang: 'es' });
+
+    expect((await bm.inLanguage('es')).map((b) => b.text)).toEqual(['hola', 'adiós']);
+    expect((await bm.grouped('ja')).map((g) => g.lines.map((b) => b.text))).toEqual([['これは']]);
+    // One video watched in both languages is a group in each, with its own lines.
+    expect((await bm.grouped('es')).flatMap((g) => g.lines.map((b) => b.text)).sort()).toEqual(['adiós', 'hola']);
+    expect(await bm.grouped('ko')).toEqual([]);
   });
 
   it('survives a reload by reading back what was written', async () => {

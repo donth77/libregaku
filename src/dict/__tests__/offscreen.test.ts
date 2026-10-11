@@ -2,12 +2,36 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 /**
  * The offscreen document's message handling: one shared analyser load, a
- * stored dictionary that recovers from a partial write, IPADIC-only column
- * reading, and dictionary lookups that stay local once they can.
+ * stored dictionary that recovers from a partial write, each analyser
+ * dictionary read by its own columns, a word dictionary for each language,
+ * and lookups that stay local once they can.
  *
  * lindera, OPFS, IndexedDB and the network are all stood in for; what is
  * under test is src/offscreen.ts deciding what to do with them.
  */
+
+/** What the analyser returns for a line, as each dictionary lays its columns out. */
+const lindera = vi.hoisted(() => ({
+  free: (() => undefined) as () => void,
+  rows: {
+    // 一 + 回: a number and its counter, which merging asks the dictionary about.
+    一回: [
+      { surface: '一', details: ['名詞', '数', '*', '*', '*', '*', '一', 'イチ', 'イチ'] },
+      { surface: '回', details: ['名詞', '接尾', '助数詞', '*', '*', '*', '回', 'カイ', 'カイ'] },
+    ],
+    // ko-dic: tag, meaning, final consonant, reading, type, first tag, last tag, expression.
+    갔어요: [
+      { surface: '갔', details: ['VV+EP', '*', 'T', '갔', 'Inflect', 'VV', 'EP', '가/VV/*+았/EP/*'] },
+      { surface: '어요', details: ['EF', '*', 'F', '어요', '*', '*', '*', '*'] },
+    ],
+    // cc-cedict: four empty part-of-speech columns, then its one reading, both scripts, a definition.
+    去学校了: [
+      { surface: '去', details: ['*', '*', '*', '*', 'qu4', '去', '去', 'to go/'] },
+      { surface: '学校', details: ['*', '*', '*', '*', 'xue2 xiao4', '學校', '学校', 'school/'] },
+      { surface: '了', details: ['*', '*', '*', '*', 'liao4', '瞭', '了', 'unofficial variant of 瞭[liao4]/'] },
+    ],
+  } as Record<string, Array<{ surface: string; details: string[] }>>,
+}));
 
 vi.mock('lindera-wasm', () => ({
   default: vi.fn(async () => undefined),
@@ -17,14 +41,9 @@ vi.mock('lindera-wasm', () => ({
     setMode() { return this; }
     build() {
       return {
-        // 一 + 回: a number and its counter, which merging asks the dictionary about.
-        tokenize: (text: string) =>
-          text === '一回'
-            ? [
-                { surface: '一', details: ['名詞', '数', '*', '*', '*', '*', '一', 'イチ', 'イチ'] },
-                { surface: '回', details: ['名詞', '接尾', '助数詞', '*', '*', '*', '回', 'カイ', 'カイ'] },
-              ]
-            : [{ surface: text, details: ['名詞', '一般', '*', '*', '*', '*', text, 'ヨミ', 'ヨミ'] }],
+        free: lindera.free,
+        tokenize: (text: string) => lindera.rows[text]
+          ?? [{ surface: text, details: ['名詞', '一般', '*', '*', '*', '*', text, 'ヨミ', 'ヨミ'] }],
       };
     }
   },
@@ -36,11 +55,18 @@ vi.mock('lindera-wasm/opfs', () => ({
   removeDictionary: vi.fn(async () => undefined),
 }));
 vi.mock('../store', () => ({
+  // JMdict as a source: the dictionary lookups go to until another language asks for its own.
+  JMDICT: { id: 'jmdict', db: 'libregaku-dict', release: 'test', format: 1, rank: (e: unknown[]) => e, read: async () => [] },
   build: vi.fn(),
   hasStale: vi.fn(async () => false),
   isPopulated: vi.fn(async () => false),
   lexicon: vi.fn(async () => ({})),
   lookup: vi.fn(async () => []),
+  formsOf: vi.fn(async () => ({})),
+  dataMark: vi.fn(async () => null),
+  eachEntry: vi.fn(async () => undefined),
+  storedWords: vi.fn(async () => null),
+  storeWords: vi.fn(async () => undefined),
   hasKanji: vi.fn(async () => false),
   buildKanji: vi.fn(async () => 13000),
   kanjiFor: vi.fn(async () => []),
@@ -52,6 +78,17 @@ const IPADIC_FIELDS = [
   'surface', 'left_context_id', 'right_context_id', 'cost', 'part_of_speech',
   'part_of_speech_subcategory_1', 'part_of_speech_subcategory_2', 'part_of_speech_subcategory_3',
   'conjugation_form', 'conjugation_type', 'base_form', 'reading', 'pronunciation',
+];
+
+const KO_FIELDS = [
+  'surface', 'left_context_id', 'right_context_id', 'cost', 'part_of_speech_tag', 'meaning',
+  'presence_absence', 'reading', 'type', 'first_part_of_speech', 'last_part_of_speech', 'expression',
+];
+
+const ZH_FIELDS = [
+  'surface', 'left_context_id', 'right_context_id', 'cost', 'part_of_speech',
+  'part_of_speech_subcategory_1', 'part_of_speech_subcategory_2', 'part_of_speech_subcategory_3',
+  'pinyin', 'traditional', 'simplified', 'definition',
 ];
 
 const files = (fields = IPADIC_FIELDS) => {
@@ -147,11 +184,47 @@ describe('loading the analyser', () => {
     expect(opfs.downloadDictionary).toHaveBeenCalledTimes(1);
   });
 
-  it('refuses a dictionary whose columns it cannot read', async () => {
+  it('refuses a dictionary it has no reader for, by name', async () => {
     const { send } = await boot();
+    const r = await send({ type: 'load', dict: 'unidic' });
+    expect(r.ok).toBe(false);
+    expect(String(r.error)).toContain('"unidic"');
+    expect(String(r.error)).toContain('ipadic, ko-dic, cc-cedict');
+  });
+
+  it('reads ko-dic by its own columns: a tag, and what a fused unit is made of', async () => {
+    const { send, opfs } = await boot();
+    vi.mocked(opfs.loadDictionaryFiles).mockResolvedValue(files(KO_FIELDS));
+    expect(await send({ type: 'load', dict: 'ko-dic' })).toMatchObject({ ok: true, ready: true, dict: 'ko-dic' });
+    expect(await send({ type: 'tokenize', text: '갔어요' })).toEqual({
+      ok: true,
+      complete: true,
+      tokens: [
+        { surface: '갔', tag: 'VV+EP', type: 'Inflect', expression: '가/VV/*+았/EP/*' },
+        { surface: '어요', tag: 'EF', type: undefined, expression: undefined },
+      ],
+    });
+  });
+
+  it('refuses ko-dic files read as if they were IPADIC, rather than taking tags for dictionary forms', async () => {
+    const { send, opfs } = await boot();
+    vi.mocked(opfs.loadDictionaryFiles).mockResolvedValue(files(IPADIC_FIELDS));
+    vi.mocked(opfs.downloadDictionary).mockResolvedValue(undefined);
     const r = await send({ type: 'load', dict: 'ko-dic' });
     expect(r.ok).toBe(false);
-    expect(String(r.error)).toContain('ipadic');
+    expect(String(r.error)).toContain('part_of_speech_tag');
+  });
+
+  it('reads one language at a time, and gives the last analyser’s memory back', async () => {
+    const { send, opfs } = await boot();
+    lindera.free = vi.fn();
+    await send({ type: 'load', dict: 'ipadic' });
+    expect(lindera.free).not.toHaveBeenCalled();
+    vi.mocked(opfs.loadDictionaryFiles).mockResolvedValue(files(KO_FIELDS));
+    expect(await send({ type: 'load', dict: 'ko-dic' })).toMatchObject({ ok: true, dict: 'ko-dic' });
+    expect(lindera.free).toHaveBeenCalledOnce();
+    // Rows are now read as ko-dic's.
+    expect(await send({ type: 'tokenize', text: '갔어요' })).toMatchObject({ tokens: [{ tag: 'VV+EP' }, { tag: 'EF' }] });
   });
 
   it('refuses IPADIC files whose columns have moved', async () => {
@@ -223,7 +296,7 @@ describe('dictionary lookups', () => {
     vi.mocked(store.isPopulated).mockResolvedValue(true);
     await send({ type: 'dict-load', edition: 'eng' });
     await send({ type: 'dict-lookup', key: '私', reading: 'ワタシ', pos: '名詞,代名詞' });
-    expect(store.lookup).toHaveBeenCalledWith('私', { reading: 'ワタシ', pos: '名詞,代名詞' });
+    expect(store.lookup).toHaveBeenCalledWith('私', { reading: 'ワタシ', pos: '名詞,代名詞' }, store.JMDICT);
   });
 
   it('go remote after the local dictionary failed', async () => {
@@ -249,6 +322,134 @@ describe('dictionary lookups', () => {
     vi.mocked(store.build).mockResolvedValue(200000);
     await Promise.all([send({ type: 'dict-load', edition: 'eng' }), send({ type: 'dict-load', edition: 'eng' })]);
     expect(store.build).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('Chinese', () => {
+  const school = { id: '1', word: '学校', reading: 'xué xiào', common: false, senses: [{ pos: [], glosses: ['school'] }] };
+  const readings: Record<string, string> = { 去: 'qù', 学校: 'xué xiào', 了: 'le' };
+
+  async function chinese() {
+    const booted = await boot();
+    vi.mocked(booted.opfs.loadDictionaryFiles).mockResolvedValue(files(ZH_FIELDS));
+    await booted.send({ type: 'load', dict: 'cc-cedict' });
+    vi.mocked(booted.store.lookup).mockImplementation(async (key: string) =>
+      (readings[key] ? [{ ...school, word: key, reading: readings[key] }] : []));
+    return booted;
+  }
+
+  it('takes where the words are from the analyser, and never its one reading for each', async () => {
+    const { send, store } = await chinese();
+    const before = await send({ type: 'tokenize', text: '去学校了' });
+    // No dictionary yet: the words, no readings, and a line worth asking about again.
+    expect(before).toEqual({ ok: true, complete: false, tokens: [{ surface: '去' }, { surface: '学校' }, { surface: '了' }] });
+    expect(store.lookup).not.toHaveBeenCalled();
+  });
+
+  it('gives each word the reading the dictionary puts first, once the dictionary is in', async () => {
+    const { send, store } = await chinese();
+    vi.mocked(store.isPopulated).mockResolvedValue(true);
+    expect(await send({ type: 'dict-load', source: 'cedict', edition: 'en' })).toMatchObject({ ok: true, ready: true, source: 'cedict' });
+    expect(await send({ type: 'tokenize', text: '去学校了' })).toEqual({
+      ok: true,
+      complete: true,
+      tokens: [{ surface: '去', reading: 'qù' }, { surface: '学校', reading: 'xué xiào' }, { surface: '了', reading: 'le' }],
+    });
+    const { SOURCES } = await import('../sources');
+    expect(store.lookup).toHaveBeenCalledWith('学校', undefined, SOURCES.cedict);
+    // The same words on the next line cost nothing more.
+    await send({ type: 'tokenize', text: '去学校了' });
+    expect(store.lookup).toHaveBeenCalledTimes(3);
+  });
+
+  it('does not take readings from JMdict while the Chinese dictionary is still coming', async () => {
+    const { send, store } = await chinese();
+    vi.mocked(store.isPopulated).mockResolvedValue(true);
+    await send({ type: 'dict-load', edition: 'eng' });
+    expect(await send({ type: 'tokenize', text: '去学校了' })).toMatchObject({ complete: false, tokens: [{ surface: '去' }, { surface: '学校' }, { surface: '了' }] });
+    expect(store.lookup).not.toHaveBeenCalled();
+  });
+
+  it('describes a word’s characters from their own entries', async () => {
+    const { send, store } = await chinese();
+    vi.mocked(store.isPopulated).mockResolvedValue(true);
+    await send({ type: 'dict-load', source: 'cedict', edition: 'en' });
+    const r = await send({ type: 'dict-kanji', chars: ['学', '校'] });
+    // 学 has no entry in this small dictionary; 校 is not asked of KANJIDIC2.
+    expect(r).toEqual({ ok: true, characters: [] });
+    vi.mocked(store.lookup).mockResolvedValue([
+      { ...school, word: '学', reading: 'xué', senses: [{ pos: [], glosses: ['to learn'] }, { pos: [], glosses: ['to study'] }] },
+    ]);
+    expect(await send({ type: 'dict-kanji', chars: ['学'] })).toEqual({
+      ok: true, characters: [{ char: '学', meanings: ['to learn', 'to study'], on: ['xué'], kun: [] }],
+    });
+    expect(store.kanjiFor).not.toHaveBeenCalled();
+    expect(store.buildKanji).not.toHaveBeenCalled();
+  });
+});
+
+describe('a dictionary for each language', () => {
+  it('loads the one asked for, and lookups go to it', async () => {
+    const { send, store } = await boot();
+    vi.mocked(store.build).mockResolvedValue(250000);
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    expect(await send({ type: 'dict-load', source: 'wty-es-en', edition: 'en' })).toMatchObject({ ok: true, ready: true, source: 'wty-es-en', edition: 'en' });
+    const { SOURCES } = await import('../sources');
+    expect(vi.mocked(store.build).mock.calls[0]?.[0]).toBe('en');
+    expect(vi.mocked(store.build).mock.calls[0]?.[2]).toBe(SOURCES['wty-es-en']);
+    await send({ type: 'dict-lookup', key: 'hablar' });
+    expect(store.lookup).toHaveBeenCalledWith('hablar', { reading: undefined, pos: undefined }, SOURCES['wty-es-en']);
+  });
+
+  it('never answers a Spanish word from a Japanese dictionary, local or remote', async () => {
+    const { send, store, jotobaLookup } = await boot();
+    vi.mocked(store.isPopulated).mockImplementation(async (_e: string, source?: { id: string }) => source?.id === 'jmdict');
+    await send({ type: 'dict-load', edition: 'eng' });
+    vi.mocked(store.build).mockReturnValue(new Promise(() => {}));
+    void send({ type: 'dict-load', source: 'wty-es-en', edition: 'en' });
+    await new Promise((r) => setTimeout(r, 0));
+    // Still downloading: say so, rather than looking hablar up in JMdict or on Jotoba.
+    expect(await send({ type: 'dict-lookup', key: 'hablar' })).toEqual({ ok: false, error: 'the dictionary is still loading', reason: 'dictionaryLoading' });
+    expect(await send({ type: 'dict-status' })).toMatchObject({ ready: false, source: 'wty-es-en' });
+    expect(store.lookup).not.toHaveBeenCalled();
+    expect(jotobaLookup).not.toHaveBeenCalled();
+  });
+
+  it('goes back to a language’s dictionary without building it again', async () => {
+    const { send, store } = await boot();
+    vi.mocked(store.isPopulated).mockResolvedValue(true);
+    await send({ type: 'dict-load', source: 'wty-ko-en', edition: 'en' });
+    await send({ type: 'dict-load', edition: 'eng' });
+    expect(await send({ type: 'dict-load', source: 'wty-ko-en', edition: 'en' })).toMatchObject({ ok: true, ready: true, source: 'wty-ko-en' });
+    expect(store.build).not.toHaveBeenCalled();
+  });
+
+  it('refuses a dictionary it does not know, by name', async () => {
+    const { send } = await boot();
+    expect(await send({ type: 'dict-load', source: 'oxford', edition: 'en' })).toMatchObject({ ok: false, error: 'no dictionary called "oxford"' });
+  });
+
+  it('answers what forms are forms of from the dictionary in use, once it is whole', async () => {
+    const { send, store } = await boot();
+    const forms = { hablamos: { word: false, senses: 0, kind: [], of: [{ lemma: 'hablar', tags: ['first-person plural present indicative'], senses: 4 }] } };
+    vi.mocked(store.formsOf).mockResolvedValue(forms);
+    expect(await send({ type: 'dict-forms', forms: ['hablamos'] })).toMatchObject({ ok: false, error: 'the dictionary is still loading' });
+
+    vi.mocked(store.isPopulated).mockResolvedValue(true);
+    await send({ type: 'dict-load', source: 'wty-es-en', edition: 'en' });
+    expect(await send({ type: 'dict-forms', forms: ['hablamos'] })).toEqual({ ok: true, forms });
+    const { SOURCES } = await import('../sources');
+    expect(store.formsOf).toHaveBeenCalledWith(['hablamos'], SOURCES['wty-es-en']);
+  });
+
+  it('does not ask an older copy of the dictionary for forms: half a table reads as no inflection at all', async () => {
+    const { send, store } = await boot();
+    vi.mocked(store.hasStale).mockResolvedValue(true);
+    vi.mocked(store.build).mockReturnValue(new Promise(() => {}));
+    void send({ type: 'dict-load', source: 'wty-es-en', edition: 'en' });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(await send({ type: 'dict-forms', forms: ['hablamos'] })).toMatchObject({ ok: false });
+    expect(store.formsOf).not.toHaveBeenCalled();
   });
 });
 

@@ -25,6 +25,7 @@ const ITEMS = { notes: 'phiếu', cards: 'thẻ' } as const;
 export const vi: Translation = {
   common: {
     furigana: (mode: Settings['ruby']): string => `Furigana: ${RUBY[mode]}`,
+    pinyin: (mode: Settings['ruby']): string => `Pinyin: ${RUBY[mode]}`,
     sentenceGap: ' ',
   },
 
@@ -35,6 +36,8 @@ export const vi: Translation = {
     target: 'Ngôn ngữ đang học',
     targetLimited: (language: string): string => `${language} (hạn chế)`,
     supportFull: 'Hỗ trợ đầy đủ, gồm cả cách đọc và furigana.',
+    supportPinyin: 'Hỗ trợ đầy đủ, gồm cả pinyin. Nghĩa được viết bằng tiếng Anh.',
+    supportWords: 'Hỗ trợ đầy đủ. Nghĩa được viết bằng tiếng Anh.',
     supportBasic: 'Hỗ trợ cơ bản: có tách từ, nhưng chưa có từ điển hay cách đọc.',
     native: 'Ngôn ngữ của bạn',
     nativeHint: 'Bản dịch và nghĩa của từ hiện bằng ngôn ngữ này, nếu video và từ điển có ngôn ngữ đó.',
@@ -69,6 +72,8 @@ export const vi: Translation = {
     cardAddLineHint: 'Thêm nút tạo thẻ từ cả câu, kèm âm thanh và ảnh chụp màn hình.',
     cardKanji: 'Phân tích kanji',
     cardKanjiHint: 'Hiện nghĩa và cách đọc của từng chữ kanji.',
+    cardHanzi: 'Phân tích chữ Hán',
+    cardHanziHint: 'Hiện nghĩa và cách đọc của từng chữ.',
     lookupElsewhere: 'Ví dụ trong video này',
     lookupElsewhereHint: 'Hiện các câu khác trong video này có dùng từ đó. Nhấp vào một câu để phát.',
 
@@ -80,6 +85,8 @@ export const vi: Translation = {
     rubyAlways: 'Tất cả',
     rubyNever: 'Tắt',
     rubyHint: 'Cách đọc phía trên chữ kanji. Nhấn R để chuyển khi đang xem.',
+    pinyin: 'Pinyin',
+    pinyinHint: 'Cách đọc phía trên chữ Hán. Nhấn R để chuyển khi đang xem.',
     blurPrimary: 'Làm mờ phụ đề',
     blurPrimaryHint: 'Để luyện nghe: phụ đề bị làm mờ cho đến khi bạn trỏ vào. Nhấn H để chuyển.',
     subtitleSize: 'Cỡ chữ',
@@ -213,7 +220,12 @@ export const vi: Translation = {
       'Dữ liệu từ điển và kanji © Electronic Dictionary Research and Development Group, dùng theo giấy phép ' +
       'CC BY-SA 4.0. Được jmdict-simplified đóng gói lại thành JSON.',
     creditLindera:
-      'Tách tiếng Nhật thành từ. Giấy phép MIT; IPADIC có điều khoản riêng.',
+      'Tách tiếng Nhật, tiếng Hàn và tiếng Trung thành từ. Giấy phép MIT; IPADIC, mecab-ko-dic và CC-CEDICT ' +
+      'có điều khoản riêng.',
+    creditCedict: 'Từ điển tiếng Trung © MDBG và những người đóng góp, dùng theo giấy phép CC BY-SA 4.0.',
+    creditWiktionary:
+      'Từ điển tiếng Hàn và tiếng Tây Ban Nha, lấy từ Wiktionary qua kaikki.org và wiktionary-to-yomitan. CC BY-SA 4.0.',
+    creditUnihan: 'Cách đọc nào của chữ Hán được hiện trước. © Unicode, Inc., dùng theo Unicode License.',
     creditJotoba: 'Dùng để tra từ trong lúc từ điển đang tải. Cả hai đều dùng JMdict.',
     creditLucide: 'Biểu tượng. Giấy phép ISC.',
     licence: 'Libregaku dùng giấy phép MIT. Dữ liệu từ điển được tải từ nguồn của nó, không đi kèm sẵn.',
@@ -227,6 +239,7 @@ export const vi: Translation = {
     keyAdd: 'Thêm từ trong cửa sổ tra từ vào Anki',
     keyKnown: 'Đánh dấu từ trong cửa sổ tra từ là đã biết',
     keyFurigana: 'Chuyển furigana: tắt, từ mới, tất cả',
+    keyPinyin: 'Chuyển pinyin: tắt, từ mới, tất cả',
     keyBlur: 'Làm mờ hoặc bỏ làm mờ phụ đề',
     keySave: 'Lưu dòng hiện tại',
     keyTranscript: 'Hiện hoặc ẩn bảng chép lời',
@@ -407,6 +420,7 @@ export const vi: Translation = {
     // Cửa sổ và từ ở đầu
     cardLabel: (word: string): string => `${word} — từ điển`,
     commonBadge: 'thông dụng',
+    characterNames: { kanji: 'Kanji', hanzi: 'Chữ Hán' },
     partOfSpeech: {
       n: 'danh từ', 'n-adv': 'danh từ dùng như trạng từ', 'n-t': 'danh từ chỉ thời gian', 'n-suf': 'hậu tố danh từ',
       'n-pref': 'tiền tố danh từ', pn: 'đại từ', 'adj-i': 'tính từ đuôi i', 'adj-na': 'tính từ đuôi na',
@@ -420,6 +434,22 @@ export const vi: Translation = {
       v5m: 'động từ nhóm I', v5n: 'động từ nhóm I', v5r: 'động từ nhóm I', 'v5r-i': 'động từ nhóm I',
       v5s: 'động từ nhóm I', v5t: 'động từ nhóm I', v5u: 'động từ nhóm I', 'v5u-s': 'động từ nhóm I',
       v5aru: 'động từ nhóm I',
+      // Mã của Wiktionary, cho từ tiếng Hàn và tiếng Tây Ban Nha
+      name: 'danh từ riêng', v: 'động từ', adj: 'tính từ', pron: 'đại từ', det: 'từ hạn định', artic: 'mạo từ',
+      counter: 'từ đếm', prep: 'giới từ', 'prep-phrase': 'cụm giới từ', ptcl: 'trợ từ',
+      intj: 'thán từ', phrase: 'cụm từ', prov: 'tục ngữ', r: 'gốc từ', char: 'ký tự', adn: 'định từ',
+      ptcpl: 'phân từ', contr: 'dạng rút gọn',
+      masc: 'giống đực', fem: 'giống cái', neut: 'giống trung', sg: 'số ít', pl: 'số nhiều', 'pl-only': 'chỉ có số nhiều',
+      count: 'đếm được', uncount: 'không đếm được', vr: 'phản thân', vdt: 'hai tân ngữ', impers: 'vô nhân xưng',
+      irreg: 'bất quy tắc', reltnl: 'tính từ quan hệ', reltv: 'quan hệ', interr: 'nghi vấn', poss: 'sở hữu',
+      dim: 'giảm nhẹ', aug: 'tăng cường', onoma: 'tượng thanh',
+      // Cách dùng
+      idio: 'thành ngữ', fig: 'nghĩa bóng', literal: 'nghĩa đen', col: 'khẩu ngữ', inf: 'không trang trọng', fam: 'thân mật',
+      formal: 'trang trọng', polite: 'lịch sự', lit: 'văn viết', poet: 'thơ ca', rhet: 'tu từ', sl: 'tiếng lóng',
+      vulg: 'thô tục', derog: 'miệt thị', offens: 'xúc phạm', humor: 'hài hước', euph: 'uyển ngữ',
+      child: 'ngôn ngữ trẻ em', net: 'Internet', neol: 'từ mới tạo', cmn: 'thông dụng', uncmmn: 'ít dùng', rare: 'hiếm',
+      dated: 'cũ', arch: 'cổ', obs: 'không còn dùng', hist: 'lịch sử', 'non-std': 'không chuẩn',
+      dialect: 'phương ngữ', regio: 'địa phương',
     },
 
     // Các nút dưới từ
@@ -668,6 +698,12 @@ export const vi: Translation = {
 
     // Tên của một bản phụ đề
     forcedTrack: (track: string): string => `${track} (bắt buộc)`,
+
+    // Từ điển và bộ phân tích
+    noAnswer: 'tiện ích không phản hồi — hãy tải lại trang để khởi động lại',
+    analyserLoading: 'bộ phân tích vẫn đang tải',
+    dictionaryLoading: 'từ điển vẫn đang tải',
+    lookupFailed: 'tra từ thất bại',
   },
 
   grammar: {
@@ -754,5 +790,76 @@ export const vi: Translation = {
     thoroughly: 'sâu',
     around: 'khắp nơi',
     'non-stop': 'không ngừng',
+
+    // Dạng của một từ tiếng Tây Ban Nha
+    or: 'hoặc',
+    'first-person': 'ngôi thứ nhất',
+    'second-person': 'ngôi thứ hai',
+    'third-person': 'ngôi thứ ba',
+    singular: 'số ít',
+    plural: 'số nhiều',
+    masculine: 'giống đực',
+    feminine: 'giống cái',
+    present: 'hiện tại',
+    preterite: 'quá khứ đơn',
+    imperfect: 'quá khứ chưa hoàn thành',
+    'imperfect-se': 'quá khứ chưa hoàn thành (-se)',
+    future: 'tương lai',
+    'conditional-mood': 'thức điều kiện',
+    indicative: 'thức trình bày',
+    subjunctive: 'thức giả định',
+    infinitive: 'nguyên mẫu',
+    gerund: 'danh động từ',
+    participle: 'phân từ',
+    formal: 'trang trọng',
+    informal: 'thân mật',
+    'with-tú': 'với tú',
+    'with-vos': 'với vos',
+    'vos-form': 'dạng vos',
+    voseo: 'voseo',
+    'second-person-semantically': 'nghĩa là “bạn”',
+    accusative: 'kèm tân ngữ trực tiếp',
+    dative: 'kèm tân ngữ gián tiếp',
+    'object-first-person': 'tân ngữ ngôi thứ nhất',
+    'object-second-person': 'tân ngữ ngôi thứ hai',
+    'object-third-person': 'tân ngữ ngôi thứ ba',
+    'object-singular': 'tân ngữ số ít',
+    'object-plural': 'tân ngữ số nhiều',
+    diminutive: 'dạng giảm nhẹ',
+    augmentative: 'dạng tăng cường',
+    superlative: 'so sánh nhất',
+    alternative: 'biến thể',
+    'alt-of': 'cách viết khác',
+
+    // Đuôi từ tiếng Hàn
+    honorific: 'kính ngữ',
+    'future or guess': 'tương lai hoặc phỏng đoán',
+    'formal polite': 'lịch sự trang trọng',
+    question: 'nghi vấn',
+    but: 'nhưng',
+    "let's": 'rủ rê',
+    plain: 'thể trần thuật',
+    'shall we, or I wonder': 'đề nghị hoặc tự hỏi',
+    'I will': 'hứa hẹn',
+    'just noticed': 'cảm thán',
+    'as you know': 'như bạn biết',
+    and: 'và',
+    'because, or and then': 'nguyên nhân hoặc trình tự',
+    'but, or given that': 'đối lập hoặc bối cảnh',
+    'even if': 'dù… cũng',
+    whether: 'có… hay không',
+    'adverb form': 'dạng trạng từ',
+    quoting: 'trích dẫn',
+    'used to': 'hồi tưởng',
+    topic: 'chủ đề',
+    subject: 'chủ ngữ',
+    object: 'tân ngữ',
+    possessive: 'sở hữu',
+    'come to': 'thành ra',
+    when: 'khi',
+    modifier: 'định ngữ',
+    'noun form': 'danh từ hóa',
+    becomes: 'trở nên',
+    'have done before': 'đã từng',
   },
 };

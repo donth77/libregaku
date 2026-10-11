@@ -102,7 +102,7 @@ describe('the relay allowlist', () => {
   });
 
   it('refuses anything else that could change or delete what is already in Anki', () => {
-    for (const a of ['deleteDecks', 'updateNoteFields', 'changeDeck', 'forgetCards', 'storeMediaFile', 'multi', 'sync', undefined, 42]) {
+    for (const a of ['deleteDecks', 'updateNoteFields', 'forgetCards', 'storeMediaFile', 'multi', 'sync', undefined, 42]) {
       expect(isRelayed(a)).toBe(false);
     }
     expect(notRelayed('deleteDecks')).toMatchObject({ ok: false, kind: 'refused' });
@@ -155,6 +155,26 @@ describe('relay', () => {
     }
     // Retagging and suspending stay marks-only, however new the card.
     expect(await relay('addTags', { notes: [fresh], tags: 'x' })).toMatchObject({ ok: false, kind: 'refused' });
+  });
+
+  it('moves only marks, and only into a deck marks are kept in', async () => {
+    // An AnkiConnect whose only mark cards are 11 and 12.
+    const fetch = vi.fn(async (_url: string, init: RequestInit) => {
+      const { action } = JSON.parse(String(init.body)) as { action: string };
+      return { ok: true, status: 200, json: async () => ({ result: action === 'findCards' ? [11, 12] : null, error: null }) };
+    });
+    vi.stubGlobal('fetch', fetch);
+    expect(await relay('changeDeck', { cards: [11, 12], deck: 'Libregaku::Marks::JA' })).toMatchObject({ ok: true });
+    // One of the learner's own cards among them: refused, like any other change to it.
+    const mixed = await relay('changeDeck', { cards: [11, 13], deck: 'Libregaku::Marks::JA' });
+    expect(mixed).toMatchObject({ ok: false, kind: 'refused', reason: { code: 'notMarks', count: 1, ids: 'cards' } });
+    // A mark into a deck of the learner's, or anywhere that is not a language's
+    // mark deck: Anki is never asked.
+    fetch.mockClear();
+    for (const deck of ['Japanese', 'Libregaku::Marks', 'Libregaku::Marksmanship', 'Libregaku::Marks::JA::Mine', '', undefined]) {
+      expect(await relay('changeDeck', { cards: [11], deck })).toMatchObject({ ok: false, kind: 'refused' });
+    }
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it('refuses what it could not check, when the marks cannot be looked up', async () => {

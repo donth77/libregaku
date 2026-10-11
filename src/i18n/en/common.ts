@@ -9,6 +9,8 @@ export const common = {
    * new words, or over all words — the words its menu and the R key use.
    */
   furigana: (mode: Settings['ruby']): string => `Furigana: ${RUBY[mode]}`,
+  /** The same setting where the language being learned is Chinese: pinyin, the romanised reading, above the characters. */
+  pinyin: (mode: Settings['ruby']): string => `Pinyin: ${RUBY[mode]}`,
   /**
    * What goes between two whole sentences shown together, as in the Anki
    * status line: a space in English; nothing after a Chinese 。.

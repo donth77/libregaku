@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { AUDIO_HOSTS, audioUrlAllowed, decodedSize, findRecording, jpodQuery, templateHost } from '../pronounce';
+import { AUDIO_HOSTS, audioUrlAllowed, decodedSize, findRecording, jpodQuery, pronounce, templateHost } from '../pronounce';
 import { cardAudio } from '../card-audio';
 
 const parse = (q: string) => Object.fromEntries(new URLSearchParams(q));
@@ -120,6 +120,48 @@ describe('findRecording', () => {
     // A word of its own: recordings found earlier stay found for the session.
     serve({});
     expect(await findRecording('comer', undefined, 'es')).toBeNull();
+  });
+});
+
+describe('the voice a word is said in', () => {
+  /** A browser with these voices, and no recording of anything. */
+  function voices(...langs: string[]) {
+    const said: Array<{ text: string; lang: string; voice?: { lang: string } }> = [];
+    vi.stubGlobal('chrome', {
+      runtime: { sendMessage: vi.fn(async () => ({ ok: false, status: 404 })) },
+      storage: { sync: { get: async () => ({}) } },
+    });
+    vi.stubGlobal('SpeechSynthesisUtterance', class { lang = ''; rate = 1; voice?: { lang: string }; constructor(public text: string) {} });
+    vi.stubGlobal('speechSynthesis', {
+      getVoices: () => langs.map((lang) => ({ lang })),
+      cancel: () => undefined,
+      speak: (u: { text: string; lang: string; voice?: { lang: string } }) => said.push(u),
+    });
+    return said;
+  }
+
+  it('speaks a word in the language being learned, not in Japanese', async () => {
+    const said = voices('ja-JP', 'en-US', 'es-MX', 'es-ES', 'ko-KR', 'zh-TW', 'zh-CN');
+    // Words of their own: a recording found earlier in the session stays found.
+    expect(await pronounce('correr', undefined, 'es')).toEqual({ source: 'synthesis', human: false });
+    await pronounce('학교', undefined, 'ko');
+    await pronounce('学校', 'xué xiào', 'zh');
+    expect(said.map((u) => [u.text, u.lang, u.voice?.lang])).toEqual([
+      ['correr', 'es-ES', 'es-ES'], ['학교', 'ko-KR', 'ko-KR'], ['学校', 'zh-CN', 'zh-CN'],
+    ]);
+  });
+
+  it("takes any voice of the language when the usual country's is not installed", async () => {
+    const said = voices('en-US', 'es-MX');
+    await pronounce('comer', undefined, 'es');
+    expect(said[0]).toMatchObject({ lang: 'es-ES', voice: { lang: 'es-MX' } });
+  });
+
+  it('still asks for the language when the browser has no voice for it', async () => {
+    const said = voices('en-US');
+    await pronounce('먹다', undefined, 'ko');
+    expect(said[0]?.lang).toBe('ko-KR');
+    expect(said[0]?.voice).toBeUndefined();
   });
 });
 

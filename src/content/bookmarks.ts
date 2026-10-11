@@ -96,12 +96,23 @@ export async function clear(): Promise<void> {
 }
 
 /**
- * Newest first, and grouped by video — the shape the saved view reads in.
- * Within a video the lines stay in spoken order, so a group reads like a
- * shortened transcript rather than a pile of clips.
+ * The lines saved in one language. A line belongs to the language it was
+ * saved in, and the saved view shows the one being learned: a list of two
+ * languages is a list of neither, and its lines all go to one deck.
  */
-export async function grouped(): Promise<Array<{ site: string; video: string; title: string; lines: Bookmark[] }>> {
-  const all = await list();
+export async function inLanguage(lang: string): Promise<Bookmark[]> {
+  return (await list()).filter((b) => b.lang === lang);
+}
+
+/**
+ * One language's lines, newest first, and grouped by video — the shape the
+ * saved view reads in. Within a video the lines stay in spoken order, so a
+ * group reads like a shortened transcript rather than a pile of clips.
+ */
+export async function grouped(
+  lang: string,
+): Promise<Array<{ site: string; video: string; title: string; lines: Bookmark[] }>> {
+  const all = await inLanguage(lang);
   const groups = new Map<string, { site: string; video: string; title: string; lines: Bookmark[]; last: number }>();
   for (const b of all) {
     const key = `${b.site}:${b.video}`;

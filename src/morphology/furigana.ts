@@ -11,11 +11,9 @@
  * tool does this and it reads fine.
  */
 
-export interface RubySegment {
-  text: string;
-  /** Absent when the segment needs no annotation. */
-  ruby?: string;
-}
+import type { RubySegment } from './types';
+
+export type { RubySegment };
 
 const KANJI = /[一-鿿㐀-䶿豈-﫿々]/;
 

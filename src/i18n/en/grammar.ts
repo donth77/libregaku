@@ -156,4 +156,146 @@ export const grammar = {
   around: 'around',
   /** Doing it like mad, with まくる: 食べまくる. */
   'non-stop': 'non-stop',
+
+  // Forms of a Spanish word, in the words Wiktionary describes them with
+  // (FORM_LABELS in src/morphology/lemma.ts). One way of reading a form is
+  // several of these in a row, shown with spaces between: hablábamos is
+  // "first-person plural imperfect indicative". A form that can be read two
+  // ways shows both, joined with " · ".
+  /** Before another word the form may also belong to: fue is a form of ir, "or ser". */
+  or: 'or',
+  /** I or we: hablo, hablamos. */
+  'first-person': 'first-person',
+  /** You: hablas, habláis. */
+  'second-person': 'second-person',
+  /** He, she, it or they: habla, hablan. */
+  'third-person': 'third-person',
+  /** One person or thing: hablo, casa. */
+  singular: 'singular',
+  /** More than one: hablamos, casas. */
+  plural: 'plural',
+  /** Grammatical gender: niño. */
+  masculine: 'masculine',
+  /** Grammatical gender: niña. */
+  feminine: 'feminine',
+  /** The present tense: hablo. */
+  present: 'present',
+  /** The simple past, for something finished: hablé. */
+  preterite: 'preterite',
+  /** The past of what was going on or used to happen: hablaba. */
+  imperfect: 'imperfect',
+  /** The imperfect subjunctive's second set of endings, in -se: hablase, beside hablara. */
+  'imperfect-se': 'imperfect (-se)',
+  /** The future tense: hablaré. */
+  future: 'future',
+  /** The "would" form of a verb: hablaría. A mood of the verb, not the Japanese "if" above. */
+  'conditional-mood': 'conditional',
+  /** The ordinary mood, for stating facts: hablo. */
+  indicative: 'indicative',
+  /** The mood for wishes, doubts and what is not certain: que hable. */
+  subjunctive: 'subjunctive',
+  /** The dictionary form of a verb: hablar. */
+  infinitive: 'infinitive',
+  /** The -ando or -iendo form, "speaking": hablando. */
+  gerund: 'gerund',
+  /** The form used with haber, or as an adjective: hablado. Usually after "past". */
+  participle: 'participle',
+  /** Said to someone addressed as usted or ustedes: hable. */
+  formal: 'formal',
+  /** Said to someone addressed as tú, vos or vosotros: habla. */
+  informal: 'informal',
+  /** The form that goes with tú. tú is Spanish and stays as it is. */
+  'with-tú': 'with tú',
+  /** The form that goes with vos, used in much of Latin America. vos is Spanish and stays as it is. */
+  'with-vos': 'with vos',
+  /** The same: a form used with vos. */
+  'vos-form': 'vos form',
+  /** The use of vos for "you". The Spanish name of it. */
+  voseo: 'voseo',
+  /** Third-person in form, but said to "you": the usted forms. */
+  'second-person-semantically': 'meaning "you"',
+  /** With a direct-object pronoun attached: dámelo, "give it to me". */
+  accusative: 'with direct object',
+  /** With an indirect-object pronoun attached: dame, "give me". */
+  dative: 'with indirect object',
+  /** The attached pronoun is me or nos: dame, "give me". */
+  'object-first-person': 'first-person object',
+  /** The attached pronoun is te or os: verte, "to see you". */
+  'object-second-person': 'second-person object',
+  /** The attached pronoun is lo, la, le or their plurals: hacerlo, "to do it". */
+  'object-third-person': 'third-person object',
+  /** The attached pronoun stands for one person or thing: lo, la, le. Follows one of the three above. */
+  'object-singular': 'singular object',
+  /** The attached pronoun stands for more than one: los, las, les. Follows one of the three above. */
+  'object-plural': 'plural object',
+  /** A form that makes something smaller or dearer: casita. */
+  diminutive: 'diminutive',
+  /** A form that makes something bigger: casona. */
+  augmentative: 'augmentative',
+  /** The "most" form of an adjective: altísimo. */
+  superlative: 'superlative',
+  /** Another form of the same word. */
+  alternative: 'alternative',
+  /** Another way of writing the same word. */
+  'alt-of': 'another spelling',
+
+  // Korean endings. Each is named for what it does; the ones Japanese shares (past, must, want to…) are above
+  /** 시, which raises the person doing it: 가시다, 하세요. */
+  honorific: 'honorific',
+  /** 겠 or ㄹ 것이다, a plan or a guess: 하겠습니다 "I will do it"; 맛있겠다 "that must be tasty"; 갈 거야 "I will go". */
+  'future or guess': 'future or guess',
+  /** ㅂ니다 / 습니다, the most formal polite ending: 감사합니다. */
+  'formal polite': 'formal polite',
+  /** An ending that asks, 나 / 니 / 냐 / ㄴ가 / ㅂ니까: 뭐 하니? "what are you doing?"; 갑니까? "are you going?" */
+  question: 'question',
+  /** 지만, 나 inside a sentence, or ㅂ니다만: 좋지만 "it is good, but"; 좋으나; 좋습니다만. */
+  but: 'but',
+  /** 자 / ㅂ시다: 가자 "let's go". */
+  "let's": "let's",
+  /** The plain statement ending ㄴ다 / 다, as in writing or to oneself: 간다. */
+  plain: 'plain',
+  /** ㄹ까: 갈까? "shall we go?"; 올까? "I wonder if he will come". */
+  'shall we, or I wonder': 'shall we, or I wonder',
+  /** ㄹ게, a promise to the one listening: 할게 "I'll do it". */
+  'I will': 'I will',
+  /** 네 / 구나 / 군, on realising something: 맛있네 "oh, this is good". */
+  'just noticed': 'just noticed',
+  /** 잖아: 했잖아 "I did it, you know". */
+  'as you know': 'as you know',
+  /** 고 / 며, joining two actions: 먹고 "eat and". */
+  and: 'and',
+  /** 아서 / 어서: 몰라서 "because I don't know"; 가서 "go and then". */
+  'because, or and then': 'because, or and then',
+  /** ㄴ데 / 는데, which sets the scene or contrasts: 있는데 "there is one, but / so". */
+  'but, or given that': 'but, or given that',
+  /** 아도 / 어도 / 더라도: 가도 "even if I go". */
+  'even if': 'even if',
+  /** ㄴ지 / ㄹ지: 올지 "whether he will come". */
+  whether: 'whether',
+  /** 게, which makes an adverb of an adjective: 예쁘게 "prettily". */
+  'adverb form': 'adverb form',
+  /** 다고 / 라고 / 자고 / 냐고, or 다는 / 라는 / 란 before a noun, reporting what was said: 간다고 "(says) that he is going". */
+  quoting: 'quoting',
+  /** 던, before a noun, for what was once so: 가던 길 "the road I used to take". */
+  'used to': 'used to',
+  /** The particle 은 / 는 fused into the word: 난 is 나 + 는. */
+  topic: 'topic',
+  /** The particle 이 / 가 fused in: 그게 is 그것 + 이. */
+  subject: 'subject',
+  /** The particle 을 / 를 fused in: 그걸 is 그것 + 을. */
+  object: 'object',
+  /** The particle 의 fused in: 내 is 나 + 의, "my". */
+  possessive: 'possessive',
+  /** 게 되다: 가게 되다 "come to go, end up going". */
+  'come to': 'come to',
+  /** ㄹ 때: 갈 때 "when going". */
+  when: 'when',
+  /** The form a verb or adjective takes before a noun, ㄴ / 는 / ㄹ: 예쁜 꽃 "a pretty flower". */
+  modifier: 'modifier',
+  /** 기 / ㅁ, which makes a noun of a verb: 먹기 "eating". */
+  'noun form': 'noun form',
+  /** 아지다 / 어지다: 예뻐지다 "become pretty". */
+  becomes: 'becomes',
+  /** ㄴ 적이 있다: 간 적이 있다 "have been there before". */
+  'have done before': 'have done before',
 };

@@ -83,7 +83,7 @@ export const de: HelpTranslation = {
                 ['`B`', 'Aktuelle Zeile speichern'],
                 ['`S`', 'Transkriptleiste ein-/ausblenden'],
                 ['`H`', 'Untertitel weichzeichnen oder scharf stellen'],
-                ['`R`', 'Furigana umschalten: aus, neue Wörter, alle (Japanisch)'],
+                ['`R`', 'Furigana oder Pinyin umschalten: aus, neue Wörter, alle (Japanisch, Chinesisch)'],
                 ['`Shift`', 'Gedrückt halten, um das Wort unter dem Mauszeiger nachzuschlagen, wenn {Einstellungen → Wörter nachschlagen → Nachschlagen per} auf „Mouseover mit Shift“ steht'],
                 ['`Esc`', 'Pop-up schließen'],
               ],
@@ -132,6 +132,7 @@ export const de: HelpTranslation = {
           title: 'Den Stapel wählen',
           body: [
             'Neue Karten kommen in den Stapel unter {Einstellungen → Anki → Stapel für neue Karten}.',
+            'Jede Sprache, die du lernst, hat ihren eigenen Stapel. Bis du einen wählst, kommen ihre Karten in einen Stapel, der mit der ersten Karte für sie angelegt wird: Libregaku-JA für Japanisch, Libregaku-ES für Spanisch. Änderst du {Einstellungen → Sprachen → Ich lerne}, wechselt der Stapel mit.',
             'Um beim Schauen zu wechseln, schalte {Einstellungen → Wort-Pop-up → Stapelmenü} ein. Neben „Zu Anki hinzufügen“ erscheint ein ▾; „Zu … hinzufügen“ legt die Karte in diesen Stapel und schickt auch die nächsten dorthin.',
             { tip: 'Der Wortstatus wird aus {Einstellungen → Anki → Bekannte Wörter aus} gelesen. Kommen neue Karten in einen Stapel, der dort nicht gelesen wird, weisen die Einstellungen darauf hin.' },
           ],
@@ -163,6 +164,7 @@ export const de: HelpTranslation = {
           title: 'Markierte Wörter ansehen und ändern',
           body: [
             'In der Transkriptleiste zeigt der Tab „Wörter“ die Wörter, die du beobachtest, als bekannt markiert hast oder ignorierst, in je einer Liste. Jedes Wort hat eine Schaltfläche, die seine Markierung aufhebt – „Nicht mehr ignorieren“ bei einem ignorierten –, und aus einem beobachteten Wort kannst du dort eine Karte machen.',
+            'Jede Sprache hat ihre eigenen Listen. Die Tabs „Wörter“ und „Gespeichert“ zeigen die der Sprache, die du gerade lernst, und ein Wort, das du in einer Sprache markiert hast, ist in einer anderen nicht markiert.',
             'Jede Liste hat ein Suchfeld sowie die Schaltflächen „Kopieren“ und „Datei exportieren“, die dir die Liste als Datei geben, die Anki und Tabellenprogramme öffnen.',
           ],
           keywords: ['beobachtungsliste', 'watchlist', 'liste', 'ignoriert', 'bekannt', 'markierung aufheben', 'wörter', 'tabelle', 'excel'],
@@ -281,8 +283,19 @@ export const de: HelpTranslation = {
           title: 'Warum gibt es Definitionen nur in manchen Sprachen?',
           body: [
             'Für Japanisch kommen sie aus JMdict, das Definitionen in neun Sprachen hat. Ist deine nicht dabei, zeigt {Einstellungen → Sprachen} eine zweite Zeile, „Definitionen auf“, für die Sprache, die stattdessen verwendet wird.',
+            'Die Wörterbücher für Chinesisch, Koreanisch und Spanisch gibt es nur auf Englisch.',
           ],
           keywords: ['definitionen', 'bedeutungen', 'sprachen', 'jmdict', 'ungarisch', 'slowenisch', 'englisch', 'cc-cedict', 'wiktionary'],
+        },
+        {
+          id: 'q-languages',
+          title: 'Welche Sprachen kann ich lernen?',
+          body: [
+            'Japanisch, Chinesisch, Koreanisch und Spanisch haben ein Wörterbuch, und ein Wort wird in jeder Form, in der es gesagt wird, seiner Karte zugeordnet: 갔어요 findet eine Karte für 가다 und hablábamos eine für hablar. Japanisch zeigt Furigana über den Wörtern, Chinesisch Pinyin.',
+            'Die anderen Sprachen unter {Einstellungen → Sprachen → Ich lerne} sind als eingeschränkt markiert. Ihre Wörter werden getrennt, ein Wörterbuch gibt es noch nicht.',
+            'Das Wörterbuch einer Sprache wird heruntergeladen, wenn du sie zum ersten Mal wählst. Es ist 11 bis 27 MB groß.',
+          ],
+          keywords: ['sprache', 'koreanisch', 'chinesisch', 'mandarin', 'spanisch', 'japanisch', 'pinyin', 'eingeschränkt', 'unterstützt'],
         },
         {
           id: 'q-data',

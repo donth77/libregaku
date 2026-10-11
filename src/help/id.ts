@@ -83,7 +83,7 @@ export const id: HelpTranslation = {
                 ['`B`', 'Simpan baris saat ini'],
                 ['`S`', 'Tampilkan atau sembunyikan panel transkrip'],
                 ['`H`', 'Buramkan atau perjelas subtitel'],
-                ['`R`', 'Ganti furigana: nonaktif, kata baru, semua (Jepang)'],
+                ['`R`', 'Ganti furigana atau pinyin: nonaktif, kata baru, semua (Jepang, Tionghoa)'],
                 ['`Shift`', 'Tahan untuk mencari kata di bawah kursor, jika {Setelan → Pencarian kata → Mode pencarian} diatur ke “Arahkan kursor sambil menahan Shift”'],
                 ['`Esc`', 'Tutup pop-up'],
               ],
@@ -132,6 +132,7 @@ export const id: HelpTranslation = {
           title: 'Memilih dek',
           body: [
             'Kartu baru masuk ke dek di {Setelan → Anki → Kartu baru masuk ke}.',
+            'Setiap bahasa yang Anda pelajari punya deknya sendiri. Sebelum Anda memilih dek, kartunya masuk ke dek yang dibuat untuk bahasa itu bersama kartu pertamanya: Libregaku-JA untuk bahasa Jepang, Libregaku-ES untuk bahasa Spanyol. Ubah {Setelan → Bahasa → Saya belajar} dan deknya ikut berubah.',
             'Untuk mengganti dek saat menonton, aktifkan {Setelan → Pop-up kata → Menu dek}. Tanda ▾ muncul di samping Tambahkan ke Anki; “Tambahkan ke” sebuah dek menambahkan kartu ke sana dan mengirim kartu berikutnya ke sana juga.',
             { tip: 'Status kata dibaca dari {Setelan → Anki → Baca kata dikenal dari}. Jika kartu baru masuk ke dek yang tidak dibaca, Setelan akan memberi tahu.' },
           ],
@@ -163,6 +164,7 @@ export const id: HelpTranslation = {
           title: 'Melihat dan mengubah kata yang ditandai',
           body: [
             'Di panel transkrip, tab Kata mencantumkan kata yang Anda pantau, tandai dikenal, atau abaikan, satu daftar untuk masing-masing. Setiap kata punya tombol untuk menghapus tandanya — Berhenti mengabaikan, untuk kata yang diabaikan — dan kata yang dipantau bisa dijadikan kartu dari sana.',
+            'Setiap bahasa punya daftarnya sendiri. Tab Kata dan tab Tersimpan menampilkan daftar untuk bahasa yang sedang Anda pelajari, dan kata yang ditandai di satu bahasa tidak ikut ditandai di bahasa lain.',
             'Setiap daftar punya kotak pencarian, serta tombol Salin dan Ekspor file yang memberi Anda daftar itu sebagai file yang bisa dibuka Anki dan aplikasi spreadsheet.',
           ],
           keywords: ['pantau', 'dikenal', 'diabaikan', 'hapus tanda', 'excel', 'watchlist'],
@@ -281,8 +283,19 @@ export const id: HelpTranslation = {
           title: 'Mengapa definisi hanya tersedia dalam beberapa bahasa?',
           body: [
             'Untuk bahasa Jepang, definisi berasal dari JMdict, yang punya definisi dalam sembilan bahasa. Jika bahasa Anda tidak termasuk, {Setelan → Bahasa} menampilkan setelan kedua, Definisi dalam, untuk memilih bahasa penggantinya.',
+            'Kamus bahasa Tionghoa, Korea, dan Spanyol hanya ditulis dalam bahasa Inggris.',
           ],
           keywords: ['arti', 'bahasa indonesia', 'hungaria', 'slovenia', 'cc-cedict', 'wiktionary'],
+        },
+        {
+          id: 'q-languages',
+          title: 'Bahasa apa saja yang bisa saya pelajari?',
+          body: [
+            'Bahasa Jepang, Tionghoa, Korea, dan Spanyol punya kamus, dan sebuah kata dicocokkan dengan kartunya dalam bentuk apa pun saat diucapkan: 갔어요 menemukan kartu untuk 가다, dan hablábamos kartu untuk hablar. Bahasa Jepang menampilkan furigana di atas kata, dan bahasa Tionghoa menampilkan pinyin.',
+            'Bahasa lain di {Setelan → Bahasa → Saya belajar} ditandai terbatas. Kata-katanya dipisahkan, dan belum ada kamus.',
+            'Kamus sebuah bahasa diunduh saat pertama kali Anda memilihnya. Unduhannya berukuran 11 hingga 27 MB; di disk, kamus itu memakan 100 MB untuk bahasa Tionghoa, 200 MB untuk bahasa Korea, dan 470 MB untuk bahasa Spanyol.',
+          ],
+          keywords: ['mandarin', 'cina', 'didukung', 'dukungan', 'ukuran', 'ruang penyimpanan'],
         },
         {
           id: 'q-data',

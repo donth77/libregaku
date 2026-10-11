@@ -1,5 +1,4 @@
-import { furigana } from '../morphology/furigana';
-import type { Token } from '../morphology/types';
+import type { RubySegment, Token } from '../morphology/types';
 import { markPhrase, phraseAt, plainText, selectWhole, selectedWords, textFrom, type PhrasePick } from './phrase';
 
 /**
@@ -84,6 +83,22 @@ const STYLE = `
   /* Square corners: a rounded box bent each underline up at its ends. */
   .t { position: relative; padding: 0 1px 4px; cursor: pointer; }
   .p { position: relative; padding: 0 1px 4px; white-space: pre-wrap; }
+  /*
+   * A space between two words is a space and no more. The padding on each
+   * word and the gap between tokens keep words apart in a language written
+   * without spaces; around a real space they added 6px to it, and Spanish
+   * and Korean read as if double-spaced. The space gives that 6px back.
+   */
+  .p.sp { padding-left: 0; padding-right: 0; margin-left: -3px; margin-right: -3px; }
+  /*
+   * Punctuation written against a word stays against it. The same padding
+   * and gap stood the comma of "ok, esto" 4px off its word, as if a space
+   * came before it: a mark that closes (.cl) keeps to the word before, one
+   * that opens (.op) to the word after. Marks a script sets in a square of
+   * their own — 、。「」 — carry their space with them and are left alone.
+   */
+  .p.cl { padding-left: 0; margin-left: -3px; }
+  .p.op { padding-right: 0; margin-right: -3px; }
   /* A line break in a flex row: a zero-height item as wide as the row pushes
      what follows onto the next one. A newline inside a span does not — it
      only made that span two lines tall beside the rest of the row. */
@@ -156,6 +171,27 @@ const STYLE = `
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 `;
 
+/** Marks that end what came before them, and so are written against it: "esto," "¿sí?" */
+const CLOSES = /^[,.;:!?%)\]}»”’…]+$/;
+/** Marks that begin what comes after them: "¿sí?" "(no" */
+const OPENS = /^[¿¡(\[{«“‘]+$/;
+/** Marks that do either, by where they stand: a quote, a dash. */
+const EITHER = /^["'‐‑–—-]+$/;
+
+/**
+ * Which word a punctuation mark is written against: 'cl' the one before it,
+ * 'op' the one after, both for a hyphen inside a word, '' for a mark that
+ * stands apart. `tight` is whether a word, or a mark closed up against one,
+ * comes straight before it.
+ */
+function sideOf(mark: string, tight: boolean): string {
+  if (CLOSES.test(mark)) return 'cl';
+  if (OPENS.test(mark)) return 'op';
+  if (!EITHER.test(mark)) return '';
+  if (/^[‐‑-]$/.test(mark) && tight) return 'cl op';
+  return tight ? 'cl' : 'op';
+}
+
 /** Statuses whose readings show when furigana is on for new words only. */
 const isNew = (status: string): boolean => status === 'unknown' || status === 'learning';
 
@@ -177,6 +213,8 @@ export class Overlay {
   /** A selection just ended on the line; the click that follows is not a word's. */
   #selected = false;
   #statusOf: (t: Token) => string = () => 'unknown';
+  /** A word in pieces with the reading over each; the bare word until the language's own way is given. */
+  #ruby: (t: Token) => RubySegment[] = (t) => [{ text: t.surface }];
   #bottomPercent = 12;
   #bottomInset = 0;
 
@@ -383,6 +421,14 @@ export class Overlay {
     this.#secondary.lang = translation;
   }
 
+  /**
+   * How the language being learned draws a reading over a word — kana over
+   * kanji, pinyin over characters — so this never has to know which it is.
+   */
+  setRuby(fn: (t: Token) => RubySegment[]): void {
+    this.#ruby = fn;
+  }
+
   /** The underline colours, as underlineVars gives them. */
   setColors(vars: Record<string, string>): void {
     for (const [name, value] of Object.entries(vars)) this.#host.style.setProperty(name, value);
@@ -416,10 +462,12 @@ export class Overlay {
     }
     this.#primary.replaceChildren();
     // Whether this line needs headroom at all.
-    const annotated = tokens.filter((t) => !t.punct && furigana(t.surface, t.reading).some((x) => x.ruby));
+    const annotated = tokens.filter((t) => !t.punct && this.#ruby(t).some((x) => x.ruby));
     this.#primary.classList.toggle('has-ruby', annotated.length > 0);
     this.#primary.classList.toggle('has-new-ruby', annotated.some((t) => isNew(this.#statusOf(t))));
     this.#primary.classList.remove('phrased');
+    // Whether what was just drawn is a word, or a mark closed up against one.
+    let tight = false;
     for (const tok of tokens) {
       // Punctuation is text, not a word: rendered, never hoverable. The line
       // breaks a subtitle was written with are kept — two speakers, or the
@@ -434,14 +482,18 @@ export class Overlay {
           if (!piece.trim() && i) return;
           if (!piece) return;
           const plain = document.createElement('span');
-          plain.className = 'p';
+          // Nothing but space: drawn as wide as a space is (.sp). A mark: up against its word.
+          const side = piece.trim() ? sideOf(piece, tight) : 'sp';
+          plain.className = side ? `p ${side}` : 'p';
           plain.textContent = piece;
           this.#primary.appendChild(plain);
+          tight = side.includes('cl');
         });
         continue;
       }
+      tight = true;
 
-      const segs = furigana(tok.surface, tok.reading);
+      const segs = this.#ruby(tok);
       const annotated = segs.some((x) => x.ruby);
 
       const el = document.createElement('span');

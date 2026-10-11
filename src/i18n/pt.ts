@@ -30,6 +30,7 @@ const MEDIA_THE = { audio: 'O áudio', video: 'O vídeo', picture: 'A imagem' } 
 export const pt: Translation = {
   common: {
     furigana: (mode: Settings['ruby']): string => `Furigana: ${RUBY[mode]}`,
+    pinyin: (mode: Settings['ruby']): string => `Pinyin: ${RUBY[mode]}`,
     sentenceGap: ' ',
   },
 
@@ -40,6 +41,8 @@ export const pt: Translation = {
     target: 'Estou aprendendo',
     targetLimited: (language: string): string => `${language} — limitado`,
     supportFull: 'Suporte completo, incluindo leituras e furigana.',
+    supportPinyin: 'Suporte completo, incluindo pinyin. As definições ficam em inglês.',
+    supportWords: 'Suporte completo. As definições ficam em inglês.',
     supportBasic: 'Suporte básico: as palavras são separadas, mas ainda não há dicionário nem leituras.',
     native: 'Seu idioma',
     nativeHint: 'Traduções e definições aparecem neste idioma, quando disponíveis no vídeo e no dicionário.',
@@ -74,6 +77,8 @@ export const pt: Translation = {
     cardAddLineHint: 'Adiciona um botão que cria um cartão com a frase inteira, com o áudio dela e uma captura de tela.',
     cardKanji: 'Detalhamento de kanji',
     cardKanjiHint: 'Mostra os significados e as leituras de cada kanji.',
+    cardHanzi: 'Detalhamento de caracteres',
+    cardHanziHint: 'Mostra os significados e as leituras de cada caractere.',
     lookupElsewhere: 'Exemplos deste vídeo',
     lookupElsewhereHint: 'Mostra outras frases deste vídeo que usam a palavra. Clique em uma para reproduzi-la.',
 
@@ -85,6 +90,8 @@ export const pt: Translation = {
     rubyAlways: 'Todas',
     rubyNever: 'Desativado',
     rubyHint: 'Leituras acima dos kanji. Pressione R para alternar enquanto assiste.',
+    pinyin: 'Pinyin',
+    pinyinHint: 'Leituras acima dos caracteres. Pressione R para alternar enquanto assiste.',
     blurPrimary: 'Desfocar legendas',
     blurPrimaryHint:
       'Para treinar a escuta: as legendas ficam desfocadas até você passar o cursor sobre elas. Pressione H para alternar.',
@@ -224,7 +231,11 @@ export const pt: Translation = {
       'Dados de dicionário e de kanji © Electronic Dictionary Research and Development Group, usados sob a licença ' +
       'CC BY-SA 4.0. Reempacotados em JSON pelo jmdict-simplified.',
     creditLindera:
-      'Divide o japonês em palavras. Licença MIT; o IPADIC tem termos próprios.',
+      'Divide japonês, coreano e chinês em palavras. Licença MIT; IPADIC, mecab-ko-dic e CC-CEDICT têm termos próprios.',
+    creditCedict: 'Dicionário de chinês © MDBG e colaboradores, usado sob a licença CC BY-SA 4.0.',
+    creditWiktionary:
+      'Dicionários de coreano e espanhol, do Wiktionary via kaikki.org e wiktionary-to-yomitan. CC BY-SA 4.0.',
+    creditUnihan: 'Qual leitura de um caractere chinês aparece primeiro. © Unicode, Inc., usado sob a Unicode License.',
     creditJotoba: 'Usados para consultas enquanto o dicionário é baixado. Ambos usam o JMdict.',
     creditLucide: 'Ícones. Licença ISC.',
     licence: 'O Libregaku tem licença MIT. Os dados dos dicionários são baixados das fontes; não vêm incluídos.',
@@ -238,6 +249,7 @@ export const pt: Translation = {
     keyAdd: 'Adicionar ao Anki a palavra do pop-up',
     keyKnown: 'Marcar a palavra do pop-up como conhecida',
     keyFurigana: 'Alternar furigana: desativado, palavras novas, todas',
+    keyPinyin: 'Alternar pinyin: desativado, palavras novas, todas',
     keyBlur: 'Desfocar ou focar as legendas',
     keySave: 'Salvar a linha atual',
     keyTranscript: 'Mostrar ou ocultar o painel de transcrição',
@@ -423,6 +435,7 @@ export const pt: Translation = {
     // The card, and the word at its head
     cardLabel: (word: string): string => `${word} — dicionário`,
     commonBadge: 'comum',
+    characterNames: { kanji: 'Kanji', hanzi: 'Caracteres' },
     partOfSpeech: {
       n: 'substantivo', 'n-adv': 'substantivo adverbial', 'n-t': 'substantivo temporal', 'n-suf': 'sufixo nominal',
       'n-pref': 'prefixo nominal', pn: 'pronome', 'adj-i': 'adjetivo -i', 'adj-na': 'adjetivo -na',
@@ -436,6 +449,22 @@ export const pt: Translation = {
       v5m: 'verbo godan', v5n: 'verbo godan', v5r: 'verbo godan', 'v5r-i': 'verbo godan',
       v5s: 'verbo godan', v5t: 'verbo godan', v5u: 'verbo godan', 'v5u-s': 'verbo godan',
       v5aru: 'verbo godan',
+      // Wiktionary's codes, for Korean and Spanish words: what kind of word, then its grammar
+      name: 'nome próprio', v: 'verbo', adj: 'adjetivo', pron: 'pronome', det: 'determinante', artic: 'artigo',
+      counter: 'contador', prep: 'preposição', 'prep-phrase': 'locução prepositiva', ptcl: 'partícula',
+      intj: 'interjeição', phrase: 'locução', prov: 'provérbio', r: 'raiz', char: 'caractere', adn: 'adnominal',
+      ptcpl: 'particípio', contr: 'contração',
+      masc: 'masculino', fem: 'feminino', neut: 'neutro', sg: 'singular', pl: 'plural', 'pl-only': 'só plural',
+      count: 'contável', uncount: 'incontável', vr: 'reflexivo', vdt: 'bitransitivo', impers: 'impessoal',
+      irreg: 'irregular', reltnl: 'relacional', reltv: 'relativo', interr: 'interrogativo', poss: 'possessivo',
+      dim: 'diminutivo', aug: 'aumentativo', onoma: 'onomatopeico',
+      // And how or when the word is used
+      idio: 'idiomático', fig: 'figurado', literal: 'literal', col: 'coloquial', inf: 'informal', fam: 'familiar',
+      formal: 'formal', polite: 'polido', lit: 'literário', poet: 'poético', rhet: 'retórico', sl: 'gíria',
+      vulg: 'vulgar', derog: 'pejorativo', offens: 'ofensivo', humor: 'humorístico', euph: 'eufemístico',
+      child: 'infantil', net: 'internet', neol: 'neologismo', cmn: 'comum', uncmmn: 'pouco comum', rare: 'raro',
+      dated: 'antiquado', arch: 'arcaico', obs: 'obsoleto', hist: 'histórico', 'non-std': 'não padrão',
+      dialect: 'dialetal', regio: 'regional',
     },
 
     // The row of icon buttons under the word
@@ -691,6 +720,12 @@ export const pt: Translation = {
 
     // A track's name
     forcedTrack: (track: string): string => `${track} (forçada)`,
+
+    // The dictionary and the analyser
+    noAnswer: 'a extensão não responde — recarregue a página para reiniciá-la',
+    analyserLoading: 'o analisador ainda está carregando',
+    dictionaryLoading: 'o dicionário ainda está carregando',
+    lookupFailed: 'a consulta falhou',
   },
 
   grammar: {
@@ -777,5 +812,76 @@ export const pt: Translation = {
     thoroughly: 'a fundo',
     around: 'por todo lado',
     'non-stop': 'sem parar',
+
+    // Forms of a Spanish word
+    or: 'ou',
+    'first-person': 'primeira pessoa',
+    'second-person': 'segunda pessoa',
+    'third-person': 'terceira pessoa',
+    singular: 'singular',
+    plural: 'plural',
+    masculine: 'masculino',
+    feminine: 'feminino',
+    present: 'presente',
+    preterite: 'pretérito perfeito',
+    imperfect: 'pretérito imperfeito',
+    'imperfect-se': 'pretérito imperfeito (-se)',
+    future: 'futuro',
+    'conditional-mood': 'condicional',
+    indicative: 'indicativo',
+    subjunctive: 'subjuntivo',
+    infinitive: 'infinitivo',
+    gerund: 'gerúndio',
+    participle: 'particípio',
+    formal: 'formal',
+    informal: 'informal',
+    'with-tú': 'com tú',
+    'with-vos': 'com vos',
+    'vos-form': 'forma de vos',
+    voseo: 'voseo',
+    'second-person-semantically': 'sentido de “você”',
+    accusative: 'com objeto direto',
+    dative: 'com objeto indireto',
+    'object-first-person': 'objeto de primeira pessoa',
+    'object-second-person': 'objeto de segunda pessoa',
+    'object-third-person': 'objeto de terceira pessoa',
+    'object-singular': 'objeto singular',
+    'object-plural': 'objeto plural',
+    diminutive: 'diminutivo',
+    augmentative: 'aumentativo',
+    superlative: 'superlativo',
+    alternative: 'variante',
+    'alt-of': 'outra grafia',
+
+    // Korean endings
+    honorific: 'honorífico',
+    'future or guess': 'futuro ou suposição',
+    'formal polite': 'polido formal',
+    question: 'pergunta',
+    but: 'mas',
+    "let's": 'vamos',
+    plain: 'estilo simples',
+    'shall we, or I wonder': 'que tal, ou será que',
+    'I will': 'promessa',
+    'just noticed': 'constatação',
+    'as you know': 'como você sabe',
+    and: 'e',
+    'because, or and then': 'porque, ou e então',
+    'but, or given that': 'mas, ou já que',
+    'even if': 'mesmo que',
+    whether: 'se ou não',
+    'adverb form': 'forma adverbial',
+    quoting: 'discurso indireto',
+    'used to': 'costumava',
+    topic: 'tópico',
+    subject: 'sujeito',
+    object: 'objeto',
+    possessive: 'possessivo',
+    'come to': 'acabar por',
+    when: 'quando',
+    modifier: 'modificador',
+    'noun form': 'forma nominal',
+    becomes: 'tornar-se',
+    'have done before': 'já ter feito',
   },
 };

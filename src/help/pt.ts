@@ -83,7 +83,7 @@ export const pt: HelpTranslation = {
                 ['`B`', 'Salvar a linha atual'],
                 ['`S`', 'Mostrar ou ocultar o painel de transcrição'],
                 ['`H`', 'Desfocar ou focar as legendas'],
-                ['`R`', 'Alternar furigana: desativado, palavras novas, todas (japonês)'],
+                ['`R`', 'Alternar furigana ou pinyin: desativado, palavras novas, todas (japonês, chinês)'],
                 ['`Shift`', 'Segure para consultar a palavra sob o cursor, quando {Configurações → Consulta de palavras → Modo de consulta} está em “Passar o cursor segurando Shift”'],
                 ['`Esc`', 'Fechar o pop-up'],
               ],
@@ -132,6 +132,7 @@ export const pt: HelpTranslation = {
           title: 'Escolher o baralho',
           body: [
             'Os novos cartões vão para o baralho em {Configurações → Anki → Novos cartões vão para}.',
+            'Cada idioma que você aprende tem o próprio baralho. Até você escolher um, os cartões dele vão para um baralho criado para ele junto com o primeiro cartão: Libregaku-JA para o japonês, Libregaku-ES para o espanhol. Mude {Configurações → Idiomas → Estou aprendendo} e o baralho muda junto.',
             'Para trocar durante o vídeo, ative {Configurações → Pop-up da palavra → Menu de baralhos}. Um ▾ aparece ao lado de Adicionar ao Anki; “Adicionar a” um baralho adiciona o cartão nele e manda os próximos para lá também.',
             { tip: 'O status das palavras é lido de {Configurações → Anki → Ler palavras conhecidas de}. Se os novos cartões vão para um baralho que não é lido, Configurações avisa.' },
           ],
@@ -163,6 +164,7 @@ export const pt: HelpTranslation = {
           title: 'Ver e mudar suas palavras marcadas',
           body: [
             'No painel de transcrição, a aba Palavras lista as palavras que você acompanha, marca como conhecidas ou ignora, uma lista para cada. Cada palavra tem um botão para tirar a marcação — Parar de ignorar, para uma ignorada — e uma palavra acompanhada pode virar cartão dali.',
+            'Cada idioma tem as próprias listas. As abas Palavras e Salvas mostram as do idioma que você está aprendendo, e uma palavra marcada em um idioma não fica marcada em outro.',
             'Cada lista tem uma caixa de pesquisa e os botões Copiar e Exportar arquivo, que dão a lista como um arquivo que o Anki e as planilhas abrem.',
           ],
           keywords: ['acompanhar', 'acompanhadas', 'conhecidas', 'ignoradas', 'lista', 'desmarcar', 'remover marcação', 'planilha', 'excel', 'watchlist'],
@@ -281,8 +283,19 @@ export const pt: HelpTranslation = {
           title: 'Por que as definições só existem em alguns idiomas?',
           body: [
             'Para o japonês, elas vêm do JMdict, que tem definições em nove idiomas. Se o seu não é um deles, {Configurações → Idiomas} mostra uma segunda opção, Definições em, para escolher o idioma a usar no lugar.',
+            'Os dicionários de chinês, coreano e espanhol são escritos só em inglês.',
           ],
           keywords: ['dicionário', 'significados', 'português', 'húngaro', 'esloveno', 'cc-cedict', 'wiktionary'],
+        },
+        {
+          id: 'q-languages',
+          title: 'Quais idiomas posso aprender?',
+          body: [
+            'Japonês, chinês, coreano e espanhol têm dicionário, e uma palavra é associada ao cartão dela em qualquer forma em que for dita: 갔어요 encontra um cartão de 가다, e hablábamos, um de hablar. O japonês mostra furigana acima das palavras, e o chinês mostra pinyin.',
+            'Os outros idiomas em {Configurações → Idiomas → Estou aprendendo} aparecem como limitados. As palavras deles são separadas, e ainda não há dicionário.',
+            'O dicionário de um idioma é baixado na primeira vez que você o escolhe. O download tem de 11 a 27 MB; no disco, ele ocupa 100 MB para o chinês, 200 MB para o coreano e 470 MB para o espanhol.',
+          ],
+          keywords: ['mandarim', 'compatíveis', 'suportados', 'suporte', 'tamanho', 'espaço', 'japones', 'chines'],
         },
         {
           id: 'q-data',

@@ -35,7 +35,10 @@ function term(t: string, note: FakeNote, card: FakeCard): boolean {
   const raw = m[2] ?? '';
   const value = raw.startsWith('"') ? raw.slice(1, -1).replace(/\\(.)/g, '$1') : raw;
   switch (key) {
-    case 'deck': return value === '*' || note.deck === value || note.deck.startsWith(`${value}::`);
+    case 'deck':
+      // "X::*" is the decks inside X and never X itself, as in Anki.
+      if (value.endsWith('::*')) return note.deck.startsWith(value.slice(0, -1));
+      return value === '*' || note.deck === value || note.deck.startsWith(`${value}::`);
     case 'note': return note.model.toLowerCase() === value.toLowerCase();
     case 'tag': {
       const v = value.toLowerCase();
@@ -198,6 +201,14 @@ export class FakeAnki {
       case 'deleteNotes': {
         const gone = new Set(params.notes as number[]);
         this.notes = this.notes.filter((n) => !gone.has(n.id));
+        return null;
+      }
+      case 'changeDeck': {
+        // AnkiConnect makes the deck when it is not there. A note here has one deck for all its cards.
+        const deck = String(params.deck);
+        this.answer('createDeck', { deck });
+        const moved = new Set(params.cards as number[]);
+        for (const n of this.notes) if (n.cards.some((c) => moved.has(c.id))) n.deck = deck;
         return null;
       }
       case 'guiBrowse': return [];

@@ -1,0 +1,96 @@
+import { describe, expect, it } from 'vitest';
+import {
+  DEFAULTS, DICTIONARIES, TARGET_LANGUAGES, cardDeck, dictionaryOf, featuresOf, withDecks, withDefaults, type Settings,
+} from '../settings';
+
+/** What each language being learned gets, and the decks kept for each. */
+
+const at = (more: Partial<Settings>): Settings => ({ ...DEFAULTS, ...more });
+
+describe('the decks kept for each language', () => {
+  it('puts the decks in use away under their language and brings the new language its own', () => {
+    const japanese = at({ target: 'ja', deck: 'Japanese::Netflix', statusScope: 'Japanese' });
+    const spanish = withDecks(japanese, { ...japanese, target: 'es' });
+    // Nothing chosen for Spanish yet: its cards go to a deck of its own, never to the Japanese one.
+    expect(spanish).toMatchObject({ target: 'es', deck: '', statusScope: '' });
+    expect(cardDeck(spanish)).toBe('Libregaku-ES');
+    expect(cardDeck(japanese)).toBe('Japanese::Netflix');
+    expect(spanish.decks.ja).toEqual({ deck: 'Japanese::Netflix', statusScope: 'Japanese' });
+
+    const chosen = withDecks(spanish, { ...spanish, deck: 'Español' });
+    expect(chosen.decks.es).toEqual({ deck: 'Español', statusScope: '' });
+
+    const back = withDecks(chosen, { ...chosen, target: 'ja' });
+    expect(back).toMatchObject({ target: 'ja', deck: 'Japanese::Netflix', statusScope: 'Japanese' });
+    expect(back.decks.es).toEqual({ deck: 'Español', statusScope: '' });
+    expect(withDecks(back, { ...back, target: 'es' })).toMatchObject({ deck: 'Español', statusScope: '' });
+  });
+
+  it('keeps the scope with the deck, each changed on its own', () => {
+    const before = at({ target: 'ko', deck: 'Korean', statusScope: '' });
+    const scoped = withDecks(before, { ...before, statusScope: 'Korean' });
+    expect(scoped.decks.ko).toEqual({ deck: 'Korean', statusScope: 'Korean' });
+  });
+
+  it('leaves everything alone for a change that is neither', () => {
+    const before = at({ target: 'ja', deck: 'Japanese', decks: { ja: { deck: 'Japanese', statusScope: '' } } });
+    const after = { ...before, ruby: 'always' as const };
+    expect(withDecks(before, after)).toBe(after);
+    // A language never given a deck has nothing to write down.
+    const empty = at({ target: 'zh' });
+    expect(withDecks(empty, { ...empty, blurPrimary: true }).decks).toEqual({});
+  });
+
+  it('carries a deck chosen before decks were kept by language over to its language', () => {
+    const stored = withDefaults({ target: 'ja', deck: 'Vocabulary', statusScope: 'Japanese' });
+    expect(stored.decks).toEqual({});
+    expect(withDecks(stored, { ...stored, target: 'zh' }).decks.ja).toEqual({ deck: 'Vocabulary', statusScope: 'Japanese' });
+  });
+
+  it('reads stored decks defensively', () => {
+    const odd = { ja: { deck: 'A' }, ko: null, zh: 'x', es: { deck: 3, statusScope: 'S' } } as unknown as Settings['decks'];
+    expect(withDefaults({ decks: odd }).decks).toEqual({
+      ja: { deck: 'A', statusScope: '' }, es: { deck: '', statusScope: 'S' },
+    });
+    expect(withDefaults({ decks: 'nope' as unknown as Settings['decks'] }).decks).toEqual({});
+  });
+});
+
+describe('what each language gets', () => {
+  const tier = (code: string) => TARGET_LANGUAGES.find((l) => l.code === code)?.tier;
+
+  it('gives Japanese, Korean and Chinese an analyser, and Spanish its dictionary forms', () => {
+    expect(['ja', 'ko', 'zh', 'es', 'fr'].map(tier)).toEqual([2, 2, 2, 1, 0]);
+  });
+
+  it('has a dictionary for every language above boundaries alone, and for no other', () => {
+    for (const lang of TARGET_LANGUAGES) {
+      expect(Boolean(DICTIONARIES[lang.code]), lang.code).toBe(lang.tier > 0);
+    }
+  });
+
+  it('asks for JMdict in the learner’s language, and the others in English, the one they are written in', () => {
+    expect(dictionaryOf('ja', { native: 'de', definitions: 'en' })).toEqual({ source: 'jmdict', edition: 'ger' });
+    expect(dictionaryOf('ja', { native: 'ko', definitions: 'fr' })).toEqual({ source: 'jmdict', edition: 'fre' });
+    expect(dictionaryOf('zh', { native: 'de', definitions: 'en' })).toEqual({ source: 'cedict', edition: 'en' });
+    expect(dictionaryOf('ko', { native: 'en', definitions: 'en' })).toEqual({ source: 'wty-ko-en', edition: 'en' });
+    expect(dictionaryOf('es', { native: 'ja', definitions: 'en' })).toEqual({ source: 'wty-es-en', edition: 'en' });
+    expect(dictionaryOf('fr', { native: 'en', definitions: 'en' })).toBeNull();
+  });
+
+  it('names what each language draws above its words, and what it calls its characters', () => {
+    expect(featuresOf('ja')).toMatchObject({ readings: 'furigana', characters: 'kanji', definitions: true });
+    expect(featuresOf('zh')).toMatchObject({ readings: 'pinyin', characters: 'hanzi', definitions: false });
+    expect(featuresOf('ko')).toMatchObject({ readings: false, characters: false });
+    expect(featuresOf('es')).toMatchObject({ readings: false, characters: false });
+  });
+
+  it('sends each language to a dictionary site of its own', () => {
+    const site = (lang: string, word: string) => featuresOf(lang).dictionary?.url(word);
+    expect(site('ja', '食べる')).toBe('https://jisho.org/search/%E9%A3%9F%E3%81%B9%E3%82%8B');
+    expect(site('zh', '学校')).toContain('mdbg.net/chinese/dictionary?page=worddict&wdqb=%E5%AD%A6%E6%A0%A1');
+    expect(site('ko', '먹다')).toContain('korean.dict.naver.com/koendict/#/search?query=%EB%A8%B9%EB%8B%A4');
+    expect(site('es', 'hablar')).toBe('https://www.spanishdict.com/translate/hablar');
+    expect(featuresOf('fr').dictionary).toBeUndefined();
+  });
+});

@@ -1,5 +1,5 @@
 import arabLeagueFlag from './flags/arab-league.svg';
-
+import { defaultDeck } from './anki/model';
 import { languageOfLocale } from './i18n/languages';
 
 /**
@@ -11,38 +11,46 @@ import { languageOfLocale } from './i18n/languages';
  */
 
 /**
- * Languages the segmenter can do more than find boundaries for.
- *
- * Japanese only, for now. Lindera also ships ko-dic and cc-cedict, but their
- * feature columns are laid out differently from IPADIC's and the analyser
- * reads IPADIC's positions, so Chinese came out with English glosses as its
- * "readings" and Korean with part-of-speech tags as lemmas. Each needs its own
- * column mapping before it can be offered as more than boundaries.
- */
-export const TIER2_LANGS: Record<string, string> = {
-  ja: 'ipadic',
-};
-
-/**
- * Languages with a dictionary behind lookups. JMdict is Japanese; offering
- * lookups in any other language would answer every Spanish word from a
- * Japanese dictionary.
+ * Languages with a dictionary behind lookups, and which one (src/dict/sources.ts).
+ * A language with none has no lookups at all, rather than every Spanish word
+ * answered from a Japanese dictionary.
  */
 export const DICTIONARIES: Record<string, string> = {
   ja: 'jmdict',
+  ko: 'wty-ko-en',
+  zh: 'cedict',
+  es: 'wty-es-en',
 };
+
+/**
+ * The dictionary for a language being learned, and which edition of it: the
+ * one with definitions in the learner's language where it comes in several,
+ * as JMdict does. The others are written in English only.
+ */
+export function dictionaryOf(
+  lang: string, s: Pick<Settings, 'native' | 'definitions'>,
+): { source: string; edition: string } | null {
+  const source = DICTIONARIES[lang];
+  if (!source) return null;
+  return { source, edition: source === 'jmdict' ? jmdictEditionFor(definitionLanguage(s)) : 'en' };
+}
 
 /**
  * The languages that can be learned. `flag` is the player bar's badge: a
  * country standing for a language, so the one most learners of it mean —
  * Brazil for Portuguese, as most courses do. Arabic has no country's flag
  * here, so its badge is the Arab League's (`flagSvg`), which is no one state's.
+ *
+ * `tier` is what the language gets (src/morphology/index.ts): 2, an analyser
+ * that reads its grammar; 1, the browser's word boundaries and a dictionary
+ * that lists every inflected form; 0, boundaries alone — no dictionary
+ * forms, so no lookups and no matching a word to its card.
  */
 export const TARGET_LANGUAGES: Array<{ code: string; label: string; tier: 0 | 1 | 2; flag?: string; flagSvg?: string }> = [
   { code: 'ja', label: 'Japanese', tier: 2, flag: '🇯🇵' },
-  { code: 'ko', label: 'Korean', tier: 0, flag: '🇰🇷' },
-  { code: 'zh', label: 'Chinese', tier: 0, flag: '🇨🇳' },
-  { code: 'es', label: 'Spanish', tier: 0, flag: '🇪🇸' },
+  { code: 'ko', label: 'Korean', tier: 2, flag: '🇰🇷' },
+  { code: 'zh', label: 'Chinese', tier: 2, flag: '🇨🇳' },
+  { code: 'es', label: 'Spanish', tier: 1, flag: '🇪🇸' },
   { code: 'fr', label: 'French', tier: 0, flag: '🇫🇷' },
   { code: 'de', label: 'German', tier: 0, flag: '🇩🇪' },
   { code: 'it', label: 'Italian', tier: 0, flag: '🇮🇹' },
@@ -60,10 +68,14 @@ export const TARGET_LANGUAGES: Array<{ code: string; label: string; tier: 0 | 1 
  * never by the language's name (AGENTS.md, invariant 4).
  */
 export interface LanguageFeatures {
-  /** Readings over words: the Furigana setting, its button in the bar, the R key. */
-  readings: boolean;
-  /** The characters a word is written with, on its card. */
-  characters: boolean;
+  /**
+   * Readings over words — the Furigana setting, its button in the bar, the R
+   * key — by the name the language has for them, or false where its script
+   * needs none.
+   */
+  readings: 'furigana' | 'pinyin' | false;
+  /** The characters a word is written with, on its card, by what the language calls them. */
+  characters: 'kanji' | 'hanzi' | false;
   /** A dictionary site to open a word in, from its card. */
   dictionary?: { name: string; url: (word: string) => string };
   /** Definitions in more than one language, so a choice of which. */
@@ -72,10 +84,28 @@ export interface LanguageFeatures {
 
 const LANGUAGE_FEATURES: Record<string, LanguageFeatures> = {
   ja: {
-    readings: true,
-    characters: true,
+    readings: 'furigana',
+    characters: 'kanji',
     definitions: true,
     dictionary: { name: 'Jisho', url: (w) => `https://jisho.org/search/${encodeURIComponent(w)}` },
+  },
+  ko: {
+    readings: false,
+    characters: false,
+    definitions: false,
+    dictionary: { name: 'Naver', url: (w) => `https://korean.dict.naver.com/koendict/#/search?query=${encodeURIComponent(w)}` },
+  },
+  zh: {
+    readings: 'pinyin',
+    characters: 'hanzi',
+    definitions: false,
+    dictionary: { name: 'MDBG', url: (w) => `https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=${encodeURIComponent(w)}` },
+  },
+  es: {
+    readings: false,
+    characters: false,
+    definitions: false,
+    dictionary: { name: 'SpanishDict', url: (w) => `https://www.spanishdict.com/translate/${encodeURIComponent(w)}` },
   },
 };
 
@@ -179,6 +209,12 @@ export function trackLanguageMatch(track: string, want: string): 0 | 1 | 2 {
   return track.startsWith(want) ? 2 : 0;
 }
 
+/** Where one language's cards go, and which deck says what is known in it. */
+export interface LanguageDecks {
+  deck: string;
+  statusScope: string;
+}
+
 export interface Settings {
   /** BCP-47 of the language being learned. */
   target: string;
@@ -236,7 +272,8 @@ export interface Settings {
    */
   marksInAnki: boolean;
   /**
-   * Where new cards go. One specific deck.
+   * Where new cards go. One specific deck. Empty until one is chosen, and the
+   * language's own deck is used till then: read it through cardDeck().
    */
   deck: string;
   /** Put a recording of the word on each new card, when one exists. */
@@ -259,6 +296,13 @@ export interface Settings {
    * "Japanese::Netflix" and everything beside it.
    */
   statusScope: string;
+  /**
+   * `deck` and `statusScope` for each language that has been learned, by its
+   * code. Changing `target` puts the ones in use away here and brings the new
+   * language's back, so Spanish cards never land in the Japanese deck. Written
+   * by setSetting alone; everything else reads `deck` and `statusScope`.
+   */
+  decks: Record<string, LanguageDecks>;
   /** Show comprehension and per-line counts in the transcript panel. */
   sidebarStats: boolean;
   /**
@@ -338,6 +382,7 @@ export const DEFAULTS: Settings = {
   cardSentenceAudio: true,
   cardScreenshot: true,
   statusScope: '',
+  decks: {},
   sidebarStats: true,
   sidebarFollow: true,
   markKnown: false,
@@ -390,7 +435,7 @@ export async function loadSettings(): Promise<Settings> {
 }
 
 export async function setSetting<K extends keyof Settings>(key: K, value: Settings[K]): Promise<void> {
-  cached = { ...cached, [key]: value };
+  cached = withDecks(cached, { ...cached, [key]: value });
   listeners.forEach((fn) => fn(cached, true));
   try {
     await chrome.storage.sync.set({ [KEY]: cached });
@@ -423,7 +468,55 @@ export function withDefaults(stored: Partial<Settings> | undefined): Settings {
   for (const key of UNDERLINE_KEYS) {
     if (!/^#[0-9a-f]{6}$/i.test(out[key])) out[key] = DEFAULTS[key];
   }
+  out.decks = decksFrom(out.decks);
   return out;
+}
+
+/** The decks kept for each language, with anything that is not one left out. */
+function decksFrom(stored: unknown): Record<string, LanguageDecks> {
+  const out: Record<string, LanguageDecks> = {};
+  if (!stored || typeof stored !== 'object') return out;
+  for (const [lang, kept] of Object.entries(stored as Record<string, Partial<LanguageDecks> | null>)) {
+    if (!kept || typeof kept !== 'object') continue;
+    out[lang] = {
+      deck: typeof kept.deck === 'string' ? kept.deck : '',
+      statusScope: typeof kept.statusScope === 'string' ? kept.statusScope : '',
+    };
+  }
+  return out;
+}
+
+/**
+ * A change to the settings, with each language's decks kept in step.
+ *
+ * The decks in use are always written down under the language they are for.
+ * When the language changes, the one being left keeps what it had and the
+ * one arrived at gets its own back — none, the first time, so the first
+ * card goes to that language's own deck (cardDeck) rather than to another
+ * language's.
+ */
+export function withDecks(before: Settings, after: Settings): Settings {
+  if (after.target === before.target) {
+    const kept = after.decks[after.target];
+    if (kept?.deck === after.deck && kept.statusScope === after.statusScope) return after;
+    // A language never given a deck has nothing to keep yet.
+    if (!kept && !after.deck && !after.statusScope) return after;
+    return { ...after, decks: { ...after.decks, [after.target]: { deck: after.deck, statusScope: after.statusScope } } };
+  }
+  const decks = { ...before.decks, [before.target]: { deck: before.deck, statusScope: before.statusScope } };
+  const next = decks[after.target] ?? { deck: '', statusScope: '' };
+  return { ...after, deck: next.deck, statusScope: next.statusScope, decks };
+}
+
+/**
+ * The deck new cards go to: the one chosen, or — until one is — the
+ * language's own, Libregaku-JA and the like. A deck per language by default,
+ * so that cards in two languages never land in one deck unless the learner
+ * puts them there. The language's own deck may not exist yet: its first card
+ * makes it (readyDeck in src/anki/deck.ts).
+ */
+export function cardDeck(s: Pick<Settings, 'deck' | 'target'>): string {
+  return s.deck || defaultDeck(s.target);
 }
 
 /** The settings that hold an underline colour, and the status each one marks. */
@@ -454,7 +547,11 @@ export function applyVars(el: HTMLElement, vars: Record<string, string>): void {
 
 function same(a: Settings, b: Settings): boolean {
   const keys = new Set([...Object.keys(a), ...Object.keys(b)]) as Set<keyof Settings>;
-  for (const k of keys) if (a[k] !== b[k]) return false;
+  for (const k of keys) {
+    if (a[k] === b[k]) continue;
+    // The one setting that is not a plain value: compared by what it holds.
+    if (k !== 'decks' || JSON.stringify(a[k]) !== JSON.stringify(b[k])) return false;
+  }
   return true;
 }
 

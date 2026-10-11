@@ -83,7 +83,7 @@ export const es: HelpTranslation = {
                 ['`B`', 'Guardar la línea actual'],
                 ['`S`', 'Mostrar u ocultar el panel de transcripción'],
                 ['`H`', 'Desenfocar o enfocar los subtítulos'],
-                ['`R`', 'Cambiar el furigana: desactivado, palabras nuevas, todas (japonés)'],
+                ['`R`', 'Cambiar el furigana o el pinyin: desactivado, palabras nuevas, todas (japonés, chino)'],
                 ['`Shift`', 'Mantener pulsado para buscar la palabra bajo el cursor, si {Configuración → Búsqueda de palabras → Modo de búsqueda} está en “Pasar el cursor con Shift”'],
                 ['`Esc`', 'Cerrar la ventana emergente'],
               ],
@@ -132,6 +132,7 @@ export const es: HelpTranslation = {
           title: 'Elegir el mazo',
           body: [
             'Las tarjetas nuevas van al mazo de {Configuración → Anki → Mazo para tarjetas nuevas}.',
+            'Cada idioma que aprendes tiene su propio mazo. Hasta que elijas uno, sus tarjetas van a un mazo que se crea para él con la primera tarjeta: Libregaku-JA para el japonés, Libregaku-ES para el español. Si cambias {Configuración → Idiomas → Estoy aprendiendo}, también cambia el mazo.',
             'Para cambiarlo mientras ves un video, activa {Configuración → Ventana emergente → Menú de mazos}. Aparece un ▾ junto a Añadir a Anki; “Añadir a” un mazo añade la tarjeta ahí y también envía ahí las siguientes.',
             { tip: 'El estado de las palabras se lee de {Configuración → Anki → Leer palabras conocidas de}. Si las tarjetas nuevas van a un mazo que no se lee, Configuración te lo indica.' },
           ],
@@ -163,6 +164,7 @@ export const es: HelpTranslation = {
           title: 'Ver y cambiar tus palabras marcadas',
           body: [
             'En el panel de transcripción, la pestaña Palabras muestra las palabras que sigues, marcas como conocidas o ignoras, en una lista cada una. Cada palabra tiene un botón para quitar su marca (Dejar de ignorar, si está ignorada), y desde ahí una palabra seguida puede convertirse en tarjeta.',
+            'Cada idioma tiene sus propias listas. Las pestañas Palabras y Guardadas muestran las del idioma que estás aprendiendo, y una palabra marcada en un idioma no queda marcada en otro.',
             'Cada lista tiene un cuadro de búsqueda y los botones Copiar y Exportar archivo, que te dan la lista como un archivo que Anki y las hojas de cálculo pueden abrir.',
           ],
           keywords: ['seguimiento', 'lista de seguimiento', 'watchlist', 'desmarcar', 'quitar marca', 'conocidas', 'seguidas', 'ignoradas', 'excel'],
@@ -281,8 +283,19 @@ export const es: HelpTranslation = {
           title: '¿Por qué las definiciones solo están en algunos idiomas?',
           body: [
             'Para el japonés vienen de JMdict, que tiene definiciones en nueve idiomas. Si el tuyo no es uno de ellos, {Configuración → Idiomas} muestra una segunda fila, Definiciones en, para elegir el idioma que se usará en su lugar.',
+            'Los diccionarios de chino, coreano y español están escritos solo en inglés.',
           ],
           keywords: ['diccionario', 'significados', 'húngaro', 'esloveno', 'cc-cedict', 'wiktionary', 'wikcionario'],
+        },
+        {
+          id: 'q-languages',
+          title: '¿Qué idiomas puedo aprender?',
+          body: [
+            'El japonés, el chino, el coreano y el español tienen diccionario, y una palabra coincide con su tarjeta en cualquier forma en que se diga: 갔어요 encuentra una tarjeta de 가다, y hablábamos, una de hablar. El japonés muestra furigana sobre las palabras, y el chino, pinyin.',
+            'Los demás idiomas de {Configuración → Idiomas → Estoy aprendiendo} aparecen como limitados. Sus palabras se separan, pero aún no tienen diccionario.',
+            'El diccionario de un idioma se descarga la primera vez que lo eliges. Ocupa entre 11 y 27 MB.',
+          ],
+          keywords: ['mandarín', 'compatibles', 'disponibles', 'soporte', 'tamaño', 'japones'],
         },
         {
           id: 'q-data',

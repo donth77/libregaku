@@ -43,6 +43,7 @@ import type { SidebarDeps } from '../sidebar';
 import { Transcript } from '../transcript';
 import { closePopup, showPopup } from '../popup';
 import { setSetting } from '../../settings';
+import { furigana } from '../../morphology/furigana';
 import type { Segmenter, Token } from '../../morphology/types';
 import type { LookupResult } from '../../dict/client';
 
@@ -56,6 +57,7 @@ const READINGS: Record<string, string> = { 食べる: 'たべる', 勉強: 'べ�
 const segmenter: Segmenter = {
   tier: 2,
   hasLemma: true,
+  ruby: furigana,
   segment: (text: string): Token[] => {
     let at = 0;
     return text.split(' ').map((surface) => {
@@ -937,6 +939,7 @@ describe('Sidebar at the length of a film', { timeout: 30_000 }, () => {
     return {
       tier: 2,
       hasLemma: true,
+      ruby: furigana,
       calls,
       total: () => [...calls.values()].reduce((a, b) => a + b, 0),
       segment(text: string): Token[] {
@@ -964,6 +967,7 @@ describe('Sidebar at the length of a film', { timeout: 30_000 }, () => {
       seg: {
         tier: 2,
         hasLemma: true,
+        ruby: furigana,
         segment(text: string): Promise<Token[]> {
           calls.set(text, (calls.get(text) ?? 0) + 1);
           return new Promise((resolve) => {

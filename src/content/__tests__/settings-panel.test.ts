@@ -41,8 +41,8 @@ vi.stubGlobal('chrome', {
   },
 });
 
-import { buildSettings, builtLabel, keysView, outsideScope, syncSettingsControls } from '../settings-panel';
-import { DEFAULTS, setSetting, settings } from '../../settings';
+import { buildSettings, builtLabel, keysView, outsideScope, syncSettingsControls, tierNote } from '../settings-panel';
+import { DEFAULTS, setSetting, settings, TARGET_LANGUAGES } from '../../settings';
 import { setUiLanguage, ui } from '../../i18n';
 
 const OFFLINE: AnkiState = { kind: 'offline' };
@@ -190,7 +190,47 @@ describe('settings panel selects', () => {
     }
   });
 
-        it('asks for your language once, and for a definitions language only where the dictionary has none in it', async () => {
+  it('names the readings and characters rows for the language learned', async () => {
+    const names = (root: HTMLElement, setting: string): [string | null | undefined, string | null | undefined] => {
+      const row = root.querySelector(`[data-setting=${setting}]`)!.closest('label.set') as HTMLElement;
+      return [row.hidden ? null : row.querySelector('.name')?.textContent, row.querySelector('.hint')?.textContent];
+    };
+    const root = buildSettings(() => {});
+    expect(names(root, 'ruby')[0]).toBe('Furigana');
+    await setSetting('target', 'zh');
+    try {
+      // The open panel, and one built from scratch, say the same.
+      for (const panel of [(syncSettingsControls(root), root), buildSettings(() => {})]) {
+        expect(names(panel, 'ruby')).toEqual(['Pinyin', 'Readings above characters. Press R to switch while watching.']);
+        expect(names(panel, 'cardKanji')).toEqual(['Character breakdown', "Shows each character's meanings and readings."]);
+      }
+      await setSetting('target', 'ko');
+      syncSettingsControls(root);
+      expect(names(root, 'ruby')[0]).toBeNull();
+      expect(names(root, 'cardKanji')[0]).toBeNull();
+    } finally {
+      await setSetting('target', 'ja');
+    }
+    syncSettingsControls(root);
+    expect(names(root, 'ruby')).toEqual(['Furigana', 'Readings above kanji. Press R to switch while watching.']);
+    expect(names(root, 'cardKanji')[0]).toBe('Kanji breakdown');
+  });
+
+  it('says under "I\'m learning" what the language gets', () => {
+    expect(tierNote('ja')).toBe('Full support, including readings and furigana.');
+    expect(tierNote('zh')).toBe('Full support, including pinyin. Definitions are in English.');
+    expect(tierNote('ko')).toBe('Full support. Definitions are in English.');
+    expect(tierNote('es')).toBe('Full support. Definitions are in English.');
+    expect(tierNote('fr')).toBe('Basic support: words are split, but there is no dictionary or readings yet.');
+    expect(tierNote('xx')).toBe(tierNote('fr'));
+  });
+
+  it('credits every source a language draws on', () => {
+    const titles = Array.from(buildSettings(() => {}).querySelectorAll('.credits dt')).map((dt) => dt.textContent);
+    expect(titles).toEqual(expect.arrayContaining(['JMdict · KANJIDIC2', 'CC-CEDICT', 'Wiktionary', 'Lindera · IPADIC · mecab-ko-dic', 'Unihan']));
+  });
+
+  it('asks for your language once, and for a definitions language only where the dictionary has none in it', async () => {
     const root = buildSettings(() => {});
     const yours = selectFor(root, 'Your language');
     const definitions = root.querySelector<HTMLSelectElement>('select[name=definitions]')!;
@@ -250,7 +290,9 @@ describe('settings panel selects', () => {
     let root = buildSettings(() => {});
     expect(optionText(menu(root, 'target'), 'ja')).toBe('Japanese');
     // Limited is a language with word boundaries and nothing more.
-    expect(optionText(menu(root, 'target'), 'es')).toBe('Spanish — limited');
+    const limited = TARGET_LANGUAGES.find((l) => l.tier === 0);
+    expect(optionText(menu(root, 'target'), 'es')).toBe('Spanish');
+    if (limited) expect(optionText(menu(root, 'target'), limited.code)).toBe(`${limited.label} — limited`);
     expect(optionText(menu(root, 'definitions'), 'hu')).toBe('Hungarian');
 
     setUiLanguage('es');
@@ -409,21 +451,75 @@ describe('settings panel selects', () => {
 });
 
 describe('settings panel decks', () => {
-  it('never picks a deck for new cards on the learner\'s behalf', async () => {
+  it('never picks one of the learner\'s decks for them: cards go to the language\'s own until they do', async () => {
     anki.probe.mockResolvedValue(connected(['Core 2k', 'Vocabulary']));
     const root = buildSettings(() => {});
     await flush();
     const deck = root.querySelector<HTMLSelectElement>('select[name=deck]')!;
 
+    // Nothing of theirs is chosen and nothing is stored: the deck shown is
+    // Japanese's own, which Anki has not got yet — its first card makes it.
     expect(settings().deck).toBe('');
-    expect(deck.value).toBe('');
-    expect(shown(deck)).toBe('Choose a deck…');
-    expect(hintOf(deck).classList.contains('warn')).toBe(true);
+    expect(deck.value).toBe('Libregaku-JA');
+    expect(shown(deck)).toBe('Libregaku-JA');
+    expect(Array.from(deck.options).map((o) => o.value)).toEqual(['Libregaku-JA', 'Core 2k', 'Vocabulary']);
+    expect(hintOf(deck).classList.contains('warn')).toBe(false);
 
     choose(deck, 'Vocabulary');
     expect(settings().deck).toBe('Vocabulary');
     expect(hintOf(deck).classList.contains('warn')).toBe(false);
     expect(hintOf(deck).textContent).toBe('The deck every new card is added to.');
+  });
+
+  it('lists the language\'s own deck once when Anki already has it', async () => {
+    anki.probe.mockResolvedValue(connected(['Libregaku-JA', 'Vocabulary']));
+    const root = buildSettings(() => {});
+    await flush();
+    const deck = root.querySelector<HTMLSelectElement>('select[name=deck]')!;
+    expect(Array.from(deck.options).map((o) => o.value)).toEqual(['Libregaku-JA', 'Vocabulary']);
+    expect(deck.value).toBe('Libregaku-JA');
+    expect(hintOf(deck).classList.contains('warn')).toBe(false);
+  });
+
+  it('shows each language its own decks, drawn again when the language changes', async () => {
+    await setSetting('deck', 'Japanese');
+    await setSetting('statusScope', 'Japanese');
+    anki.probe.mockResolvedValue(connected(['Japanese', 'Vocabulary']));
+    const root = buildSettings(() => {});
+    await flush();
+    const deck = root.querySelector<HTMLSelectElement>('select[name=deck]')!;
+    const scope = root.querySelector<HTMLSelectElement>('select[name=statusScope]')!;
+    expect(deck.value).toBe('Japanese');
+    try {
+      // Changed on this page: Spanish has chosen nothing, so its cards go to its own deck.
+      const learning = selectFor(root, "I'm learning");
+      learning.value = 'es';
+      learning.dispatchEvent(new Event('change', { bubbles: true }));
+      expect(settings().deck).toBe('');
+      expect(deck.value).toBe('Libregaku-ES');
+      expect(Array.from(deck.options).map((o) => o.value)).toEqual(['Libregaku-ES', 'Japanese', 'Vocabulary']);
+      expect(scope.value).toBe('');
+      expect(hintOf(deck).classList.contains('warn')).toBe(false);
+
+      // Changed somewhere else — another tab, the options page — and brought in step here.
+      await setSetting('target', 'ja');
+      syncSettingsControls(root);
+      expect(deck.value).toBe('Japanese');
+      expect(scope.value).toBe('Japanese');
+      expect(Array.from(deck.options).map((o) => o.value)).toEqual(['Libregaku-JA', 'Japanese', 'Vocabulary']);
+    } finally {
+      await setSetting('target', 'ja');
+    }
+  });
+
+  it('says so when the language\'s own deck is one the word status does not read', async () => {
+    await setSetting('statusScope', 'Japanese');
+    anki.probe.mockResolvedValue(connected(['Japanese', 'Vocabulary']));
+    const root = buildSettings(() => {});
+    await flush();
+    const scope = root.querySelector<HTMLSelectElement>('select[name=statusScope]')!;
+    expect(hintOf(scope).classList.contains('warn')).toBe(true);
+    expect(hintOf(scope).textContent).toContain('New cards go to “Libregaku-JA”, which isn\'t included here');
   });
 
   it('shows a stored deck Anki no longer has as missing, instead of swapping it', async () => {
@@ -481,7 +577,8 @@ describe('settings panel decks', () => {
     const deck = root.querySelector<HTMLSelectElement>('select[name=deck]')!;
     expect(deck.value).toBe('Vocabulary');
     expect(hintOf(deck).classList.contains('warn')).toBe(false);
-    expect(Array.from(deck.options).map((o) => o.value)).toEqual(['Core 2k', 'Vocabulary']);
+    // With the language's own deck above them, always there to go back to.
+    expect(Array.from(deck.options).map((o) => o.value)).toEqual(['Libregaku-JA', 'Core 2k', 'Vocabulary']);
   });
 
   it('says so when Check again reaches Anki, and only then', async () => {

@@ -9,5 +9,13 @@
  * offscreen document.
  */
 export const LINDERA_DICTS: Record<string, string> = {
+  // Japanese, ~10 MB.
   ipadic: 'https://github.com/lindera/lindera/releases/download/v6.0.0/lindera-ipadic-6.0.0.zip',
+  // Korean (mecab-ko-dic), ~20 MB.
+  'ko-dic': 'https://github.com/lindera/lindera/releases/download/v6.0.0/lindera-ko-dic-6.0.0.zip',
+  // Chinese, ~7 MB: CC-CEDICT as it stood in 2020, with word costs. Read for
+  // where its words begin and end only — it knows one reading for each, and
+  // for 了, 的 and 没 the wrong one. Readings come from the dictionary itself
+  // (src/dict/cedict.ts).
+  'cc-cedict': 'https://github.com/lindera/lindera/releases/download/v6.0.0/lindera-cc-cedict-6.0.0.zip',
 };

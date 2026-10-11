@@ -24,6 +24,10 @@ export const settings = {
   targetLimited: (language: string): string => `${language} — limited`,
   /** Under "I'm learning", for a language with readings and a dictionary: Japanese. */
   supportFull: 'Full support, including readings and furigana.',
+  /** Under "I'm learning", for Chinese: full support, with pinyin (the romanised reading) above the characters. */
+  supportPinyin: 'Full support, including pinyin. Definitions are in English.',
+  /** Under "I'm learning", for a language with a dictionary and no readings to show, such as Korean or Spanish. */
+  supportWords: 'Full support. Definitions are in English.',
   /** Under "I'm learning", for a language with no dictionary yet: it is only split into words. */
   supportBasic: 'Basic support: words are split, but there is no dictionary or readings yet.',
   /**
@@ -78,6 +82,9 @@ export const settings = {
   /** The kanji in a word, each with its meanings and readings, on the popup. */
   cardKanji: 'Kanji breakdown',
   cardKanjiHint: "Shows each kanji's meanings and readings.",
+  /** The same setting where the language being learned is Chinese: its characters, not called kanji. */
+  cardHanzi: 'Character breakdown',
+  cardHanziHint: "Shows each character's meanings and readings.",
   /** Other subtitle lines in the same video that use the word, on its popup. */
   lookupElsewhere: 'Examples from this video',
   lookupElsewhereHint: 'Shows other sentences in this video that use the word. Click one to play it.',
@@ -94,6 +101,9 @@ export const settings = {
   rubyNever: 'Off',
   /** R is the key, shown as it is. */
   rubyHint: 'Readings above kanji. Press R to switch while watching.',
+  /** The same setting where the language being learned is Chinese: pinyin, the romanised reading, above the characters. */
+  pinyin: 'Pinyin',
+  pinyinHint: 'Readings above characters. Press R to switch while watching.',
   blurPrimary: 'Blur subtitles',
   /** H is the key, shown as it is. */
   blurPrimaryHint: 'For listening practice: subtitles stay blurred until you point at them. Press H to switch.',
@@ -289,8 +299,16 @@ export const settings = {
   creditJmdict:
     'Dictionary and kanji data © the Electronic Dictionary Research and Development Group, used ' +
     'under CC BY-SA 4.0. Repackaged as JSON by jmdict-simplified.',
-  /** Under Lindera · IPADIC. */
-  creditLindera: 'Splits Japanese into words. MIT licence; IPADIC has its own terms.',
+  /** Under Lindera · IPADIC · mecab-ko-dic. */
+  creditLindera:
+    'Splits Japanese, Korean and Chinese into words. MIT licence; IPADIC, mecab-ko-dic and CC-CEDICT have their own terms.',
+  /** Under CC-CEDICT, the Chinese dictionary. */
+  creditCedict: 'Chinese dictionary © MDBG and its contributors, used under CC BY-SA 4.0.',
+  /** Under Wiktionary. kaikki.org and wiktionary-to-yomitan are the projects that turn Wiktionary into data files. */
+  creditWiktionary:
+    'Korean and Spanish dictionaries, from Wiktionary through kaikki.org and wiktionary-to-yomitan. CC BY-SA 4.0.',
+  /** Under Unihan, the Unicode database of Chinese characters. */
+  creditUnihan: 'Which reading a Chinese character shows first. © Unicode, Inc., used under the Unicode License.',
   /** Under Jotoba · Jisho. */
   creditJotoba: 'Used for lookups while the dictionary downloads. Both use JMdict.',
   /** Under Lucide. */
@@ -314,6 +332,8 @@ export const settings = {
   keyKnown: 'Mark the word in the popup as known',
   /** R. Its three settings, in the order it steps through them. */
   keyFurigana: 'Switch furigana: off, new words, all',
+  /** The same key where the language being learned is Chinese. */
+  keyPinyin: 'Switch pinyin: off, new words, all',
   /** H. */
   keyBlur: 'Blur or unblur subtitles',
   /** B. Saves the line to the transcript panel's Saved tab. */
