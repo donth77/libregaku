@@ -575,6 +575,19 @@ describe('the word elsewhere in the video', () => {
     fold(card)!.click();
   });
 
+  it('offers the rest as a search of the transcript, for every form they were found in', async () => {
+    const onSearch = vi.fn();
+    const more = [...lines(5), { start: 400, text: '勉強しない', match: '勉強し' }];
+    const card = open({ elsewhere: Promise.resolve(more), onSearch, token: { surface: '勉強', lemma: '勉強する', start: 2, end: 4 } });
+    await flush();
+    if (fold(card)!.getAttribute('aria-expanded') !== 'true') fold(card)!.click();
+    const all = card.querySelector<HTMLButtonElement>('button.also-more')!;
+    expect(all.textContent).toBe('Show all in transcript');
+    all.click();
+    expect(onSearch).toHaveBeenCalledWith('勉強する', ['勉強', '勉強', '勉強', '勉強', '勉強', '勉強', '勉強し']);
+    expect(popupIsOpen()).toBe(false);
+  });
+
   it('shows nothing when the word is nowhere else, or the card has moved on', async () => {
     const none = open({ elsewhere: Promise.resolve([]) });
     await flush();

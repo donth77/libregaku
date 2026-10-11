@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { lexiconFrom, toTokens } from '../lindera';
-import { lexiconQueries } from '../merge';
+import { GRAMMAR_LABELS, lexiconQueries } from '../merge';
+import { grammar } from '../../i18n/en/grammar';
 import type { Token } from '../types';
 import { LINES } from './fixtures/ipadic';
 
@@ -374,5 +375,23 @@ describe('every verb form has a name', () => {
     expect(named('待ってもいい')).toBe('may');
     expect(named('待たなくてもいい')).toBe("don't have to");
     expect(named('待ってはいけない')).toBe('must not');
+  });
+
+  it('gives only labels the interface has a name for', () => {
+    // Every label any line here gets — the forms above among them — with the
+    // dictionary and without it. One missing from GRAMMAR_LABELS has no name
+    // in src/i18n/en/grammar.ts, and would show in English in every language.
+    for (const text of Object.keys(LINES)) {
+      for (const withDictionary of [true, false]) {
+        for (const label of tokens(text, withDictionary).flatMap((t) => t.inflections ?? [])) {
+          expect(GRAMMAR_LABELS, `${text}: ${label}`).toContain(label);
+        }
+      }
+    }
+  });
+
+  it('has a name in the interface for each label merging can give', () => {
+    // Other languages' analysers add labels of their own to the same table.
+    expect(Object.keys(grammar)).toEqual(expect.arrayContaining([...GRAMMAR_LABELS]));
   });
 });

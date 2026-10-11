@@ -7,16 +7,16 @@ import { TIP_STYLE, tooltips } from './tooltip';
 import * as bookmarks from './bookmarks';
 import type { Bookmark } from './bookmarks';
 import { copyText, copyWhenReady, downloadText, tsvCell } from './share';
-import { readablePos } from '../dict/pos';
 import type { Segmenter, Token } from '../morphology/types';
 import type { OverrideStatus } from '../anki/status';
 import { applyVars, onSettingsChange, setSetting, settings, underlineVars, type Settings } from '../settings';
 import { markPhrase, phraseAt, phraseToken, selectWhole, selectedWords, textFrom } from './phrase';
 import { furigana } from '../morphology/furigana';
 import { PANEL_STYLE, buildSettings, keysView, syncSettingsControls } from './settings-panel';
-import { popupIsOpen } from './popup';
+import { partsOfSpeech, popupIsOpen } from './popup';
 import type { Transcript, Line } from './transcript';
 import { TokenCache, countWords, estimateRowHeight, nextFrame, now, whenIdle, type Count } from './transcript-work';
+import { fill, grammarLabel, ui, uiDirection, uiLocale } from '../i18n';
 
 /**
  * The transcript panel.
@@ -74,15 +74,25 @@ const PROGRESS_MS = 250;
 
 type Filter = 'all' | 'unknown' | 'i1' | 'saved';
 
+/** The filters, in the order their menu lists them. */
+const FILTERS: readonly Filter[] = ['all', 'unknown', 'i1', 'saved'];
+
+/** A filter's name in its menu, and what it shows. Read when drawn: the interface language can change. */
+const filterText = (key: Filter): { label: string; about: string } => ({
+  all: { label: ui.sidebar.filterAll, about: ui.sidebar.filterAllAbout },
+  unknown: { label: ui.sidebar.filterNew, about: ui.sidebar.filterNewAbout },
+  i1: { label: ui.sidebar.filterReady, about: ui.sidebar.filterReadyAbout },
+  saved: { label: ui.sidebar.filterSaved, about: ui.sidebar.filterSavedAbout },
+})[key];
+
 /** What the panel is showing: the transcript, or one of the views over it. */
 type PanelMode = 'transcript' | 'settings' | 'saved' | 'keys' | 'words';
 
 /** The marks the Words view lists, one list each. */
 type WordMark = 'tracking' | 'known' | 'ignored';
 
-const WORD_LISTS: Array<[WordMark, string]> = [['tracking', 'Tracked'], ['known', 'Known'], ['ignored', 'Ignored']];
-
-const wordCount = (n: number): string => `${n} word${n === 1 ? '' : 's'}`;
+/** The lists, in the order their buttons show. */
+const WORD_LISTS: readonly WordMark[] = ['tracking', 'known', 'ignored'];
 
 /** A marked word's reading and first meaning, from the dictionary. */
 interface WordInfo {
@@ -96,25 +106,30 @@ const WORD_FILE: Record<WordMark, string> = { tracking: 'tracked', known: 'known
 const isListed = (status: OverrideStatus): status is WordMark =>
   status === 'tracking' || status === 'known' || status === 'ignored';
 
-/** What each list says, and what taking its mark off is called — as on the word's card. */
-const WORD_LIST: Record<WordMark, { empty: string; intro: (n: number) => string; unmark: string }> = {
+/**
+ * What each list is called and says, and what taking its mark off is called
+ * — as on the word's card. Read when drawn: the interface language can change.
+ */
+const wordList = (mark: WordMark): { name: string; empty: string; intro: (n: number) => string; unmark: string } => ({
   tracking: {
-    empty: 'Nothing tracked yet. Track underlines a word so you notice it, without making a card. ' +
-      'Turn its button on in Settings, under Word popup.',
-    intro: (n) => `${wordCount(n)} you're tracking, underlined wherever ${n === 1 ? 'it comes' : 'they come'} up.`,
-    unmark: 'Stop tracking',
+    name: ui.sidebar.listTracked,
+    empty: ui.sidebar.trackedEmpty,
+    intro: ui.sidebar.trackedIntro,
+    unmark: ui.sidebar.stopTracking,
   },
   known: {
-    empty: "No words marked known. Mark one known from its popup, or press K, when you know it and don't want a card.",
-    intro: (n) => `${wordCount(n)} marked known. Unmark a word and it goes back to what your Anki cards say.`,
-    unmark: 'Unmark known',
+    name: ui.sidebar.listKnown,
+    empty: ui.sidebar.knownEmpty,
+    intro: ui.sidebar.knownIntro,
+    unmark: ui.sidebar.unmarkKnown,
   },
   ignored: {
-    empty: 'No ignored words. Ignore names and sounds from their popup, and they are never underlined or counted.',
-    intro: (n) => `${wordCount(n)} never underlined or counted.`,
-    unmark: 'Stop ignoring',
+    name: ui.sidebar.listIgnored,
+    empty: ui.sidebar.ignoredEmpty,
+    intro: ui.sidebar.ignoredIntro,
+    unmark: ui.sidebar.stopIgnoring,
   },
-};
+})[mark];
 
 /** Ten lines of the transcript, and their rows once they have been made. */
 interface Block {
@@ -203,6 +218,8 @@ const STYLE = `
    * !important, and an inline style cannot beat that.
    */
   :host {
+    /* Text starts where the interface's language starts: the page around sets left, which is wrong in Arabic. */
+    text-align: start !important;
     position: absolute !important;
     top: 0 !important; right: 0 !important; bottom: var(--lg-bottom, 0px) !important;
     z-index: 2147483646 !important;
@@ -605,7 +622,13 @@ export interface SidebarDeps {
    */
   onWordClick: (token: Token, el: HTMLElement, sentence: string, context?: WordContext) => void;
   /** A selection across words in one line: the words, the text they span, and where to anchor a card. */
-  onPhrase?: (words: Token[], text: string, el: HTMLElement, sentence: string, context?: WordContext) => void;
+  /**
+   * `again` is a plain click on the phrase already marked, not a new one
+   * picked. Returning false drops the phrase rather than keeping it marked.
+   */
+  onPhrase?: (
+    words: Token[], text: string, el: HTMLElement, sentence: string, context: WordContext | undefined, again: boolean,
+  ) => boolean | void;
   /**
    * Enough about this video to find a saved line again months later. Given a
    * time, the link points there rather than at wherever playback happens to be.
@@ -675,12 +698,19 @@ export class Sidebar {
   #wordInfo = new Map<string, WordInfo | null>();
   #settingsEl: HTMLElement | null = null;
   #fab!: HTMLButtonElement;
+  #close!: HTMLButtonElement;
+  #searchInput!: HTMLInputElement;
   #now!: HTMLButtonElement;
   #tab!: HTMLButtonElement;
   #filterMenu!: HTMLElement;
   #count!: HTMLElement;
   /** The search, trimmed. While there is one, following playback pauses. */
   #query = '';
+  /**
+   * A word's forms, when the search came from its card (findWord): lines with
+   * any of them match too, so 食べる finds 食べた. Typing drops them.
+   */
+  #forms: readonly string[] = [];
   /** Lines matching the search, in transcript order. */
   #hits: number[] = [];
   #hitSet = new Set<number>();
@@ -797,15 +827,13 @@ export class Sidebar {
     const tabs = document.createElement('nav');
     tabs.className = 'tabs';
     tabs.setAttribute('role', 'tablist');
-    tabs.setAttribute('aria-label', 'Lists');
-    const tab = (mode: PanelMode, label: string): HTMLButtonElement => {
+    const tab = (mode: PanelMode): HTMLButtonElement => {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'tabbtn';
       b.setAttribute('role', 'tab');
       b.dataset.mode = mode;
       const name = document.createElement('span');
-      name.textContent = label;
       const n = document.createElement('span');
       n.className = 'n';
       b.append(name, n);
@@ -813,9 +841,9 @@ export class Sidebar {
       tabs.appendChild(b);
       return b;
     };
-    tab('transcript', 'Transcript');
-    tab('saved', 'Saved');
-    if (this.#deps.marked) tab('words', 'Words');
+    tab('transcript');
+    tab('saved');
+    if (this.#deps.marked) tab('words');
     this.#tabs = tabs;
     // What a view that is not a list is, under the tabs.
     const title = document.createElement('div');
@@ -826,8 +854,6 @@ export class Sidebar {
     const gear = document.createElement('button');
     gear.className = 'ico';
     gear.replaceChildren(icon('settings', 17));
-    gear.dataset.tip = 'Settings';
-    gear.setAttribute('aria-label', 'Settings');
     gear.addEventListener('click', () => this.setMode(this.#mode === 'settings' ? 'transcript' : 'settings'));
 
     // The keys are reference for while the video plays, so they have a view
@@ -835,17 +861,14 @@ export class Sidebar {
     const keys = document.createElement('button');
     keys.className = 'ico';
     keys.replaceChildren(icon('keyboard', 17));
-    keys.dataset.tip = 'Keyboard shortcuts';
-    keys.setAttribute('aria-label', 'Keyboard shortcuts');
     keys.addEventListener('click', () => this.setMode(this.#mode === 'keys' ? 'transcript' : 'keys'));
 
     const close = document.createElement('button');
     close.className = 'ico';
     close.replaceChildren(icon('x', 18));
-    close.dataset.tip = 'Close';
     close.dataset.key = 'S';
-    close.setAttribute('aria-label', 'Collapse the panel');
     close.addEventListener('click', () => this.toggle(false));
+    this.#close = close;
     controls.append(keys, gear, close);
     head.append(tabs, controls);
     this.#title = title;
@@ -858,24 +881,15 @@ export class Sidebar {
     const fab = document.createElement('button');
     fab.className = 'fab';
     fab.replaceChildren(icon('filter', 19));
-    fab.dataset.tip = 'Filter';
-    fab.setAttribute('aria-label', 'Filter lines');
     fab.setAttribute('aria-expanded', 'false');
     fab.addEventListener('click', () => {
       const open = filters.classList.toggle('open');
       fab.setAttribute('aria-expanded', String(open));
     });
 
-    for (const [key, label, title] of [
-      ['all', 'All lines', 'Every line'],
-      ['unknown', 'Has new words', 'Lines containing a word you have no card for'],
-      ['i1', 'Ready to learn', 'Lines where only one word is new to you — the easiest to learn from'],
-      ['saved', 'Saved', 'Lines you kept for later'],
-    ] as const) {
+    for (const key of FILTERS) {
       const b = document.createElement('button');
       b.className = 'f';
-      b.textContent = label;
-      b.setAttribute('aria-description', title);
       b.dataset.filter = key;
       b.setAttribute('aria-pressed', String(key === 'all'));
       b.addEventListener('click', () => {
@@ -894,21 +908,20 @@ export class Sidebar {
     search.className = 'search';
     const input = document.createElement('input');
     input.type = 'search';
-    input.placeholder = 'Search the transcript…';
-    input.setAttribute('aria-label', 'Search the transcript');
+    this.#searchInput = input;
     // Mid-composition text is not the query yet: searching every kana on the
     // way to a kanji would throw the list about under the IME.
     input.addEventListener('input', (e) => {
-      if (!(e as InputEvent).isComposing) this.#setQuery(input.value);
+      if (!(e as InputEvent).isComposing) this.#typed(input.value);
     });
-    input.addEventListener('compositionend', () => this.#setQuery(input.value));
+    input.addEventListener('compositionend', () => this.#typed(input.value));
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.isComposing) {
         e.preventDefault();
         if (this.#query) this.#stepHit(e.shiftKey ? -1 : 1);
       } else if (e.key === 'Escape' && input.value) {
         input.value = '';
-        this.#setQuery('');
+        this.#typed('');
       }
     });
     this.#count = document.createElement('span');
@@ -939,7 +952,7 @@ export class Sidebar {
 
     const now = document.createElement('button');
     now.className = 'now';
-    now.append(icon('forward', 13), document.createTextNode('Current line'));
+    now.append(icon('forward', 13), document.createTextNode(''));
     now.addEventListener('click', () => this.#resume());
     this.#now = now;
 
@@ -949,9 +962,7 @@ export class Sidebar {
     this.#tab = document.createElement('button');
     this.#tab.className = 'tab';
     this.#tab.replaceChildren(icon('back', 16));
-    this.#tab.dataset.tip = 'Transcript';
     this.#tab.dataset.key = 'S';
-    this.#tab.setAttribute('aria-label', 'Show the transcript');
     this.#tab.addEventListener('click', () => this.toggleTranscript());
 
     this.#search = search;
@@ -964,6 +975,7 @@ export class Sidebar {
 
     this.#installKeys();
     this.#applyAppearance(settings());
+    this.#paintLabels();
     this.#paintTabs();
     this.#unwatch = watchSettings((s, here) => this.#settingsChanged(s, here));
     this.#tokens.reset(deps.segmenter());
@@ -980,6 +992,12 @@ export class Sidebar {
   /** The row a phrase is marked on, to clear once the selection leaves it. */
   #phraseRow: HTMLElement | null = null;
   #selFrame = 0;
+
+  /** Unmark the phrase in the transcript, if one is marked. */
+  clearPhrase(): void {
+    if (!this.#phraseRow) return;
+    (this.#root as ShadowRoot & { getSelection?: () => Selection | null }).getSelection?.()?.removeAllRanges();
+  }
 
   /** Redraw the phrase band as the selection moves, once a frame, on the row it is in. */
   #onSelection(): void {
@@ -1006,6 +1024,11 @@ export class Sidebar {
     // A selection across words in one line is a phrase (src/content/phrase.ts),
     // and the click that ends it is not a word's or a seek.
     let selected = false;
+    // The press that is ending was on the marked phrase, without Shift.
+    let pressedPhrase = false;
+    this.#list.addEventListener('mousedown', (e) => {
+      pressedPhrase = e.button === 0 && !e.shiftKey && Boolean((e.target as Element | null)?.closest?.('.inphrase'));
+    });
     this.#list.addEventListener('mouseup', () => {
       const picked = selectedWords(this.#root, this.#list, '.w');
       if (picked.length < 2 || !this.#deps.onPhrase) return;
@@ -1013,15 +1036,16 @@ export class Sidebar {
       const text = textFrom(picked[0]!, last);
       if (text === null) return;
       selected = true;
-      // After the browser's own handling of the release, which collapses a
-      // selection clicked inside: the phrase stays marked, to point at again.
-      const first = picked[0]!;
-      setTimeout(() => selectWhole(this.#root, first, last), 0);
       this.#hideHover();
-      this.#deps.onPhrase(
+      const keep = this.#deps.onPhrase(
         picked.map((w) => JSON.parse(w.dataset.tok ?? '{}') as Token),
-        text, last, last.dataset.line ?? '', this.#contextOf(last),
-      );
+        text, last, last.dataset.line ?? '', this.#contextOf(last), pressedPhrase,
+      ) !== false;
+      // After the browser's own handling of the release, which collapses a
+      // selection clicked inside: the phrase stays marked, to point at again,
+      // unless that click was to put it away.
+      const first = picked[0]!;
+      setTimeout(() => (keep ? selectWhole(this.#root, first, last) : this.clearPhrase()), 0);
     });
     this.#list.addEventListener('click', (e) => {
       if (selected) {
@@ -1102,6 +1126,42 @@ export class Sidebar {
    * when it differs from what is stored, and by the time this runs the store
    * already holds the new value, so the two cannot chase each other.
    */
+  /**
+   * The panel's own labels: its tabs, buttons, filter menu and search box,
+   * made once, so written here in one place. Everything else is drawn from
+   * `ui` as it is shown. A new interface language builds a new panel
+   * (restart() in index.ts), since your language changes its lines too.
+   */
+  #paintLabels(): void {
+    const s = ui.sidebar;
+    this.#host.lang = uiLocale();
+    this.#host.dir = uiDirection();
+    this.#tabs.setAttribute('aria-label', s.tabsLabel);
+    const names: Partial<Record<PanelMode, string>> = { transcript: s.transcriptTab, saved: s.savedTab, words: s.wordsTab };
+    for (const b of Array.from(this.#tabs.querySelectorAll<HTMLElement>('[data-mode]'))) {
+      const name = b.firstElementChild;
+      if (name) name.textContent = names[b.dataset.mode as PanelMode] ?? '';
+    }
+    const label = (el: HTMLElement, tip: string, aria: string): void => {
+      el.dataset.tip = tip;
+      el.setAttribute('aria-label', aria);
+    };
+    label(this.#gear, s.settings, s.settings);
+    label(this.#keysButton, s.shortcuts, s.shortcuts);
+    label(this.#close, s.close, s.closeLabel);
+    label(this.#fab, s.filterTip, s.filterLabel);
+    label(this.#tab, s.openTip, s.openLabel);
+    for (const b of Array.from(this.#filterMenu.querySelectorAll<HTMLElement>('.f[data-filter]'))) {
+      const { label: name, about } = filterText(b.dataset.filter as Filter);
+      b.textContent = name;
+      b.setAttribute('aria-description', about);
+    }
+    this.#searchInput.placeholder = s.searchPlaceholder;
+    this.#searchInput.setAttribute('aria-label', s.searchLabel);
+    const text = this.#now.lastChild;
+    if (text) text.textContent = s.currentLine;
+  }
+
   #settingsChanged(s: Settings, here = true): void {
     if (this.#destroyed) return;
     this.#applyAppearance(s);
@@ -1399,7 +1459,7 @@ export class Sidebar {
     if (!b || !line) return;
     const on = this.#saved.has(this.#idFor(line.start));
     b.classList.toggle('on', on);
-    const title = on ? 'Unsave' : 'Save line';
+    const title = on ? ui.sidebar.unsave : ui.sidebar.saveLine;
     b.dataset.tip = title;
     b.setAttribute('aria-label', title);
     b.setAttribute('aria-pressed', String(on));
@@ -1441,22 +1501,18 @@ export class Sidebar {
       return b;
     };
 
-    button('Copy', 'Copy every saved line as tab-separated text', () => {
+    button(ui.sidebar.copy, ui.sidebar.copySavedAbout, () => {
       void copyText(savedTsv(lines)).then((ok) => {
-        said.textContent = ok
-          ? `${lines.length} line${lines.length === 1 ? '' : 's'} copied.`
-          : 'Could not reach the clipboard.';
+        said.textContent = ok ? ui.sidebar.linesCopied(lines.length) : ui.sidebar.noClipboard;
       });
     });
 
-    button('Export file', 'Save a tab-separated file Anki can import', () => {
+    button(ui.sidebar.exportFile, ui.sidebar.exportSavedAbout, () => {
       const ok = downloadText(`libregaku-saved-${fileStamp()}.tsv`, savedTsv(lines), 'text/tab-separated-values');
-      said.textContent = ok
-        ? 'Saved to your downloads. In Anki: File → Import.'
-        : 'This page blocked the download — use Copy instead.';
+      said.textContent = ok ? ui.sidebar.downloaded : ui.sidebar.downloadBlocked;
     });
 
-    button('Add to Anki', 'Make a card from each saved line', (b) => {
+    button(ui.sidebar.addToAnki, ui.sidebar.addSavedAbout, (b) => {
       void this.#savedToAnki(lines, said, b);
     });
 
@@ -1473,21 +1529,21 @@ export class Sidebar {
   async #savedToAnki(lines: Bookmark[], said: HTMLElement, btn: HTMLButtonElement): Promise<void> {
     const deck = settings().deck;
     if (!deck) {
-      said.textContent = 'Choose a deck in Settings first — that is where new cards go.';
+      said.textContent = ui.sidebar.chooseDeck;
       return;
     }
 
     btn.disabled = true;
-    said.textContent = 'Checking Anki…';
+    said.textContent = ui.sidebar.checkingAnki;
     const state = await probe();
     if (state.kind !== 'connected') {
       btn.disabled = false;
       said.textContent =
         state.kind === 'offline'
-          ? 'Anki is not running. Open it and try again — Settings has the steps.'
+          ? ui.sidebar.ankiOffline
           : state.kind === 'blocked'
-            ? 'AnkiConnect has not allowed this extension yet. Settings has the one line to add.'
-            : 'Anki could not be reached. Settings says why.';
+            ? ui.sidebar.ankiBlocked
+            : ui.sidebar.ankiUnreachable;
       return;
     }
 
@@ -1495,7 +1551,7 @@ export class Sidebar {
     let already = 0;
     let failed: string | null = null;
     for (const [i, b] of lines.entries()) {
-      said.textContent = `Adding ${i + 1} of ${lines.length}…`;
+      said.textContent = ui.sidebar.adding(i + 1, lines.length);
       try {
         await addSentence({
           deck,
@@ -1517,7 +1573,7 @@ export class Sidebar {
     btn.disabled = false;
     said.textContent = failed
       ? failed
-      : `${added} added to ${deck}${already ? `, ${already} already there` : ''}.`;
+      : ui.sidebar.savedAdded(added, deck, already);
     this.#onSavedChange?.();
   }
 
@@ -1547,15 +1603,15 @@ export class Sidebar {
     const chips = document.createElement('div');
     chips.className = 'wchips';
     chips.setAttribute('role', 'group');
-    chips.setAttribute('aria-label', 'Which words');
-    for (const [show, label] of WORD_LISTS) {
+    chips.setAttribute('aria-label', ui.sidebar.listsLabel);
+    for (const show of WORD_LISTS) {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'wchip';
       b.dataset.show = show;
       b.setAttribute('aria-pressed', String(show === this.#wordsShow));
       const name = document.createElement('span');
-      name.textContent = label;
+      name.textContent = wordList(show).name;
       const n = document.createElement('span');
       n.className = 'n';
       n.textContent = String(all.filter((m) => m.status === show).length || '');
@@ -1572,8 +1628,8 @@ export class Sidebar {
     const find = document.createElement('input');
     find.type = 'search';
     find.className = 'wfind';
-    find.placeholder = 'Find a word';
-    find.setAttribute('aria-label', 'Find a word in this list');
+    find.placeholder = ui.sidebar.findPlaceholder;
+    find.setAttribute('aria-label', ui.sidebar.findLabel);
     find.value = this.#wordsQuery;
     find.addEventListener('input', () => {
       this.#wordsQuery = find.value;
@@ -1592,8 +1648,8 @@ export class Sidebar {
       b.addEventListener('click', () => run(b));
       actions.appendChild(b);
     };
-    button('Copy', 'Copy this list as tab-separated text', (b) => void this.#exportWords('copy', said, b));
-    button('Export file', 'Save this list as a tab-separated file Anki can import', (b) => void this.#exportWords('file', said, b));
+    button(ui.sidebar.copy, ui.sidebar.copyWordsAbout, (b) => void this.#exportWords('copy', said, b));
+    button(ui.sidebar.exportFile, ui.sidebar.exportWordsAbout, (b) => void this.#exportWords('file', said, b));
     bar.append(find, actions);
 
     const rows = document.createElement('div');
@@ -1610,7 +1666,7 @@ export class Sidebar {
     this.#wordsSeen?.disconnect();
     rows.replaceChildren();
     const show = this.#wordsShow;
-    const list = WORD_LIST[show];
+    const list = wordList(show);
     const words = this.#listed(show);
     const say = (cls: string, text: string): void => {
       const p = document.createElement('p');
@@ -1631,10 +1687,10 @@ export class Sidebar {
       });
     }
     if (!shown.length) {
-      say('empty', `No word in this list matches “${query}”.`);
+      say('empty', ui.sidebar.noWordMatches(query));
       return;
     }
-    say('tintro', query ? `${shown.length} of ${wordCount(words.length)}.` : list.intro(words.length));
+    say('tintro', query ? ui.sidebar.wordsMatching(shown.length, words.length) : list.intro(words.length));
 
     // Readings and meanings only for rows coming into view: a list of known
     // words can run to thousands, and each is a dictionary lookup.
@@ -1659,9 +1715,11 @@ export class Sidebar {
       const w = document.createElement('span');
       w.className = 'tw';
       w.dataset.s = show;
+      w.lang = settings().target;
       w.textContent = word;
       const r = document.createElement('span');
       r.className = 'tr';
+      r.lang = settings().target;
       head.append(w, r);
       const meaning = document.createElement('div');
       meaning.className = 'tm';
@@ -1689,7 +1747,7 @@ export class Sidebar {
         });
         actions.appendChild(b);
       };
-      if (show === 'tracking' && this.#deps.addWord) button('Add to Anki', () => this.#deps.addWord!(word));
+      if (show === 'tracking' && this.#deps.addWord) button(ui.sidebar.addToAnki, () => this.#deps.addWord!(word));
       if (this.#deps.unmark) button(list.unmark, () => this.#deps.unmark!(word));
       row.append(head, meaning, actions, said);
       rows.appendChild(row);
@@ -1753,24 +1811,22 @@ export class Sidebar {
     const show = this.#wordsShow;
     const words = this.#matching(this.#listed(show));
     if (!words.length) {
-      said.textContent = 'There are no words in this list to export.';
+      said.textContent = ui.sidebar.nothingToExport;
       return;
     }
     b.disabled = true;
-    if (words.some((w) => !this.#wordInfo.has(w))) said.textContent = 'Looking up readings and meanings…';
+    if (words.some((w) => !this.#wordInfo.has(w))) said.textContent = ui.sidebar.lookingUp;
     const text = this.#lookUpAll(words).then(() => wordsTsv(words.map((word) => ({
       word, reading: this.#wordInfo.get(word)?.reading ?? '', meaning: this.#wordInfo.get(word)?.meaning ?? '',
     }))));
     try {
       if (how === 'copy') {
         const ok = await copyWhenReady(text);
-        said.textContent = ok ? `${wordCount(words.length)} copied.` : 'Could not reach the clipboard.';
+        said.textContent = ok ? ui.sidebar.wordsCopied(words.length) : ui.sidebar.noClipboard;
       } else {
         const name = `libregaku-${WORD_FILE[show]}-${fileStamp()}.tsv`;
         const ok = downloadText(name, await text, 'text/tab-separated-values');
-        said.textContent = ok
-          ? 'Saved to your downloads. In Anki: File → Import.'
-          : 'This page blocked the download — use Copy instead.';
+        said.textContent = ok ? ui.sidebar.downloaded : ui.sidebar.downloadBlocked;
       }
     } finally {
       b.disabled = false;
@@ -1786,8 +1842,7 @@ export class Sidebar {
     if (!groups.length) {
       const empty = document.createElement('p');
       empty.className = 'empty';
-      empty.textContent =
-        'Nothing saved yet. Use the bookmark on any transcript line — or press B — to keep a sentence you want to come back to.';
+      empty.textContent = ui.sidebar.savedEmpty;
       host.appendChild(empty);
       return;
     }
@@ -1801,7 +1856,7 @@ export class Sidebar {
       head.textContent = g.title || g.video;
       if (g.site === here.site && g.video === here.video) {
         const badge = document.createElement('span');
-        badge.textContent = 'this video';
+        badge.textContent = ui.sidebar.thisVideo;
         head.appendChild(badge);
       }
       host.appendChild(head);
@@ -1812,12 +1867,14 @@ export class Sidebar {
 
         const tx = document.createElement('span');
         tx.className = 'tx';
+        tx.lang = settings().target;
         tx.textContent = b.text;
         row.appendChild(tx);
 
         if (b.secondary) {
           const sec = document.createElement('span');
           sec.className = 'sec';
+          sec.lang = settings().native;
           sec.textContent = b.secondary;
           row.appendChild(sec);
         }
@@ -1829,8 +1886,8 @@ export class Sidebar {
         const del = document.createElement('button');
         del.className = 'save on';
         del.replaceChildren(icon('x', 15));
-        del.dataset.tip = 'Remove';
-        del.setAttribute('aria-label', 'Remove from saved');
+        del.dataset.tip = ui.sidebar.remove;
+        del.setAttribute('aria-label', ui.sidebar.removeLabel);
         del.addEventListener('click', async (e) => {
           e.stopPropagation();
           await bookmarks.remove(b.id);
@@ -1865,7 +1922,7 @@ export class Sidebar {
     }
     const other = mode === 'settings' || mode === 'keys';
     this.#title.hidden = !other;
-    this.#title.textContent = mode === 'settings' ? 'Settings' : mode === 'keys' ? 'Keyboard shortcuts' : '';
+    this.#title.textContent = mode === 'settings' ? ui.sidebar.settings : mode === 'keys' ? ui.sidebar.shortcuts : '';
     this.#keysButton.setAttribute('aria-pressed', String(mode === 'keys'));
     this.#gear.setAttribute('aria-pressed', String(mode === 'settings'));
     this.#paintTabs();
@@ -1891,11 +1948,11 @@ export class Sidebar {
       this.#settingsEl = buildSettings(() => this.render(), {
         onAnkiConnected: () => this.#deps.onAnkiConnected?.(),
       });
-      this.#settingsEl.prepend(helpLink('Help'));
+      this.#settingsEl.prepend(helpLink(ui.sidebar.help));
       this.#panel.appendChild(this.#settingsEl);
     } else if (mode === 'keys') {
       this.#settingsEl = keysView();
-      this.#settingsEl.append(helpLink('Help', 'keys'));
+      this.#settingsEl.append(helpLink(ui.sidebar.help, 'keys'));
       this.#panel.appendChild(this.#settingsEl);
     } else if (mode === 'saved') {
       this.#settingsEl = document.createElement('div');
@@ -2057,8 +2114,39 @@ export class Sidebar {
     this.#paintNow();
   }
 
+  /** What was typed in the search box: plain text, whatever a word's card searched for before. */
+  #typed(query: string): void {
+    if (this.#forms.length) {
+      this.#forms = [];
+      this.#query = '';   // the same text, searched for differently
+    }
+    this.#setQuery(query);
+  }
+
+  /**
+   * Search the transcript for a word in every form its lines have it in, as
+   * its card found them — 食べる finds 食べた and 食べない, which the words
+   * alone would not — opening the panel on the transcript if need be.
+   */
+  findWord(query: string, forms: readonly string[]): void {
+    if (this.#destroyed) return;
+    if (this.#mode !== 'transcript') this.setMode('transcript');
+    if (!this.#open) this.toggle(true);
+    this.#searchInput.value = query;
+    this.#forms = [...new Set(forms.filter(Boolean))];
+    this.#query = '';
+    this.#setQuery(query);
+  }
+
   #findHits(): void {
     this.#hits = this.#query ? this.#deps.transcript.search(this.#query) : [];
+    if (this.#query && this.#forms.length) {
+      const hits = new Set(this.#hits);
+      this.#deps.transcript.lines.forEach((line, i) => {
+        if (this.#forms.some((form) => line.text.includes(form))) hits.add(i);
+      });
+      this.#hits = [...hits].sort((a, b) => a - b);
+    }
     this.#hitSet = new Set(this.#hits);
     if (this.#hitLine && !this.#hitSet.has(this.#deps.transcript.lines.indexOf(this.#hitLine))) {
       this.#hitLine = null;
@@ -2130,8 +2218,8 @@ export class Sidebar {
     const shown = this.#shownHits();
     const at = this.#hitLine ? shown.indexOf(this.#deps.transcript.lines.indexOf(this.#hitLine)) : -1;
     this.#count.textContent = !shown.length
-      ? 'No matches'
-      : at >= 0 ? `${at + 1} of ${shown.length}` : `${shown.length} found`;
+      ? ui.sidebar.noMatches
+      : at >= 0 ? ui.sidebar.matchAt(at + 1, shown.length) : ui.sidebar.matchesFound(shown.length);
   }
 
   /**
@@ -2262,18 +2350,14 @@ export class Sidebar {
     const { transcript } = this.#deps;
     const partial = transcript.mode === 'accumulating';
     this.#note.style.display = partial ? '' : 'none';
-    this.#note.textContent = partial
-      ? 'Building as you watch — this player only exposes the current line.'
-      : '';
+    this.#note.textContent = partial ? ui.sidebar.partial : '';
 
     this.#syncRows();
 
     if (!transcript.lines.length) {
       const e = document.createElement('div');
       e.className = 'empty';
-      e.textContent = partial
-        ? 'Nothing yet. Lines appear here as they are spoken.'
-        : 'No transcript loaded.';
+      e.textContent = partial ? ui.sidebar.partialEmpty : ui.sidebar.empty;
       this.#list.replaceChildren(e);
       this.#wait.hidden = true;
       this.#paintCount();
@@ -2464,11 +2548,17 @@ export class Sidebar {
     row.dataset.i = String(this.#indexOf.get(line) ?? -1);
     const tx = document.createElement('span');
     tx.className = 'tx';
+    tx.dir = 'auto';
+    // In the language learned, whatever the interface's: kanji are drawn as
+    // Japanese draws them, not as a Chinese or Korean interface would.
+    tx.lang = settings().target;
     tx.textContent = line.text;
     row.appendChild(tx);
     if (line.secondary) {
       const sec = document.createElement('span');
       sec.className = 'sec';
+      sec.dir = 'auto';
+      sec.lang = settings().native;
       sec.textContent = line.secondary;
       row.appendChild(sec);
     }
@@ -2691,9 +2781,9 @@ export class Sidebar {
 
   #progressText(): string {
     const total = this.#lineSet.size;
-    if (this.#countFailed) return 'Some lines could not be counted, so there are no totals.';
+    if (this.#countFailed) return ui.sidebar.countFailed;
     const pct = total ? Math.floor((Math.min(this.#counts.size, total) / total) * 100) : 0;
-    return `Counting new words… ${pct}%`;
+    return ui.sidebar.counting(pct);
   }
 
   /** A row's "2 new", or nothing while its line is uncounted. */
@@ -2702,7 +2792,7 @@ export class Sidebar {
     const line = this.#lineOf.get(row);
     if (!x || !line) return;
     const c = settings().sidebarStats ? this.#counts.get(line) : undefined;
-    x.textContent = c?.unknown ? `${c.unknown} new` : '';
+    x.textContent = c?.unknown ? ui.sidebar.lineNew(c.unknown) : '';
     x.className = 'x' + (c ? (c.unknown === 1 ? ' one' : c.unknown ? ' hot' : '') : '');
   }
 
@@ -2740,11 +2830,17 @@ export class Sidebar {
     }
     const { known, unknown, i1 } = stats;
     el.replaceChildren();
-    for (const [n, label] of [[`${known}%`, 'known'], [unknown, 'new'], [i1, 'ready to learn']] as const) {
+    // Each a sentence with its number in bold, wherever the language puts it.
+    const parts: Array<[string, string]> = [
+      [ui.sidebar.knownPercent(known), ui.sidebar.summaryKnown],
+      [String(unknown), ui.sidebar.summaryNew],
+      [String(i1), ui.sidebar.summaryReady],
+    ];
+    for (const [n, template] of parts) {
       const span = document.createElement('span');
       const b = document.createElement('b');
-      b.textContent = String(n);
-      span.append(b, document.createTextNode(` ${label}`));
+      b.textContent = n;
+      span.append(...fill(template, { n: b }));
       el.appendChild(span);
     }
   }
@@ -2909,8 +3005,8 @@ export class Sidebar {
       const add = document.createElement('button');
       add.className = 'addline';
       add.replaceChildren(icon('linePlus', 15));
-      add.dataset.tip = 'Add sentence';
-      add.setAttribute('aria-label', 'Add the sentence to Anki');
+      add.dataset.tip = ui.sidebar.addSentence;
+      add.setAttribute('aria-label', ui.sidebar.addSentenceLabel);
       meta.append(add);
     }
     meta.append(save);
@@ -3050,12 +3146,14 @@ export class Sidebar {
     const head = document.createElement('div');
     const hw = document.createElement('span');
     hw.className = 'hw';
+    hw.lang = settings().target;
     hw.textContent = top?.word ?? tok.surface;
     head.appendChild(hw);
     const reading = top?.reading ?? tok.reading;
     if (reading) {
       const hr = document.createElement('span');
       hr.className = 'hr';
+      hr.lang = settings().target;
       hr.textContent = reading;
       head.appendChild(hr);
     }
@@ -3064,7 +3162,7 @@ export class Sidebar {
     if (top) {
       const hp = document.createElement('div');
       hp.className = 'hp';
-      hp.textContent = readablePos(top.senses[0]?.pos ?? []);
+      hp.textContent = partsOfSpeech(top.senses[0]?.pos ?? []);
       const hd = document.createElement('div');
       hd.className = 'hd';
       // Preview only: one gloss, no buttons. Acting on a word means clicking.
@@ -3074,7 +3172,7 @@ export class Sidebar {
       if (tok.inflections?.length) {
         const hg = document.createElement('div');
         hg.className = 'hg';
-        hg.textContent = tok.inflections.join(' · ');
+        hg.textContent = tok.inflections.map(grammarLabel).join(' · ');
         this.#hover.appendChild(hg);
       }
     } else {
@@ -3082,10 +3180,10 @@ export class Sidebar {
       hd.className = 'hd';
       hd.textContent =
         result.state === 'loading'
-          ? `Dictionary loading — ${result.percent}%`
+          ? ui.sidebar.dictionaryLoading(result.percent)
           : result.state === 'error'
-            ? 'Dictionary unavailable'
-            : 'No entry.';
+            ? ui.sidebar.dictionaryUnavailable
+            : ui.sidebar.noEntry;
       this.#hover.appendChild(hd);
     }
 

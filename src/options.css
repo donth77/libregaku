@@ -49,15 +49,15 @@ h1 svg { display: block; margin-left: -4px; }
 /* A plain track down the side, and a straight accent line on the section being read. */
 .toc {
   position: sticky; top: 28px; display: flex; flex-direction: column;
-  border-left: 1px solid var(--line);
+  border-inline-start: 1px solid var(--line);
 }
 .toc a {
-  display: block; margin-left: -1px; padding: 6px 14px;
-  border-left: 2px solid transparent;
+  display: block; margin-inline-start: -1px; padding: 6px 14px;
+  border-inline-start: 2px solid transparent;
   color: var(--muted); text-decoration: none; font-size: 14.5px; line-height: 1.35;
 }
 .toc a:hover { color: var(--ink); }
-.toc a[aria-current="true"] { color: var(--ink); border-left-color: var(--accent); }
+.toc a[aria-current="true"] { color: var(--ink); border-inline-start-color: var(--accent); }
 
 /* ── First run ─────────────────────────────────────────────────── */
 
@@ -114,27 +114,32 @@ h1 svg { display: block; margin-left: -4px; }
 #settings .grp-about { display: block; margin: 5px 0 0; color: var(--muted); font-size: 14.5px; line-height: 1.5; }
 #settings .grp-rows > .set:first-child { border-top: 0; }
 
-/* A row: the setting's name, its control, and what it does underneath. */
-#settings .set { padding: 16px 0; column-gap: 24px; row-gap: 5px; border-top: 1px solid var(--rule); }
+/*
+ * A row: the setting's name, its control, and what it does underneath. Its
+ * words line up with the heading's, inside the band's edges, so a row's
+ * highlight while it has focus is as wide as the band and keeps clear of them.
+ */
+#settings .set { margin: 0; padding: 16px 21px; column-gap: 24px; row-gap: 5px; border-top: 1px solid var(--rule); }
 #settings .set > .name { font-size: 15px; font-weight: 500; color: var(--ink); }
 #settings .set > .hint { font-size: 13.5px; line-height: 1.55; color: var(--muted); max-width: 62ch; }
 #settings .set > .hint.warn { color: #E2B866; }
 #settings .set select { font-size: 14px; padding: 8px 32px 8px 12px; min-width: 140px; max-width: 300px; }
+#settings .set select:dir(rtl) { padding: 8px 12px 8px 32px; }
 
 /* Anki: where it stands, what is left to do, and its buttons. */
-#settings .state { margin: 16px 0; font-size: 14.5px; line-height: 1.55; }
-#settings .steps { padding: 0 0 6px 24px; font-size: 14.5px; line-height: 1.6; color: var(--text); }
+#settings .state { margin: 16px 21px; font-size: 14.5px; line-height: 1.55; }
+#settings .steps { padding: 0 0 6px; padding-inline: 45px 21px; font-size: 14.5px; line-height: 1.6; color: var(--text); }
 #settings .steps li { margin-bottom: 12px; }
 #settings .chip { margin-top: 6px; }
 #settings .chip code { font-size: 13px; }
-#settings .btnrow { padding: 16px 0 0; gap: 8px; border-top: 1px solid var(--rule); }
+#settings .btnrow { margin: 0; padding: 16px 21px 0; gap: 8px; border-top: 1px solid var(--rule); }
 #settings .btnrow button,
 #settings .set .perm {
   font: 500 13.5px/1 system-ui, -apple-system, sans-serif; letter-spacing: 0; text-transform: none;
   padding: 9px 14px; border-radius: 7px; color: var(--text);
 }
 
-#settings .credits { padding: 16px 0 0; }
+#settings .credits { margin: 0; padding: 16px 21px 0; }
 #settings .credits dt { font-size: 14px; }
 #settings .credits dt a { color: var(--ink); }
 #settings .credits dd { font-size: 13px; line-height: 1.55; color: var(--muted); }
@@ -149,7 +154,7 @@ h1 svg { display: block; margin-left: -4px; }
 @media (max-width: 600px) {
   .page { padding: 28px 16px 80px; }
   .setup { padding: 18px; }
-  #settings .set { padding: 14px 0; }
+  #settings .set { padding: 14px 21px; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }

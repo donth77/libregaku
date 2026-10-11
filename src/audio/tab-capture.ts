@@ -13,6 +13,13 @@ import { base64Of, recordingType, type Media } from '../content/capture';
  * played straight back out here.
  */
 
+/**
+ * Why the service worker could not start capturing a tab, as it tells the
+ * toolbar popup: each is a key of src/i18n/en/errors.ts, where the words are.
+ * Neither the worker nor this document follows the interface language.
+ */
+export type CaptureFailure = 'captureNotAllowed' | 'captureRefused';
+
 interface Capture {
   stream: MediaStream;
   output: AudioContext;

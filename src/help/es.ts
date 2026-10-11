@@ -1,0 +1,298 @@
+import type { HelpTranslation } from './content';
+
+/** The help in Spanish. A chapter or topic left out shows in English. */
+export const es: HelpTranslation = {
+  title: 'Ayuda',
+  intro: 'Cómo funciona Libregaku y respuestas a lo que más se pregunta. Busca o elige un capítulo.',
+  search: 'Buscar…',
+  searchLabel: 'Buscar en la ayuda',
+  none: 'No hay nada sobre “{q}”.',
+  settings: 'Configuración',
+  contents: 'Capítulos',
+  tipLabel: 'Consejo:',
+  then: 'luego',
+  link: 'Enlace a este tema',
+  popular: { label: 'Populares:' },
+  chapters: [
+    {
+      id: 'start',
+      title: 'Primeros pasos',
+      about: 'Tres decisiones y, después, un video.',
+      topics: [
+        {
+          id: 'get-started',
+          title: 'Configurar Libregaku',
+          body: [
+            [
+              'En {Configuración → Idiomas}, elige el idioma que aprendes y tu propio idioma.',
+              'En {Configuración → Anki}, sigue los pasos para conectar Anki y elige el mazo al que irán las tarjetas nuevas.',
+              'Abre un video de YouTube o Netflix con subtítulos en el idioma que aprendes y deja el cursor sobre una palabra.',
+            ],
+            { tip: 'Anki es opcional. Los subtítulos, las búsquedas y la transcripción funcionan sin él; Anki es lo que recuerda qué palabras conoces.' },
+          ],
+          keywords: ['instalar', 'instalación', 'empezar', 'comenzar', 'inicio', 'primera vez', 'ajustes', 'configuracion', 'setup'],
+        },
+      ],
+    },
+    {
+      id: 'watching',
+      title: 'Ver videos',
+      about: 'Buscar palabras, la transcripción y las teclas.',
+      topics: [
+        {
+          id: 'look-up',
+          title: 'Buscar una palabra',
+          body: [
+            'Deja el cursor sobre una palabra del subtítulo o de la transcripción y se abrirá su ventana emergente: la lectura, los tres primeros significados y “+N significados más” para el resto.',
+            'Los kanji y los ejemplos del video ocupan una línea cada uno en la ventana emergente. Haz clic en una para abrirla; la próxima vez seguirá abierta.',
+            'Arrastra sobre varias palabras para buscar una frase. Haz clic de nuevo en ella, o pulsa `Esc`, para quitar la selección.',
+            { tip: 'Por defecto, las palabras se buscan al pasar el cursor. En {Configuración → Búsqueda de palabras → Modo de búsqueda} puedes cambiarlo a pasar el cursor con `Shift` pulsado, o a hacer clic.' },
+          ],
+          keywords: ['diccionario', 'definición', 'definiciones', 'consultar', 'traducir', 'hover', 'ratón', 'mouse', 'seleccionar'],
+        },
+        {
+          id: 'transcript',
+          title: 'Usar el panel de transcripción',
+          body: [
+            '`S` lo muestra u oculta. Haz clic en una línea para reproducir desde ahí; el cuadro de búsqueda encuentra cualquier línea.',
+            'El botón de filtro deja solo las líneas con palabras nuevas, las que tienen exactamente una o las guardadas. El marcador de cada fila, o `B`, guarda una línea; las líneas guardadas se añaden juntas a Anki o se exportan a un archivo.',
+          ],
+          keywords: ['barra lateral', 'sidebar', 'buscar', 'filtrar', 'exportar', 'transcripcion', 'subtitulos'],
+        },
+        {
+          id: 'colours',
+          title: 'Cambiar los colores del subrayado',
+          body: [
+            'Cada color de subrayado indica cuánto conoces una palabra: nueva, en aprendizaje, seguida o conocida. {Configuración → Subrayado} tiene un selector de color para cada uno, y Restablecer vuelve a los colores predeterminados.',
+            { tip: 'Las palabras conocidas no se subrayan, salvo que actives {Configuración → Subrayado → Subrayar palabras conocidas}.' },
+          ],
+          keywords: ['paleta', 'tema', 'aspecto', 'personalizar', 'underline'],
+        },
+        {
+          id: 'keys',
+          title: 'Combinaciones de teclas',
+          body: [
+            {
+              head: ['Tecla', 'Qué hace'],
+              rows: [
+                ['`←` `→`', 'Línea anterior o siguiente'],
+                ['`↓`', 'Repetir la línea'],
+                ['`↑`', 'Mostrar u ocultar la traducción'],
+                ['`A`', 'Añadir a Anki la palabra de la ventana emergente'],
+                ['`K`', 'Marcar como conocida la palabra de la ventana emergente'],
+                ['`B`', 'Guardar la línea actual'],
+                ['`S`', 'Mostrar u ocultar el panel de transcripción'],
+                ['`H`', 'Desenfocar o enfocar los subtítulos'],
+                ['`R`', 'Cambiar el furigana: desactivado, palabras nuevas, todas (japonés)'],
+                ['`Shift`', 'Mantener pulsado para buscar la palabra bajo el cursor, si {Configuración → Búsqueda de palabras → Modo de búsqueda} está en “Pasar el cursor con Shift”'],
+                ['`Esc`', 'Cerrar la ventana emergente'],
+              ],
+            },
+            'El botón del teclado del panel de transcripción las muestra mientras ves el video.',
+          ],
+          keywords: ['atajos', 'atajos de teclado', 'accesos directos', 'shortcut', 'hotkey'],
+        },
+      ],
+    },
+    {
+      id: 'cards',
+      title: 'Crear tarjetas',
+      about: 'Una palabra, o una línea entera, a Anki.',
+      topics: [
+        {
+          id: 'add-card',
+          title: 'Crear una tarjeta',
+          body: [
+            'Pulsa Añadir a Anki al pie de la ventana emergente de una palabra, o `A`. La tarjeta lleva la palabra, su lectura y significado, la oración y su traducción, una grabación de la palabra, el sonido de la propia línea y un fotograma.',
+            { tip: 'Si creas una por error, haz clic en Añadida en los minutos siguientes para deshacerlo.' },
+            'Si Anki ya tiene la palabra, el botón muestra En Anki; haz clic para verla en Anki. Si Anki está cerrado, la tarjeta nueva espera en el navegador y se añade cuando Anki vuelva a responder.',
+          ],
+          keywords: ['flashcard', 'ficha', 'anki', 'agregar', 'borrar', 'eliminar', 'quitar'],
+        },
+        {
+          id: 'add-line',
+          title: 'Crear una tarjeta de una oración entera',
+          body: [
+            'En la ventana emergente de una palabra, el globo de diálogo con un + crea en su lugar una tarjeta de la oración entera, con su sonido y una captura de pantalla. Cada línea de la transcripción tiene el mismo botón al pasar el cursor por encima.',
+          ],
+          keywords: ['frase', 'frases', 'tarjeta de oración', 'línea entera', 'oracion', 'sentence'],
+        },
+        {
+          id: 'sentence-audio',
+          title: 'Audio de la oración',
+          body: [
+            'Cuando añades una tarjeta desde el subtítulo o la transcripción, ya sea de una palabra, una frase o la oración entera, Libregaku graba esa línea del video y pone la grabación en la tarjeta. Al repasar, oyes la oración tal como se dijo.',
+            'Chrome solo puede grabar mientras el video se reproduce, así que la línea suena una vez más y luego el video vuelve a donde estabas.',
+            { tip: 'Guardar una línea no graba nada, y tampoco añadir una tarjeta desde las listas Guardadas o Palabras. {Configuración → Tarjetas de Anki → Audio de la oración} desactiva la grabación.' },
+          ],
+          keywords: ['sonido', 'voz', 'escuchar', 'repetir', 'oracion', 'sentence audio'],
+        },
+        {
+          id: 'decks',
+          title: 'Elegir el mazo',
+          body: [
+            'Las tarjetas nuevas van al mazo de {Configuración → Anki → Mazo para tarjetas nuevas}.',
+            'Para cambiarlo mientras ves un video, activa {Configuración → Ventana emergente → Menú de mazos}. Aparece un ▾ junto a Añadir a Anki; “Añadir a” un mazo añade la tarjeta ahí y también envía ahí las siguientes.',
+            { tip: 'El estado de las palabras se lee de {Configuración → Anki → Leer palabras conocidas de}. Si las tarjetas nuevas van a un mazo que no se lee, Configuración te lo indica.' },
+          ],
+          keywords: ['deck', 'submazo', 'submazos', 'nuevo mazo', 'crear mazo'],
+        },
+      ],
+    },
+    {
+      id: 'marking',
+      title: 'Marcar palabras',
+      about: 'Conocida, Seguir e Ignorar: ninguno crea una tarjeta.',
+      topics: [
+        {
+          id: 'marks',
+          title: 'Conocida, Seguir e Ignorar',
+          body: [
+            'Los botones pequeños junto a la palabra, en su ventana emergente.',
+            [
+              'Conocida (`K`): ya la conoces. No se subraya y cuenta como conocida.',
+              'Seguir: un subrayado morado, para que te fijes en la palabra cuando aparezca. Actívalo en {Configuración → Ventana emergente → Botón Seguir}.',
+              'Ignorar: para nombres y sonidos. Nunca se subrayan ni se cuentan.',
+            ],
+            'Haz clic otra vez en una marca para quitarla, o busca la palabra en la pestaña Palabras del panel de transcripción.',
+          ],
+          keywords: ['marcar', 'conocidas', 'seguidas', 'ignoradas', 'púrpura', 'violeta', 'known', 'track', 'ignore'],
+        },
+        {
+          id: 'tracked',
+          title: 'Ver y cambiar tus palabras marcadas',
+          body: [
+            'En el panel de transcripción, la pestaña Palabras muestra las palabras que sigues, marcas como conocidas o ignoras, en una lista cada una. Cada palabra tiene un botón para quitar su marca (Dejar de ignorar, si está ignorada), y desde ahí una palabra seguida puede convertirse en tarjeta.',
+            'Cada lista tiene un cuadro de búsqueda y los botones Copiar y Exportar archivo, que te dan la lista como un archivo que Anki y las hojas de cálculo pueden abrir.',
+          ],
+          keywords: ['seguimiento', 'lista de seguimiento', 'watchlist', 'desmarcar', 'quitar marca', 'conocidas', 'seguidas', 'ignoradas', 'excel'],
+        },
+      ],
+    },
+    {
+      id: 'netflix',
+      title: 'Netflix',
+      about: 'Qué cambia por su protección.',
+      topics: [
+        {
+          id: 'netflix-audio',
+          title: 'Audio de la oración en Netflix',
+          body: [
+            [
+              'Abre {Configuración → Tarjetas de Anki → Audio de la oración en Netflix} y pulsa Permitir.',
+              'En la pestaña de Netflix, haz clic en el icono de Libregaku de la barra de herramientas y pulsa Grabar audio de la oración aquí. Hazlo una vez por pestaña.',
+            ],
+            'Netflix cifra su video, así que Libregaku no puede grabar el sonido del video como en YouTube. En su lugar graba la pestaña, algo que Chrome solo permite de esta forma. Por el mismo motivo, las tarjetas de Netflix no tienen captura de pantalla.',
+          ],
+          keywords: ['permiso', 'permisos', 'cifrado', 'drm', 'captura de pestaña', 'tab capture'],
+        },
+      ],
+    },
+    {
+      id: 'current',
+      title: 'Actualizaciones',
+      topics: [
+        {
+          id: 'update',
+          title: 'Cargar una versión nueva',
+          body: [
+            [
+              'Abre la página de extensiones de tu navegador.',
+              'Pulsa la flecha de recargar de Libregaku.',
+              'Recarga la pestaña del video: una pestaña abierta antes de recargar sigue con la versión anterior.',
+            ],
+            { tip: 'Al pie de Configuración se indica cuándo se compiló la copia que estás usando.' },
+          ],
+          keywords: ['actualizar', 'actualización', 'refrescar', 'versión antigua', 'versión vieja', 'compilación', 'brave', 'reload', 'update'],
+        },
+      ],
+    },
+    {
+      id: 'questions',
+      title: 'Preguntas',
+      topics: [
+        {
+          id: 'q-track',
+          title: '¿Qué hace Seguir?',
+          body: [
+            'Subraya una palabra cada vez que aparece (en morado, salvo que lo cambies en {Configuración → Subrayado}) para que te fijes en ella, sin crear una tarjeta. Deja de contar como nueva. Las palabras seguidas aparecen en el panel de transcripción, en su pestaña Palabras.',
+          ],
+          keywords: ['seguimiento', 'púrpura', 'violeta', 'track'],
+        },
+        {
+          id: 'q-still-underlined',
+          title: '¿Por qué sigue subrayada una palabra que conozco?',
+          body: [
+            'El estado viene de tus tarjetas de Anki, en los mazos de {Configuración → Anki → Leer palabras conocidas de}. Una palabra cuya tarjeta aún no es madura se subraya como en aprendizaje; una sin tarjeta en esos mazos, como nueva. Una palabra que conoces sin tener tarjeta se puede marcar como Conocida.',
+          ],
+          keywords: ['madurez', 'subrayado', 'scope'],
+        },
+        {
+          id: 'q-marks-deck',
+          title: '¿Por qué hay un mazo Libregaku::Marks en Anki?',
+          body: [
+            'Conocida, Seguir e Ignorar se guardan ahí como notas ocultas, suspendidas para que nunca salgan en los repasos, y así llegan a tus otros dispositivos con la sincronización de Anki. {Configuración → Anki → Ver marcas en Anki} las muestra.',
+            { tip: 'Desactiva {Configuración → Anki → Guardar marcas en Anki} para guardar las marcas solo en este navegador.' },
+          ],
+          keywords: ['sincronizar', 'sincronizacion', 'sync', 'deck', 'oculto'],
+        },
+        {
+          id: 'q-remove',
+          title: '¿Puedo eliminar una tarjeta?',
+          body: [
+            'Justo después de añadirla, haz clic en Añadida para deshacerlo. Si la tarjeta es más antigua, haz clic en En Anki en la ventana emergente de la palabra y bórrala en Anki. Libregaku nunca borra una tarjeta que hayas estudiado.',
+          ],
+          keywords: ['borrar', 'quitar', 'suprimir', 'delete', 'remove', 'undo'],
+        },
+        {
+          id: 'q-ankiweb',
+          title: '¿Funciona con AnkiWeb?',
+          body: [
+            'No directamente: Libregaku se comunica con Anki en este equipo mediante el complemento AnkiConnect. Después, Anki sincroniza tus tarjetas con AnkiWeb y tu teléfono como siempre.',
+          ],
+          keywords: ['móvil', 'celular', 'android', 'iphone', 'sincronizar', 'sync', 'add-on'],
+        },
+        {
+          id: 'q-picture',
+          title: '¿Qué es la captura de pantalla de una tarjeta?',
+          body: [
+            'Un fotograma de la escena, en el reverso de la tarjeta, para que veas de dónde viene la palabra. En YouTube se toma del video; Netflix oculta su video a las extensiones, así que las tarjetas creadas ahí no tienen. {Configuración → Tarjetas de Anki → Captura de pantalla} la desactiva.',
+          ],
+          keywords: ['imagen', 'foto', 'pantallazo', 'screenshot'],
+        },
+        {
+          id: 'q-replay',
+          title: '¿Por qué se repite la línea al añadir una tarjeta?',
+          body: [
+            'Su sonido se graba mientras se reproduce, así que la línea suena una vez más; luego la reproducción vuelve a donde estaba. {Configuración → Tarjetas de Anki → Audio de la oración} lo desactiva.',
+          ],
+          keywords: ['grabación', 'vuelve atrás', 'salta', 'replay'],
+        },
+        {
+          id: 'q-translation',
+          title: '¿Por qué no hay traducción bajo el subtítulo?',
+          body: [
+            'La traducción son los propios subtítulos del sitio en el idioma de {Configuración → Idiomas → Tu idioma}. Si el video no tiene subtítulos en ese idioma, no hay nada que mostrar, y Libregaku te lo indica. No usa traducción automática.',
+          ],
+          keywords: ['segunda línea', 'doble', 'dual', 'subtítulos dobles', 'traducir', 'traduccion', 'español', 'inglés'],
+        },
+        {
+          id: 'q-definitions',
+          title: '¿Por qué las definiciones solo están en algunos idiomas?',
+          body: [
+            'Para el japonés vienen de JMdict, que tiene definiciones en nueve idiomas. Si el tuyo no es uno de ellos, {Configuración → Idiomas} muestra una segunda fila, Definiciones en, para elegir el idioma que se usará en su lugar.',
+          ],
+          keywords: ['diccionario', 'significados', 'húngaro', 'esloveno', 'cc-cedict', 'wiktionary', 'wikcionario'],
+        },
+        {
+          id: 'q-data',
+          title: '¿Libregaku envía mis datos a alguna parte?',
+          body: [
+            'No hay cuenta ni servidor. Los diccionarios se descargan una vez y se guardan en el navegador; las tarjetas van directamente a Anki en este equipo. Mientras el diccionario de japonés aún se descarga, la palabra que buscas se envía a Jotoba para obtener la respuesta.',
+          ],
+          keywords: ['privacidad', 'privacy', 'rastreo', 'telemetría', 'internet', 'seguridad'],
+        },
+      ],
+    },
+  ],
+};

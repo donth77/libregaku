@@ -4,7 +4,7 @@
     "description": "Extension name"
   },
   "extDescription": {
-    "message": "Tokenized dual subtitles, a clickable transcript, and a real dictionary \u2014 with Anki as the backend.",
-    "description": "Store description"
+    "message": "Subtitles for language learning with Anki integration.",
+    "description": "What the extension is, on the extensions page and in the store"
   }
 }

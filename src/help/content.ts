@@ -1,12 +1,19 @@
+import { uiLanguageFor } from '../i18n/languages';
+
 /**
- * The help page's words, one set per language.
+ * The help page's words, in English here and in each translation beside it.
  *
- * Everything the page says is here and nowhere in its code, so a translation
- * is one more entry in HELP with the same shape. Text is plain, with two
- * marks: a word in `backticks` is drawn as a key, and {Settings → Anki →
- * Screenshot} as the path to a setting. A paragraph that is a list is numbered
- * steps; one that is { tip } is set apart; { head, rows } is a table. Keywords
- * are what someone might search for that the text itself does not say.
+ * Everything the page says is here and nowhere in its code. Text is plain,
+ * with two marks: a word in `backticks` is drawn as a key, and {Settings →
+ * Anki → Screenshot} as the path to a setting, which names the setting as the
+ * settings do in that language. A paragraph that is a list is numbered steps;
+ * one that is { tip } is set apart; { head, rows } is a table. Keywords are
+ * what someone might search for that the text itself does not say.
+ *
+ * The help is in the interface language, "Your language" (src/i18n). A
+ * translation goes chapter by chapter and topic by topic, by id, so a topic
+ * written in English since shows in English until it is translated. Each is
+ * a file of its own, dist/i18n/help-<code>.js, loaded by the help page.
  */
 
 /** A table: a header row, then rows of the same length. Cells take the same marks as text. */
@@ -51,7 +58,17 @@ export interface HelpContent {
   contents: string;
   /** What leads a tip: "Tip:". */
   tipLabel: string;
+  /** What a screen reader says between the steps of a setting's path. */
+  then: string;
+  /** What a screen reader calls the # beside a topic's title. */
+  link: string;
   chapters: HelpChapter[];
+}
+
+/** The help in another language: any of its words, and the chapters and topics it has reached, by id. */
+export interface HelpTranslation extends Partial<Omit<HelpContent, 'popular' | 'chapters'>> {
+  popular?: { label: string };
+  chapters?: Array<Pick<HelpChapter, 'id' | 'title' | 'about' | 'topics'>>;
 }
 
 const en: HelpContent = {
@@ -63,6 +80,8 @@ const en: HelpContent = {
   settings: 'Settings',
   contents: 'Chapters',
   tipLabel: 'Tip:',
+  then: 'then',
+  link: 'Link to this',
   popular: { label: 'Popular:', ids: ['add-card', 'sentence-audio', 'marks', 'tracked', 'keys', 'netflix-audio', 'update'] },
   chapters: [
     {
@@ -94,9 +113,9 @@ const en: HelpContent = {
           id: 'look-up',
           title: 'Look a word up',
           body: [
-            'Rest the pointer on a word in the subtitle or the transcript, and its popup opens: the reading, the first three meanings, and “+N more” for the rest.',
+            'Rest the pointer on a word in the subtitle or the transcript, and its popup opens: the reading, the first three meanings, and “+N more meanings” for the rest.',
             'The kanji and examples from the video are one line each in the popup. Click one to open it; it stays open next time.',
-            'Drag across several words to look up a phrase.',
+            'Drag across several words to look up a phrase. Click it again, or press `Esc`, to clear it.',
             { tip: 'Words are looked up on hover by default. {Settings → Looking words up → Look words up on} changes it to hover with `Shift` held, or a click.' },
           ],
           keywords: ['dictionary', 'definition', 'meaning', 'hover', 'click', 'shift', 'phrase', 'kanji'],
@@ -332,15 +351,15 @@ const en: HelpContent = {
           id: 'q-definitions',
           title: 'Why can definitions only be in some languages?',
           body: [
-            'They come from JMdict, which has definitions in nine languages. If yours is not one of them, {Settings → Languages} shows a second row, Definitions in, for the language to use instead.',
+            'For Japanese they come from JMdict, which has definitions in nine languages. If yours is not one of them, {Settings → Languages} shows a second row, Definitions in, for the language to use instead.',
           ],
-          keywords: ['definitions', 'languages', 'jmdict', 'hungarian', 'slovenian'],
+          keywords: ['definitions', 'languages', 'jmdict', 'hungarian', 'slovenian', 'english', 'cc-cedict', 'wiktionary'],
         },
         {
           id: 'q-data',
           title: 'Does Libregaku send my data anywhere?',
           body: [
-            'There is no account and no server. Dictionaries are downloaded once and kept in the browser; cards go straight to Anki on your computer. While the dictionary is still downloading, a word you look up is sent to Jotoba to answer it.',
+            'There is no account and no server. Dictionaries are downloaded once and kept in the browser; cards go straight to Anki on your computer. While the Japanese dictionary is still downloading, a word you look up is sent to Jotoba to answer it.',
           ],
           keywords: ['privacy', 'data', 'server', 'account'],
         },
@@ -349,10 +368,49 @@ const en: HelpContent = {
   ],
 };
 
-/** Every language the help is written in. */
-export const HELP: Record<string, HelpContent> = { en };
+/** The help in English, whole: what every translation follows. */
+export const HELP_EN = en;
 
-/** The help in a language, or in English where it has not been written yet. */
-export function helpFor(lang: string): HelpContent {
-  return HELP[lang] ?? HELP[lang.split('-')[0] ?? ''] ?? en;
+/** Where a translation of the help is once its file has run, as for the interface's (src/i18n). */
+interface Registry {
+  help?: Partial<Record<string, HelpTranslation>>;
+}
+const registry = (): Registry => ((globalThis as { __libregaku?: Registry }).__libregaku ??= {});
+
+/** Make a translation of the help available: what each one's own file does, and tests. */
+export function registerHelp(lang: string, help: HelpTranslation): void {
+  (registry().help ??= {})[lang] = help;
+}
+
+/** Whether the help in this language is here, or has still to be loaded. */
+export function hasHelp(native: string): boolean {
+  const lang = uiLanguageFor(native);
+  return lang === 'en' || Boolean(registry().help?.[lang]);
+}
+
+
+/**
+ * The help for a learner's own language: in it as far as it has been written,
+ * and in English past that.
+ */
+export function helpFor(native: string): HelpContent {
+  const lang = uiLanguageFor(native);
+  const t = lang === 'en' ? undefined : registry().help?.[lang];
+  if (!t) return en;
+  const { popular, chapters, ...words } = t;
+  return {
+    ...en,
+    ...words,
+    popular: { ...en.popular, ...(popular ? { label: popular.label } : {}) },
+    chapters: en.chapters.map((chapter) => {
+      const theirs = chapters?.find((c) => c.id === chapter.id);
+      if (!theirs) return chapter;
+      return {
+        ...chapter,
+        title: theirs.title,
+        about: theirs.about ?? chapter.about,
+        topics: chapter.topics.map((topic) => theirs.topics.find((x) => x.id === topic.id) ?? topic),
+      };
+    }),
+  };
 }

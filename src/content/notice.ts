@@ -1,4 +1,5 @@
-import { HUMAN } from '../assumptions';
+import { NOTICES } from '../assumptions';
+import { ui, uiDirection, uiLocale } from '../i18n';
 
 /**
  * A visible failure notice.
@@ -12,6 +13,8 @@ import { HUMAN } from '../assumptions';
 
 const STYLE = `
   :host {
+    /* Text starts where the interface's language starts: the page around sets left, which is wrong in Arabic. */
+    text-align: start !important;
     position: absolute !important;
     left: 50% !important; bottom: 8% !important;
     transform: translateX(-50%) !important;
@@ -64,6 +67,8 @@ export function showNotice(mount: HTMLElement, id: string, detail?: string): voi
 
   host = document.createElement('div');
   host.className = 'libregaku-notice';
+  host.lang = uiLocale();
+  host.dir = uiDirection();
   const root = host.attachShadow({ mode: 'open' });
 
   const style = document.createElement('style');
@@ -76,9 +81,11 @@ export function showNotice(mount: HTMLElement, id: string, detail?: string): voi
   const body = document.createElement('div');
   body.className = 'body';
 
+  // Its words are read now, in the interface language: src/i18n/en/notices.ts.
+  const key = NOTICES[id];
   const title = document.createElement('div');
   title.className = 'title';
-  title.textContent = HUMAN[id] ?? 'Libregaku hit an unexpected problem.';
+  title.textContent = key ? ui.notices[key] : ui.notices.unexpected;
 
   body.appendChild(title);
 
@@ -90,7 +97,7 @@ export function showNotice(mount: HTMLElement, id: string, detail?: string): voi
   }
 
   // Surfacing the id makes a user report actionable without a debug session.
-  if (HUMAN[id]) {
+  if (key) {
     const tag = document.createElement('div');
     tag.className = 'id';
     tag.textContent = id;
@@ -98,7 +105,7 @@ export function showNotice(mount: HTMLElement, id: string, detail?: string): voi
   }
 
   const close = document.createElement('button');
-  close.textContent = 'Dismiss';
+  close.textContent = ui.notices.dismiss;
   close.addEventListener('click', () => {
     dismissed.add(id);
     clearNotice();

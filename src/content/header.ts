@@ -1,7 +1,8 @@
 import { icon } from './icons';
 import { TIP_STYLE, tooltips } from './tooltip';
+import { fill, languageLabel, ui, uiDirection, uiLocale } from '../i18n';
 import { logo } from '../logo';
-import { TARGET_LANGUAGES, featuresOf, nextRuby, rubyLabel, settings, setSetting } from '../settings';
+import { TARGET_LANGUAGES, featuresOf, nextRuby, settings, setSetting } from '../settings';
 
 /**
  * The bar across the top of the player.
@@ -41,6 +42,8 @@ export interface HeaderDeps {
 
 const STYLE = `
 :host {
+  /* Text starts where the interface's language starts: the page around sets left, which is wrong in Arabic. */
+  text-align: start !important;
   position: absolute !important;
   top: 0 !important; left: 0 !important; right: var(--lg-inset, 0px) !important;
   z-index: 2147483000 !important;
@@ -142,6 +145,8 @@ export class Header {
 
     this.#host = document.createElement('div');
     this.#host.id = 'libregaku-header';
+    this.#host.lang = uiLocale();
+    this.#host.dir = uiDirection();
     this.#root = this.#host.attachShadow({ mode: 'open' });
 
     const style = document.createElement('style');
@@ -159,53 +164,46 @@ export class Header {
     const right = document.createElement('div');
     right.className = 'right';
 
-    const add = (
-      key: string,
-      name: string,
-      title: string,
-      onClick: () => void,
-    ): HTMLButtonElement => {
+    // Named in update(), which runs before the bar is first seen, so that
+    // repainting the bar names them again: in another language, if it changed.
+    const add = (key: string, name: string, onClick: () => void): HTMLButtonElement => {
       const b = document.createElement('button');
       b.replaceChildren(icon(name, 20));
-      b.dataset.tip = title;
-      b.setAttribute('aria-label', title);
       b.addEventListener('click', onClick);
       this.#buttons.set(key, b);
       right.appendChild(b);
       return b;
     };
 
-    add('ruby', 'rubySome', 'Furigana', () => {
+    add('ruby', 'rubySome', () => {
       // Cycles the same three values the settings panel offers, in the order
       // you would want them mid-episode: off, only what you don't know, all.
       void setSetting('ruby', nextRuby(settings().ruby)).then(() => this.update());
     });
-    add('blur', 'eyeOff', 'Blur subtitle', () => {
+    add('blur', 'eyeOff', () => {
       void setSetting('blurPrimary', !settings().blurPrimary).then(() => this.update());
     });
-    add('dual', 'captions', 'Translation', () => {
+    add('dual', 'captions', () => {
       void setSetting('dualSubtitles', !settings().dualSubtitles).then(() => this.update());
     });
-    add('sidebar', 'panel', 'Transcript', () => {
+    add('sidebar', 'panel', () => {
       this.#deps.onToggleSidebar();
       this.update();
     });
-    add('pin', 'unlock', 'Pin header', () => {
+    add('pin', 'unlock', () => {
       const pinned = !settings().headerPinned;
       void setSetting('headerPinned', pinned).then(() => {
         this.#reveal(pinned || this.#shown);
         this.update();
       });
     });
-    add('settings', 'settings', 'Settings', () => this.#deps.onOpenSettings());
+    add('settings', 'settings', () => this.#deps.onOpenSettings());
 
     this.#bar.append(this.#left, right);
 
     this.#tab = document.createElement('button');
     this.#tab.className = 'tab';
     this.#tab.replaceChildren(icon('chevronsUp', 16));
-    this.#tab.dataset.tip = 'Show header';
-    this.#tab.setAttribute('aria-label', 'Show the header');
     this.#tab.addEventListener('click', () => this.#reveal(!this.#shown));
 
     this.#root.append(style, this.#bar, this.#tab);
@@ -246,7 +244,10 @@ export class Header {
     this.#tab.hidden = show;
   }
 
-  /** Repaint the numbers and the on/off state of every switch. */
+  /**
+   * Repaint the numbers, the on/off state of every switch, and every word on
+   * the bar, so a change of interface language needs nothing more than this.
+   */
   update(): void {
     const s = settings();
     this.#host.classList.toggle('off', !s.headerBar);
@@ -265,9 +266,10 @@ export class Header {
     const flag = s.languageBadge === 'flag' && lang?.flag;
     badge.className = flag ? 'badge flag' : 'badge';
     badge.textContent = flag || s.target;
-    badge.dataset.tip = lang?.label ?? s.target;
+    const name = languageLabel(s.target);
+    badge.dataset.tip = name;
     badge.setAttribute('role', 'img');
-    badge.setAttribute('aria-label', lang?.label ?? s.target);
+    badge.setAttribute('aria-label', name);
     this.#left.appendChild(badge);
 
     if (stats) {
@@ -275,8 +277,10 @@ export class Header {
       sep.className = 'sep';
       this.#left.appendChild(sep);
       // The same words the panel uses for the same numbers: one number, one name.
-      this.#left.appendChild(stat('good', `${stats.known}%`, 'known', 'Words you know'));
-      this.#left.appendChild(stat('i1', String(stats.i1), 'ready to learn', 'Lines with one new word'));
+      this.#left.appendChild(stat('good', ui.header.knownTip,
+        fill(ui.header.knownStat, { percent: bold(ui.header.knownPercent(stats.known)) })));
+      this.#left.appendChild(stat('i1', ui.header.readyTip,
+        fill(ui.header.readyStat, { count: bold(String(stats.i1)) })));
     }
 
     /** `keys` is the button's key, shown in its tooltip and given to assistive tech. */
@@ -297,19 +301,27 @@ export class Header {
       ruby.hidden = !featuresOf(s.target).readings;
       ruby.replaceChildren(icon(s.ruby === 'always' ? 'rubyAll' : s.ruby === 'never' ? 'rubyOff' : 'rubySome', 20));
     }
-    setOn('ruby', s.ruby !== 'never', `Furigana: ${rubyLabel(s.ruby)}`, { shown: 'R', aria: 'R' });
-    setOn('blur', s.blurPrimary, s.blurPrimary ? 'Unblur subtitle' : 'Blur subtitle', { shown: 'H', aria: 'H' });
+    setOn('ruby', s.ruby !== 'never', ui.common.furigana(s.ruby), { shown: 'R', aria: 'R' });
+    setOn('blur', s.blurPrimary, s.blurPrimary ? ui.header.unblurSubtitle : ui.header.blurSubtitle,
+      { shown: 'H', aria: 'H' });
     this.#buttons.get('blur')?.replaceChildren(icon(s.blurPrimary ? 'eye' : 'eyeOff', 20));
-    setOn('dual', s.dualSubtitles, s.dualSubtitles ? 'Hide translation' : 'Show translation',
+    setOn('dual', s.dualSubtitles, s.dualSubtitles ? ui.header.hideTranslation : ui.header.showTranslation,
       { shown: '↑', aria: 'ArrowUp' });
-    setOn('sidebar', this.#deps.sidebarOpen(), 'Transcript', { shown: 'S', aria: 'S' });
+    setOn('sidebar', this.#deps.sidebarOpen(), ui.header.transcript, { shown: 'S', aria: 'S' });
 
     const pin = this.#buttons.get('pin');
     if (pin) {
       pin.replaceChildren(icon(s.headerPinned ? 'lock' : 'unlock', 20));
-      setOn('pin', s.headerPinned, s.headerPinned ? 'Unpin header' : 'Pin header');
+      setOn('pin', s.headerPinned, s.headerPinned ? ui.header.unpinHeader : ui.header.pinHeader);
     }
 
+    const gear = this.#buttons.get('settings');
+    if (gear) {
+      gear.dataset.tip = ui.header.settings;
+      gear.setAttribute('aria-label', ui.header.settings);
+    }
+    this.#tab.dataset.tip = ui.header.showHeader;
+    this.#tab.setAttribute('aria-label', ui.header.showHeaderLabel);
   }
 
   destroy(): void {
@@ -319,12 +331,17 @@ export class Header {
   }
 }
 
-function stat(cls: string, value: string, label: string, title: string): HTMLElement {
+/** A number on the bar, named: `parts` is its words with the number in bold among them, from fill(). */
+function stat(cls: string, title: string, parts: Array<string | Node>): HTMLElement {
   const el = document.createElement('span');
   el.className = `stat ${cls}`;
   el.dataset.tip = title;
-  const b = document.createElement('b');
-  b.textContent = value;
-  el.append(b, document.createTextNode(` ${label}`));
+  el.append(...parts);
   return el;
+}
+
+function bold(text: string): HTMLElement {
+  const b = document.createElement('b');
+  b.textContent = text;
+  return b;
 }

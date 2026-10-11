@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { HELP, helpFor } from '../help/content';
+import { HELP_EN, helpFor } from '../help/content';
 import { inline, matches, renderHelp, terms } from '../help';
 
 /**
@@ -8,7 +8,7 @@ import { inline, matches, renderHelp, terms } from '../help';
  * you type.
  */
 
-const en = HELP.en!;
+const en = HELP_EN;
 const allTopics = en.chapters.flatMap((c) => c.topics);
 
 function page(): { main: HTMLElement; toc: HTMLElement; input: HTMLInputElement; none: HTMLElement } {
@@ -35,7 +35,7 @@ afterEach(() => {
 describe('the help', () => {
   it('is written in English, and stands in for a language not written yet', () => {
     expect(helpFor('en-GB')).toBe(en);
-    expect(helpFor('ja')).toBe(en);
+    expect(helpFor('hu')).toBe(en);
     // Every topic and chapter can be linked to, and no two share an id.
     const ids = [...en.chapters.map((c) => c.id), ...allTopics.map((t) => t.id)];
     expect(new Set(ids).size).toBe(ids.length);
@@ -69,6 +69,19 @@ describe('the help', () => {
     // Its own keywords count too: "watchlist" is nowhere in the text.
     search(input, 'watchlist');
     expect(visible(main)).toEqual(['tracked']);
+  });
+
+  it('finds a word whatever its accents, and marks it as written', () => {
+    document.body.innerHTML = '<nav class="toc"></nav><input id="q"><p id="none" hidden></p><div id="out"></div>';
+    const main = document.getElementById('out') as HTMLElement;
+    const input = document.getElementById('q') as HTMLInputElement;
+    renderHelp(main, document.querySelector('.toc'), input, document.getElementById('none') as HTMLElement, helpFor('es'));
+    search(input, 'subtitulos');
+    expect(visible(main).length).toBeGreaterThan(0);
+    const marks = Array.from(main.querySelectorAll('.topic:not([hidden]) mark')).map((m) => m.textContent?.toLowerCase());
+    expect(marks).toContain('subtítulos');
+    // Kana voicing is part of the word: か does not find が.
+    expect(inline('ガ', ['カ']).some((n) => n.nodeName === 'MARK')).toBe(false);
   });
 
   it('says so when nothing matches, and comes back whole when the search is cleared', () => {

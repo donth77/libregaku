@@ -591,6 +591,27 @@ describe('Sidebar search', () => {
     expect(root.querySelectorAll('.line.hit')).toHaveLength(0);
   });
 
+  it("finds a word from its card in every form, opening the panel on the transcript", async () => {
+    const transcript = new Transcript();
+    transcript.setFull(['食べる', '食べた', 'ご飯', '食べない'].map((text, i) => ({ start: i * 4, end: i * 4 + 3, text })));
+    const { sidebar, root } = await build({ transcript });
+    sidebar.setMode('settings');
+    sidebar.toggle(false);
+    const hits = (): Array<string | null> => Array.from(root.querySelectorAll('.line.hit')).map((r) => r.getAttribute('data-i'));
+
+    sidebar.findWord('食べる', ['食べた', '食べない']);
+    expect(sidebar.isOpen).toBe(true);
+    expect(sidebar.mode).toBe('transcript');
+    const input = root.querySelector<HTMLInputElement>('.search input')!;
+    expect(input.value).toBe('食べる');
+    expect(hits()).toEqual(['0', '1', '3']);
+    expect(root.querySelector('.line.hit-cur')?.getAttribute('data-i')).toBe('0');
+
+    // Typed, the box is plain text again: 食べる as written.
+    type(input, '食べる');
+    expect(hits()).toEqual(['0']);
+  });
+
   it('pauses following while a search is showing, and resumes once it is cleared', async () => {
     const { sidebar, input } = await withCats();
     type(input, 'dog');
@@ -1285,6 +1306,46 @@ describe('Sidebar phrases', () => {
     expect(context).toEqual({ start: 8, end: 11, translation: 'study' });
     expect(onWordClick).not.toHaveBeenCalled();
     expect(seek).not.toHaveBeenCalled();
+  });
+});
+
+describe('Sidebar phrases, clicked again', () => {
+  it('tells a plain click on the marked phrase from picking it, and drops it when told to', async () => {
+    const transcript = new Transcript();
+    transcript.setFull([{ start: 0, end: 3, text: '勉強 です' }]);
+    const onPhrase = vi.fn<NonNullable<SidebarDeps['onPhrase']>>();
+    const { root } = await build({ transcript, onPhrase, segmenter: () => segmenter });
+    const words = Array.from(root.querySelectorAll<HTMLElement>('.line .w'));
+    const range = document.createRange();
+    range.setStart(words[0]!, 0);
+    range.setEnd(words[1]!, words[1]!.childNodes.length);
+    const removeAllRanges = vi.fn();
+    (root as unknown as { getSelection: () => unknown }).getSelection = () => ({
+      isCollapsed: false, rangeCount: 1, getRangeAt: () => range, removeAllRanges, setBaseAndExtent: () => {},
+    });
+    const press = (el: HTMLElement, shiftKey = false): void => {
+      el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0, shiftKey }));
+      el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+      el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    };
+
+    // Picked: a new phrase. Then marked, as the selection is drawn.
+    press(words[1]!);
+    expect(onPhrase.mock.calls[0]?.[5]).toBe(false);
+    document.dispatchEvent(new Event('selectionchange'));
+    await new Promise((r) => setTimeout(r, 40));
+    expect(words[0]!.classList.contains('inphrase')).toBe(true);
+
+    // Shift held, it is the selection being moved, not the phrase clicked.
+    press(words[0]!, true);
+    expect(onPhrase.mock.calls[1]?.[5]).toBe(false);
+
+    // A plain click on it is the phrase again; told to drop it, the panel does.
+    onPhrase.mockReturnValue(false);
+    press(words[0]!);
+    expect(onPhrase.mock.calls[2]?.[5]).toBe(true);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(removeAllRanges).toHaveBeenCalled();
   });
 });
 

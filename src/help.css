@@ -31,17 +31,17 @@ h1 svg { display: block; margin-left: -4px; }
 .layout { display: grid; grid-template-columns: 200px minmax(0, 720px); gap: 56px; align-items: start; }
 .toc {
   position: sticky; top: 28px; display: flex; flex-direction: column;
-  border-left: 1px solid var(--line);
+  border-inline-start: 1px solid var(--line);
 }
-.toc-title { margin: 0 0 8px 15px; color: var(--muted); font-size: 13px; font-weight: 600; }
+.toc-title { margin: 0 0 8px; margin-inline-start: 15px; color: var(--muted); font-size: 13px; font-weight: 600; }
 /* As the settings page marks its section: a plain track, and a straight accent line on the chapter being read. */
 .toc a {
-  display: block; margin-left: -1px; padding: 6px 14px;
-  border-left: 2px solid transparent;
+  display: block; margin-inline-start: -1px; padding: 6px 14px;
+  border-inline-start: 2px solid transparent;
   color: var(--muted); text-decoration: none; font-size: 14.5px; line-height: 1.35;
 }
 .toc a:hover { color: var(--ink); }
-.toc a[aria-current] { color: var(--ink); border-left-color: var(--accent); }
+.toc a[aria-current] { color: var(--ink); border-inline-start-color: var(--accent); }
 .toc a[hidden] { display: none; }
 
 /* What the page is, then the search. */
@@ -80,16 +80,16 @@ h1 svg { display: block; margin-left: -4px; }
 .topic p { margin: 0 0 12px; max-width: 66ch; }
 
 /* Steps: a numbered list, as written. */
-.steps { margin: 4px 0 14px; padding-left: 1.4em; max-width: 66ch; }
-.steps li { padding: 0 0 6px 4px; }
+.steps { margin: 4px 0 14px; padding-inline-start: 1.4em; max-width: 66ch; }
+.steps li { padding: 0 0 6px; padding-inline-start: 4px; }
 .steps li::marker { color: var(--muted); font-weight: 600; }
 
 /* A table: the keys and what each does, a row each. */
 .grid { width: 100%; max-width: 66ch; margin: 4px 0 14px; border-collapse: collapse; font-size: 15px; }
-.grid th { padding: 0 12px 8px 0; text-align: left; color: var(--muted); font-size: 13px; font-weight: 600; }
-.grid td { padding: 9px 12px 9px 0; border-top: 1px solid var(--rule); vertical-align: top; }
-.grid td:first-child { width: 1%; white-space: nowrap; padding-right: 20px; }
-.grid kbd + kbd { margin-left: 4px; }
+.grid th { padding: 0 0 8px; padding-inline-end: 12px; text-align: start; color: var(--muted); font-size: 13px; font-weight: 600; }
+.grid td { padding: 9px 0; padding-inline-end: 12px; border-top: 1px solid var(--rule); vertical-align: top; }
+.grid td:first-child { width: 1%; white-space: nowrap; padding-inline-end: 20px; }
+.grid kbd + kbd { margin-inline-start: 4px; }
 
 /* A tip: an ordinary paragraph, led by its label. */
 .tip { color: var(--text); }

@@ -1,3 +1,5 @@
+import { uiDirection, uiLocale } from '../i18n';
+
 /**
  * A word or two over the player, confirming what a key just did.
  *
@@ -50,6 +52,9 @@ export function flash(mount: HTMLElement, text: string, ms = 1500, inset = 0): v
     root.append(style, msg);
     mount.appendChild(host);
   }
+  // In the interface's language, which may have changed since the last.
+  host.lang = uiLocale();
+  host.dir = uiDirection();
   // A custom property, because the host's position is pinned with !important.
   host.style.setProperty('--lg-inset', `${inset}px`);
   const el = msg;

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { en } from '../i18n/en';
 
 /**
  * The first-run checklist's deck step. It used to tick as soon as any deck was
@@ -170,6 +171,63 @@ describe('the deck step', () => {
     await open({ configured: true, deck: '' });
     expect(step().classList.contains('done')).toBe(false);
     expect(keep().hidden).toBe(true);
+  });
+});
+
+describe('a change of language', () => {
+  it('redraws the page at once: the settings, their contents and the page', async () => {
+    await open({ configured: true, deck: 'Default' }, 'Default');
+    const before = document.querySelector('#settings > *');
+    const deck = document.querySelector<HTMLSelectElement>('#settings select[name=deck]')!;
+    deck.focus();
+
+    const { setSetting } = await import('../settings');
+    await setSetting('native', 'es');
+
+    expect(document.documentElement.lang).toBe('es');
+    // Built again, in place of the old.
+    expect(document.querySelectorAll('#settings > *')).toHaveLength(1);
+    expect(document.querySelector('#settings > *')).not.toBe(before);
+    // The control in use is still the one in use.
+    expect(document.activeElement).toBe(document.querySelector('#settings select[name=deck]'));
+    expect(document.activeElement).not.toBe(deck);
+    // The contents list each section once, and lead to the sections as rebuilt.
+    const links = Array.from(document.querySelectorAll<HTMLAnchorElement>('.toc a'));
+    expect(links.map((a) => a.textContent)).toEqual(['Anki', 'Cards', 'Data']);
+    links[2]!.click();
+    expect(document.getElementById('lg-data')!.classList.contains('landed')).toBe(true);
+  });
+});
+
+/** A string in the English table by its "section.key" path, as data-i18n names it. */
+function english(path: string): unknown {
+  const [section = '', key = '', ...more] = path.split('.');
+  return more.length ? undefined : (en as unknown as Record<string, Record<string, unknown> | undefined>)[section]?.[key];
+}
+
+/** Node's file reading. This project's types are the browser's, so it is described here. */
+type Files = { readFileSync(path: string, encoding: 'utf8'): string };
+
+describe.each(['options.html', 'action.html'])('the words in %s', (file) => {
+  it('each name a string in the English table, and hold that English until it is read', async () => {
+    const { readFileSync } = await vi.importActual<Files>('node:fs');
+    // In a template the markup is only read: nothing it links to is fetched.
+    const page = document.createElement('template');
+    page.innerHTML = readFileSync(`src/${file}`, 'utf8');
+    const found: Array<[path: string, markup: string]> = [];
+    for (const el of Array.from(page.content.querySelectorAll('*'))) {
+      const text = el.getAttribute('data-i18n');
+      if (text) found.push([text, (el.textContent ?? '').replace(/\s+/g, ' ').trim()]);
+      for (const attribute of ['title', 'aria-label', 'placeholder']) {
+        const path = el.getAttribute(`data-i18n-${attribute}`);
+        if (path) found.push([path, el.getAttribute(attribute) ?? '']);
+      }
+    }
+    expect(found.length).toBeGreaterThan(5);
+    for (const [path, markup] of found) {
+      expect(typeof english(path), path).toBe('string');
+      expect(markup, path).toBe(english(path));
+    }
   });
 });
 

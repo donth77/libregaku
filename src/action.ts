@@ -1,7 +1,10 @@
 import { queuedCards } from './anki/card-queue';
 import { probe, type AnkiState } from './anki/client';
 import { ANKI_PORT } from './anki/endpoint';
+import type { CaptureFailure } from './audio/tab-capture';
+import { loadUiLanguage, localize, setTranslationLoader, setUiLanguage, ui } from './i18n';
 import { logo } from './logo';
+import { loadSettings, onSettingsChange, settings } from './settings';
 
 /**
  * Toolbar popup.
@@ -48,18 +51,18 @@ async function askPage(tabId: number, msg: unknown): Promise<PageState | null> {
   }
 }
 
+/** A site as people write it: the content script reports its adapter's id, "netflix". */
+function siteName(site: string | null): string {
+  return ({ youtube: 'YouTube', netflix: 'Netflix' } as Record<string, string>)[site ?? ''] ?? String(site);
+}
+
 function describe(state: PageState | null): { text: string; cls: string } {
-  if (!state) {
-    return {
-      text: 'Not active on this page. Open a YouTube or Netflix video. If you just installed or reloaded Libregaku, reload the tab.',
-      cls: 'off',
-    };
-  }
-  if (!state.supported) return { text: 'Libregaku works on YouTube and Netflix.', cls: 'off' };
+  if (!state) return { text: ui.action.notActive, cls: 'off' };
+  if (!state.supported) return { text: ui.action.unsupported, cls: 'off' };
   if (!state.rendering) {
-    return { text: `Waiting for subtitles on ${state.site}. Make sure they're turned on.`, cls: 'off' };
+    return { text: ui.action.waitingForSubtitles(siteName(state.site)), cls: 'off' };
   }
-  return { text: state.title ? `Active — ${state.title}` : 'Active on this video.', cls: 'ok' };
+  return { text: state.title ? ui.action.activeOn(state.title) : ui.action.active, cls: 'ok' };
 }
 
 function fillTracks(
@@ -78,7 +81,9 @@ function fillTracks(
   for (const t of state.tracks) {
     const o = document.createElement('option');
     o.value = t.id;
-    o.textContent = `${t.label || t.lang}${t.generated ? ' (auto)' : ''}`;
+    // The track's name is the site's; only the mark for a generated one is ours.
+    const name = t.label || t.lang;
+    o.textContent = t.generated ? ui.action.generatedTrack(name) : name;
     sel.appendChild(o);
   }
   sel.value = selected ?? '';
@@ -93,7 +98,15 @@ async function main(): Promise<void> {
 
   $('openSettings').addEventListener('click', () => void chrome.runtime.openOptionsPage());
 
-  const tab = await activeTab();
+  const [tab] = await Promise.all([activeTab(), loadSettings()]);
+  // The popup's own words in the learner's language, before anything below is
+  // written over them. It is open for moments, so this is done once.
+  // A language's words are a file of their own, imported when it is chosen.
+  setTranslationLoader((lang) => import(chrome.runtime.getURL(`i18n/${lang}.js`)));
+  await loadUiLanguage(settings().native);
+  localize(document);
+  onSettingsChange((s) => setUiLanguage(s.native));
+
   const state = tab?.id ? await askPage(tab.id, { type: 'lg-state' }) : null;
 
   const { text, cls } = describe(state);
@@ -106,7 +119,7 @@ async function main(): Promise<void> {
     const track = $<HTMLSelectElement>('track');
     const second = $<HTMLSelectElement>('second');
     fillTracks(track, state, state.track);
-    fillTracks(second, state, state.second, 'None');
+    fillTracks(second, state, state.second, ui.action.noTranslation);
 
     // Only the picker that changed. Sending both turned the second picker's
     // "None" — which is also what it shows when no second line happened to
@@ -151,25 +164,26 @@ async function offerCapture(tabId: number, state: PageState): Promise<void> {
   section.hidden = false;
   const granted = await chrome.permissions.contains({ permissions: ['tabCapture'] }).catch(() => false);
   if (!granted) {
-    text.textContent = "Recording sentence audio here needs permission to capture this tab's sound.";
-    go.textContent = 'Allow in settings';
+    text.textContent = ui.action.captureNeedsPermission;
+    go.textContent = ui.action.captureAllowInSettings;
     go.hidden = false;
     go.onclick = () => void chrome.runtime.openOptionsPage();
     return;
   }
-  text.textContent = "Netflix's sound can be recorded only after you turn it on for this tab.";
-  go.textContent = 'Record sentence audio here';
+  text.textContent = ui.action.captureReady;
+  go.textContent = ui.action.captureStart;
   go.hidden = false;
   go.onclick = async () => {
     go.disabled = true;
     const r = (await chrome.runtime.sendMessage({ type: 'tab-capture-start', tabId }).catch(() => null)) as
-      | { ok?: boolean; error?: string }
+      | { ok?: boolean; error?: string; code?: CaptureFailure }
       | null;
     if (r?.ok) {
       section.hidden = true;
       return;
     }
-    text.textContent = r?.error ?? "Chrome couldn't record this tab.";
+    // The service worker names what went wrong; the words for it are the interface's.
+    text.textContent = r?.code ? ui.errors[r.code] : r?.error ?? ui.action.captureFailed;
     go.disabled = false;
   };
 }
@@ -185,27 +199,24 @@ async function offerCapture(tabId: number, state: PageState): Promise<void> {
 export function describeAnki(s: AnkiState, waiting = 0): { text: string; cls: string } {
   const said = describeState(s);
   if (!waiting) return said;
-  const n = `${waiting} card${waiting === 1 ? '' : 's'}`;
-  return {
-    ...said,
-    text: s.kind === 'connected' ? `${said.text} · ${n} still to add` : `${said.text} · ${n} waiting for Anki`,
-  };
+  const more = s.kind === 'connected' ? ui.action.cardsToAdd(waiting) : ui.action.cardsWaiting(waiting);
+  return { ...said, text: `${said.text} · ${more}` };
 }
 
 function describeState(s: AnkiState): { text: string; cls: string } {
   switch (s.kind) {
     case 'connected':
-      return { text: `Anki connected · ${s.cards} card${s.cards === 1 ? '' : 's'} from Libregaku`, cls: 'ok' };
+      return { text: ui.action.ankiConnected(s.cards), cls: 'ok' };
     case 'offline':
-      return { text: 'Anki not running — words show as unknown', cls: '' };
+      return { text: ui.action.ankiOffline, cls: '' };
     case 'occupied':
-      return { text: `Another program is using port ${ANKI_PORT}, so Anki cannot be reached`, cls: 'bad' };
+      return { text: ui.action.ankiOccupied(ANKI_PORT), cls: 'bad' };
     case 'blocked':
-      return { text: 'Anki refused this extension — Settings has the line to add', cls: 'bad' };
+      return { text: ui.action.ankiBlocked, cls: 'bad' };
     case 'busy':
-      return { text: 'Anki did not answer — it may be busy syncing', cls: 'bad' };
+      return { text: ui.action.ankiBusy, cls: 'bad' };
     case 'refused':
-      return { text: s.detail || 'Anki refused the request', cls: 'bad' };
+      return { text: s.detail || ui.action.ankiRefused, cls: 'bad' };
   }
 }
 

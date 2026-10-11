@@ -1,4 +1,5 @@
 import { PANEL_STYLE, buildSettings } from './content/settings-panel';
+import { loadUiLanguage, localize, onUiLanguageChange, setTranslationLoader, setUiLanguage, ui } from './i18n';
 import { logo } from './logo';
 import { loadSettings, onSettingsChange, setSetting, settings, type Settings } from './settings';
 
@@ -68,21 +69,26 @@ function land(section: HTMLElement): void {
   section.addEventListener('animationend', () => section.classList.remove('landed'), { once: true });
 }
 
+/** The section being read, by where the sections sit in the window now. */
+function readingSection(sections: readonly HTMLElement[]): HTMLElement | undefined {
+  const page = document.documentElement;
+  const scrolls = page.scrollHeight - window.innerHeight > 1;
+  const atEnd = scrolls && window.scrollY + window.innerHeight >= page.scrollHeight - 2;
+  const tops = sections.map((s) => s.getBoundingClientRect().top);
+  return sections[readingIndex(tops, window.innerHeight, atEnd)];
+}
+
 /**
  * The page's contents, down the side: one link per section of the settings,
  * marked as the reader scrolls past it. A long page is only readable when you
  * can see where you are in it and jump to what you came for.
+ *
+ * Returns how to list the sections again, for when the settings are rebuilt
+ * in another language: the links are named for the headings as they read.
  */
-function contents(nav: HTMLElement, panel: HTMLElement): void {
-  const sections = Array.from(panel.querySelectorAll<HTMLElement>('.grp-section'));
+function contents(nav: HTMLElement, panel: HTMLElement): () => void {
+  let sections: HTMLElement[] = [];
   const links = new Map<HTMLElement, HTMLAnchorElement>();
-  for (const section of sections) {
-    const a = document.createElement('a');
-    a.href = `#${section.id}`;
-    a.textContent = section.querySelector('.grp')?.textContent ?? '';
-    nav.appendChild(a);
-    links.set(section, a);
-  }
 
   /*
    * A section picked from here — or from the checklist's links — is the one
@@ -95,16 +101,29 @@ function contents(nav: HTMLElement, panel: HTMLElement): void {
   let settling = false;
 
   const mark = (): void => {
-    const page = document.documentElement;
-    const scrolls = page.scrollHeight - window.innerHeight > 1;
-    const atEnd = scrolls && window.scrollY + window.innerHeight >= page.scrollHeight - 2;
-    const tops = sections.map((s) => s.getBoundingClientRect().top);
-    const current = picked ?? sections[readingIndex(tops, window.innerHeight, atEnd)];
+    const current = picked ?? readingSection(sections);
     for (const [section, a] of links) {
       if (section === current) a.setAttribute('aria-current', 'true');
       else a.removeAttribute('aria-current');
     }
   };
+
+  const list = (): void => {
+    sections = Array.from(panel.querySelectorAll<HTMLElement>('.grp-section'));
+    links.clear();
+    nav.replaceChildren();
+    for (const section of sections) {
+      const a = document.createElement('a');
+      a.href = `#${section.id}`;
+      a.textContent = section.querySelector('.grp')?.textContent ?? '';
+      nav.appendChild(a);
+      links.set(section, a);
+    }
+    // A section picked before a rebuild is still picked: the same section, built again.
+    const was = picked?.id;
+    picked = was ? sections.find((s) => s.id === was) ?? null : null;
+  };
+  list();
   let frame = 0;
   const soon = (): void => {
     if (frame) return;
@@ -143,6 +162,38 @@ function contents(nav: HTMLElement, panel: HTMLElement): void {
   }
   window.addEventListener('resize', soon);
   mark();
+  return () => {
+    list();
+    mark();
+  };
+}
+
+/**
+ * The settings built again where they were, in a new interface language.
+ * The control in use keeps the focus and its place in the window — or, with
+ * none in use, the section being read keeps its place — however much longer
+ * or shorter the words above it have become.
+ */
+function rebuild(old: HTMLElement): HTMLElement {
+  const focused = document.activeElement && old.contains(document.activeElement) ? document.activeElement : null;
+  const name = focused?.getAttribute('name') ?? '';
+  const section = readingSection(Array.from(old.querySelectorAll<HTMLElement>('.grp-section')))?.id ?? '';
+  const held = (root: HTMLElement): HTMLElement | null =>
+    name
+      ? Array.from(root.querySelectorAll<HTMLElement>('[name]')).find((el) => el.getAttribute('name') === name) ?? null
+      : Array.from(root.querySelectorAll<HTMLElement>('.grp-section')).find((s) => s.id === section) ?? null;
+  const top = held(old)?.getBoundingClientRect().top;
+
+  const next = buildSettings(() => {});
+  old.replaceWith(next);
+
+  const now = held(next);
+  if (now && top !== undefined) {
+    const by = now.getBoundingClientRect().top - top;
+    if (by) window.scrollTo(window.scrollX, window.scrollY + by);
+  }
+  if (name) now?.focus({ preventScroll: true });
+  return next;
 }
 
 async function main(): Promise<void> {
@@ -150,15 +201,25 @@ async function main(): Promise<void> {
   const mark = logo('lockup', 46, 'Libregaku');
   if (h1 && mark) h1.replaceChildren(mark);
 
-  await loadSettings();
+  // Both read before anything is drawn, so nothing below waits again: a
+  // change of language always finds the whole page there to redraw.
+  let [, chosen] = await Promise.all([loadSettings(), loadChosen()]);
+
+  // The page in the learner's own language, which can be changed on it.
+  // A language's words are a file of their own, imported when it is chosen.
+  setTranslationLoader((lang) => import(chrome.runtime.getURL(`i18n/${lang}.js`)));
+  await loadUiLanguage(settings().native);
+  localize(document);
+  onSettingsChange((s) => setUiLanguage(s.native));
 
   const style = document.createElement('style');
   style.textContent = PANEL_STYLE;
   document.head.appendChild(style);
   const panel = document.getElementById('settings') as HTMLElement;
-  panel.appendChild(buildSettings(() => {}));
+  let built = buildSettings(() => {});
+  panel.appendChild(built);
   const toc = document.querySelector<HTMLElement>('.toc');
-  if (toc) contents(toc, panel);
+  const relist = toc ? contents(toc, panel) : null;
 
   /*
    * A first run needs two decisions and nothing else. The language pair cannot
@@ -171,8 +232,6 @@ async function main(): Promise<void> {
   const stepAnki = document.getElementById('step-anki') as HTMLElement;
   const confirm = document.getElementById('confirmLang') as HTMLButtonElement;
   const confirmDeck = document.getElementById('confirmDeck') as HTMLButtonElement;
-
-  let chosen = await loadChosen();
 
   // An explicit confirmation, so a learner whose pair happens to match the
   // defaults has still made the choice rather than merely not noticed it.
@@ -207,12 +266,24 @@ async function main(): Promise<void> {
     confirm.hidden = langDone;
     // Offer to keep a deck only when there is one to keep.
     confirmDeck.hidden = ankiDone || !cur.deck;
-    confirmDeck.textContent = cur.deck ? `Use ${cur.deck} for new cards` : '';
+    confirmDeck.textContent = cur.deck ? ui.options.keepDeck(cur.deck) : '';
     setup.hidden = langDone && ankiDone;
   }
 
   onSettingsChange(refreshSetup);
   refreshSetup();
+
+  /*
+   * "Your language" is on this page, and the page follows it at once: the
+   * settings are built again in the new language where the old ones were,
+   * and the contents, the checklist and the page's own words after them.
+   */
+  onUiLanguageChange(() => {
+    localize(document);
+    built = rebuild(built);
+    relist?.();
+    refreshSetup();
+  });
 }
 
 void main();

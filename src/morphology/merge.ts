@@ -910,3 +910,23 @@ export function mergeMorphemes(morphemes: Morpheme[], lexicon?: Lexicon): Merged
   return constructions(groups(joinCompoundVerbs(joinCompounds(morphemes, lexicon), lexicon)).flatMap((group) =>
     unknownPair(group, lexicon) ? group.map((m) => merge([m], lexicon)) : [merge(group, lexicon)]));
 }
+
+/**
+ * Every label merging can give an ending: the two tables', and the ones
+ * written out above. The interface names each in the learner's language
+ * (src/i18n/en/grammar.ts), and a test holds that table to naming every one.
+ * The tables' are read from them; a label written out in a function has to
+ * be listed here too, or it shows in English in every language.
+ */
+export const GRAMMAR_LABELS: readonly string[] = [...new Set([
+  ...Object.values(GRAMMAR),
+  ...Object.values(SURFACE_GRAMMAR),
+  // fromConjugation
+  'imperative', 'volitional',
+  // labelAt
+  'probably', 'past', 'passive', 'passive or potential', 'hearsay', 'must', 'without',
+  // merge, for a potential verb undone to the verb it comes from
+  'potential',
+  // constructions
+  'must', 'must not', "don't have to", 'may',
+])];

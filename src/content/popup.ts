@@ -1,7 +1,7 @@
 import type { OverrideStatus, Status } from '../anki/status';
 import { pronounce } from '../audio/pronounce';
 import type { Characters, LookupResult } from '../dict/client';
-import { readablePos } from '../dict/pos';
+import { grammarLabel, ui, uiDirection, uiLocale } from '../i18n';
 import type { Token } from '../morphology/types';
 import { icon } from './icons';
 import { copyText } from './share';
@@ -18,6 +18,8 @@ import { TIP_STYLE, tooltips } from './tooltip';
 
 const STYLE = `
   :host {
+    /* Text starts where the interface's language starts: the page around sets left, which is wrong in Arabic. */
+    text-align: start !important;
     position: absolute !important;
     z-index: 2147483647 !important;
     pointer-events: none !important;
@@ -167,6 +169,12 @@ const STYLE = `
   .also-line .at { flex: none; font: 500 11.5px/1 ui-monospace, monospace; color: #6B7490; font-variant-numeric: tabular-nums; }
   .also-line b { font-weight: 600; color: #E8ECF6; box-shadow: inset 0 -2px 0 #8A94AF; }
   .also-more { font-size: 12px; color: #6B7490; padding: 4px 0 0; }
+  button.also-more {
+    display: block; margin: 0; border: 0; background: none; cursor: pointer;
+    font: 12.5px/1.4 system-ui, -apple-system, sans-serif; color: #8A94AF; padding: 6px 0 0;
+  }
+  button.also-more:hover { color: #E8ECF6; text-decoration: underline; }
+  button.also-more:focus-visible { outline: 2px solid #F2F5FC; outline-offset: 2px; }
   /*
    * Inside the card, over the status row while it shows. It used to hang
    * below the card, which near the bottom of a player was outside it, and an
@@ -241,6 +249,13 @@ export function popupKey(): string | null {
   return openFor;
 }
 
+const cardKey = (token: Token): string => `${token.start}:${token.surface}`;
+
+/** Whether the open card is this token's. */
+export function popupShows(token: Token): boolean {
+  return host !== null && openFor === cardKey(token);
+}
+
 /**
  * Close after a grace period, so the cursor can travel from the word to the
  * card without the card vanishing on the way.
@@ -298,14 +313,19 @@ export function pressAdd(): boolean {
   // Pressed again, the key says where the card is rather than undoing it or
   // sending Anki's window to the front.
   if (b.dataset.state === 'add') b.click();
-  else if (b.dataset.state !== 'busy') sayOnCard?.(PRESSED_AGAIN[b.dataset.state ?? ''] ?? '');
+  else if (b.dataset.state !== 'busy') sayOnCard?.(pressedAgain(b.dataset.state));
   return true;
 }
 
 /** What A says on a card past adding. */
-const PRESSED_AGAIN: Record<string, string> = {
-  added: 'Already added', in: 'Already in Anki', waiting: 'Waiting for Anki to open',
-};
+function pressedAgain(state: string | undefined): string {
+  switch (state) {
+    case 'added': return ui.popup.alreadyAdded;
+    case 'in': return ui.popup.alreadyInAnki;
+    case 'waiting': return ui.popup.waitingForAnkiToOpen;
+    default: return '';
+  }
+}
 
 /** The open card's own line for saying things, for the A key. */
 let sayOnCard: ((m: string) => void) | null = null;
@@ -367,8 +387,15 @@ interface Context {
   elsewhere?: Promise<Array<{ start: number; text: string; match: string }>>;
   /** Play from one of those lines. */
   onSeek?: (start: number) => void;
+  /**
+   * Search the transcript for the word, for every line it is in: `query` for
+   * the search box, `forms` as the word is written in its lines.
+   */
+  onSearch?: (query: string, forms: string[]) => void;
   /** The characters the word is written with, once looked up. */
   characters?: Promise<Characters>;
+  /** The language being learned: the word and its lines are in it, so the browser draws them in its fonts. */
+  lang?: string;
   /**
    * What the card should stay clear of, most important first — the subtitle
    * with its second line, then the line alone. See placeCard.
@@ -388,13 +415,18 @@ export function showPopup(
   ctx: Context,
 ): void {
   const entries = result.state === 'ok' ? result.entries : [];
-  const key = `${ctx.token.start}:${ctx.token.surface}`;
+  const key = cardKey(ctx.token);
   if (openFor === key) return;   // already showing this word
   dismiss('replaced');
   openFor = key;
 
   host = document.createElement('div');
   host.className = 'libregaku-popup';
+  // The card is written in the interface's language; what is in the language
+  // being learned says so itself, so the browser draws each in its own fonts.
+  host.lang = uiLocale();
+  host.dir = uiDirection();
+  const learned = ctx.lang ?? '';
   for (const [name, value] of Object.entries(ctx.colors ?? {})) host.style.setProperty(name, value);
   const root = host.attachShadow({ mode: 'open' });
 
@@ -409,7 +441,7 @@ export function showPopup(
   const card = document.createElement('div');
   card.className = 'card';
   card.setAttribute('role', 'dialog');
-  card.setAttribute('aria-label', `${word} — dictionary`);
+  card.setAttribute('aria-label', ui.popup.cardLabel(word));
   card.addEventListener('mouseenter', () => {
     overCard = true;
     cancelPopupClose();
@@ -431,11 +463,13 @@ export function showPopup(
   if (reading) {
     const r = document.createElement('div');
     r.className = 'reading';
+    r.lang = learned;
     r.textContent = reading;
     hw.appendChild(r);
   }
   const w = document.createElement('div');
   w.className = 'word';
+  w.lang = learned;
   w.textContent = word;
   hw.appendChild(w);
   // The marks, small, beside the word they are about (filled in below).
@@ -450,10 +484,10 @@ export function showPopup(
     if (top.common) {
       const b = document.createElement('span');
       b.className = 'badge';
-      b.textContent = 'common';
+      b.textContent = ui.popup.commonBadge;
       meta.appendChild(b);
     }
-    const pos = readablePos(top.senses[0]?.pos ?? []);
+    const pos = partsOfSpeech(top.senses[0]?.pos ?? []);
     if (pos) {
       const p = document.createElement('span');
       p.textContent = pos;
@@ -496,16 +530,16 @@ export function showPopup(
   const sayWord = top?.word ?? word;
   const sayReading = top?.reading ?? reading;
 
-  button('volume', 'Pronounce', (b) => {
+  button('volume', ui.popup.pronounce, (b) => {
     b.classList.add('busy');
     b.replaceChildren(icon('loader', 16));
     void pronounce(sayWord, sayReading)
       .then((spoken) => {
         // Say which source was used: a human recording and a synthesised one
         // are not equally trustworthy models to imitate.
-        say(spoken.human ? `${word} · recording` : `${word} · synthesised`);
+        say(spoken.human ? ui.popup.playedRecording(word) : ui.popup.playedSynthesised(word));
       })
-      .catch(() => say('could not play audio', 4000))
+      .catch(() => say(ui.popup.pronounceFailed, 4000))
       .finally(() => {
         b.classList.remove('busy');
         b.replaceChildren(icon('volume', 16));
@@ -517,7 +551,7 @@ export function showPopup(
   // The clipboard refuses without focus or permission, which a video page can
   // withhold; copyText falls back, and either way the result is said aloud.
   const copy = (text: string, done: string): void => {
-    void copyText(text).then((ok) => (ok ? say(done) : say('could not copy — select the text instead', 4000)));
+    void copyText(text).then((ok) => (ok ? say(done) : say(ui.popup.copyFailed, 4000)));
   };
   // A sentence card: the line itself, with its sound and a still. Pressed
   // again once it is in, it takes the card back out.
@@ -525,7 +559,7 @@ export function showPopup(
   if (onAddLine) {
     let back: (() => Promise<string>) | null = null;
     let settled = 0;
-    button('linePlus', 'Add sentence', (b) => {
+    button('linePlus', ui.popup.addSentence, (b) => {
       if (b.classList.contains('busy') || Date.now() - settled < SETTLE_MS) return;
       const undo = back;
       b.classList.add('busy');
@@ -539,8 +573,8 @@ export function showPopup(
       };
       if (undo) {
         void undo().then(
-          (said) => { say(said); back = null; done('linePlus', 'Add sentence'); },
-          (e: unknown) => { say(failed(e), 4000); done('check', 'Undo'); },
+          (said) => { say(said); back = null; done('linePlus', ui.popup.addSentence); },
+          (e: unknown) => { say(failed(e), 4000); done('check', ui.popup.undo); },
         );
         return;
       }
@@ -549,16 +583,16 @@ export function showPopup(
           const { said, undo: takeBack } = outcome(out);
           say(said);
           back = takeBack ?? null;
-          done('check', back ? 'Undo' : 'Sentence added');
+          done('check', back ? ui.popup.undo : ui.popup.sentenceAdded);
         },
-        (e: unknown) => { say(failed(e), 4000); done('linePlus', 'Add sentence'); },
+        (e: unknown) => { say(failed(e), 4000); done('linePlus', ui.popup.addSentence); },
       );
     });
   }
 
-  if (ctx.phrase) button('copy', 'Copy phrase', () => copy(ctx.token.surface, 'phrase copied'));
-  else button('copy', 'Copy word', () => copy(word, 'word copied'));
-  button('quote', 'Copy sentence', () => copy(ctx.sentence, 'sentence copied'));
+  if (ctx.phrase) button('copy', ui.popup.copyPhrase, () => copy(ctx.token.surface, ui.popup.phraseCopied));
+  else button('copy', ui.popup.copyWord, () => copy(word, ui.popup.wordCopied));
+  button('quote', ui.popup.copySentence, () => copy(ctx.sentence, ui.popup.sentenceCopied));
   /*
    * A site for the human link, an API for the lookups — the distinction is
    * real. Calling someone's API implicates their terms, so that goes to one
@@ -617,22 +651,25 @@ export function showPopup(
   if (result.state === 'loading') {
     const e = document.createElement('div');
     e.className = 'loading';
-    e.textContent = `Dictionary still loading — ${result.percent}%. Try again in a moment.`;
+    e.textContent = ui.popup.dictionaryLoading(result.percent);
     body.appendChild(e);
   } else if (result.state === 'error') {
     const e = document.createElement('div');
     e.className = 'loading';
-    e.textContent = `Dictionary unavailable: ${result.error}`;
+    e.textContent = ui.popup.dictionaryUnavailable(result.error);
     body.appendChild(e);
   } else if (!entries.length) {
     const e = document.createElement('div');
     e.className = 'empty';
-    e.textContent = 'No dictionary entry for this word.';
+    e.textContent = ui.popup.noEntry;
     body.appendChild(e);
   } else {
     // The commonest words have the most senses: できる has ten. The first few
     // are what is meant nearly always; the rest wait to be asked for.
     const ol = document.createElement('ol');
+    // The meanings run in their own language's direction: English ones left
+    // to right, numbers on the left, under an Arabic interface too.
+    ol.dir = 'auto';
     const senses = top!.senses.slice(0, MAX_SENSES);
     senses.forEach((sense, i) => {
       const li = document.createElement('li');
@@ -645,7 +682,7 @@ export function showPopup(
       const more = document.createElement('button');
       more.type = 'button';
       more.className = 'more-senses';
-      more.textContent = `+${senses.length - SENSES_SHOWN} more meaning${senses.length - SENSES_SHOWN === 1 ? '' : 's'}`;
+      more.textContent = ui.popup.moreMeanings(senses.length - SENSES_SHOWN);
       more.addEventListener('click', () => {
         for (const li of Array.from(ol.children) as HTMLElement[]) li.hidden = false;
         more.remove();
@@ -661,7 +698,7 @@ export function showPopup(
     void ctx.characters.then((c) => {
       if (host !== mine || !c.items.length) return;
       fold(body.querySelector('.trace') ? body.querySelector('.trace')! : null, 'kanji',
-        `${c.label} · ${c.items.map((k) => k.char).join(' ')}`, chars, () => fillCharacters(chars, c));
+        `${c.label} · ${c.items.map((k) => k.char).join(' ')}`, chars, () => fillCharacters(chars, c, learned));
     }, () => {});
   }
 
@@ -670,6 +707,10 @@ export function showPopup(
   if (parts?.length && lemma && lemma !== surface) {
     const tr = document.createElement('div');
     tr.className = 'trace';
+    tr.lang = learned;
+    // Read left to right whatever the interface's direction: + and → take
+    // the page's, and in Arabic the parts came out in the wrong order.
+    tr.dir = 'ltr';
     tr.append(document.createTextNode(`${parts.join(' + ')}  →  `));
     const b = document.createElement('b');
     b.textContent = lemma;
@@ -684,7 +725,9 @@ export function showPopup(
     if (inflections?.length) {
       const g = document.createElement('div');
       g.className = 'grammar';
-      g.textContent = inflections.join(' · ');
+      g.lang = uiLocale();
+      g.dir = uiDirection();
+      g.textContent = inflections.map(grammarLabel).join(' · ');
       tr.appendChild(g);
     }
     body.appendChild(tr);
@@ -692,12 +735,16 @@ export function showPopup(
   if (ctx.elsewhere) {
     const also = document.createElement('div');
     also.className = 'also';
+    also.lang = learned;
     const mine = host;
     void ctx.elsewhere.then((lines) => {
       // The card may have closed, or become another word's, meanwhile.
       if (host !== mine || !lines.length) return;
-      fold(null, 'also', lines.length === 1 ? 'Once more in this video' : `${lines.length} more times in this video`,
-        also, () => fillAlso(also, lines, ctx.onSeek));
+      const search = ctx.onSearch;
+      const showAll = search
+        ? () => search(ctx.token.lemma ?? ctx.token.surface, [ctx.token.surface, ...lines.map((l) => l.match)])
+        : undefined;
+      fold(null, 'also', ui.popup.elsewhereCount(lines.length), also, () => fillAlso(also, lines, ctx.onSeek, showAll));
     }, () => {});
   }
   card.appendChild(body);
@@ -730,20 +777,21 @@ export function showPopup(
   add.className = 'add';
   // Its key, where someone hovering the button will see it (src/content/keys.ts).
   shortcut(add, 'A', 'A');
-  const show = (state: AddState, busyText = 'Adding…'): void => {
+  const show = (state: AddState, busyText = ui.popup.adding): void => {
     add.dataset.state = state;
     add.classList.toggle('has', state === 'in');
     add.classList.toggle('done', state === 'added' || state === 'waiting');
+    const t = ui.popup;
     const [ico, text, tip] = ({
-      add: ['plus', 'Add to Anki', deckNow ? `Add to ${deckNow}` : 'Add to Anki'],
+      add: ['plus', t.addToAnki, deckNow ? t.addToDeck(deckNow) : t.addToAnki],
       busy: ['loader', busyText, busyText],
-      added: ['check', 'Added', back ? 'Undo' : 'Added'],
-      in: ['check', 'In Anki', 'Show in Anki'],
-      waiting: ['check', 'Waiting', 'Waiting for Anki'],
+      added: ['check', t.added, back ? t.undo : t.added],
+      in: ['check', t.inAnki, t.showInAnki],
+      waiting: ['check', t.waiting, t.waitingForAnki],
     } as const)[state];
     add.replaceChildren(icon(ico, 14), document.createTextNode(text));
     add.dataset.tip = tip;
-    add.setAttribute('aria-label', state === 'add' ? 'Add to Anki' : tip);
+    add.setAttribute('aria-label', state === 'add' ? t.addToAnki : tip);
   };
   show(hasCard ? (ctx.queued ? 'waiting' : 'in') : 'add');
   /** Make the card, whatever the button shows — the deck menu adds to another deck even beside "In Anki". */
@@ -755,7 +803,7 @@ export function showPopup(
         back = undo ?? null;
         settled = Date.now();
         show('added');
-        say(then ? `${said} — ${then}` : said, then ? 5000 : 1500);
+        say(then ? ui.popup.addedWithWarning(said, then) : said, then ? 5000 : 1500);
       },
       (e: unknown) => {
         say(failed(e), 4000);
@@ -771,7 +819,7 @@ export function showPopup(
       return;
     }
     if (state === 'waiting') {
-      say('It goes into Anki when Anki opens', 2500);
+      say(ui.popup.goesInWhenAnkiOpens, 2500);
       return;
     }
     // A second press a moment after the first is impatience, not Undo.
@@ -779,7 +827,7 @@ export function showPopup(
     if (state === 'added') {
       const undo = back;
       if (!undo) return;
-      show('busy', 'Undoing…');
+      show('busy', ui.popup.undoing);
       void undo().then(
         (said) => { say(said); back = null; settled = Date.now(); show('add'); },
         (e: unknown) => { say(failed(e), 4000); settled = Date.now(); show('added'); },
@@ -796,8 +844,8 @@ export function showPopup(
   if (onDeck) {
     const more = document.createElement('button');
     more.className = 'more';
-    more.dataset.tip = 'Other decks';
-    more.setAttribute('aria-label', 'Add to another deck');
+    more.dataset.tip = ui.popup.otherDecks;
+    more.setAttribute('aria-label', ui.popup.addToAnotherDeck);
     more.setAttribute('aria-haspopup', 'menu');
     more.setAttribute('aria-expanded', 'false');
     more.appendChild(icon('chevronDown', 16));
@@ -843,14 +891,14 @@ export function showPopup(
       if (!list.length) {
         const note = document.createElement('div');
         note.className = 'deckmenu-note';
-        note.textContent = 'Anki is not answering, so its decks are not known yet.';
+        note.textContent = ui.popup.decksUnknown;
         menu.appendChild(note);
       }
-      for (const d of list) item(`Add to ${d}`, () => pick(d, false), d === deckNow);
+      for (const d of list) item(ui.popup.addToDeck(d), () => pick(d, false), d === deckNow);
       // A deck can be made only with Anki answering.
       if (decks.length) {
-        item('New deck…', () => {
-          const name = prompt('New deck — use :: for a subdeck, as in Japanese::Netflix')?.trim();
+        item(ui.popup.newDeck, () => {
+          const name = prompt(ui.popup.newDeckPrompt)?.trim();
           if (name) pick(name, true);
           else close();
         });
@@ -871,12 +919,12 @@ export function showPopup(
    * they were taken for Add. A mark the word already has always shows, so it
    * can come off again.
    */
-  const mark = (cls: string, iconName: string, label: string, next: OverrideStatus): void => {
+  const mark = (cls: string, iconName: string, label: string, next: CardMark): void => {
     const on = ctx.marked === next;
     const b = document.createElement('button');
     b.className = `mk ${cls}`;
     b.appendChild(icon(iconName, 17));
-    b.dataset.tip = on ? MARK_UNDO[next] : MARK_TIPS[next];
+    b.dataset.tip = on ? unmarkTip(next) : markTip(next);
     b.setAttribute('aria-label', label);
     if (next === 'known') shortcut(b, 'K', 'K');
     b.setAttribute('aria-pressed', String(on));
@@ -889,9 +937,9 @@ export function showPopup(
     marks.appendChild(b);
   };
   const offerMarks = ctx.marks !== false;
-  if (offerMarks || ctx.marked === 'known') mark('known', 'circleCheck', 'Known', 'known');
-  if (ctx.track || ctx.marked === 'tracking') mark('track', 'target', 'Track', 'tracking');
-  if (offerMarks || ctx.marked === 'ignored') mark('ignore', 'ban', 'Ignore', 'ignored');
+  if (offerMarks || ctx.marked === 'known') mark('known', 'circleCheck', ui.popup.knownButton, 'known');
+  if (ctx.track || ctx.marked === 'tracking') mark('track', 'target', ui.popup.trackButton, 'tracking');
+  if (offerMarks || ctx.marked === 'ignored') mark('ignore', 'ban', ui.popup.ignoreButton, 'ignored');
   card.appendChild(foot);
 
   card.appendChild(toast);
@@ -927,30 +975,41 @@ const openFolds = new Set<FoldKey>();
 /** How soon after one press a second counts as its own, rather than the same impatience. */
 const SETTLE_MS = 900;
 
+/** The marks the card has buttons for. */
+type CardMark = Exclude<OverrideStatus, 'unknown'>;
+
 /** What each mark button does — what each one means is in settings, under Word popup. */
-const MARK_TIPS: Record<OverrideStatus, string> = {
-  known: 'Mark known',
-  tracking: 'Track',
-  ignored: 'Ignore',
-  unknown: 'Mark new',
-};
+const markTip = (mark: CardMark): string =>
+  ({ known: ui.popup.markKnownTip, tracking: ui.popup.trackTip, ignored: ui.popup.ignoreTip })[mark];
 
 /** The same buttons once pressed: pressing again takes the mark off. */
-const MARK_UNDO: Record<OverrideStatus, string> = {
-  known: 'Unmark known',
-  tracking: 'Stop tracking',
-  ignored: 'Stop ignoring',
-  unknown: 'Unmark new',
-};
+const unmarkTip = (mark: CardMark): string =>
+  ({ known: ui.popup.unmarkKnownTip, tracking: ui.popup.stopTrackingTip, ignored: ui.popup.stopIgnoringTip })[mark];
+
+/**
+ * The parts of speech of a sense, by name. JMdict's codes ("v5k", "adj-na")
+ * are precise and unreadable; a code with no name shows as it is rather than
+ * being hidden, and a name two codes share shows once.
+ */
+export function partsOfSpeech(codes: readonly string[]): string {
+  const names: Record<string, unknown> = ui.popup.partOfSpeech;
+  const seen = new Set<string>();
+  for (const c of codes) {
+    const name = names[c];
+    seen.add(typeof name === 'string' ? name : c);
+  }
+  return [...seen].join(', ');
+}
 
 /**
  * Each character of the word: what it means, and how it reads. The readings
  * are the dictionary's, dots and all — つと.める shows where the okurigana starts.
  */
-function fillCharacters(el: HTMLElement, c: Characters): void {
+function fillCharacters(el: HTMLElement, c: Characters, lang: string): void {
   for (const k of c.items) {
     const ch = document.createElement('div');
     ch.className = 'kanji';
+    ch.lang = lang;
     ch.textContent = k.char;
     const info = document.createElement('div');
     info.className = 'kanji-mean';
@@ -959,6 +1018,7 @@ function fillCharacters(el: HTMLElement, c: Characters): void {
     if (readings.length) {
       const r = document.createElement('span');
       r.className = 'kanji-read';
+      r.lang = lang;
       r.textContent = readings.join(' · ');
       info.appendChild(r);
     }
@@ -987,12 +1047,13 @@ function fillAlso(
   el: HTMLElement,
   lines: Array<{ start: number; text: string; match: string }>,
   onSeek?: (start: number) => void,
+  onShowAll?: () => void,
 ): void {
   for (const line of lines.slice(0, ALSO_SHOWN)) {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'also-line';
-    b.dataset.tip = 'Play';
+    b.dataset.tip = ui.popup.playLine;
     const at = document.createElement('span');
     at.className = 'at';
     at.textContent = clock(line.start);
@@ -1013,9 +1074,20 @@ function fillAlso(
     el.appendChild(b);
   }
   if (lines.length > ALSO_SHOWN) {
-    const more = document.createElement('div');
+    // The rest are in the transcript: a search there, in the panel, finds them all.
+    const more = document.createElement(onShowAll ? 'button' : 'div');
     more.className = 'also-more';
-    more.textContent = `and ${lines.length - ALSO_SHOWN} more — the transcript's search finds them all`;
+    more.lang = uiLocale();
+    if (onShowAll) {
+      (more as HTMLButtonElement).type = 'button';
+      more.textContent = ui.popup.showAllInTranscript;
+      more.addEventListener('click', () => {
+        onShowAll();
+        closePopup();
+      });
+    } else {
+      more.textContent = ui.popup.elsewhereMore(lines.length - ALSO_SHOWN);
+    }
     el.appendChild(more);
   }
 }

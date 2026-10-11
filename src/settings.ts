@@ -1,3 +1,5 @@
+import { languageOfLocale } from './i18n/languages';
+
 /**
  * Settings, with defaults that work before anything is configured.
  *
@@ -117,7 +119,8 @@ export const TRANSLATION_LANGUAGES: Array<{ code: string; label: string }> = [
   { code: 'it', label: 'Italian' },
   { code: 'ru', label: 'Russian' },
   { code: 'ja', label: 'Japanese' },
-  { code: 'zh', label: 'Chinese' },
+  { code: 'zh', label: 'Chinese (Simplified)' },
+  { code: 'zh-Hant', label: 'Chinese (Traditional)' },
   { code: 'ko', label: 'Korean' },
   { code: 'ar', label: 'Arabic' },
   { code: 'hi', label: 'Hindi' },
@@ -131,12 +134,51 @@ export const TRANSLATION_LANGUAGES: Array<{ code: string; label: string }> = [
   { code: 'sv', label: 'Swedish' },
 ];
 
+/**
+ * The browser's language, as one of TRANSLATION_LANGUAGES: what "Your
+ * language" is until someone chooses. Traditional Chinese for Taiwan, Hong
+ * Kong and Macau; English where the browser's language is not on the list.
+ */
+export function browserLanguage(tag = browserTag()): string {
+  const own = languageOfLocale(tag);
+  return TRANSLATION_LANGUAGES.some((l) => l.code === own) ? own : 'en';
+}
+
+function browserTag(): string {
+  try {
+    return chrome.i18n.getUILanguage();
+  } catch {
+    return 'en';   // not in an extension context (tests)
+  }
+}
+
+/**
+ * How well a subtitle track's language answers for `want`: 2 for the language
+ * itself, 1 for the same language in another script, 0 for none. A site
+ * labels Chinese tracks by script (zh-Hans, zh-Hant) or by place (zh-CN,
+ * zh-TW, zh-HK), and zh, as a language of your own, is Simplified.
+ */
+export function trackLanguageMatch(track: string, want: string): 0 | 1 | 2 {
+  const scriptOf = (tag: string): string | null => {
+    const t = tag.toLowerCase();
+    if (!/^zh\b/.test(t)) return null;
+    return /^zh-(hant|tw|hk|mo)\b/.test(t) ? 'hant' : 'hans';
+  };
+  const wanted = scriptOf(want);
+  if (wanted) {
+    const got = scriptOf(track);
+    return got === wanted ? 2 : got ? 1 : 0;
+  }
+  return track.startsWith(want) ? 2 : 0;
+}
+
 export interface Settings {
   /** BCP-47 of the language being learned. */
   target: string;
   /**
    * BCP-47 of the learner's own language: the translation under the subtitle,
-   * and the definitions too wherever the dictionary is written in it.
+   * the definitions wherever the dictionary is written in it, and the words
+   * on the interface wherever it is (src/i18n). The browser's until chosen.
    */
   native: string;
   /**
@@ -267,7 +309,7 @@ export interface Settings {
 
 export const DEFAULTS: Settings = {
   target: 'ja',
-  native: 'en',
+  native: browserLanguage(),
   definitions: 'en',
   configured: false,
   interaction: 'hover',
@@ -309,11 +351,6 @@ const RUBY_ORDER: ReadonlyArray<Settings['ruby']> = ['never', 'unknown', 'always
 
 export function nextRuby(mode: Settings['ruby']): Settings['ruby'] {
   return RUBY_ORDER[(RUBY_ORDER.indexOf(mode) + 1) % RUBY_ORDER.length] ?? 'unknown';
-}
-
-/** A furigana setting as the top bar and the player name it. */
-export function rubyLabel(mode: Settings['ruby']): string {
-  return mode === 'unknown' ? 'new words' : mode;
 }
 
 const KEY = 'libregaku.settings';

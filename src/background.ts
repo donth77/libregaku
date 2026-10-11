@@ -11,6 +11,8 @@
 
 import { relay } from './anki/direct';
 import { MAX_AUDIO_BYTES, TEMPLATE_KEY, audioUrlAllowed } from './audio/pronounce';
+import type { CaptureFailure } from './audio/tab-capture';
+import { UI_LANGUAGES } from './i18n/languages';
 
 const OFFSCREEN_PATH = 'offscreen.html';
 
@@ -189,22 +191,34 @@ async function toOffscreen(msg: Record<string, unknown>): Promise<unknown> {
   return chrome.runtime.sendMessage({ target: 'offscreen', ...msg });
 }
 
+/**
+ * Why the tab's sound could not be had. The toolbar popup says it in the
+ * interface language from `code`, a key of src/i18n/en/errors.ts: this worker
+ * does not follow that language. The English in `error` is what the popup
+ * showed before it read `code`, and can go once it does.
+ */
+function captureFailed(code: CaptureFailure, error: string): { ok: false; code: CaptureFailure; error: string } {
+  return { ok: false, code, error };
+}
+
 async function startTabCapture(tabId: number): Promise<unknown> {
   if (typeof chrome.tabCapture?.getMediaStreamId !== 'function') {
-    return { ok: false, error: 'Allow sentence audio on this site in Libregaku’s settings first.' };
+    return captureFailed('captureNotAllowed', 'Allow sentence audio on this site in Libregaku’s settings first.');
   }
-  const streamId = await new Promise<string>((resolve, reject) => {
+  const streamId = await new Promise<string | null>((resolve, reject) => {
     chrome.tabCapture.getMediaStreamId({ targetTabId: tabId }, (id) => {
       // Refused when the learner has not invoked the extension on this tab.
       const err = chrome.runtime.lastError;
-      if (err || !id) reject(new Error(err?.message ?? 'Chrome would not capture this tab'));
-      else resolve(id);
+      // Chrome's own words, when it gives any, are passed on as they are.
+      if (err?.message !== undefined) reject(new Error(err.message));
+      else resolve(err || !id ? null : id);
     });
   });
+  if (!streamId) return captureFailed('captureRefused', 'Chrome would not capture this tab');
   return toOffscreen({ type: 'capture-open', tabId, streamId });
 }
 
-chrome.runtime.onMessage.addListener((msg: { type?: string; file?: string; action?: string; params?: Record<string, unknown>; url?: string; tabId?: number; topic?: string }, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((msg: { type?: string; file?: string; action?: string; params?: Record<string, unknown>; url?: string; tabId?: number; topic?: string; lang?: string }, sender, sendResponse) => {
   // Only this extension's own pages and content scripts. Nothing is
   // externally connectable today; this keeps it that way if that changes.
   if (sender.id !== chrome.runtime.id) return false;
@@ -219,6 +233,20 @@ chrome.runtime.onMessage.addListener((msg: { type?: string; file?: string; actio
   // change existing notes held to its own hand marks.
   if (msg?.type === 'anki') {
     void relay(msg.action, msg.params).then(sendResponse);
+    return true;
+  }
+
+  // The interface in a language other than English: its words are a file of
+  // their own (src/i18n), run into the content script's world that asked.
+  if (msg?.type === 'load-strings') {
+    const tabId = sender.tab?.id;
+    const lang = msg.lang ?? '';
+    if (tabId == null || lang === 'en' || !(UI_LANGUAGES as readonly string[]).includes(lang)) {
+      sendResponse({ ok: false });
+      return true;
+    }
+    chrome.scripting.executeScript({ target: { tabId, frameIds: [sender.frameId ?? 0] }, files: [`i18n/${lang}.js`] })
+      .then(() => sendResponse({ ok: true }), (e: unknown) => sendResponse({ ok: false, error: String(e) }));
     return true;
   }
 

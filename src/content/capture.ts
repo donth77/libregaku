@@ -16,6 +16,14 @@ export interface Media {
   type: string;
 }
 
+/**
+ * What a card went in without, for the sentence that says so
+ * (src/i18n/en/player.ts): the line's sound ('audio'), or its sound from an
+ * encrypted video ('audio-encrypted'), which can be had once the tab is
+ * captured — started by clicking the Libregaku icon.
+ */
+export type MissingMedia = 'audio' | 'audio-encrypted';
+
 /** Records one line: started as it plays, stopped for its bytes. */
 export interface LineRecorder {
   start(): Promise<void>;

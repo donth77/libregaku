@@ -1,3 +1,4 @@
+import { ui } from '../i18n';
 import { createDeck, ensureNoteType } from './client';
 import {
   MARK_DECK, MARK_FIELDS, MARK_MODEL, MARK_MODEL_NAME, MARK_SEARCH, ROOT_TAG, fieldHtml, keyField, markTag,
@@ -347,7 +348,7 @@ async function flush(queue: Queue, anki: AnkiMarks): Promise<string | undefined>
       });
     });
     if (missed) {
-      error ??= `Anki did not add ${missed} of the marks. They stay queued and are tried again next time.`;
+      error ??= ui.anki.marksNotAdded(missed);
     }
   }
   for (const [status, notes] of retag) {
@@ -411,7 +412,7 @@ function commit(attempted: Queue, seeded: Queue, after: AnkiMarks | null, error?
   }, (e): MarkSync => ({
     marks: new Map(Object.entries(after ? layered(after, attempted) : {})),
     pending: Object.keys(attempted).length,
-    error: `Browser storage refused the marks read from Anki: ${messageOf(e)}`,
+    error: ui.anki.marksNotStored(messageOf(e)),
   }));
 }
 
@@ -425,7 +426,7 @@ async function runSync(): Promise<MarkSync | null> {
   try {
     local = await readLocal();
   } catch (e) {
-    return { marks: new Map(), pending: 0, error: `Browser storage could not be read: ${messageOf(e)}` };
+    return { marks: new Map(), pending: 0, error: ui.anki.storageUnreadable(messageOf(e)) };
   }
 
   let before: AnkiMarks;

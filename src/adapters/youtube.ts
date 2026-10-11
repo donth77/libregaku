@@ -1,3 +1,4 @@
+import { ui } from '../i18n';
 import type { Cue, SubtitleSource, TrackInfo } from './types';
 import { fetchViaTranscriptPanel } from './yt-transcript';
 
@@ -194,7 +195,7 @@ export class YouTubeAdapter implements SubtitleSource {
     const video = this.#tracksFor;
     const track = this.#tracks[Number(id)];
     if (!track || !video || video !== this.#urlVideoId()) {
-      throw new Error('libregaku: unknown track ' + id);
+      throw new Error(`libregaku: ${ui.errors.unknownTrack(id)}`);
     }
     const want = urlKey(video, track.languageCode, track.kind);
 
@@ -261,7 +262,7 @@ export class YouTubeAdapter implements SubtitleSource {
         const res = await fetch(url, { credentials: 'include' });
         if (!res.ok) { tried.push(`${label}:HTTP ${res.status}`); continue; }
         const body = (await res.text()).trim();
-        if (!body) { tried.push(`${label}:empty`); continue; }
+        if (!body) { tried.push(`${label}:${ui.errors.emptyAnswer}`); continue; }
         // Inside the try: one malformed body must not end the search.
         cues = body.startsWith('{') ? parseJson3(JSON.parse(body) as Json3) : parseTimedTextXml(body);
       } catch (e) {
@@ -273,10 +274,11 @@ export class YouTubeAdapter implements SubtitleSource {
                     'color:#8AA2E8', '');
         return cues;
       }
-      tried.push(`${label}:0 cues`);
+      tried.push(`${label}:${ui.errors.noCues}`);
     }
 
-    throw new Error('libregaku: no caption format worked — ' + tried.join(', '));
+    // On screen when the line under the subtitles fails: in the interface language.
+    throw new Error(`libregaku: ${ui.errors.noCaptionFormat(tried)}`);
   }
 
   /** Read YouTube's own transcript panel — no token, no player internals. */

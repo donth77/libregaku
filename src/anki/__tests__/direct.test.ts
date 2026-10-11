@@ -9,6 +9,7 @@ import { describe, expect, it, vi } from 'vitest';
 vi.stubGlobal('chrome', { runtime: { getURL: () => 'chrome-extension://testid/' } });
 
 import { ankiDirect, isRelayed, notRelayed, relay } from '../direct';
+import { ankiReason, ankiTry } from '../rpc';
 
 /** A fresh fetch per case, holding only as much Response as the transport touches. */
 function answers(status: number, body: string): void {
@@ -49,8 +50,11 @@ describe('ankiDirect', () => {
     answers(403, '"unauthorized"');
     const r = await ankiDirect('version');
     expect(r.kind).toBe('blocked');
-    expect(r.error).toContain('chrome-extension://testid');
-    expect(r.error).toContain('webCorsOriginList');
+    expect(r.reason).toEqual({ code: 'blocked', origin: 'chrome-extension://testid' });
+    // The page's words for it, which the settings panel shows.
+    const said = ankiReason(r.reason!);
+    expect(said).toContain('chrome-extension://testid');
+    expect(said).toContain('webCorsOriginList');
   });
 
   it('reports another program on the port, rather than a missing add-on', async () => {
@@ -58,7 +62,8 @@ describe('ankiDirect', () => {
     answers(501, 'Unsupported method');
     const r = await ankiDirect('version');
     expect(r.kind).toBe('occupied');
-    expect(r.error).toContain('8765');
+    expect(r.reason).toEqual({ code: 'http', port: 8765, status: 501 });
+    expect(ankiReason(r.reason!)).toContain('8765');
   });
 
   it('treats a non-AnkiConnect reply as the port being taken', async () => {
@@ -78,7 +83,8 @@ describe('ankiDirect', () => {
     const r = await ankiDirect('version', {}, 20);
     expect(r.kind).toBe('timeout');
     expect(r.offline).toBeUndefined();
-    expect(r.error).toContain('8765');
+    expect(r.reason).toMatchObject({ code: 'timeout', port: 8765 });
+    expect(ankiReason(r.reason!)).toContain('8765');
   });
 
   it('does not take another JSON service for AnkiConnect refusing', async () => {
@@ -144,7 +150,8 @@ describe('relay', () => {
     for (const id of [studied, stale, foreign]) {
       const r = await relay('deleteNotes', { notes: [id] });
       expect(r, String(id)).toMatchObject({ ok: false, kind: 'refused' });
-      expect(r.error).toContain('a card it made in the last few minutes that has not been studied');
+      expect(r.reason).toEqual({ code: 'notMarks', count: 1, ids: 'notes', change: 'delete' });
+      expect(ankiReason(r.reason!)).toContain('a card it made in the last few minutes that has not been studied');
     }
     // Retagging and suspending stay marks-only, however new the card.
     expect(await relay('addTags', { notes: [fresh], tags: 'x' })).toMatchObject({ ok: false, kind: 'refused' });
@@ -184,6 +191,25 @@ describe('relay', () => {
     expect(await relay('addNotes', { notes: [{}, audio({ url: 'https://example.org/a.mp3', filename: 'libregaku_a.mp3' }).note] }))
       .toMatchObject({ ok: false, kind: 'refused' });
     expect(fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe('what the page says', () => {
+  /** The service worker, answering every call with `answer`. */
+  function worker(answer: unknown): void {
+    vi.stubGlobal('chrome', { runtime: { getURL: () => 'chrome-extension://testid/', sendMessage: async () => answer } });
+  }
+
+  it('puts the reason the service worker gives into words', async () => {
+    refuses();
+    const offline = await ankiDirect('version');
+    worker(offline);
+    expect(await ankiTry('version')).toMatchObject({ ok: false, kind: 'offline', error: 'Nothing is listening on port 8765.' });
+  });
+
+  it("passes AnkiConnect's own words on as they are", async () => {
+    worker({ ok: false, kind: 'refused', error: 'deck was not found' });
+    expect((await ankiTry('addNote')).error).toBe('deck was not found');
   });
 });
 

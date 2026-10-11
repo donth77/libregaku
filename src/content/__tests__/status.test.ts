@@ -342,7 +342,7 @@ describe('keys in the player', () => {
     await lines([[0, 2, '食べる']]);
     key('r');
     expect((stored['libregaku.settings'] as Record<string, unknown>).ruby).toBe('always');
-    expect(flashed()).toContain('Furigana: always');
+    expect(flashed()).toContain('Furigana: all');
     key('ArrowUp');
     expect((stored['libregaku.settings'] as Record<string, unknown>).dualSubtitles).toBe(false);
     expect(flashed()).toContain('Translation off');
@@ -492,7 +492,7 @@ describe('what a mark says it did', () => {
   it('says what happened to the word, that no card was made, and where tracked words are', async () => {
     const { markSaid } = await import('../index');
     expect(markSaid('食べる', 'known', { marks: new Map(), error: undefined } as never)).toBe('食べる · marked known, no card');
-    expect(markSaid('食べる', 'tracking', null)).toBe('食べる · tracked, no card. See the Tracked tab in the panel');
+    expect(markSaid('食べる', 'tracking', null)).toBe("食べる · tracked, no card. See the panel's Words tab");
     expect(markSaid('食べる', 'ignored', 'here')).toBe('食べる · ignored, no card');
     expect(markSaid('食べる', 'ignored', { marks: new Map(), error: 'refused' } as never))
       .toBe('食べる · ignored, no card — Anki refused it; trying again later');

@@ -2,6 +2,7 @@ import { flushCards, queuedCards } from '../anki/card-queue';
 import { browseMarks, browseOurCards, createDeck, probe, type AnkiState } from '../anki/client';
 import { ADDON_CODE, ADDON_URL, ANKI_PORT, ANKI_URL, extensionOrigin } from '../anki/endpoint';
 import { cardAudio } from '../audio/card-audio';
+import { fill, languageLabel, languageName, ownName, ui, uiLocale } from '../i18n';
 import { copyText } from './share';
 import {
   DEFAULTS, DEFINITION_LANGUAGES, featuresOf, setSetting, settings, type Settings, TARGET_LANGUAGES,
@@ -60,6 +61,18 @@ export const PANEL_STYLE = `
     padding: 12px 4px;
     border-top: 1px solid #1C2436;
   }
+  /*
+   * In the panel, a row's words line up with its heading's, and the row
+   * reaches the band's edges, so its highlight while it has focus is as wide
+   * as the band and keeps clear of the words. The blocks between rows line
+   * up with them. The settings page sets its own (options.css).
+   */
+  .settings .set { margin: 0 -4px; padding: 12px 13px; }
+  .settings .state { margin: 12px 9px; }
+  .settings .btnrow { margin: 0 -4px; padding: 12px 13px; }
+  .settings .steps { padding: 4px 0 2px; padding-inline: 27px 9px; }
+  .settings .keys { padding: 14px 9px; }
+  .settings .credits { margin: 0 -4px; padding: 12px 13px 14px; }
   label.set { cursor: pointer; }
   .set:focus-within { background: rgba(242, 245, 252, .04); }
   .set > .name { font-size: 14px; font-weight: 500; color: #E8ECF6; min-width: 0; }
@@ -105,6 +118,10 @@ export const PANEL_STYLE = `
   .set input[type=checkbox]:checked { background: #E8ECF6; border-color: #E8ECF6; }
   .set input[type=checkbox]:checked::before { transform: translateX(14px); background: #0D111C; }
   .set input[type=checkbox]:focus-visible { outline: 2px solid #F2F5FC; outline-offset: 2px; }
+  /* Laid out from the right, in Arabic: a menu's arrow and a switch's knob go with it. */
+  .set select:dir(rtl) { padding: 6px 10px 6px 28px; background-position: left 9px center; }
+  .set input[type=checkbox]:dir(rtl)::before { left: auto; right: 2px; }
+  .set input[type=checkbox]:dir(rtl):checked::before { transform: translateX(-14px); }
   @media (prefers-reduced-motion: reduce) {
     .set input[type=checkbox], .set input[type=checkbox]::before { transition: none; }
   }
@@ -271,25 +288,19 @@ function showFor(root: ParentNode, target: string, native = settings().native): 
   const own = DEFINITION_LANGUAGES.some((l) => l.code === native);
   defs.hidden = !has.definitions || own;
   const hint = defs.querySelector('.hint');
-  const name = TRANSLATION_LANGUAGES.find((l) => l.code === native)?.label ?? native;
-  if (hint) hint.textContent = `The dictionary has no definitions in ${name}, so they're shown in this language.`;
+  if (hint) hint.textContent = ui.settings.definitionsHintFor(languageName(native));
 }
 
 /*
  * Say plainly what each language actually gets. Tier 0 finds word boundaries
  * and nothing else, which means lookups match on the surface form — so an
  * inflected word may not find a card you already have. Better stated up
- * front than discovered as flakiness.
+ * front than discovered as flakiness. Read in the interface language when it
+ * is shown.
  */
-const TIER_NOTES: Record<0 | 1 | 2, string> = {
-  2: 'Full support, including readings and furigana.',
-  1: "Lookups work, but an inflected word may not match its card yet.",
-  0: 'Basic support: words are split, but there is no dictionary or readings yet.',
-};
-
 export function tierNote(code: string): string {
   const tier = TARGET_LANGUAGES.find((l) => l.code === code)?.tier ?? 0;
-  return TIER_NOTES[tier as 0 | 1 | 2];
+  return tier === 2 ? ui.settings.supportFull : ui.settings.supportBasic;
 }
 
 let seq = 0;
@@ -308,13 +319,14 @@ export function buildSettings(onChange: Rerender, opts: SettingsPanelOptions = {
    * Each group is a section of its own: a heading, a line saying what it is
    * for, and its rows. The narrow transcript panel shows them as one list
    * with small headings; the settings page lays each out as a card and links
-   * to it by id from its contents.
+   * to it by id from its contents. The id is the group's own, not made from
+   * its heading, so links to it hold in every interface language.
    */
   let into: HTMLElement = root;
-  const group = (title: string, about?: string): void => {
+  const group = (id: string, title: string, about?: string): void => {
     const section = document.createElement('section');
     section.className = 'grp-section';
-    section.id = `lg-${title.toLowerCase().replace(/[^a-z]+/g, '-')}`;
+    section.id = `lg-${id}`;
     const head = document.createElement('div');
     head.className = 'grp-head';
     const h = document.createElement('h2');
@@ -431,80 +443,75 @@ export function buildSettings(onChange: Rerender, opts: SettingsPanelOptions = {
     return input;
   };
 
-  group('Languages', "Choose the language you're learning and your own language.");
-  const target = select('target', "I'm learning",
-    TARGET_LANGUAGES.map((l) => [l.code, l.tier === 2 ? l.label : `${l.label} — limited`]),
+  const t = ui.settings;
+
+  group('languages', t.languagesHeading, t.languagesAbout);
+  const target = select('target', t.target,
+    // Limited is boundaries alone: no dictionary forms, so no lookups and no matching a word to its card.
+    TARGET_LANGUAGES.map((l) => [l.code, l.tier === 2 ? languageLabel(l.code) : t.targetLimited(languageLabel(l.code))]),
     tierNote(settings().target));
   target.addEventListener('change', () => {
     const hint = target.closest('.set')?.querySelector('.hint');
     if (hint) hint.textContent = tierNote(target.value);
   });
+  // Each language in itself, so yours can be found whatever the interface is in.
   // A translation chosen from the old, shorter list stays offered, so it is never silently changed.
-  const translations = TRANSLATION_LANGUAGES.map((l): [string, string] => [l.code, l.label]);
+  const translations = TRANSLATION_LANGUAGES.map((l): [string, string] => [l.code, ownName(l.code)]);
   const was = settings().native;
   if (!translations.some(([code]) => code === was)) {
-    translations.push([was, DEFINITION_LANGUAGES.find((l) => l.code === was)?.label ?? was]);
+    translations.push([was, ownName(was)]);
   }
-  select('native', 'Your language', translations,
-    'Translations and definitions are shown in this language, where the video and the dictionary have it.');
+  select('native', t.native, translations, t.nativeHint);
   // Shown only where the dictionary has no definitions in your language; showFor words its hint.
-  select('definitions', 'Definitions in', DEFINITION_LANGUAGES.map((l) => [l.code, l.label]),
-    'The dictionary has no definitions in your language, so they are shown in this one.');
+  select('definitions', t.definitions, DEFINITION_LANGUAGES.map((l) => [l.code, languageLabel(l.code)]),
+    t.definitionsHint);
 
-  group('Looking words up', 'Choose how and when word lookups appear.');
-  select('interaction', 'Look words up on',
-    [['hover', 'Hover'], ['shift', 'Hover with Shift held'], ['click', 'Click']],
-    'Clicking a word always works too.');
-  check('hoverPause', 'Pause while looking up', 'Pauses the video while your pointer is on a word.');
-  check('sidebarHover', 'Quick definitions in the transcript',
-    'Shows a short definition when you point at a word in the transcript.');
+  group('looking-words-up', t.lookupHeading, t.lookupAbout);
+  select('interaction', t.interaction,
+    [['hover', t.interactionHover], ['shift', t.interactionShift], ['click', t.interactionClick]],
+    t.interactionHint);
+  check('hoverPause', t.hoverPause, t.hoverPauseHint);
+  check('sidebarHover', t.sidebarHover, t.sidebarHoverHint);
 
-  group('Word popup', 'Choose what the popup shows when you look up a word.');
-  check('cardMarks', 'Known and Ignore buttons',
-    "Known hides a word's underline; Ignore leaves it out of counts. Neither adds a card.");
-  check('cardTrack', 'Track button',
-    "Gives words you want to notice a purple underline. Doesn't add a card.");
-  check('cardDeckMenu', 'Deck menu',
-    'Adds a ▾ next to Add to Anki for choosing another deck. New cards then go there.');
-  check('cardAddLine', 'Sentence cards',
-    'Adds a button that makes a card from the whole sentence, with its audio and a screenshot.');
-  needs(check('cardKanji', 'Kanji breakdown', "Shows each kanji's meanings and readings."), 'characters');
-  check('lookupElsewhere', 'Examples from this video',
-    'Shows other sentences in this video that use the word. Click one to play it.');
+  group('word-popup', t.popupHeading, t.popupAbout);
+  check('cardMarks', t.cardMarks, t.cardMarksHint);
+  check('cardTrack', t.cardTrack, t.cardTrackHint);
+  check('cardDeckMenu', t.cardDeckMenu, t.cardDeckMenuHint);
+  check('cardAddLine', t.cardAddLine, t.cardAddLineHint);
+  needs(check('cardKanji', t.cardKanji, t.cardKanjiHint), 'characters');
+  check('lookupElsewhere', t.lookupElsewhere, t.lookupElsewhereHint);
 
-  group('Subtitles', 'Adjust how subtitles look on the video.');
-  const ruby = select('ruby', 'Furigana', [
-    ['unknown', 'On new words'], ['always', 'Always'], ['never', 'Never'],
-  ], 'Readings above kanji. Press R to switch while watching.');
+  group('subtitles', t.subtitlesHeading, t.subtitlesAbout);
+  const ruby = select('ruby', t.ruby, [
+    ['unknown', t.rubyUnknown], ['always', t.rubyAlways], ['never', t.rubyNever],
+  ], t.rubyHint);
   needs(ruby, 'readings');
-  check('blurPrimary', 'Blur subtitles',
-    'For listening practice: subtitles stay blurred until you point at them. Press H to switch.');
-  select('subtitleSize', 'Text size',
-    ['70', '85', '100', '120', '140', '160'].map((v) => [v, `${v}%`]),
-    'Scales with the player, so it looks the same in fullscreen.');
-  select('subtitleBottom', 'Position', [
-    ['4', 'Lowest'], ['8', 'Low'], ['12', 'Normal'], ['18', 'Raised'], ['25', 'High'], ['33', 'Highest'],
-  ], 'How high subtitles sit. Another subtitle extension on the same player stays below them.');
-  check('dualSubtitles', 'Show translation',
-    "Shows subtitles in your translation language under the ones you're learning. They come from the site, " +
-    'not machine translation, and need a full transcript of the video.');
+  check('blurPrimary', t.blurPrimary, t.blurPrimaryHint);
+  select('subtitleSize', t.subtitleSize,
+    ['70', '85', '100', '120', '140', '160'].map((v) => [v, t.subtitleSizeOption(Number(v))]),
+    t.subtitleSizeHint);
+  select('subtitleBottom', t.subtitleBottom, [
+    ['4', t.subtitleBottomLowest], ['8', t.subtitleBottomLow], ['12', t.subtitleBottomNormal],
+    ['18', t.subtitleBottomRaised], ['25', t.subtitleBottomHigh], ['33', t.subtitleBottomHighest],
+  ], t.subtitleBottomHint);
+  check('dualSubtitles', t.dualSubtitles, t.dualSubtitlesHint);
 
-  group('Underlines', 'Each colour shows how well you know a word. Click one to change it.');
-  color('colorUnknown', 'New words', 'Words with no card in Anki.');
-  color('colorLearning', 'Learning', "Words with a card that isn't mature yet.");
-  color('colorTracking', 'Tracked', "Words you're tracking.");
-  color('colorKnown', 'Known', 'Words with a mature card, or marked known.');
-  check('markKnown', 'Underline known words', 'Off by default, so the screen gets quieter as you learn.');
+  group('underlines', t.underlinesHeading, t.underlinesAbout);
+  color('colorUnknown', t.colorUnknown, t.colorUnknownHint);
+  color('colorLearning', t.colorLearning, t.colorLearningHint);
+  color('colorTracking', t.colorTracking, t.colorTrackingHint);
+  color('colorKnown', t.colorKnown, t.colorKnownHint);
+  check('markKnown', t.markKnown, t.markKnownHint);
   {
     const set = document.createElement('div');
     set.className = 'set';
     const name = document.createElement('span');
     name.className = 'name';
-    name.textContent = 'Default colours';
+    name.textContent = t.defaultColours;
     const reset = document.createElement('button');
     reset.type = 'button';
     reset.className = 'perm';
-    reset.textContent = 'Reset';
+    reset.textContent = t.resetColours;
     reset.addEventListener('click', () => {
       for (const key of Object.keys(UNDERLINES) as UnderlineKey[]) void setSetting(key, DEFAULTS[key]);
       syncSettingsControls(root);
@@ -514,49 +521,41 @@ export function buildSettings(onChange: Rerender, opts: SettingsPanelOptions = {
     add(set);
   }
 
-  group('Transcript', 'The panel beside the video that lists every subtitle line.');
-  check('sidebarOpen', 'Show the transcript panel', 'Press S to show or hide it while watching.');
-  check('sidebarFollow', 'Scroll with the video',
-    'Keeps the current line in view. Scrolling yourself pauses this; a button resumes it.');
-  check('headerBar', 'Show the header', 'Appears along the top of the video when your pointer is near it.');
-  select('languageBadge', 'Language badge', [['flag', 'Flag'], ['code', 'Code']],
-    "How the header shows the language you're learning.");
-  check('sidebarStats', 'Count new words',
-    'Shows new-word counts on each line, your known-word percentage, and the filters that use them.');
+  group('transcript', t.transcriptHeading, t.transcriptAbout);
+  check('sidebarOpen', t.sidebarOpen, t.sidebarOpenHint);
+  check('sidebarFollow', t.sidebarFollow, t.sidebarFollowHint);
+  check('headerBar', t.headerBar, t.headerBarHint);
+  select('languageBadge', t.languageBadge, [['flag', t.languageBadgeFlag], ['code', t.languageBadgeCode]],
+    t.languageBadgeHint);
+  check('sidebarStats', t.sidebarStats, t.sidebarStatsHint);
 
-  group('Anki', 'Connect Anki, choose where new cards go, and which decks count as words you know.');
+  group('anki', t.ankiHeading, t.ankiAbout);
   const state = document.createElement('div');
   state.className = 'state';
   state.setAttribute('role', 'status');    // announces "Connected" without stealing focus
-  state.textContent = 'Checking…';
+  state.textContent = t.ankiChecking;
   add(state);
 
   // Hidden until there is a collection to choose from: two dead dropdowns
   // reading "Connect Anki first" are furniture, not information.
   const deck = deckSelect('deck');
-  const deckRow = row('New cards go to', deck, 'The deck every new card is added to.');
+  const deckRow = row(t.deck, deck, t.deckHint);
   const scope = deckSelect('statusScope');
-  const scopeRow = row('Read known words from', scope,
-    'Cards in these decks decide which words are underlined. Includes subdecks.');
+  const scopeRow = row(t.statusScope, scope, t.statusScopeHint);
   deckRow.hidden = true;
   scopeRow.hidden = true;
   const steps = ankiSteps();
   add(steps);
   add(ankiControls({ state, deck, deckRow, scope, scopeRow, steps }, onChange, opts));
-  check('marksInAnki', 'Keep marks in Anki',
-    'Saves Known, Track and Ignore as hidden notes in Anki (Libregaku::Marks) so they sync to your other ' +
-    'devices. Off: they stay in this browser.');
+  check('marksInAnki', t.marksInAnki, t.marksInAnkiHint);
 
-  group('Anki cards', "Choose what's added to each new card, besides the word, reading, meaning and sentence.");
-  check('cardAudio', 'Word audio',
-    'A recording of the word, when one exists. Never a synthetic voice.');
-  check('cardSentenceAudio', 'Sentence audio',
-    'Records the sentence by playing it once more. On Netflix, this needs the permission below.');
-  check('cardScreenshot', 'Screenshot',
-    'A still of the scene. Not available on Netflix, which blocks it.');
+  group('anki-cards', t.ankiCardsHeading, t.ankiCardsAbout);
+  check('cardAudio', t.cardAudio, t.cardAudioHint);
+  check('cardSentenceAudio', t.cardSentenceAudio, t.cardSentenceAudioHint);
+  check('cardScreenshot', t.cardScreenshot, t.cardScreenshotHint);
   add(capturePermission());
 
-  group('Data and licences');
+  group('data-and-licences', t.creditsHeading);
   add(credits());
 
   showFor(root, settings().target);
@@ -598,39 +597,38 @@ function ankiSteps(): HTMLElement {
   };
 
   step('install', (li) => {
-    li.append('Install Anki on this computer and open it. ');
     const a = document.createElement('a');
     a.href = ANKI_URL;
     a.target = '_blank';
     a.rel = 'noopener';
-    a.textContent = 'Get Anki';
-    li.appendChild(a);
+    a.textContent = ui.settings.getAnki;
+    li.append(...fill(ui.settings.installStep, { link: a }));
   });
 
   step('addon', (li) => {
     const b = document.createElement('b');
-    b.textContent = 'Tools → Add-ons → Get Add-ons…';
-    li.append('In Anki, go to ', b, ', paste this code, then restart Anki.');
+    b.textContent = ui.settings.addonMenu;
+    li.append(...fill(ui.settings.addonStep, { menu: b }));
     li.appendChild(chip(ADDON_CODE));
     const a = document.createElement('a');
     a.href = ADDON_URL;
     a.target = '_blank';
     a.rel = 'noopener';
-    a.textContent = 'About AnkiConnect';
+    a.textContent = ui.settings.aboutAnkiConnect;
     li.appendChild(a);
   });
 
   step('origin', (li) => {
     const b = document.createElement('b');
-    b.textContent = 'Tools → Add-ons → AnkiConnect → Config';
+    b.textContent = ui.settings.originMenu;
     const code = document.createElement('code');
     code.textContent = 'webCorsOriginList';
-    li.append('In Anki, go to ', b, ', add this line to ', code, ', then restart Anki.');
+    li.append(...fill(ui.settings.originStep, { menu: b, setting: code }));
     li.appendChild(chip(extensionOrigin()));
   });
 
   step('running', (li) => {
-    li.textContent = 'Keep Anki open while you watch. Cards go straight to Anki on this computer.';
+    li.textContent = ui.settings.runningStep;
   });
 
   return ol;
@@ -644,21 +642,17 @@ function chip(value: string): HTMLElement {
   code.textContent = value;
   const b = document.createElement('button');
   b.type = 'button';
-  b.textContent = 'Copy';
-  b.setAttribute('aria-label', `Copy ${value}`);
+  b.textContent = ui.settings.copy;
+  b.setAttribute('aria-label', ui.settings.copyValue(value));
   b.addEventListener('click', (e) => {
     e.preventDefault();
     void copyText(value).then((ok) => {
-      b.textContent = ok ? 'Copied' : 'Select it';
-      setTimeout(() => { b.textContent = 'Copy'; }, 1600);
+      b.textContent = ok ? ui.settings.copied : ui.settings.copyFailed;
+      setTimeout(() => { b.textContent = ui.settings.copy; }, 1600);
     });
   });
   wrap.append(code, b);
   return wrap;
-}
-
-function cards(n: number): string {
-  return `${n} card${n === 1 ? '' : 's'}`;
 }
 
 /** A stored deck against Anki's list: fine, never chosen, or gone from Anki. */
@@ -679,25 +673,26 @@ interface AnkiUi {
  * names the single thing left to do, because four different failures used to
  * arrive as the same sentence.
  */
-function ankiControls(ui: AnkiUi, onChange: Rerender, opts: SettingsPanelOptions): HTMLElement {
-  const { state, deck, deckRow, scope, scopeRow, steps } = ui;
+function ankiControls(els: AnkiUi, onChange: Rerender, opts: SettingsPanelOptions): HTMLElement {
+  const { state, deck, deckRow, scope, scopeRow, steps } = els;
+  const t = ui.settings;
 
   const row = document.createElement('div');
   row.className = 'btnrow';
   const recheck = document.createElement('button');
   recheck.type = 'button';
-  recheck.textContent = 'Check again';
+  recheck.textContent = t.checkAgain;
   const newDeck = document.createElement('button');
   newDeck.type = 'button';
-  newDeck.textContent = 'New deck';
+  newDeck.textContent = t.newDeck;
   newDeck.disabled = true;
   const browse = document.createElement('button');
   browse.type = 'button';
-  browse.textContent = 'Open cards in Anki';
+  browse.textContent = t.openCards;
   browse.disabled = true;
   const marks = document.createElement('button');
   marks.type = 'button';
-  marks.textContent = 'Open marks in Anki';
+  marks.textContent = t.openMarks;
   marks.disabled = true;
   row.append(recheck, newDeck, browse, marks);
 
@@ -720,7 +715,7 @@ function ankiControls(ui: AnkiUi, onChange: Rerender, opts: SettingsPanelOptions
    * collection" while still reading the missing deck, so every word read as
    * unknown with nothing on screen to say why.
    */
-  const fill = (el: HTMLSelectElement, withAll: boolean, decks: string[], value: string): DeckPick => {
+  const fillDecks = (el: HTMLSelectElement, withAll: boolean, decks: string[], value: string): DeckPick => {
     el.replaceChildren();
     const add = (v: string, text: string, disabled = false): void => {
       const o = document.createElement('option');
@@ -730,16 +725,16 @@ function ankiControls(ui: AnkiUi, onChange: Rerender, opts: SettingsPanelOptions
       el.appendChild(o);
     };
     let pick: DeckPick = 'ok';
-    if (withAll) add('', 'Whole collection');
+    if (withAll) add('', t.wholeCollection);
     else if (!value) {
-      add('', 'Choose a deck…', true);
+      add('', t.chooseDeck, true);
       pick = 'unset';
     }
     if (value && !decks.includes(value)) {
-      add(value, `${value} — not in Anki`, true);
+      add(value, t.deckNotInAnki(value), true);
       pick = 'missing';
     }
-    for (const d of decks) add(d, withAll ? `${d} (and subdecks)` : d);
+    for (const d of decks) add(d, withAll ? t.deckAndSubdecks(d) : d);
     el.value = value;
     el.disabled = false;
     return pick;
@@ -756,11 +751,13 @@ function ankiControls(ui: AnkiUi, onChange: Rerender, opts: SettingsPanelOptions
 
   /**
    * `waiting` is how many cards made while Anki was closed are still to go
-   * in; `news` is what this check did about them.
+   * in; `news` is what this check did about them, a sentence each.
    */
-  const show = (s: AnkiState, waiting = 0, news = ''): void => {
+  const show = (s: AnkiState, waiting = 0, news: string[] = []): void => {
     const connected = s.kind === 'connected';
-    const still = waiting ? ` ${cards(waiting)} waiting to go in.` : '';
+    // Whole sentences, one after another, and the cards still waiting last.
+    const line = (...sentences: string[]): string =>
+      [...sentences, ...(waiting ? [t.cardsWaiting(waiting)] : [])].join(ui.common.sentenceGap);
     deckRow.hidden = !connected;
     scopeRow.hidden = !connected;
     newDeck.disabled = !connected;
@@ -769,70 +766,70 @@ function ankiControls(ui: AnkiUi, onChange: Rerender, opts: SettingsPanelOptions
 
     if (s.kind === 'connected') {
       const cur = settings();
-      const pick = fill(deck, false, s.decks, cur.deck);
+      const pick = fillDecks(deck, false, s.decks, cur.deck);
       warn(deckRow,
         pick === 'unset'
-          ? "Choose a deck. Cards can't be added until you do."
+          ? t.deckUnset
           : pick === 'missing'
-            ? `Anki no longer has a deck called “${cur.deck}”. Choose another.`
+            ? t.deckMissing(cur.deck)
             : null);
-      const scoped = fill(scope, true, s.decks, cur.statusScope);
+      const scoped = fillDecks(scope, true, s.decks, cur.statusScope);
       warn(scopeRow,
         scoped === 'missing'
-          ? `Anki no longer has a deck called “${cur.statusScope}”, so every word shows as new. Choose another.`
+          ? t.statusScopeMissing(cur.statusScope)
           : apart());
       state.className = 'state ok';
-      state.textContent =
-        (s.installed === 'created' ? 'Connected. Note type installed. ' : 'Connected. ') + news +
-        (s.cards ? `${cards(s.cards)} made with Libregaku.` : 'No cards yet.') + still;
+      state.textContent = line(
+        t.ankiConnected,
+        ...(s.installed === 'created' ? [t.noteTypeInstalled] : []),
+        ...news,
+        s.cards ? t.cardsMade(s.cards) : t.noCards,
+      );
       need();
       return;
     }
 
     if (s.kind === 'offline') {
       state.className = 'state';
-      state.textContent =
-        `Anki isn't responding on port ${ANKI_PORT}. That's expected while it's closed: ` +
-        'new cards wait here and are added when it opens.' + still;
+      state.textContent = line(t.ankiOffline(ANKI_PORT));
       need('install', 'addon', 'origin', 'running');
       return;
     }
 
     if (s.kind === 'blocked') {
       state.className = 'state warn';
-      state.textContent = "Anki is running, but AnkiConnect doesn't allow this extension yet." + still;
+      state.textContent = line(t.ankiBlocked);
       need('origin');
       return;
     }
 
     if (s.kind === 'occupied') {
       state.className = 'state warn';
-      state.textContent =
-        `${s.detail} Close the program using it so Anki can.` + still;
+      state.textContent = line(t.ankiOccupied(s.detail));
       need('running');
       return;
     }
 
     state.className = 'state bad';
-    state.textContent = s.detail + still;
+    state.textContent = line(s.detail);
     need();
   };
 
   const refresh = async (): Promise<AnkiState> => {
     state.className = 'state';
-    state.textContent = 'Checking…';
+    state.textContent = t.ankiChecking;
     recheck.disabled = true;
     try {
       let s = await probe();
-      let news = '';
+      const news: string[] = [];
       if (s.kind === 'connected') {
         // Anki is here: cards kept while it was closed go in now.
         const r = await flushCards(cardAudio);
         if (r?.added) {
-          news = `Added ${cards(r.added)} made while Anki was closed. `;
+          news.push(t.cardsFlushed(r.added));
           s = await probe();   // the count it gave is from before them
         }
-        if (r?.error && r.remaining) news += `${cards(r.remaining)} couldn't be added: ${r.error} `;
+        if (r?.error && r.remaining) news.push(t.cardsNotFlushed(r.remaining, r.error));
       }
       show(s, (await queuedCards()).length, news);
       return s;
@@ -844,10 +841,7 @@ function ankiControls(ui: AnkiUi, onChange: Rerender, opts: SettingsPanelOptions
   /** The two decks disagree: cards would go where word status never looks. */
   const apart = (): string | null => {
     const { deck: to, statusScope: read } = settings();
-    return outsideScope(to, read)
-      ? `New cards go to “${to}”, which isn't included here, so words you add will stay underlined as new. ` +
-        'Choose a deck that contains it, or Whole collection.'
-      : null;
+    return outsideScope(to, read) ? t.statusScopeOutside(to) : null;
   };
   deck.addEventListener('change', () => {
     void setSetting('deck', deck.value).then(() => warn(scopeRow, apart()));
@@ -867,7 +861,7 @@ function ankiControls(ui: AnkiUi, onChange: Rerender, opts: SettingsPanelOptions
   browse.addEventListener('click', () => void browseOurCards());
   marks.addEventListener('click', () => void browseMarks());
   newDeck.addEventListener('click', () => {
-    const name = prompt('Name the new deck. Use :: for a subdeck, e.g. Japanese::Netflix');
+    const name = prompt(t.newDeckPrompt);
     if (!name?.trim()) return;
     void createDeck(name.trim()).then(() => setSetting('deck', name.trim())).then(refresh);
   });
@@ -887,7 +881,7 @@ function capturePermission(): HTMLElement {
   el.className = 'set';
   const name = document.createElement('span');
   name.className = 'name';
-  name.textContent = 'Sentence audio on Netflix';
+  name.textContent = ui.settings.capture;
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'perm';
@@ -909,11 +903,10 @@ function capturePermission(): HTMLElement {
   const paint = async (): Promise<void> => {
     const on = await granted();
     button.dataset.on = String(on);
-    button.textContent = on ? 'Remove' : canAsk ? 'Allow' : 'Allow in settings';
+    const t = ui.settings;
+    button.textContent = on ? t.captureRemove : canAsk ? t.captureAllow : t.captureAllowInSettings;
     button.hidden = on && !canAsk;
-    hint.textContent = on
-      ? 'Allowed. On each Netflix tab, click the Libregaku icon and choose Record sentence audio here.'
-      : 'Netflix protects its video, so sentence audio is recorded from the tab. This needs your permission.';
+    hint.textContent = on ? t.captureAllowed : t.captureNeeded;
   };
   button.addEventListener('click', () => {
     if (!canAsk) {
@@ -949,22 +942,24 @@ export function keysView(): HTMLElement {
 function keyList(): HTMLElement {
   const dl = document.createElement('dl');
   dl.className = 'keys';
+  const t = ui.settings;
   const KEYS: Array<[string[], string]> = [
-    [['←', '→'], 'Previous or next line'],
-    [['↓'], 'Replay the line'],
-    [['↑'], 'Show or hide the translation'],
+    [['←', '→'], t.keyLine],
+    [['↓'], t.keyReplay],
+    [['↑'], t.keyTranslation],
     ...(settings().interaction === 'shift'
-      ? [[['Shift'], 'Hold to look up the word under the pointer']] as Array<[string[], string]>
+      ? [[['Shift'], t.keyShiftLookup]] as Array<[string[], string]>
       : []),
-    [['A'], 'Add the word in the popup to Anki'],
-    [['K'], 'Mark the word in the popup as known'],
+    [['A'], t.keyAdd],
+    [['K'], t.keyKnown],
+    // Named for what the language draws above its words; no key where it draws nothing.
     ...(featuresOf(settings().target).readings
-      ? [[['R'], 'Switch furigana: off, new words, all']] as Array<[string[], string]>
+      ? [[['R'], t.keyFurigana]] as Array<[string[], string]>
       : []),
-    [['H'], 'Blur or unblur subtitles'],
-    [['B'], 'Save the current line'],
-    [['S'], 'Show or hide the transcript panel'],
-    [['Esc'], 'Close the popup'],
+    [['H'], t.keyBlur],
+    [['B'], t.keySave],
+    [['S'], t.keyTranscript],
+    [['Esc'], t.keyClose],
   ];
   for (const [keys, what] of KEYS) {
     const dt = document.createElement('dt');
@@ -998,18 +993,15 @@ function credits(): HTMLElement {
     dl.append(dt, dd);
   };
 
-  entry('JMdict · KANJIDIC2', 'https://www.edrdg.org/jmdict/j_jmdict.html',
-    'Dictionary and kanji data © the Electronic Dictionary Research and Development Group, used ' +
-    'under CC BY-SA 4.0. Repackaged as JSON by jmdict-simplified.');
-  entry('Lindera · IPADIC', 'https://github.com/lindera/lindera',
-    'Splits Japanese into words. MIT licence; IPADIC has its own terms.');
-  entry('Jotoba · Jisho', 'https://jotoba.de/',
-    'Used for lookups while the dictionary downloads. Both use JMdict.');
-  entry('Lucide', 'https://lucide.dev/', 'Icons. ISC licence.');
+  // The names are the projects' own, the same in every language.
+  entry('JMdict · KANJIDIC2', 'https://www.edrdg.org/jmdict/j_jmdict.html', ui.settings.creditJmdict);
+  entry('Lindera · IPADIC', 'https://github.com/lindera/lindera', ui.settings.creditLindera);
+  entry('Jotoba · Jisho', 'https://jotoba.de/', ui.settings.creditJotoba);
+  entry('Lucide', 'https://lucide.dev/', ui.settings.creditLucide);
 
   const fine = document.createElement('dd');
   fine.className = 'fine';
-  fine.textContent = 'Libregaku is MIT-licensed. Dictionary data is downloaded from its sources, not bundled.';
+  fine.textContent = ui.settings.licence;
   dl.appendChild(fine);
   const built = builtLabel();
   if (built) {
@@ -1024,12 +1016,13 @@ function credits(): HTMLElement {
 /**
  * When this copy was built, in words. An unpacked extension keeps running the
  * code it loaded until it is reloaded, and this is how to tell which that is.
+ * The date is written as the interface language writes dates.
  */
 export function builtLabel(iso = typeof __BUILT__ === 'string' ? __BUILT__ : ''): string {
   const at = iso ? new Date(iso) : null;
   if (!at || Number.isNaN(at.getTime())) return '';
-  const when = new Intl.DateTimeFormat(undefined, {
+  const when = new Intl.DateTimeFormat(uiLocale(), {
     month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
   }).format(at);
-  return `This copy was built ${when}.`;
+  return ui.settings.built(when);
 }

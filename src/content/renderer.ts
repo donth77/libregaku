@@ -56,10 +56,20 @@ const STYLE = `
     background: rgba(0,0,0,.72); pointer-events: auto;
   }
   .primary:empty, .secondary:empty { display: none; }
-  .primary.has-ruby { padding-top: .5em; }
+  /*
+   * Room for readings, above every row. A reading sits a little above its
+   * word's box, so on a line that wraps, the second row's readings rose into
+   * the first row's underlines. Each word keeps the space itself, which a
+   * row gap would not: the line breaks a subtitle was written with are rows
+   * of their own (.br) and would have doubled it.
+   */
+  .primary.has-ruby { padding-top: .2em; }
+  .primary.has-ruby > .t, .primary.has-ruby > .p { margin-top: .3em; }
   /* No room for readings that are not showing: furigana off, or only on new words and none here. */
   .wrap.ruby-off .primary.has-ruby,
   .wrap:not(.ruby-all) .primary.has-ruby:not(.has-new-ruby) { padding-top: 0; }
+  .wrap.ruby-off .primary.has-ruby > *,
+  .wrap:not(.ruby-all) .primary.has-ruby:not(.has-new-ruby) > * { margin-top: 0; }
   .primary {
     font-size: var(--size); line-height: 1.8; color: #F2F5FC;
     display: flex; flex-wrap: wrap; justify-content: center;
@@ -156,7 +166,13 @@ export class Overlay {
   #secondary: HTMLElement;
   #onToken?: (t: Token, el: HTMLElement) => void;
   #onHover?: (t: Token | null, el: HTMLElement | null, shift?: boolean, phrase?: PhrasePick) => void;
-  #onPhrase?: (tokens: Token[], text: string, el: HTMLElement) => void;
+  /**
+   * `again` is a plain click on the phrase already marked, not a new one
+   * picked. Returning false drops the phrase rather than keeping it marked.
+   */
+  #onPhrase?: (tokens: Token[], text: string, el: HTMLElement, again: boolean) => boolean | void;
+  /** The press that is ending was on the marked phrase, without Shift. */
+  #pressedPhrase = false;
   #onPress?: () => void;
   /** A selection just ended on the line; the click that follows is not a word's. */
   #selected = false;
@@ -202,6 +218,7 @@ export class Overlay {
 
     // A selection across words is a phrase (src/content/phrase.ts).
     this.#primary.addEventListener('mousedown', (e) => {
+      this.#pressedPhrase = e.button === 0 && !e.shiftKey && Boolean((e.target as HTMLElement).closest?.('.inphrase'));
       if (e.button === 0 && (e.target as HTMLElement).closest?.('.t')) this.#onPress?.();
     });
     this.#primary.addEventListener('mouseup', () => {
@@ -211,11 +228,13 @@ export class Overlay {
       const text = textFrom(picked[0]!, last);
       if (text === null) return;
       this.#selected = true;
+      const tokens = picked.map((el) => JSON.parse(el.dataset.tok ?? '{}') as Token);
+      const keep = this.#onPhrase?.(tokens, text, last, this.#pressedPhrase) !== false;
       // After the browser's own handling of the release, which collapses a
-      // selection clicked inside: the phrase stays marked, to point at again.
+      // selection clicked inside: the phrase stays marked, to point at again,
+      // unless that click was to put it away.
       const first = picked[0]!;
-      setTimeout(() => selectWhole(this.#root, first, last), 0);
-      this.#onPhrase?.(picked.map((el) => JSON.parse(el.dataset.tok ?? '{}') as Token), text, last);
+      setTimeout(() => (keep ? selectWhole(this.#root, first, last) : this.clearPhrase()), 0);
     });
 
     this.#primary.addEventListener('mouseover', (e) => {
@@ -233,6 +252,12 @@ export class Overlay {
       if (to?.closest?.('.t')) return;
       this.#onHover?.(null, null);
     });
+  }
+
+  /** Unmark the phrase on the line, if one is marked. */
+  clearPhrase(): void {
+    if (!this.#primary.classList.contains('phrased')) return;
+    (this.#root as ShadowRoot & { getSelection?: () => Selection | null }).getSelection?.()?.removeAllRanges();
   }
 
   /** Copying from the line copies it as it reads (see plainText). */
@@ -266,7 +291,7 @@ export class Overlay {
    * words, the text from the first to the last as written (spaces and all),
    * and the last word's element to anchor a card to.
    */
-  onPhrase(cb: (tokens: Token[], text: string, el: HTMLElement) => void): void {
+  onPhrase(cb: (tokens: Token[], text: string, el: HTMLElement, again: boolean) => boolean | void): void {
     this.#onPhrase = cb;
   }
 
@@ -344,6 +369,15 @@ export class Overlay {
   /** Whether known words carry a green underline, as Migaku does. */
   setMarkKnown(on: boolean): void {
     this.#primary.parentElement?.classList.toggle('mark-known', on);
+  }
+
+  /**
+   * The languages of the two lines, for the browser to draw each as its
+   * own: kanji as Japanese draws them, under a page or an interface in Chinese.
+   */
+  setLanguages(learned: string, translation: string): void {
+    this.#primary.lang = learned;
+    this.#secondary.lang = translation;
   }
 
   /** The underline colours, as underlineVars gives them. */

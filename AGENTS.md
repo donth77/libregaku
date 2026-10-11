@@ -95,7 +95,12 @@ src/content/
 src/options.*           options page (Anki setup)
 src/action.*            toolbar popup: status and per-video track pickers
 src/help.*              help page: how-tos, questions, and a search over them
-src/help/content.ts     everything the help page says, one entry per language
+src/help/content.ts     everything the help page says, in English; a file per language beside
+                        it (es.ts, ja.ts…) is its translation, all.ts lists them
+src/i18n/               the interface's words: en/ holds the English by surface, a file per
+                        language (es.ts, ja.ts…) its translation, all.ts lists them;
+                        index.ts picks the language, loads its file, names languages via Intl
+src/_locales/           the extension's description, which Chrome shows in the browser's language
 src/icons/              extension icons, 16/32/48/128 PNG, exported from brand/
 src/logo.ts             the logo in the popup, options page and player bar, imported
                         from brand/ as markup (the build loads .svg as text)
@@ -184,5 +189,17 @@ then stop.
 - Prefer `Intl` built-ins over dependencies. `Intl.Segmenter` costs zero bytes and
   covers every language; only reach for WASM when you need lemmas and readings.
 - Adapters are thin and swappable. A site changing its markup should be one file.
+- Every word on screen comes from `src/i18n`, as `ui.<section>.<key>`, in the
+  learner's own language ("Your language", which the interface follows; English
+  where a translation has none). Read `ui` when drawing, never at module level.
+  A string that needs a value is a function, and a sentence with an element in
+  it is a `{placeholder}` template for `fill()`, so each language orders its own
+  words. A new string goes in English in `src/i18n/en/` and in each translation;
+  a test fails on one missing. Logs, Anki's data and site text stay as they are.
+  Only English is bundled: each other language is its own file (dist/i18n/), run
+  into the page by the service worker or imported by an extension page when it
+  is chosen, so await `loadUiLanguage` before drawing. Arabic is laid out right
+  to left: set `dir` beside `lang` on a new surface, and prefer the start/end
+  (logical) forms of margins, padding and borders.
 - Fail loudly. If the segmenter can't produce lemmas, the UI must say so rather than
   silently mismatching against the user's cards.

@@ -6,20 +6,20 @@
   <header>
     <span class="brand">Libregaku</span>
     <span class="links">
-      <a id="openHelp" href="help.html" target="_blank">Help</a>
-      <button type="button" id="openSettings" title="All settings">Settings</button>
+      <a id="openHelp" href="help.html" target="_blank" data-i18n="action.help">Help</a>
+      <button type="button" id="openSettings" title="All settings" data-i18n="action.settings" data-i18n-title="action.settingsTip">Settings</button>
     </span>
   </header>
 
-  <p id="status" class="status">Checking this page…</p>
+  <p id="status" class="status" data-i18n="action.checkingPage">Checking this page…</p>
 
   <section id="tracks" hidden>
     <div class="row">
-      <label for="track">Subtitles</label>
+      <label for="track" data-i18n="action.subtitlesTrack">Subtitles</label>
       <select id="track"></select>
     </div>
     <div class="row">
-      <label for="second">Translation</label>
+      <label for="second" data-i18n="action.translationTrack">Translation</label>
       <select id="second"></select>
     </div>
   </section>
@@ -30,9 +30,9 @@
   </section>
 
   <section id="quick" hidden>
-    <button type="button" id="toggleSidebar">Toggle Sidebar</button>
+    <button type="button" id="toggleSidebar" data-i18n="action.toggleSidebar">Toggle Sidebar</button>
   </section>
 
-  <footer id="anki">Anki: checking…</footer>
+  <footer id="anki" data-i18n="action.ankiChecking">Anki: checking…</footer>
 </main>
 <script type="module" src="action.js"></script>

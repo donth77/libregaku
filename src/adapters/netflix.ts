@@ -1,3 +1,4 @@
+import { ui } from '../i18n';
 import { parseTtml } from './ttml';
 import type { Cue, SubtitleSource, TrackInfo } from './types';
 
@@ -134,7 +135,7 @@ async function fetchText(url: string): Promise<{ body: string } | { why: string 
     if (!res.ok) return { why: `HTTP ${res.status}` };
     return { body: (await res.text()).trim() };
   } catch (e) {
-    return { why: ctl.signal.aborted ? `no answer in ${FETCH_TIMEOUT_MS / 1000}s` : String(e) };
+    return { why: ctl.signal.aborted ? ui.errors.noAnswerWithin(FETCH_TIMEOUT_MS / 1000) : String(e) };
   } finally {
     clearTimeout(timer);
   }
@@ -153,15 +154,16 @@ async function fetchCues(urls: string[]): Promise<Cue[]> {
       continue;
     }
     if (!got.body) {
-      tried.push(`${hostOf(url)}: empty`);
+      tried.push(`${hostOf(url)}: ${ui.errors.emptyAnswer}`);
       continue;
     }
     // Netflix serves imsc1 TTML; WebVTT shows up on some titles.
     const cues = got.body.startsWith('WEBVTT') ? parseVtt(got.body) : parseTtml(got.body);
     if (cues.length) return cues;
-    tried.push(`${hostOf(url)}: parsed to zero cues`);
+    tried.push(`${hostOf(url)}: ${ui.errors.noCuesParsed}`);
   }
-  throw new Error(`libregaku: no subtitle URL worked — ${tried.join('; ') || 'none listed'}`);
+  // On screen when the line under the subtitles fails: in the interface language.
+  throw new Error(`libregaku: ${ui.errors.noSubtitleUrl(tried)}`);
 }
 
 export class NetflixAdapter implements SubtitleSource {
@@ -299,7 +301,7 @@ export class NetflixAdapter implements SubtitleSource {
     return this.#current().map((t) => ({
       id: t.id,
       lang: t.language,
-      label: t.label + (t.forced ? ' (forced)' : ''),
+      label: t.forced ? ui.errors.forcedTrack(t.label) : t.label,
       generated: false,
       forced: t.forced,
       cc: t.cc,
@@ -308,7 +310,7 @@ export class NetflixAdapter implements SubtitleSource {
 
   async loadTrack(id: string): Promise<Cue[]> {
     const track = this.#current().find((t) => t.id === id);
-    if (!track) throw new Error('libregaku: unknown track ' + id);
+    if (!track) throw new Error(`libregaku: ${ui.errors.unknownTrack(id)}`);
 
     const cached = track.urls.map((u) => this.#cues.get(u)).find((p) => p !== undefined);
     const cues = await (cached ?? this.#fetch(track.urls));

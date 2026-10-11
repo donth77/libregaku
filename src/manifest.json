@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Libregaku",
   "version": "0.0.1",
-  "description": "Japanese immersion subtitles. Anki is the backend.",
+  "description": "__MSG_extDescription__",
   "minimum_chrome_version": "116",
   "icons": {
     "16": "icons/icon-16.png",

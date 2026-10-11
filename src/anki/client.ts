@@ -1,3 +1,4 @@
+import { ui } from '../i18n';
 import {
   FIELDS, MARK_SEARCH, MODEL, MODEL_NAME, ROOT_TAG, fieldHtml, furiganaField, keyField, toAnkiFurigana,
 } from './model';
@@ -71,13 +72,7 @@ export async function deckNames(): Promise<string[]> {
  */
 export class NoteTypeMismatch extends Error {
   constructor(readonly missing: string[], readonly modelName: string = MODEL_NAME) {
-    super(
-      `Your "${modelName}" note type in Anki is missing ${missing.length === 1 ? 'the field' : 'the fields'} ` +
-        `${missing.join(', ')}, so ${modelName === MODEL_NAME ? 'cards' : 'notes'} would lose ` +
-        `${missing.length === 1 ? 'it' : 'them'}. Libregaku will not change a note type you may have edited: ` +
-        `in Anki, Tools → Manage Note Types, rename "${modelName}" (or add the fields back), then check ` +
-        `again and a fresh one is installed.`,
-    );
+    super(ui.anki.noteTypeMismatch(modelName, missing, modelName === MODEL_NAME ? 'cards' : 'notes'));
     this.name = 'NoteTypeMismatch';
   }
 }

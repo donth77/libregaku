@@ -43,6 +43,7 @@ vi.stubGlobal('chrome', {
 
 import { buildSettings, builtLabel, keysView, outsideScope, syncSettingsControls } from '../settings-panel';
 import { DEFAULTS, setSetting, settings } from '../../settings';
+import { setUiLanguage, ui } from '../../i18n';
 
 const OFFLINE: AnkiState = { kind: 'offline' };
 const connected = (decks: string[]): AnkiState => ({ kind: 'connected', decks, cards: 3, installed: 'present' });
@@ -149,6 +150,19 @@ describe('settings panel selects', () => {
     expect(root.querySelector('#lg-anki-cards')?.querySelectorAll('label.set').length).toBe(3);
   });
 
+  // The options page links to these ids, so a translated heading must not move them.
+  it('keeps its section ids whatever the headings say', () => {
+    const was = ui.settings.languagesHeading;
+    ui.settings.languagesHeading = 'Idiomas';
+    try {
+      const root = buildSettings(() => {});
+      expect(root.querySelector('#lg-languages .grp')?.textContent).toBe('Idiomas');
+      expect(root.querySelector('#lg-idiomas')).toBeNull();
+    } finally {
+      ui.settings.languagesHeading = was;
+    }
+  });
+
   it('says when the copy running was built, so an old one can be told apart', () => {
     expect(builtLabel('2026-10-10T21:08:00Z')).toMatch(/^This copy was built .*10.*\.$/);
     expect(builtLabel('')).toBe('');
@@ -176,7 +190,7 @@ describe('settings panel selects', () => {
     }
   });
 
-  it('asks for your language once, and for a definitions language only where the dictionary has none in it', async () => {
+        it('asks for your language once, and for a definitions language only where the dictionary has none in it', async () => {
     const root = buildSettings(() => {});
     const yours = selectFor(root, 'Your language');
     const definitions = root.querySelector<HTMLSelectElement>('select[name=definitions]')!;
@@ -208,9 +222,46 @@ describe('settings panel selects', () => {
     try {
       const translation = buildSettings(() => {}).querySelector<HTMLSelectElement>('select[name=native]')!;
       expect(translation.value).toBe('hu');
-      expect(translation.selectedOptions[0]?.textContent).toBe('Hungarian');
+      // Named in itself, as every language in that list is.
+      expect(translation.selectedOptions[0]?.textContent).toBe('Magyar');
     } finally {
       await setSetting('native', 'en');
+    }
+  });
+
+  const optionText = (sel: HTMLSelectElement, value: string): string | null | undefined =>
+    Array.from(sel.options).find((o) => o.value === value)?.textContent;
+
+  it('names each choice of your language in itself, so it can be found from any interface language', () => {
+    const yours = selectFor(buildSettings(() => {}), 'Your language');
+    expect(optionText(yours, 'en')).toBe('English');
+    expect(optionText(yours, 'es')).toBe('Español');
+    expect(optionText(yours, 'fr')).toBe('Français');
+    expect(optionText(yours, 'ja')).toBe('日本語');
+    expect(optionText(yours, 'zh')).toBe('中文（简体）');
+    expect(optionText(yours, 'zh-Hant')).toBe('中文（繁體）');
+    expect(optionText(yours, 'ko')).toBe('한국어');
+  });
+
+  it('names the languages learned and the definitions languages in the interface language', () => {
+    // By name rather than by label, which a translation changes.
+    const menu = (root: HTMLElement, name: string): HTMLSelectElement =>
+      root.querySelector<HTMLSelectElement>(`select[name=${name}]`)!;
+    let root = buildSettings(() => {});
+    expect(optionText(menu(root, 'target'), 'ja')).toBe('Japanese');
+    // Limited is a language with word boundaries and nothing more.
+    expect(optionText(menu(root, 'target'), 'es')).toBe('Spanish — limited');
+    expect(optionText(menu(root, 'definitions'), 'hu')).toBe('Hungarian');
+
+    setUiLanguage('es');
+    try {
+      root = buildSettings(() => {});
+      expect(optionText(menu(root, 'target'), 'ja')).toBe('Japonés');
+      expect(optionText(menu(root, 'definitions'), 'hu')).toBe('Húngaro');
+      // Your own language is named in itself whatever the interface is in.
+      expect(optionText(menu(root, 'native'), 'en')).toBe('English');
+    } finally {
+      setUiLanguage('en');
     }
   });
 

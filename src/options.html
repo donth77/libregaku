@@ -1,49 +1,49 @@
 <!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Libregaku settings</title>
+<title data-i18n="options.pageTitle">Libregaku settings</title>
 <link rel="stylesheet" href="options.css">
 <div class="page">
   <header class="top">
     <div class="title">
       <h1>Libregaku</h1>
-      <a class="to-help" href="help.html">Help</a>
+      <a class="to-help" href="help.html" data-i18n="options.help">Help</a>
     </div>
-    <p class="tag">Changes apply straight away, here and in the transcript panel while you watch.</p>
+    <p class="tag" data-i18n="options.tagline">Changes apply straight away, here and in the transcript panel while you watch.</p>
   </header>
 
   <div class="layout">
-    <nav class="toc" aria-label="Settings sections"></nav>
+    <nav class="toc" aria-label="Settings sections" data-i18n-aria-label="options.contentsLabel"></nav>
 
     <main>
       <section id="setup" class="setup" aria-labelledby="setup-title" hidden>
-        <h2 id="setup-title">Get started</h2>
-        <p class="setup-about">Two choices, and everything else has a sensible default.</p>
+        <h2 id="setup-title" data-i18n="options.setupHeading">Get started</h2>
+        <p class="setup-about" data-i18n="options.setupAbout">Two choices, and everything else has a sensible default.</p>
         <ol>
           <li id="step-lang">
             <span class="tick" aria-hidden="true">1</span>
-            <span class="step-text"><a href="#lg-languages">Choose what you're learning</a></span>
+            <span class="step-text"><a href="#lg-languages" data-i18n="options.stepLanguages">Choose what you're learning</a></span>
           </li>
           <li id="step-anki">
             <span class="tick" aria-hidden="true">2</span>
-            <span class="step-text"><a href="#lg-anki">Connect Anki and choose a deck for new cards</a></span>
+            <span class="step-text"><a href="#lg-anki" data-i18n="options.stepAnki">Connect Anki and choose a deck for new cards</a></span>
           </li>
         </ol>
-        <p class="fine">
+        <p class="fine" data-i18n="options.ankiOptional">
           Anki is optional — subtitles, lookups and furigana all work without it.
           It is what remembers which words you already know.
         </p>
-        <p class="fine">
+        <p class="fine" data-i18n="options.nextSteps">
           Then open a video with subtitles in the language you are learning, and hover a
           word. The keyboard button in the transcript panel lists the keyboard shortcuts.
         </p>
         <div class="confirms">
-          <button type="button" id="confirmLang">These languages are right</button>
+          <button type="button" id="confirmLang" data-i18n="options.confirmLanguages">These languages are right</button>
           <button type="button" id="confirmDeck" hidden></button>
         </div>
       </section>
 
-      <div id="settings" aria-label="Settings"></div>
+      <div id="settings" aria-label="Settings" data-i18n-aria-label="options.settingsLabel"></div>
     </main>
   </div>
 </div>

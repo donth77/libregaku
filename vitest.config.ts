@@ -17,6 +17,8 @@ export default defineConfig({
   test: {
     // The TTML/VTT parsers use DOMParser, so they need a DOM.
     environment: 'happy-dom',
+    // Every translation, which the extension loads one at a time.
+    setupFiles: ['src/__tests__/setup.ts'],
     // Contract tests hit live sites. They belong on a schedule, not on push.
     exclude: ['**/node_modules/**', '**/dist/**', '**/*.contract.test.ts'],
   },

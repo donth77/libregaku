@@ -1,17 +1,26 @@
-import { helpFor, type HelpBlock, type HelpContent, type HelpTopic } from './help/content';
+import { hasHelp, helpFor, type HelpBlock, type HelpContent, type HelpTopic } from './help/content';
+import { directionOf, localeOf, uiLanguageFor } from './i18n/languages';
 import { logo } from './logo';
+import { loadSettings, onSettingsChange } from './settings';
 
 /**
  * The help page: chapters of how-tos, then questions, a search over all of
  * it, and a list of the chapters down the side.
  *
- * Its words come from src/help/content.ts, in the browser's language where
- * they have been written and in English until then. Search narrows the page
- * as you type rather than listing results elsewhere: what matches stays, with
- * the words found picked out, and a question that matches opens.
+ * Its words come from src/help/content.ts, in the interface language — your
+ * own, where the help has been written in it, and English until then. Search
+ * narrows the page as you type rather than listing results elsewhere: what
+ * matches stays, with the words found picked out, and a question that matches
+ * opens.
  */
 
-const normal = (s: string): string => s.normalize('NFKC').toLowerCase();
+/**
+ * Text as it is compared: width and case folded, and the accents of Latin
+ * letters dropped, so "subtitulos" finds "subtítulos". Only those accents —
+ * the marks that voice kana (が) are part of the word.
+ */
+const normal = (s: string): string =>
+  s.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').normalize('NFKC').toLowerCase();
 
 /** The words of a search, as they are compared. */
 export function terms(query: string): string[] {
@@ -34,20 +43,49 @@ export function matches(topic: HelpTopic, words: readonly string[]): boolean {
 /** The words searched for, marked where they appear in `text`. */
 function marked(text: string, words: readonly string[]): Node[] {
   if (!words.length) return [document.createTextNode(text)];
-  const pattern = new RegExp(`(${words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
-  return text.split(pattern).filter(Boolean).map((part) => {
-    if (!words.includes(normal(part))) return document.createTextNode(part);
+  // Fold the text as the search folds it, one character at a time, keeping
+  // where each folded character came from: "subtitulos" then finds, and
+  // marks, the "subtítulos" written.
+  let folded = '';
+  const from: number[] = [];
+  let at = 0;
+  for (const ch of text) {
+    const f = normal(ch);
+    for (let k = 0; k < f.length; k++) from.push(at);
+    folded += f;
+    at += ch.length;
+  }
+  from.push(text.length);
+  const spans: Array<[number, number]> = [];
+  for (const word of words) {
+    for (let hit = folded.indexOf(word); hit >= 0; hit = folded.indexOf(word, hit + word.length)) {
+      const last = from[hit + word.length - 1]!;
+      // To the end of the character the match ends in, however it folded.
+      const stop = Math.max(from[hit + word.length]!, last + String.fromCodePoint(text.codePointAt(last)!).length);
+      spans.push([from[hit]!, stop]);
+    }
+  }
+  spans.sort((a, b) => a[0] - b[0]);
+  const out: Node[] = [];
+  let done = 0;
+  for (const [begin, stop] of spans) {
+    if (stop <= done) continue;
+    const open = Math.max(begin, done);
+    if (open > done) out.push(document.createTextNode(text.slice(done, open)));
     const m = document.createElement('mark');
-    m.textContent = part;
-    return m;
-  });
+    m.textContent = text.slice(open, stop);
+    out.push(m);
+    done = stop;
+  }
+  if (done < text.length) out.push(document.createTextNode(text.slice(done)));
+  return out;
 }
 
 /**
  * A line of help text as nodes: `keys` drawn as keys, {Settings → Anki →
  * Picture} as the path to a setting, and the words searched for marked.
  */
-export function inline(text: string, words: readonly string[]): Node[] {
+export function inline(text: string, words: readonly string[], then = 'then'): Node[] {
   const out: Node[] = [];
   for (const piece of text.split(/(`[^`]+`|\{[^}]+\})/)) {
     if (!piece) continue;
@@ -63,7 +101,7 @@ export function inline(text: string, words: readonly string[]): Node[] {
           const sep = document.createElement('span');
           sep.className = 'sep';
           sep.textContent = '›';
-          sep.setAttribute('aria-label', 'then');
+          sep.setAttribute('aria-label', then);
           path.appendChild(sep);
         }
         const s = document.createElement('span');
@@ -78,19 +116,20 @@ export function inline(text: string, words: readonly string[]): Node[] {
   return out;
 }
 
-function fill(el: HTMLElement, topic: HelpTopic, words: readonly string[], tipLabel: string): void {
+function fill(el: HTMLElement, topic: HelpTopic, words: readonly string[], help: HelpContent): void {
+  const nodes = (text: string): Node[] => inline(text, words, help.then);
   el.replaceChildren();
   for (const block of topic.body) {
     if (typeof block === 'string') {
       const p = document.createElement('p');
-      p.append(...inline(block, words));
+      p.append(...nodes(block));
       el.appendChild(p);
     } else if (Array.isArray(block)) {
       const ol = document.createElement('ol');
       ol.className = 'steps';
       for (const step of block) {
         const li = document.createElement('li');
-        li.append(...inline(step, words));
+        li.append(...nodes(step));
         ol.appendChild(li);
       }
       el.appendChild(ol);
@@ -98,8 +137,8 @@ function fill(el: HTMLElement, topic: HelpTopic, words: readonly string[], tipLa
       const tip = document.createElement('p');
       tip.className = 'tip';
       const label = document.createElement('strong');
-      label.textContent = tipLabel;
-      tip.append(label, ' ', ...inline(block.tip, words));
+      label.textContent = help.tipLabel;
+      tip.append(label, ' ', ...nodes(block.tip));
       el.appendChild(tip);
     } else {
       const table = document.createElement('table');
@@ -108,13 +147,13 @@ function fill(el: HTMLElement, topic: HelpTopic, words: readonly string[], tipLa
       for (const cell of block.head) {
         const th = document.createElement('th');
         th.scope = 'col';
-        th.append(...inline(cell, words));
+        th.append(...nodes(cell));
         head.appendChild(th);
       }
       const body = table.createTBody();
       for (const row of block.rows) {
         const tr = body.insertRow();
-        for (const cell of row) tr.insertCell().append(...inline(cell, words));
+        for (const cell of row) tr.insertCell().append(...nodes(cell));
       }
       el.appendChild(table);
     }
@@ -170,7 +209,7 @@ export function renderHelp(
         anchor.className = 'anchor';
         anchor.href = `#${topic.id}`;
         anchor.textContent = '#';
-        anchor.setAttribute('aria-label', 'Link to this');
+        anchor.setAttribute('aria-label', help.link);
         h3.append(title, anchor);
         el.append(h3, body);
       }
@@ -197,8 +236,8 @@ export function renderHelp(
       const hit = matches(s.topic, words);
       s.el.hidden = !hit;
       any ||= hit;
-      s.title.replaceChildren(...inline(s.topic.title, words));
-      fill(s.body, s.topic, words, help.tipLabel);
+      s.title.replaceChildren(...inline(s.topic.title, words, help.then));
+      fill(s.body, s.topic, words, help);
       if (s.question) (s.el as HTMLDetailsElement).open = words.length > 0 && hit;
     }
     for (const c of chapters) {
@@ -250,9 +289,21 @@ function popular(el: HTMLElement, help: HelpContent): void {
   }
 }
 
-function main(): void {
-  const lang = typeof chrome !== 'undefined' && chrome.i18n?.getUILanguage ? chrome.i18n.getUILanguage() : 'en';
+async function main(): Promise<void> {
+  const { native } = await loadSettings();
+  const lang = uiLanguageFor(native);
+  // Another language chosen while this is open: read the page again in it.
+  onSettingsChange((s) => {
+    if (uiLanguageFor(s.native) !== lang) location.reload();
+  });
+  // The help in another language is a file of its own, imported when needed.
+  if (!hasHelp(lang)) {
+    await import(chrome.runtime.getURL(`i18n/help-${lang}.js`)).catch((e: unknown) =>
+      console.warn(`[libregaku] the help in ${lang} could not be loaded:`, e));
+  }
   const help = helpFor(lang);
+  document.documentElement.lang = localeOf(lang);
+  document.documentElement.dir = directionOf(lang);
   document.title = `Libregaku — ${help.title}`;
   const h1 = document.querySelector('h1');
   const mark = logo('lockup', 46, 'Libregaku');
@@ -278,4 +329,4 @@ function main(): void {
   if (!location.hash) input.focus();
 }
 
-if (document.getElementById('help')) main();
+if (document.getElementById('help')) void main();

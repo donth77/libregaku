@@ -1,3 +1,4 @@
+import { ui } from '../i18n';
 import { addNote, createDeck, ensureModel, isDuplicate, type CardAudio, type NewCard } from './client';
 import { AnkiUnavailable, ankiTry } from './rpc';
 
@@ -128,7 +129,7 @@ async function runFlush(audioFor?: (want: AudioWanted) => Promise<CardAudio | nu
   try {
     queue = await readQueue();
   } catch (e) {
-    return { ...done, error: `Browser storage could not be read: ${messageOf(e)}` };
+    return { ...done, error: ui.anki.storageUnreadable(messageOf(e)) };
   }
   // Nothing waiting is the usual case: no reason to ask Anki anything.
   if (!queue.length) return done;

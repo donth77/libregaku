@@ -23,6 +23,28 @@ const targets = [
 
 await mkdir(outdir, { recursive: true });
 
+/*
+ * Each language other than English is a file of its own, for the interface
+ * (i18n/<code>.js) and for the help (i18n/help-<code>.js), loaded when it is
+ * chosen: bundled in, twenty tables would be most of every page script. Each
+ * file puts its words where src/i18n/index.ts and src/help/content.ts look.
+ * The languages are the ones src/i18n/all.ts lists.
+ */
+const languages = [...(await readFile('src/i18n/all.ts', 'utf8')).matchAll(/^import \{ (\w+) \} from '\.\/([\w-]+)';$/gm)]
+  .map(([, name, code]) => ({ name, code }));
+const translations = languages.flatMap(({ name, code }) => [
+  {
+    out: `i18n/${code}`,
+    stdin: `import { ${name} as words } from './src/i18n/${code}';\n` +
+      `((globalThis.__libregaku ??= {}).strings ??= {})[${JSON.stringify(code)}] = words;\n`,
+  },
+  {
+    out: `i18n/help-${code}`,
+    stdin: `import { ${name} as help } from './src/help/${code}';\n` +
+      `((globalThis.__libregaku ??= {}).help ??= {})[${JSON.stringify(code)}] = help;\n`,
+  },
+]);
+
 // Static files.
 await cp('src/manifest.json',  `${outdir}/manifest.json`);
 await cp('src/offscreen.html', `${outdir}/offscreen.html`);
@@ -45,6 +67,27 @@ const linderaEntry = require.resolve('lindera-wasm');
 const wasm = join(dirname(linderaEntry), 'lindera_wasm_bg.wasm');
 await cp(wasm, `${outdir}/lindera_wasm_bg.wasm`);
 
+const shared = {
+  bundle: true,
+  target: 'chrome120',
+  platform: 'browser',
+  sourcemap: watch ? 'inline' : false,
+  minify: !watch,
+  logLevel: 'info',
+};
+
+const languageContexts = await Promise.all(translations.map((t) =>
+  esbuild.context({
+    ...shared,
+    stdin: { contents: t.stdin, resolveDir: '.', loader: 'ts', sourcefile: `${t.out}.ts` },
+    outfile: `${outdir}/${t.out}.js`,
+    // A classic script: run into a tab's content-script world by the service
+    // worker, or imported by an extension page for what it does.
+    format: 'iife',
+    logLevel: 'warning',
+  })
+));
+
 const contexts = await Promise.all(targets.map((t) =>
   esbuild.context({
     entryPoints: [t.entry],
@@ -64,6 +107,8 @@ const contexts = await Promise.all(targets.map((t) =>
     define: { __BUILT__: JSON.stringify(new Date().toISOString()) },
   })
 ));
+
+contexts.push(...languageContexts);
 
 if (watch) {
   await Promise.all(contexts.map((c) => c.watch()));
