@@ -20,6 +20,7 @@ pnpm test            # vitest, hermetic
 pnpm test:contract   # vitest against the live sites
 
 node scripts/check-captions.mjs --lang ja <url-or-id>   # screen a test video
+node scripts/smoke-youtube.mjs                          # load dist/ on a YouTube video; passes when the overlay draws a word
 node scripts/compare-words.mjs                          # IPADIC with and without JMdict's added words
 ```
 

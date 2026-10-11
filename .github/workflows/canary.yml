@@ -3,6 +3,13 @@ name: canary
 # The extension reads other people's pages. They change without warning, and
 # the failure mode is silent — subtitles simply stop appearing. These run daily
 # so a break is discovered by CI rather than mid-episode.
+#
+# One job checks every site. The contract tests read what each site serves
+# without a login (YouTube, Netflix, Disney+, Prime Video, and the dictionary
+# and audio hosts). The browser check then loads the built extension on a
+# YouTube video and waits for the overlay to draw words: the injection and the
+# tokenizer, which the contract tests only approximate. Netflix, Disney+ and Prime Video
+# have no browser check; they need a signed-in paid account.
 on:
   schedule:
     - cron: '17 6 * * *'
@@ -35,23 +42,53 @@ jobs:
         run: pnpm test:contract 2>&1 | tee canary.log
         continue-on-error: true
 
-      - name: Keep the log
+      - run: pnpm build
+
+      - name: Install Chrome for Testing and a display
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+          pnpm exec playwright-core install --with-deps chromium
+
+      # Exit 2 is "inconclusive": YouTube served a bot check in place of the
+      # video, which says nothing about the extension, so it passes with a
+      # warning. A failure is tried three times before it counts.
+      - name: Load the extension on a YouTube video
+        id: smoke
+        shell: bash
+        run: |
+          for attempt in 1 2 3; do
+            echo "--- attempt $attempt" | tee -a smoke.log
+            set +e
+            xvfb-run -a node scripts/smoke-youtube.mjs 2>&1 | tee -a smoke.log
+            code=${PIPESTATUS[0]}
+            set -e
+            [ "$code" != 1 ] && break
+          done
+          if [ "$code" = 2 ]; then echo "::warning::YouTube browser check was inconclusive"; fi
+          [ "$code" != 1 ]
+        continue-on-error: true
+
+      - name: Keep the logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: canary-log
-          path: canary.log
+          path: |
+            canary.log
+            smoke.log
           if-no-files-found: ignore
 
       - name: Open or update an issue when an assumption breaks
-        if: steps.contract.outcome == 'failure'
+        if: steps.contract.outcome == 'failure' || steps.smoke.outcome == 'failure'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           TITLE="canary: a live-site assumption broke"
-          BODY=$(printf 'The daily canary failed. A site likely changed shape.\n\nRun: %s\n\n```\n%s\n```\n' \
+          BODY=$(printf 'The daily canary failed. A site likely changed shape.\n\nContract tests: %s. Browser check: %s.\n\nRun: %s\n\n```\n%s\n```\n\n```\n%s\n```\n' \
+            "${{ steps.contract.outcome }}" "${{ steps.smoke.outcome }}" \
             "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
-            "$(tail -60 canary.log)")
+            "$(tail -60 canary.log)" "$(tail -15 smoke.log 2>/dev/null)")
           # The label is how the open issue is found again; make sure it exists.
           gh label create canary --color B60205 \
             --description "The daily canary found a broken site assumption" 2>/dev/null || true
@@ -63,5 +100,5 @@ jobs:
           fi
 
       - name: Fail the job so the run is red
-        if: steps.contract.outcome == 'failure'
+        if: steps.contract.outcome == 'failure' || steps.smoke.outcome == 'failure'
         run: exit 1
