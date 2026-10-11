@@ -38,7 +38,7 @@ export const es: HelpTranslation = {
           body: [
             'Anki es una aplicación gratuita de tarjetas de memoria. Te vuelve a mostrar cada tarjeta justo antes de que la olvides (repetición espaciada).',
             'Libregaku añade tarjetas a Anki a partir de las palabras y oraciones que eliges. También lee tus tarjetas de Anki para saber qué palabras ya conoces.',
-            'Necesitas Anki en tu equipo, con el complemento AnkiConnect. Descarga Anki desde https://apps.ankiweb.net.',
+            'Necesitas Anki en tu equipo, con el complemento [AnkiConnect](https://ankiweb.net/shared/info/2055492159). Descarga Anki desde https://apps.ankiweb.net.',
           ],
           keywords: ['flashcards', 'fichas', 'srs', 'descargar', 'instalar', 'repaso', 'repasar', 'add-on'],
         },
@@ -164,7 +164,7 @@ export const es: HelpTranslation = {
             'Los botones pequeños junto a la palabra, en su ventana emergente.',
             [
               'Conocida (`K`): ya la conoces. No se subraya y cuenta como conocida.',
-              'Seguir: un subrayado morado, para que te fijes en la palabra cuando aparezca. Actívalo en {Configuración → Ventana emergente → Botón Seguir}.',
+              'Seguir: un subrayado morado, para que te fijes en la palabra cuando aparezca.',
               'Ignorar: para nombres y sonidos. Nunca se subrayan ni se cuentan.',
             ],
             'Haz clic otra vez en una marca para quitarla, o busca la palabra en la pestaña Guardadas del panel de transcripción.',
@@ -288,7 +288,7 @@ export const es: HelpTranslation = {
           id: 'q-ankiweb',
           title: '¿Funciona con AnkiWeb?',
           body: [
-            'No directamente: Libregaku se comunica con Anki en este equipo mediante el complemento AnkiConnect. Después, Anki sincroniza tus tarjetas con AnkiWeb y tu teléfono como siempre.',
+            'No directamente: Libregaku se comunica con Anki en este equipo mediante el complemento [AnkiConnect](https://ankiweb.net/shared/info/2055492159). Después, Anki sincroniza tus tarjetas con AnkiWeb y tu teléfono como siempre.',
           ],
           keywords: ['móvil', 'celular', 'android', 'iphone', 'sincronizar', 'sync', 'add-on'],
         },

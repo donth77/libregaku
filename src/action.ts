@@ -5,6 +5,8 @@ import type { CaptureFailure } from './audio/tab-capture';
 import { loadUiLanguage, localize, setTranslationLoader, setUiLanguage, ui, uiLocale } from './i18n';
 import { logo } from './logo';
 import { loadSettings, onSettingsChange, settings } from './settings';
+import type { TrackInfo } from './adapters/types';
+import { studyTracks, translationTracks } from './content/track-choice';
 import { markSites, siteInfo } from './site-info';
 
 /**
@@ -76,6 +78,8 @@ function fillTracks(
   state: PageState,
   selected: string | null,
   noneLabel?: string,
+  /** Which of the video's tracks the menu offers; the one in use is kept in any case. */
+  offer: (tracks: PageState['tracks'], selected: string | null) => PageState['tracks'] = (all) => all,
 ): void {
   sel.replaceChildren();
   if (noneLabel) {
@@ -84,7 +88,8 @@ function fillTracks(
     o.textContent = noneLabel;
     sel.appendChild(o);
   }
-  for (const t of state.tracks) {
+  const listed = offer(state.tracks, selected);
+  for (const t of listed) {
     // Netflix has a forced track for each audio language, each named "Off":
     // only the writing on screen, nothing to study, and a long list of Offs.
     // One stays while it is the one in use, so the menu still says what is.
@@ -98,7 +103,7 @@ function fillTracks(
   }
   // Nothing loaded — the video has no subtitles in the language being learned,
   // say — is shown as nothing chosen, not as an empty box.
-  if (!noneLabel && !state.tracks.some((t) => t.id === selected)) {
+  if (!noneLabel && !listed.some((t) => t.id === selected)) {
     const o = document.createElement('option');
     o.value = '';
     o.textContent = '—';
@@ -157,8 +162,8 @@ async function main(): Promise<void> {
     const listed = Boolean(now?.supported && now.tracks.length);
     $('tracks').hidden = !listed;
     if (!now || !listed) return;
-    fillTracks(track, now, now.track);
-    fillTracks(second, now, now.second, ui.action.noTranslation);
+    fillTracks(track, now, now.track, undefined, (all, sel) => studyTracks(all as TrackInfo[], settings().target, sel));
+    fillTracks(second, now, now.second, ui.action.noTranslation, (all, sel) => translationTracks(all as TrackInfo[], sel));
   };
   show(state);
 

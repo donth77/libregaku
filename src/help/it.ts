@@ -38,7 +38,7 @@ export const it: HelpTranslation = {
           body: [
             'Anki è un’app gratuita di flashcard. Ti ripropone ogni carta poco prima che tu la dimentichi (ripetizione dilazionata).',
             'Libregaku aggiunge carte ad Anki dalle parole e dalle frasi che scegli. Legge anche le tue carte di Anki per sapere quali parole conosci già.',
-            'Ti serve Anki sul tuo computer, con l’add-on AnkiConnect. Scarica Anki da https://apps.ankiweb.net.',
+            'Ti serve Anki sul tuo computer, con l’add-on [AnkiConnect](https://ankiweb.net/shared/info/2055492159). Scarica Anki da https://apps.ankiweb.net.',
           ],
           keywords: ['schede', 'spaziata', 'spaced repetition', 'srs', 'installare', 'download', 'ripasso', 'componente aggiuntivo'],
         },
@@ -164,7 +164,7 @@ export const it: HelpTranslation = {
             'I piccoli pulsanti accanto alla parola, nel suo popup.',
             [
               'Conosciuta (`K`): la conosci. Niente sottolineatura, e conta come conosciuta.',
-              'Segui: una sottolineatura viola, per notare la parola quando compare. Attivalo in {Impostazioni → Popup della parola → Pulsante Segui}.',
+              'Segui: una sottolineatura viola, per notare la parola quando compare.',
               'Ignora: per nomi e suoni. Mai sottolineati, mai contati.',
             ],
             'Clicca di nuovo su un contrassegno per toglierlo, oppure trova la parola nella scheda Salvate del pannello della trascrizione.',
@@ -288,7 +288,7 @@ export const it: HelpTranslation = {
           id: 'q-ankiweb',
           title: 'Funziona con AnkiWeb?',
           body: [
-            'Non direttamente: Libregaku comunica con Anki sul tuo computer tramite l’add-on AnkiConnect. Poi Anki sincronizza come sempre le tue carte con AnkiWeb e con il telefono.',
+            'Non direttamente: Libregaku comunica con Anki sul tuo computer tramite l’add-on [AnkiConnect](https://ankiweb.net/shared/info/2055492159). Poi Anki sincronizza come sempre le tue carte con AnkiWeb e con il telefono.',
           ],
           keywords: ['telefono', 'cellulare', 'smartphone', 'android', 'iphone', 'ankidroid', 'sincronizzazione', 'sync', 'componente aggiuntivo'],
         },

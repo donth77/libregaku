@@ -162,7 +162,15 @@ describe('the help', () => {
       .toEqual(['Ankiは', 'apps.ankiweb.net', 'から入手できます。']);
 
     const { main } = page();
-    expect(main.querySelector('#anki .body a')?.getAttribute('href')).toBe('https://apps.ankiweb.net');
+    // Words that are a link, as written [words](https://…).
+    const named = inline('with [AnkiConnect](https://ankiweb.net/shared/info/2055492159) installed', []);
+    expect(named.map((n) => n.textContent)).toEqual(['with ', 'AnkiConnect', ' installed']);
+    expect((named[1] as HTMLAnchorElement).href).toBe('https://ankiweb.net/shared/info/2055492159');
+    expect((named[1] as HTMLAnchorElement).target).toBe('_blank');
+    // The add-on's page is linked where AnkiConnect is named, and the Anki download after it.
+    const links = Array.from(main.querySelectorAll('#anki .body a')).map((a) => a.getAttribute('href'));
+    expect(links).toContain('https://apps.ankiweb.net');
+    expect(links).toContain('https://ankiweb.net/shared/info/2055492159');
   });
 
   it('lays the keyboard shortcuts out as a table, a key and what it does on each row', () => {

@@ -38,7 +38,7 @@ export const ja: HelpTranslation = {
           body: [
             'Ankiは無料の暗記カードアプリです。それぞれのカードを、忘れる直前にもう一度出題します（間隔反復）。',
             'Libregakuは、選んだ単語や文からAnkiにカードを追加します。また、Ankiのカードを読み取って、どの単語をすでに知っているかを判断します。',
-            'パソコン版のAnkiと、AnkiConnectアドオンが必要です。Ankiはhttps://apps.ankiweb.netから入手できます。',
+            'パソコン版のAnkiと、[AnkiConnect](https://ankiweb.net/shared/info/2055492159)アドオンが必要です。Ankiはhttps://apps.ankiweb.netから入手できます。',
           ],
           keywords: ['フラッシュカード', '単語帳', 'ダウンロード', 'インストール', '復習', 'srs', 'spaced repetition', 'flashcard'],
         },
@@ -164,7 +164,7 @@ export const ja: HelpTranslation = {
             'ポップアップで、単語の横にある小さなボタンです。',
             [
               '既知（`K`）：知っている単語。下線が消え、既知として数えます。',
-              '注目：紫の下線を引き、単語が出てきたときに気づけるようにします。{設定 → 単語ポップアップ → 「注目」ボタン}でオンにします。',
+              '注目：紫の下線を引き、単語が出てきたときに気づけるようにします。',
               '無視：名前や「あっ」などの声に。下線も引かず、数にも入れません。',
             ],
             'もう一度クリックするとマークを外せます。文字起こしパネルの「保存済み」タブで単語を探して外すこともできます。',
@@ -288,7 +288,7 @@ export const ja: HelpTranslation = {
           id: 'q-ankiweb',
           title: 'AnkiWebでも使えますか？',
           body: [
-            '直接は使えません。LibregakuはAnkiConnectアドオンを通じて、パソコンのAnkiとやり取りします。そのあとAnkiが、いつもどおりカードをAnkiWebやスマートフォンと同期します。',
+            '直接は使えません。Libregakuは[AnkiConnect](https://ankiweb.net/shared/info/2055492159)アドオンを通じて、パソコンのAnkiとやり取りします。そのあとAnkiが、いつもどおりカードをAnkiWebやスマートフォンと同期します。',
           ],
           keywords: ['ankiweb', 'ankiconnect', 'アドオン', 'スマホ', 'スマートフォン', 'モバイル', 'アプリ', '同期', 'sync'],
         },

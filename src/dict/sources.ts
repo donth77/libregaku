@@ -3,6 +3,7 @@ import { fetchBytes, gunzipText } from './download';
 import type { Entry, RankHint } from './jmdict';
 import type { CharacterInfo } from './kanji';
 import { JMDICT, lookup, type Batch, type Source } from './store';
+import { wikdictEntries, wikdictUrl } from './wikdict';
 import { mergeByWord, readRow } from './wty';
 import { zipFiles } from './zip';
 
@@ -145,6 +146,42 @@ const GAPS: Record<string, Gap[]> = {
     { word: 'tercer', kind: ['adj'], glosses: ['third (tercero, before a masculine singular noun)'] },
     { word: 'san', kind: ['adj'], glosses: ['Saint (santo, before a man’s name)'] },
     { word: 'quizás', kind: ['adv'], glosses: ['perhaps, maybe'] },
+  ],
+  /*
+   * French writes the article and the preposition together (au, aux) and drops
+   * the vowel of a little word before a vowel (l', d', qu'), and the file keeps
+   * au only as an old spelling of "à le" and has no entry at all for l', d' or
+   * qu'. They are among the commonest words there are: au and aux are one word
+   * in 150 of Tatoeba's French, and the three with an apostrophe more than that.
+   */
+  fr: [
+    { word: 'au', kind: ['contr'], glosses: ['to the, at the, in the (à and le, written as one word)'] },
+    { word: 'aux', kind: ['contr'], glosses: ['to the, at the, in the (à and les, written as one word)'] },
+    { word: 'l\'', kind: ['artic', 'pron'], glosses: ['the (le or la before a vowel)', 'him, her, it (le or la before a vowel)'] },
+    { word: 'd\'', kind: ['prep'], glosses: ['of, from (de before a vowel)'] },
+    { word: 'qu\'', kind: ['conj', 'pron'], glosses: ['that (que before a vowel)', 'what, whom (que before a vowel)'] },
+    { word: 'jusqu\'', kind: ['prep'], glosses: ['until, up to, as far as (jusque before a vowel)'] },
+    { word: 'lorsqu\'', kind: ['conj'], glosses: ['when (lorsque before a vowel)'] },
+    { word: 'puisqu\'', kind: ['conj'], glosses: ['since, because (puisque before a vowel)'] },
+  ],
+  /*
+   * German joins a preposition and the article after it: im is in and dem, zum
+   * zu and dem. The file has none of them as a word; ins is there only as a
+   * form of im, which it lacks. They are about one word in 150 of Tatoeba's
+   * German, im alone one in 300.
+   */
+  de: [
+    { word: 'im', kind: ['contr'], glosses: ['in the (in and dem, written as one word)'] },
+    { word: 'zum', kind: ['contr'], glosses: ['to the, for the (zu and dem, written as one word)'] },
+    { word: 'zur', kind: ['contr'], glosses: ['to the, for the (zu and der, written as one word)'] },
+    { word: 'vom', kind: ['contr'], glosses: ['from the, of the (von and dem, written as one word)'] },
+    { word: 'beim', kind: ['contr'], glosses: ['at the, by the (bei and dem, written as one word)'] },
+    { word: 'ans', kind: ['contr'], glosses: ['to the, on the (an and das, written as one word)'] },
+    { word: 'aufs', kind: ['contr'], glosses: ['onto the, on the (auf and das, written as one word)'] },
+    { word: 'ums', kind: ['contr'], glosses: ['around the, for the (um and das, written as one word)'] },
+    { word: 'fürs', kind: ['contr'], glosses: ['for the (für and das, written as one word)'] },
+    { word: 'durchs', kind: ['contr'], glosses: ['through the (durch and das, written as one word)'] },
+    { word: 'übers', kind: ['contr'], glosses: ['over the, about the (über and das, written as one word)'] },
   ],
   // Spoken Korean's two commonest short forms: the file has 뭐 only as a form
   // of 무엇, and 거 only as the reading of a Chinese character.
@@ -636,17 +673,72 @@ export const CANTO: Source = {
   },
 };
 
+/* ── WikDict: bilingual dictionaries from Wiktionary, for pairs the Wiktionary files hold little of ── */
+
+/**
+ * One WikDict pair as a source (wikdict.ts). The publisher keeps only the
+ * current files, so `release` names the month this was last checked against
+ * and the canary (audio.contract's neighbour, dict.contract.test.ts) watches
+ * the address. Each pair is downloaded when it is chosen, and read by a table
+ * walker of a hundred lines (sqlite.ts) that nothing runs until then.
+ */
+const WIKDICT_RELEASE = '2026-10';
+
+function wikdict(target: string, native: string): Source {
+  const id = `wikdict-${target}-${native}`;
+  return {
+    id,
+    db: `libregaku-dict-${id}`,
+    release: WIKDICT_RELEASE,
+    format: 1,
+    rank: (entries: Entry[], key: string) => mergeByWord(entries.filter((e) => e.word === key)),
+    async read(_edition, onDownload) {
+      const file = await fetchBytes(wikdictUrl(target, native), onDownload);
+      const all = [...wikdictEntries(file)];
+      if (all.length < 1000) throw new Error('libregaku: dictionary contained no words');
+      return (async function* (): AsyncGenerator<Batch> {
+        for (let i = 0; i < all.length; i += ROWS) {
+          const entries = all.slice(i, i + ROWS).map((entry) => ({ entry, keys: [entry.word] }));
+          yield { entries, percent: Math.round((Math.min(i + ROWS, all.length) / all.length) * 100) };
+        }
+      })();
+    },
+  };
+}
+
 export const SOURCES: Record<string, Source> = {
   [JMDICT.id]: JMDICT,
   [CEDICT.id]: CEDICT,
   'wty-ko-en': wty('ko', 'en'),
   'wty-es-en': wty('es', 'en'),
+  'wty-fr-en': wty('fr', 'en'),
+  'wty-de-en': wty('de', 'en'),
   // In the learner's own language (settings.ts, OWN_DICTIONARIES).
   'wty-ja-zh': wty('ja', 'zh'),
   'wty-ja-ko': wty('ja', 'ko'),
   'wty-es-fr': wty('es', 'fr'),
   'wty-es-zh': wty('es', 'zh'),
   'wty-es-pl': wty('es', 'pl'),
+  'wty-de-fr': wty('de', 'fr'),
+  'wty-de-ru': wty('de', 'ru'),
+  'wty-de-zh': wty('de', 'zh'),
+  'wty-fr-zh': wty('fr', 'zh'),
+  'wty-fr-tr': wty('fr', 'tr'),
+  'wty-fr-vi': wty('fr', 'vi'),
+  'wty-fr-ru': wty('fr', 'ru'),
+  'wty-fr-th': wty('fr', 'th'),
+  'wty-fr-nl': wty('fr', 'nl'),
+  'wty-fr-pl': wty('fr', 'pl'),
+  // Where Wiktionary's own file in the learner's language is a few thousand words (settings.ts, OWN_DICTIONARIES).
+  'wikdict-fr-es': wikdict('fr', 'es'),
+  'wikdict-fr-pt': wikdict('fr', 'pt'),
+  'wikdict-fr-it': wikdict('fr', 'it'),
+  'wikdict-de-es': wikdict('de', 'es'),
+  'wikdict-de-pt': wikdict('de', 'pt'),
+  'wikdict-de-it': wikdict('de', 'it'),
+  'wikdict-es-de': wikdict('es', 'de'),
+  'wikdict-es-pt': wikdict('es', 'pt'),
+  'wikdict-es-it': wikdict('es', 'it'),
   'wty-zh-ja': wty('zh', 'ja'),
   'wty-zh-ko': wty('zh', 'ko'),
   'cxdict-fr': cedictIn('cxdict-fr', CXDICT_URL, 'latest-fr'),

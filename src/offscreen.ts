@@ -514,6 +514,21 @@ async function loadExtras(): Promise<void> {
   }
 }
 
+/**
+ * The page asks for JMdict just before it asks for the analyser, and the
+ * analyser used to answer first. Its first lines were then read without the
+ * words JMdict adds — 盗撮 as 盗 and 撮, と and と — and read again, right,
+ * when JMdict came. A dictionary stored here answers within moments, so the
+ * analyser waits for it. One that has to be downloaded does not hold it up.
+ */
+async function dictionarySoon(): Promise<void> {
+  if (state.dict !== 'ipadic') return;
+  const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+  // The request may still be on its way.
+  if (!dictLoading && !dict.ready) await sleep(300);
+  if (dictLoading) await Promise.race([dictLoading, sleep(4000)]);
+}
+
 /* ── KANJIDIC2 ─────────────────────────────────────────────────── */
 
 const kanji = { ready: false, error: null as string | null };
@@ -623,7 +638,7 @@ chrome.runtime.onMessage.addListener((msg: Message, _s, respond) => {
 
     case 'load':
       // With JMdict already in, the analyser answers once its added words are too.
-      void load(msg.dict ?? 'ipadic').then(ensureExtras).then(() => respond({ ok: state.ready && !state.error, ...state }));
+      void load(msg.dict ?? 'ipadic').then(dictionarySoon).then(ensureExtras).then(() => respond({ ok: state.ready && !state.error, ...state }));
       return true;
 
     case 'tokenize': {

@@ -424,17 +424,39 @@ function namesALetter(row: Entry): boolean {
 /**
  * The codes a card says for rows gathered into one entry.
  *
- * What kind of word it is, each part once: ser is a verb and a masculine
- * noun, [v, n, masc]. How it is used, only where every row says so: 수 has
- * sixteen rows, one of them uncommon and one historical, and the word is
- * neither.
+ * What kind of word it is, each part of speech once and three at most, the
+ * one with the most meanings first: ser is a verb and a masculine noun, [v, n,
+ * masc]. How it is used, only where every row says so: 수 has sixteen rows,
+ * one of them uncommon and one historical, and the word is neither.
  */
 function gathered(rows: Entry[]): string[] {
   const kinds = rows.map((r) => r.kind ?? []);
-  const grammar = kinds.flatMap((k) => k.filter((code) => GRAMMAR.has(code)));
+  // Each part of speech once, the one with the most meanings first: tout is a determiner before it is a noun.
+  const parts = new Map<string, { meanings: number; beside: Set<string> }>();
+  for (const row of rows) {
+    const [part, ...rest] = (row.kind ?? []).filter((code) => GRAMMAR.has(code));
+    if (!part) continue;
+    const found = parts.get(part) ?? { meanings: 0, beside: new Set<string>() };
+    found.meanings += row.senses.length;
+    // A gender is a noun's: on an adjective it says only that the adjective has both forms.
+    if (NOUNS.has(part)) for (const code of rest) if (BESIDE_NOUN.has(code)) found.beside.add(code);
+    parts.set(part, found);
+  }
+  const ranked = [...parts].sort((a, b) => b[1].meanings - a[1].meanings);
+  // The gender is said in the header where the word is a noun first; otherwise beside the noun's own meanings on the card.
+  const named = ranked.slice(0, PARTS_NAMED).flatMap(([part, { beside }], at) => (at ? [part] : [part, ...beside]));
+  const more = ranked.length - PARTS_NAMED;
   const shared = (kinds[0] ?? []).filter((code) => !GRAMMAR.has(code) && kinds.every((k) => k.includes(code)));
-  return [...new Set([...grammar, ...shared])];
+  // "+2" for the parts of speech not named: each still labels its meanings on the card.
+  return [...new Set([...named, ...(more > 0 ? [`+${more}`] : []), ...shared])];
 }
+
+/** How many parts of speech a header names: a word with more is "adverb, determiner, pronoun, +1". */
+const PARTS_NAMED = 3;
+/** The parts of speech that have a gender of their own. */
+const NOUNS = new Set(['n', 'name']);
+/** What is said beside "noun": its gender, and that it has only a plural. */
+const BESIDE_NOUN = new Set(['masc', 'fem', 'neut', 'pl-only']);
 
 /**
  * Rows that share a headword, as one entry: senses in their order, `kind` naming every part of speech once.

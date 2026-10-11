@@ -36,6 +36,8 @@ export interface Token {
    * never interactive — nobody looks up a question mark.
    */
   punct?: boolean;
+  /** A person's name that is also a word (未来ちゃん): read as a guess, and not counted as vocabulary. */
+  name?: boolean;
 }
 
 /** A stretch of a word, and the reading drawn above it. */

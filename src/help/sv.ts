@@ -38,7 +38,7 @@ export const sv: HelpTranslation = {
           body: [
             'Anki är en gratis app för flashcards. Den visar varje kort igen strax innan du skulle glömma det (intervallrepetition).',
             'Libregaku lägger till kort i Anki från orden och meningarna du väljer. Det läser också dina Anki-kort för att se vilka ord du redan kan.',
-            'Du behöver Anki på din dator, med tillägget AnkiConnect. Hämta Anki från https://apps.ankiweb.net.',
+            'Du behöver Anki på din dator, med tillägget [AnkiConnect](https://ankiweb.net/shared/info/2055492159). Hämta Anki från https://apps.ankiweb.net.',
           ],
           keywords: ['studiekort', 'glosor', 'spaced repetition', 'srs', 'ladda ner', 'installera', 'repetera', 'plugin'],
         },
@@ -164,7 +164,7 @@ export const sv: HelpTranslation = {
             'De små knapparna bredvid ordet i dess ordruta.',
             [
               'Känt (`K`): du kan ordet – ingen understrykning, och det räknas som känt.',
-              'Följ: en lila understrykning, så att du lägger märke till ordet när det dyker upp. Slå på knappen i {Inställningar → Ordruta → Knappen Följ}.',
+              'Följ: en lila understrykning, så att du lägger märke till ordet när det dyker upp.',
               'Ignorera: namn och ljud – stryks aldrig under och räknas aldrig.',
             ],
             'Klicka på en markering igen för att ta bort den, eller hitta ordet under fliken Sparade i transkriptionspanelen.',
@@ -288,7 +288,7 @@ export const sv: HelpTranslation = {
           id: 'q-ankiweb',
           title: 'Fungerar det med AnkiWeb?',
           body: [
-            'Inte direkt: Libregaku pratar med Anki på din dator genom tillägget AnkiConnect. Anki synkar sedan dina kort till AnkiWeb och din telefon som vanligt.',
+            'Inte direkt: Libregaku pratar med Anki på din dator genom tillägget [AnkiConnect](https://ankiweb.net/shared/info/2055492159). Anki synkar sedan dina kort till AnkiWeb och din telefon som vanligt.',
           ],
           keywords: ['telefon', 'mobil', 'android', 'iphone', 'synkning', 'sync', 'ankiconnect', 'tillägg'],
         },

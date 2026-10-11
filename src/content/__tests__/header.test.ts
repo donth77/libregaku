@@ -241,6 +241,9 @@ describe('Header', () => {
     try {
       ruby = build().host.shadowRoot!.querySelector<HTMLElement>('button[aria-keyshortcuts="R"]')!;
       expect(ruby.hidden).toBe(true);
+      // hidden alone does nothing where the button's own display beats it.
+      const css = Array.from(build().host.shadowRoot!.querySelectorAll('style')).map((s) => s.textContent).join('');
+      expect(css).toMatch(/button\[hidden\]\s*\{\s*display:\s*none/);
     } finally {
       await setSetting('target', 'ja');
       await setSetting('ruby', 'unknown');

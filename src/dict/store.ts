@@ -344,7 +344,7 @@ export interface FormInfo {
   /** What kinds of word it is, in the dictionary's own codes: n, v, prep. */
   kind: string[];
   /** What it is a form of, where it is one, each with how many meanings that word has. */
-  of: Array<{ lemma: string; tags: string[]; pos?: string; senses: number }>;
+  of: Array<{ lemma: string; tags: string[]; pos?: string; senses: number; spellingOf?: string[] }>;
 }
 
 /**
@@ -367,8 +367,8 @@ export async function formsOf(forms: string[], source: Source): Promise<Record<s
   const inflections = tx.objectStore(INFLECTIONS).index('form');
 
   /** What the dictionary has under one headword. Asked once for each, however many forms lead to it. */
-  const asked = new Map<string, Promise<{ senses: number; kind: string[] }>>();
-  const headword = (word: string): Promise<{ senses: number; kind: string[] }> => {
+  const asked = new Map<string, Promise<{ senses: number; kind: string[]; spellingOf: string[] }>>();
+  const headword = (word: string): Promise<{ senses: number; kind: string[]; spellingOf: string[] }> => {
     let found = asked.get(word);
     if (!found) {
       found = (async () => {
@@ -383,7 +383,10 @@ export async function formsOf(forms: string[], source: Source): Promise<Record<s
           senses += e.senses.length;
           for (const k of e.kind ?? e.senses[0]?.pos ?? []) kind.add(k);
         }
-        return { senses, kind: [...kind] };
+        // Another way of writing a word is filed under it as an inflection tagged alternative: connaitre of connaître.
+        const filed = await request<Inflection[]>(inflections.getAll(word)).catch(() => []);
+        const spellingOf = filed.flatMap((r) => r.of).filter((w) => w.tags.some((t) => t === 'alternative' || t === 'alt-of')).map((w) => w.lemma);
+        return { senses, kind: [...kind], spellingOf: [...new Set(spellingOf)] };
       })();
       asked.set(word, found);
     }
@@ -404,7 +407,7 @@ export async function formsOf(forms: string[], source: Source): Promise<Record<s
           // No entry under that word: see what it is a form of in turn, once.
           const further = target.senses ? [] : (await formsUnder(way.lemma)).flatMap((r) => r.of);
           if (!further.length) {
-            of.push({ ...way, ...pos, senses: target.senses });
+            of.push({ ...way, ...pos, senses: target.senses, ...(target.spellingOf.length ? { spellingOf: target.spellingOf } : {}) });
             continue;
           }
           for (const hop of further) {

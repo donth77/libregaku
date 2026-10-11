@@ -5,6 +5,8 @@ export const popup = {
   cardLabel: (word: string): string => `${word} — dictionary`,
   /** A small badge under the word, when the dictionary marks it as a common word. */
   commonBadge: 'common',
+  /** On a word that is a person's name here and also a word: 未来ちゃん. */
+  nameBadge: 'probably a name',
   /**
    * The heading over the characters a word is written with, by what the
    * language being learned calls them: kanji in Japanese, and for Chinese

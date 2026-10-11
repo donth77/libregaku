@@ -1,4 +1,5 @@
 import type { Cue } from '../adapters/types';
+import { matcher } from './search-text';
 
 /**
  * What the sidebar shows.
@@ -91,12 +92,12 @@ export class Transcript {
     return -1;
   }
 
-  search(query: string): number[] {
-    const q = query.trim().toLowerCase();
-    if (!q) return [];
+  /** Lines a search finds, by their text or their translation. `readingOf` is how a line is read, where that is known. */
+  search(query: string, readingOf?: (line: Line) => string | undefined): number[] {
+    const matches = matcher(query);
     const out: number[] = [];
     this.#lines.forEach((l, i) => {
-      if (l.text.toLowerCase().includes(q) || l.secondary?.toLowerCase().includes(q)) out.push(i);
+      if (matches(l.text, readingOf?.(l)) || (l.secondary !== undefined && matches(l.secondary))) out.push(i);
     });
     return out;
   }

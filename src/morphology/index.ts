@@ -1,5 +1,7 @@
 import { ensureAnalyser } from './analyser';
 import { ChineseSegmenter } from './chinese';
+import { FRENCH, splitElisions, straighten } from './french';
+import { GERMAN } from './german';
 import { KoreanSegmenter } from './korean';
 import { LemmaSegmenter } from './lemma';
 import { LinderaSegmenter } from './lindera';
@@ -38,6 +40,8 @@ const ANALYSED: Record<string, { dict: string; make: () => Segmenter }> = {
  */
 const BY_FORMS: Record<string, () => Segmenter> = {
   es: () => new LemmaSegmenter('es', SPANISH),
+  fr: () => new LemmaSegmenter('fr', FRENCH, { prepare: splitElisions, fold: straighten }),
+  de: () => new LemmaSegmenter('de', GERMAN),
 };
 
 /** What turns a language's lines into words with dictionary forms. */

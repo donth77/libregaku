@@ -12,6 +12,7 @@ import type { Segmenter, Token } from '../morphology/types';
 import type { OverrideStatus } from '../anki/status';
 import { applyVars, onSettingsChange, setSetting, settings, underlineVars, type Settings } from '../settings';
 import { markPhrase, phraseAt, phraseToken, selectWhole, selectedWords, textFrom } from './phrase';
+import { matcher } from './search-text';
 import { rubyOf } from '../morphology/ruby';
 import { PANEL_STYLE, buildSettings, keysView, syncSettingsControls } from './settings-panel';
 import { letterKey } from './keys';
@@ -458,6 +459,8 @@ const STYLE = `
   .tx.phrased ::selection { background: transparent; }
   /* Solid, as on the subtitle: a see-through colour darkens wherever two pieces meet. */
   .w.inphrase, .tx .p.inphrase { background: #36508C; border-radius: 0; }
+  /* The word whose card is open: the same band a phrase gets. */
+  .w.picked:not(.inphrase) { background: #36508C; }
   .w[data-s="unknown"]  { box-shadow: inset 0 -2.5px 0 var(--lg-unknown, #E5806C); }
   .w[data-s="learning"] { box-shadow: inset 0 -1.5px 0 var(--lg-learning, #D9A64A); }
   .w[data-s="tracking"] { box-shadow: inset 0 -2px 0 var(--lg-tracking, #A78BFA); }
@@ -1990,10 +1993,10 @@ export class Sidebar {
       ...g,
       lines: g.lines.map((b) => (now.has(b.id) ? { ...b, secondary: now.get(b.id) } : b)),
     }));
-    const q = fold(this.#savedQuery.trim());
-    if (!q) return groups;
+    if (!this.#savedQuery.trim()) return groups;
+    const matches = matcher(this.#savedQuery);
     return groups
-      .map((g) => ({ ...g, lines: g.lines.filter((b) => fold(b.text).includes(q) || fold(b.secondary ?? '').includes(q)) }))
+      .map((g) => ({ ...g, lines: g.lines.filter((b) => matches(b.text, this.#readingOf(b.text)) || matches(b.secondary ?? '')) }))
       .filter((g) => g.lines.length);
   }
 
@@ -2195,11 +2198,11 @@ export class Sidebar {
 
   /** The words a search matches: by the word, its reading or its meaning, as far as they are known. */
   #matching(words: string[]): string[] {
-    const q = fold(this.#savedQuery.trim());
-    if (!q) return words;
+    if (!this.#savedQuery.trim()) return words;
+    const matches = matcher(this.#savedQuery);
     return words.filter((w) => {
       const info = this.#wordInfo.get(w);
-      return fold(w).includes(q) || Boolean(info && (fold(info.reading).includes(q) || fold(info.meaning).includes(q)));
+      return matches(w) || Boolean(info && (matches(info.reading) || matches(info.meaning)));
     });
   }
 
@@ -2506,8 +2509,16 @@ export class Sidebar {
     this.#setQuery(query);
   }
 
+  /** How a line is read, from its words' readings, if it has been analysed. Never a request. */
+  #readingOf(text: string): string | undefined {
+    const tokens = this.#tokens.peek(text);
+    if (!tokens?.some((t) => t.reading)) return undefined;
+    return tokens.map((t) => t.reading ?? t.surface).join('');
+  }
+
   #findHits(): void {
-    this.#hits = this.#query ? this.#deps.transcript.search(this.#query) : [];
+    // By how a line is read too, once it has been analysed: tabemasu finds 食べます.
+    this.#hits = this.#query ? this.#deps.transcript.search(this.#query, (line) => this.#readingOf(line.text)) : [];
     if (this.#query && this.#forms.length) {
       const hits = new Set(this.#hits);
       this.#deps.transcript.lines.forEach((line, i) => {
@@ -3166,6 +3177,12 @@ export class Sidebar {
     }
     this.#paintSummary();
     if (this.#countFilter() && this.#open && this.#mode === 'transcript' && !this.#rowsStale) this.#applyFilter();
+    // A search finds kanji by its reading, which a line has only once it is analysed: look again as they arrive.
+    if (this.#query) {
+      const before = this.#hits.length;
+      this.#findHits();
+      if (this.#hits.length !== before) this.#paintHits();
+    }
   }
 
   #progressText(): string {
@@ -3666,11 +3683,6 @@ export class Sidebar {
  * without a click. Older versions treat them as comments and skip them, so
  * they cost nothing.
  */
-/** Text as a search compares it: the same whatever its width or case. */
-function fold(t: string): string {
-  return t.normalize('NFKC').toLocaleLowerCase();
-}
-
 /**
  * A long list, drawn as it comes into view.
  *

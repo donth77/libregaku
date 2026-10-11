@@ -298,7 +298,7 @@ describe('the status buttons', () => {
   });
 
   it('asks for a mark, and shows one already made filled in, beside the word', () => {
-    let card = open({ track: true });
+    let card = open();
     let track = card.querySelector<HTMLElement>('.head .marks .mk.track')!;
     expect(track.getAttribute('aria-label')).toBe('Track');
     expect(track.getAttribute('aria-pressed')).toBe('false');
@@ -327,11 +327,9 @@ describe('the status buttons', () => {
     expect(known.dataset.tip).toBe('Mark known');
   });
 
-  it('leaves Known and Ignore off when settings do, but always shows a mark the word has', () => {
-    expect(open({ marks: false }).querySelector('.marks')?.children.length).toBe(0);
-    closePopup();
-    const marks = Array.from(open({ marks: false, marked: 'ignored' }).querySelectorAll('.marks .mk'));
-    expect(marks.map((m) => m.getAttribute('aria-label'))).toEqual(['Ignore']);
+  it('always offers Known, Track and Ignore: none of them is a setting', () => {
+    const marks = Array.from(open().querySelectorAll('.marks .mk'));
+    expect(marks.map((m) => m.getAttribute('aria-label'))).toEqual(['Known', 'Track', 'Ignore']);
   });
 });
 
@@ -379,15 +377,13 @@ describe('adding, and taking it back', () => {
     expect(card.querySelector('.toast')?.textContent).toBe('Already in Anki');
   });
 
-  it('offers Track only when settings do, or when the word is already tracked', () => {
-    expect(open().querySelector('.mk.track')).toBeNull();
-    closePopup();
-    expect(open({ track: true }).querySelector('.mk.track')).not.toBeNull();
+  it('offers Track on every card, pressed when the word is already tracked', () => {
+    expect(open().querySelector('.mk.track')?.getAttribute('aria-pressed')).toBe('false');
     closePopup();
     expect(open({ marked: 'tracking' }).querySelector('.mk.track')?.getAttribute('aria-pressed')).toBe('true');
     closePopup();
     const card = open();
-    expect(Array.from(card.querySelectorAll('.marks .mk')).map((b) => b.getAttribute('aria-label'))).toEqual(['Known', 'Ignore']);
+    expect(Array.from(card.querySelectorAll('.marks .mk')).map((b) => b.getAttribute('aria-label'))).toEqual(['Known', 'Track', 'Ignore']);
     expect(Array.from(card.querySelectorAll('.foot button')).map((b) => b.textContent)).toEqual(['Add to Anki']);
   });
 });
@@ -678,7 +674,7 @@ describe('tooltips on the card', () => {
   });
 
   it('names each mark in a word or two', () => {
-    const card = open({ track: true });
+    const card = open();
     const tips = Array.from(card.querySelectorAll<HTMLElement>('.mk')).map((b) => b.dataset.tip);
     expect(tips).toEqual(['Mark known', 'Track', 'Ignore']);
   });

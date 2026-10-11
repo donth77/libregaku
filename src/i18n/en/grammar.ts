@@ -298,4 +298,32 @@ export const grammar = {
   becomes: 'becomes',
   /** ㄴ 적이 있다: 간 적이 있다 "have been there before". */
   'have done before': 'have done before',
+
+  // Forms of a French or German word, in the same words (FORM_LABELS).
+  /** The case of the one who does it: German der Mann. */
+  nominative: 'nominative',
+  /** The case of belonging, "of": German des Mannes. */
+  genitive: 'genitive',
+  /** The case of what is done to: German den Mann. Not the Spanish pronoun's accusative above. */
+  'accusative-case': 'accusative',
+  /** The case of who it is done for or to: German dem Mann. Not the Spanish pronoun's dative above. */
+  'dative-case': 'dative',
+  /** Grammatical gender, neither masculine nor feminine: German das Haus. */
+  neuter: 'neuter',
+  /** With "the": German der kleine Mann. */
+  definite: 'definite',
+  /** With "a": German ein kleiner Mann. */
+  indefinite: 'indefinite',
+  /** "More": German größer. */
+  comparative: 'comparative',
+  /** The endings an adjective takes with no word before it: German kleiner Mann. */
+  strong: 'strong',
+  /** The endings an adjective takes after "the": German der kleine Mann. */
+  weak: 'weak',
+  /** The endings an adjective takes after "a": German ein kleiner Mann. */
+  mixed: 'mixed',
+  /** An adjective with no article before it: German kleine Männer. */
+  'without-article': 'without article',
+  /** A verb done to oneself: French se laver, German sich waschen. */
+  reflexive: 'reflexive',
 };

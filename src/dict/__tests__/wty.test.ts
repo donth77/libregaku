@@ -713,10 +713,31 @@ describe('kindOf', () => {
 });
 
 describe('mergeByWord', () => {
+  it('names three parts of speech at most, the one with most meanings first, and counts the rest', () => {
+    const sense = (g: string) => ({ pos: [], glosses: [g] });
+    const row = (id: string, kind: string[], meanings: number) =>
+      ({ ...entry(SER_NOUN, id), word: 'tout', kind, senses: Array.from({ length: meanings }, (_, i) => sense(`${id}-${i}`)) });
+    const [tout] = mergeByWord([
+      row('1', ['adv', 'masc'], 2), row('2', ['det', 'masc'], 5), row('3', ['n', 'masc'], 1),
+      row('4', ['pron', 'neut'], 3), row('5', ['adj', 'masc'], 1),
+    ]);
+    // A gender is said beside a noun only: here the noun is not among the three named.
+    expect(tout?.kind).toEqual(['det', 'pron', 'adv', '+2']);
+  });
+
+  it('says a gender beside the noun it is the gender of, and not for an adjective', () => {
+    const sense = (g: string) => ({ pos: [], glosses: [g] });
+    const row = (id: string, kind: string[]) => ({ ...entry(SER_NOUN, id), word: 'x', kind, senses: [sense(id)] });
+    // A noun first names its gender; a noun second leaves it to its meanings on the card.
+    expect(mergeByWord([row('1', ['n', 'masc']), row('2', ['adj', 'fem', 'masc'])])[0]?.kind).toEqual(['n', 'masc', 'adj']);
+    expect(mergeByWord([row('1', ['adj', 'fem', 'masc']), row('2', ['n', 'masc'])])[0]?.kind).toEqual(['adj', 'n']);
+  });
+
   it('makes one entry of ser the verb and ser the noun', () => {
     const [ser, ...others] = mergeByWord([entry(SER_VERB, '00001389'), entry(SER_NOUN, '00001390')]);
     expect(others).toEqual([]);
-    expect(ser).toMatchObject({ id: '00001389', word: 'ser', common: false, kind: ['v', 'n', 'masc'] });
+    // The noun's gender is said beside its own meanings on the card, since ser is a verb first.
+    expect(ser).toMatchObject({ id: '00001389', word: 'ser', common: false, kind: ['v', 'n'] });
     expect(ser?.senses.map((s) => [s.pos.join(' '), s.glosses[0]])).toEqual([
       ['v', 'to be (essentially or identified as)'],
       ['v', 'to be (in the passive voice sense)'],
@@ -726,12 +747,13 @@ describe('mergeByWord', () => {
       ['n masc', 'value, worth'],
     ]);
     expect(ser?.senses[0]?.misc).toEqual(['cop']);
-    expect(kindOf((ser?.kind ?? []).join(' '))).toBe('verb, noun, masculine');
+    expect(kindOf((ser?.kind ?? []).join(' '))).toBe('verb, noun');
   });
 
   it('names each part of speech of como once, its meanings in the file’s order', () => {
     const [como] = mergeByWord([entry(COMO_ADVERB, '1'), entry(COMO_CONJUNCTION, '2'), entry(COMO_PREPOSITION, '3')]);
-    expect(como?.kind).toEqual(['adv', 'conj', 'prep']);
+    // The conjunction has the most meanings, so it is named first; the meanings stay in the file's order.
+    expect(como?.kind).toEqual(['conj', 'prep', 'adv']);
     expect(como?.senses.map((s) => [s.pos.join(' '), s.glosses[0]])).toEqual([
       ['adv', 'as (to such an extent or degree)'],
       ['adv', 'like, about (approximately)'],
@@ -769,7 +791,7 @@ describe('mergeByWord', () => {
 
   it('puts a row that only names a letter after the word’s own, whose id the entry takes', () => {
     const [de] = mergeByWord([entry(DE_LETTER, '00000052'), entry(DE_PREPOSITION, '00000053')]);
-    expect(de).toMatchObject({ id: '00000053', kind: ['prep', 'n', 'fem'] });
+    expect(de).toMatchObject({ id: '00000053', kind: ['prep', 'n'] });
     expect(said(de)).toEqual([
       'of; \'s; used after the thing owned and before the owner',
       'from (with the source or provenance of or at)',
@@ -783,11 +805,11 @@ describe('mergeByWord', () => {
 
   it('says how a word is used only where every row says so', () => {
     const [gilipollas] = mergeByWord([entry(GILIPOLLAS_ADJECTIVE, '1'), entry(GILIPOLLAS_NOUN, '2')]);
-    expect(gilipollas?.kind).toEqual(['adj', 'n', 'fem', 'masc', '🇪🇸', 'derog', 'vulg']);
+    expect(gilipollas?.kind).toEqual(['adj', 'n', '🇪🇸', 'derog', 'vulg']);
 
     // Colloquial is the adjective's alone, and stays with its meaning.
     const [bien] = mergeByWord([entry(BIEN_ADVERB, '1'), entry(BIEN_ADJECTIVE, '2')]);
-    expect(bien?.kind).toEqual(['adv', 'adj', 'fem', 'masc']);
+    expect(bien?.kind).toEqual(['adv', 'adj']);
     expect(bien?.senses[1]?.pos).toEqual(['adj', 'fem', 'masc', 'col']);
   });
 

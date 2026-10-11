@@ -885,11 +885,8 @@ export function buildSettings(onChange: Rerender, opts: SettingsPanelOptions = {
   check('sidebarHover', t.sidebarHover, t.sidebarHoverHint);
 
   group('word-popup', t.popupHeading, t.popupAbout);
-  check('cardMarks', t.cardMarks, t.cardMarksHint);
-  check('cardTrack', t.cardTrack, t.cardTrackHint);
   check('cardDeckMenu', t.cardDeckMenu, t.cardDeckMenuHint);
   check('cardHideAdd', t.cardHideAdd, t.cardHideAddHint);
-  check('cardAddLine', t.cardAddLine, t.cardAddLineHint);
   needs(check('cardKanji', t.cardKanji, t.cardKanjiHint), 'characters');
   check('lookupElsewhere', t.lookupElsewhere, t.lookupElsewhereHint);
 

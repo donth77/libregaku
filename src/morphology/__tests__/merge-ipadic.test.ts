@@ -395,3 +395,31 @@ describe('every verb form has a name', () => {
     expect(Object.keys(grammar)).toEqual(expect.arrayContaining([...GRAMMAR_LABELS]));
   });
 });
+
+describe('a name that is also a word', () => {
+  it('is taken for a name when a proper noun and a person ending say so and the dictionary has the word', () => {
+    const t = only('未来ちゃん');
+    expect([t.surface, t.name, t.content, t.reading]).toEqual(['未来ちゃん', true, false, undefined]);
+    // Its meaning is still one lookup away.
+    expect(keys(t)).toContain('未来');
+  });
+
+  it('is left as it was without the dictionary, which may not have loaded', () => {
+    const t = only('未来ちゃん', false);
+    expect([t.name, t.content]).toEqual([undefined, true]);
+  });
+
+  it('is not a name where the dictionary has no word of that spelling', () => {
+    for (const text of ['山田くん', '田中君']) {
+      const t = tokens(text);
+      expect(t.some((x) => x.name), text).toBe(false);
+      expect(t.every((x) => x.content), text).toBe(true);
+    }
+  });
+
+  it('leaves words that end in the same endings alone', () => {
+    for (const text of ['赤ちゃん', '坊ちゃん', 'お姉ちゃん']) {
+      expect(tokens(text).some((x) => x.name), text).toBe(false);
+    }
+  });
+});

@@ -154,9 +154,15 @@ export function phraseToken(words: Token[], text: string): Token {
   const last = words[words.length - 1];
   const head = last && text.endsWith(last.surface) ? text.slice(0, text.length - last.surface.length) : null;
   const readings = words.map((w) => w.reading);
+  /*
+   * The last word's dictionary form, unless it is only part of the word: 新名所
+   * is looked up as 名所 when the dictionary has no 新名所, and 名所 is not that
+   * word's form, so a phrase ending in it would lose the 新.
+   */
+  const form = last?.lemma && !(last.lemma !== last.surface && last.surface.endsWith(last.lemma)) ? last.lemma : undefined;
   return {
     surface: text,
-    lemma: head !== null && last?.lemma ? head + last.lemma : text,
+    lemma: head !== null && form ? head + form : text,
     start: first?.start ?? 0,
     end: last?.end ?? text.length,
     content: true,

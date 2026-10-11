@@ -10,11 +10,12 @@ import { notices } from './en/notices';
 import { anki } from './en/anki';
 import { errors } from './en/errors';
 import { grammar } from './en/grammar';
+import { helpChat } from './en/help-chat';
 
 /**
  * Every string on the interface, in English: the source each translation
  * follows, and what shows wherever a translation leaves one out.
  */
-export const en = { common, settings, options, action, sidebar, popup, header, player, notices, anki, errors, grammar };
+export const en = { common, settings, options, action, sidebar, popup, header, player, notices, anki, errors, grammar, helpChat };
 
 export type Strings = typeof en;

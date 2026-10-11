@@ -38,7 +38,7 @@ export const zh: HelpTranslation = {
           body: [
             'Anki 是一款免费的闪卡应用。它会在你快要忘记时，再次向你展示每张卡片（间隔重复）。',
             'Libregaku 会用你选中的单词和句子在 Anki 中添加卡片。它还会读取你的 Anki 卡片，以了解你已掌握哪些单词。',
-            '你需要在电脑上安装 Anki 和 AnkiConnect 插件。Anki 可从 https://apps.ankiweb.net 下载。',
+            '你需要在电脑上安装 Anki 和 [AnkiConnect](https://ankiweb.net/shared/info/2055492159) 插件。Anki 可从 https://apps.ankiweb.net 下载。',
           ],
           keywords: ['记忆卡', '背单词', '复习', '获取', 'srs', 'spaced repetition', 'flashcard', 'download'],
         },
@@ -164,7 +164,7 @@ export const zh: HelpTranslation = {
             '弹窗中单词旁边的小按钮。',
             [
               '已掌握（`K`）：你认识这个单词——不加下划线，并计为已掌握。',
-              '关注：加上紫色下划线，单词出现时你就会注意到。在 {设置 → 单词弹窗 → “关注”按钮} 中打开。',
+              '关注：加上紫色下划线，单词出现时你就会注意到。',
               '忽略：用于人名和感叹词——不加下划线，也不计入统计。',
             ],
             '再次点击即可取消标记，也可以在侧边栏的“收藏”标签页中找到这个单词。',
@@ -288,7 +288,7 @@ export const zh: HelpTranslation = {
           id: 'q-ankiweb',
           title: '能配合 AnkiWeb 使用吗？',
           body: [
-            '不能直接配合：Libregaku 通过 AnkiConnect 插件与你电脑上的 Anki 通信，之后 Anki 会照常把卡片同步到 AnkiWeb 和手机。',
+            '不能直接配合：Libregaku 通过 [AnkiConnect](https://ankiweb.net/shared/info/2055492159) 插件与你电脑上的 Anki 通信，之后 Anki 会照常把卡片同步到 AnkiWeb 和手机。',
           ],
           keywords: ['移动端', '安卓', 'ankidroid', 'ankimobile', 'ios'],
         },

@@ -1,4 +1,6 @@
 import { hasHelp, helpFor, type HelpBlock, type HelpContent, type HelpTopic } from './help/content';
+import { mountChat } from './help-chat';
+import { loadUiLanguage, setTranslationLoader } from './i18n';
 import { markSites } from './site-info';
 import { directionOf, localeOf, uiLanguageFor } from './i18n/languages';
 import { pageHeader } from './page-header';
@@ -84,15 +86,15 @@ function marked(text: string, words: readonly string[]): Node[] {
 
 /**
  * A line of help text as nodes: `keys` drawn as keys, {Settings → Anki →
- * Picture} as the path to a setting, a web address as a link to it, and the
- * words searched for marked.
+ * Picture} as the path to a setting, a web address as a link to it, [words](https://…)
+ * as those words linked, and the words searched for marked.
  *
  * A web address ends at its last letter, digit or slash, so a full stop after
  * it, or the words of a language written without spaces, stay text.
  */
 export function inline(text: string, words: readonly string[], then = 'then'): Node[] {
   const out: Node[] = [];
-  for (const piece of text.split(/(`[^`]+`|\{[^}]+\}|https:\/\/[\w.~/?#%&=+:-]*[\w/])/)) {
+  for (const piece of text.split(/(`[^`]+`|\{[^}]+\}|\[[^\]]+\]\(https:\/\/[^)\s]+\)|https:\/\/[\w.~/?#%&=+:-]*[\w/])/)) {
     if (!piece) continue;
     if (/^`[^`]+`$/.test(piece)) {
       const k = document.createElement('kbd');
@@ -120,6 +122,15 @@ export function inline(text: string, words: readonly string[], then = 'then'): N
         path.appendChild(s);
       });
       out.push(path);
+    } else if (/^\[[^\]]+\]\(https:\/\/[^)\s]+\)$/.test(piece)) {
+      // Words that are a link: [AnkiConnect](https://…).
+      const [, label = '', href = ''] = /^\[([^\]]+)\]\((.+)\)$/.exec(piece) ?? [];
+      const a = document.createElement('a');
+      a.href = href;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.append(...marked(label, words));
+      out.push(a);
     } else if (/^https:\/\/[\w.~/?#%&=+:-]*[\w/]$/.test(piece)) {
       // Opened in a new tab, and shown as people say it: apps.ankiweb.net.
       const a = document.createElement('a');
@@ -327,6 +338,8 @@ async function main(): Promise<void> {
       console.warn(`[libregaku] the help in ${lang} could not be loaded:`, e));
   }
   const help = helpFor(lang);
+  setTranslationLoader((code) => import(chrome.runtime.getURL(`i18n/${code}.js`)));
+  await loadUiLanguage(native);
   document.documentElement.lang = localeOf(lang);
   document.documentElement.dir = directionOf(lang);
   document.title = `Libregaku — ${help.title}`;
@@ -346,6 +359,8 @@ async function main(): Promise<void> {
   input.placeholder = help.search;
   input.setAttribute('aria-label', help.searchLabel);
   if (pop) popular(pop, help);
+  const ask = document.getElementById('ask');
+  if (ask) void mountChat(ask, help, native);
   renderHelp(out, document.querySelector<HTMLElement>('.toc'), input, none, help);
   if (!location.hash) input.focus();
   // The page is built after it loads, so the browser found no anchor to go to.

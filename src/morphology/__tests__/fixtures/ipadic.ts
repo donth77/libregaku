@@ -103,4 +103,10 @@ export const LINES: Record<string, Analysed> = {
   "待つでしょう": {"morphemes":[{"surface":"待つ","lemma":"待つ","reading":"マツ","pos":"動詞","pos1":"自立","conjForm":"基本形"},{"surface":"でしょ","lemma":"です","reading":"デショ","pos":"助動詞","conjForm":"未然形"},{"surface":"う","lemma":"う","reading":"ウ","pos":"助動詞","conjForm":"基本形"}],"lexicon":{}},
   "待ったり": {"morphemes":[{"surface":"待っ","lemma":"待つ","reading":"マッ","pos":"動詞","pos1":"自立","conjForm":"連用タ接続"},{"surface":"たり","lemma":"たり","reading":"タリ","pos":"助詞","pos1":"並立助詞"}],"lexicon":{}},
   "読んだ": {"morphemes":[{"surface":"読ん","lemma":"読む","reading":"ヨン","pos":"動詞","pos1":"自立","conjForm":"連用タ接続"},{"surface":"だ","lemma":"だ","reading":"ダ","pos":"助動詞","conjForm":"基本形"}],"lexicon":{}},
+  "未来ちゃん": {"morphemes":[{"surface":"未来","lemma":"未来","reading":"ミライ","pos":"名詞","pos1":"固有名詞"},{"surface":"ちゃん","lemma":"ちゃん","reading":"チャン","pos":"名詞","pos1":"接尾"}],"lexicon":{"未来":[{"word":"未来","reading":"みらい","pos":["n"]}]}},
+  "赤ちゃん": {"morphemes":[{"surface":"赤ちゃん","lemma":"赤ちゃん","reading":"アカチャン","pos":"名詞","pos1":"一般"}],"lexicon":{}},
+  "坊ちゃん": {"morphemes":[{"surface":"坊ちゃん","lemma":"坊ちゃん","reading":"ボッチャン","pos":"名詞","pos1":"一般"}],"lexicon":{}},
+  "お姉ちゃん": {"morphemes":[{"surface":"お","lemma":"お","reading":"オ","pos":"接頭詞","pos1":"名詞接続"},{"surface":"姉ちゃん","lemma":"姉ちゃん","reading":"ネエチャン","pos":"名詞","pos1":"一般"}],"lexicon":{"お姉ちゃん":[{"word":"お姉ちゃん","reading":"おねえちゃん","pos":["n"]}]}},
+  "山田くん": {"morphemes":[{"surface":"山田","lemma":"山田","reading":"ヤマダ","pos":"名詞","pos1":"固有名詞"},{"surface":"くん","lemma":"くん","reading":"クン","pos":"名詞","pos1":"接尾"}],"lexicon":{}},
+  "田中君": {"morphemes":[{"surface":"田中","lemma":"田中","reading":"タナカ","pos":"名詞","pos1":"固有名詞"},{"surface":"君","lemma":"君","reading":"クン","pos":"名詞","pos1":"接尾"}],"lexicon":{}},
 };

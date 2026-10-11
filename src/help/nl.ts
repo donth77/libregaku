@@ -38,7 +38,7 @@ export const nl: HelpTranslation = {
           body: [
             'Anki is een gratis flashcard-app. De app laat je elke kaart opnieuw zien, net voordat je hem zou vergeten (gespreide herhaling).',
             'Libregaku maakt in Anki kaarten van de woorden en zinnen die je kiest. Het leest ook je Anki-kaarten om te zien welke woorden je al kent.',
-            'Je hebt Anki op je computer nodig, met de add-on AnkiConnect. Download Anki via https://apps.ankiweb.net.',
+            'Je hebt Anki op je computer nodig, met de add-on [AnkiConnect](https://ankiweb.net/shared/info/2055492159). Download Anki via https://apps.ankiweb.net.',
           ],
           keywords: ['flitskaarten', 'spaced repetition', 'srs', 'downloaden', 'installeren', 'herhalen', 'plug-in', 'overhoren'],
         },
@@ -164,7 +164,7 @@ export const nl: HelpTranslation = {
             'De kleine knoppen naast het woord in de pop-up.',
             [
               '“Bekend” (`K`): je kent het woord – geen onderstreping, en het telt als bekend.',
-              '“Volgen”: een paarse onderstreping, zodat het woord je opvalt als het voorkomt. Zet de knop aan in {Instellingen → Woordpop-up → Knop “Volgen”}.',
+              '“Volgen”: een paarse onderstreping, zodat het woord je opvalt als het voorkomt.',
               '“Negeren”: voor namen en geluiden – nooit onderstreept, nooit geteld.',
             ],
             'Klik nog eens op een markering om haar te verwijderen, of zoek het woord op in het tabblad “Opgeslagen” van het transcriptpaneel.',
@@ -288,7 +288,7 @@ export const nl: HelpTranslation = {
           id: 'q-ankiweb',
           title: 'Werkt het met AnkiWeb?',
           body: [
-            'Niet rechtstreeks: Libregaku praat met Anki op je computer via de add-on AnkiConnect. Anki synchroniseert je kaarten daarna zoals gewoonlijk met AnkiWeb en je telefoon.',
+            'Niet rechtstreeks: Libregaku praat met Anki op je computer via de add-on [AnkiConnect](https://ankiweb.net/shared/info/2055492159). Anki synchroniseert je kaarten daarna zoals gewoonlijk met AnkiWeb en je telefoon.',
           ],
           keywords: ['ankiweb', 'ankiconnect', 'telefoon', 'mobiel', 'ankidroid', 'synchroniseren', 'sync', 'add-on'],
         },

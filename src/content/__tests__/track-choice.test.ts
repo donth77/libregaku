@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { TrackInfo } from '../../adapters/types';
-import { chooseSecond, chooseTrack, sameTracks } from '../track-choice';
+import { studyTracks, translationTracks, chooseSecond, chooseTrack, sameTracks } from '../track-choice';
 
 /**
  * Which of a video's tracks is studied. A site lists Chinese twice — once in
@@ -112,5 +112,29 @@ describe('telling two track lists apart', () => {
     const sent = list();
     sent[1] = track('zh', 'zh-Hans');
     expect(sameTracks(list(), sent)).toBe(false);
+  });
+});
+
+describe("the toolbar's two menus", () => {
+  const many = [
+    track('ja', 'ja'), track('ja-cc', 'ja', { cc: true }), track('en', 'en-US'), track('fr', 'fr'),
+    track('hans', 'zh-Hans'), track('hant', 'zh-Hant'), track('th', 'th'), track('xx', 'xx'),
+  ];
+  const ids = (list: TrackInfo[]): string[] => list.map((t) => t.id);
+
+  it('lists, under Subtitles, only the language being learned, in either script', () => {
+    expect(ids(studyTracks(many, 'ja', null))).toEqual(['ja', 'ja-cc']);
+    expect(ids(studyTracks(many, 'zh', null))).toEqual(['hans', 'hant']);
+    expect(ids(studyTracks(many, 'ko', null))).toEqual([]);
+  });
+
+  it('lists, under Translation, the languages a translation can be in', () => {
+    expect(ids(translationTracks(many, null))).toEqual(expect.arrayContaining(['en', 'fr']));
+    expect(ids(translationTracks(many, null))).not.toContain('xx');
+  });
+
+  it('keeps the track in use in either, so the menu says what is loaded', () => {
+    expect(ids(studyTracks(many, 'ja', 'fr'))).toEqual(['ja', 'ja-cc', 'fr']);
+    expect(ids(translationTracks(many, 'xx'))).toContain('xx');
   });
 });

@@ -38,7 +38,7 @@ export const tr: HelpTranslation = {
           body: [
             'Anki, ücretsiz bir bilgi kartı uygulamasıdır. Her kartı, tam unutmak üzereyken size yeniden gösterir (aralıklı tekrar).',
             "Libregaku, seçtiğiniz kelime ve cümlelerden Anki'ye kart ekler. Hangi kelimeleri zaten bildiğinizi görmek için Anki kartlarınızı da okur.",
-            "Bilgisayarınızda Anki'nin ve AnkiConnect eklentisinin kurulu olması gerekir. Anki'yi https://apps.ankiweb.net adresinden indirin.",
+            "Bilgisayarınızda Anki'nin ve [AnkiConnect](https://ankiweb.net/shared/info/2055492159) eklentisinin kurulu olması gerekir. Anki'yi https://apps.ankiweb.net adresinden indirin.",
           ],
           keywords: ['flashcard', 'kelime kartı', 'indirme', 'yükleme', 'kurulum', 'srs', 'spaced repetition', 'download'],
         },
@@ -164,7 +164,7 @@ export const tr: HelpTranslation = {
             'Kelimenin penceresinde, kelimenin yanındaki küçük düğmeler.',
             [
               '“Bilinen” (`K`): kelimeyi biliyorsunuz — altı çizilmez ve bilinen sayılır.',
-              '“Takip et”: mor bir alt çizgi; böylece kelime geçtiğinde onu fark edersiniz. {Ayarlar → Kelime penceresi → “Takip et” düğmesi} ayarından açın.',
+              '“Takip et”: mor bir alt çizgi; böylece kelime geçtiğinde onu fark edersiniz.',
               '“Yok say”: adlar ve sesler için — altı hiç çizilmez, hiç sayılmaz.',
             ],
             'Bir işareti kaldırmak için ona yeniden tıklayın ya da kelimeyi transkript panelinin Kaydedilenler sekmesinde bulun.',
@@ -288,7 +288,7 @@ export const tr: HelpTranslation = {
           id: 'q-ankiweb',
           title: 'AnkiWeb ile çalışır mı?',
           body: [
-            "Doğrudan değil: Libregaku, bilgisayarınızdaki Anki ile AnkiConnect eklentisi üzerinden konuşur. Anki de kartlarınızı her zamanki gibi AnkiWeb'e ve telefonunuza senkronize eder.",
+            "Doğrudan değil: Libregaku, bilgisayarınızdaki Anki ile [AnkiConnect](https://ankiweb.net/shared/info/2055492159) eklentisi üzerinden konuşur. Anki de kartlarınızı her zamanki gibi AnkiWeb'e ve telefonunuza senkronize eder.",
           ],
           keywords: ['telefon', 'mobil', 'senkronizasyon', 'eklenti', 'ankiweb', 'ankiconnect', 'sync', 'add-on'],
         },

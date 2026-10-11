@@ -64,6 +64,11 @@ export interface MergedToken {
   lemmaReading?: string;
   /** Dictionary keys to try, best first. */
   lookup: LookupKey[];
+  /**
+   * A person's name that is also a word: 未来ちゃん is Miku, not the future.
+   * Its reading is a guess and it is not vocabulary to learn.
+   */
+  name?: boolean;
 }
 
 /**
@@ -673,6 +678,27 @@ function nounSuffixed(group: Morpheme[]): boolean {
   return group.length > 1 && last?.pos === '名詞' && last.pos1 === '接尾';
 }
 
+/*
+ * A name followed by the ending a person's name takes. IPADIC tags 未来 a
+ * proper noun here, and it is also the word for the future; the dictionary
+ * has the word, and its reading is not the name's (みく). Only a proper noun
+ * is taken for a name, so 運転手さん and 赤ちゃん are what they were.
+ */
+const PERSON_SUFFIX = new Set(['ちゃん', 'くん', '君', 'さん', '様', 'さま', '殿']);
+
+/** Words IPADIC may tag as a name and an ending, which are words: never taken for a name. */
+const WORDS_WITH_SUFFIX = new Set([
+  '赤ちゃん', '坊ちゃん', '嬢ちゃん', 'お嬢ちゃん', '姉ちゃん', '兄ちゃん', 'お姉ちゃん', 'お兄ちゃん',
+  '爺ちゃん', '婆ちゃん', '父ちゃん', '母ちゃん', 'おじいちゃん', 'おばあちゃん', 'おじちゃん', 'おばちゃん',
+  '神様', '仏様', '王様', '殿様', '奥様', '皆様', '皆さん', 'お客様', 'お客さん', '旦那様', '旦那さん', '奥さん',
+]);
+
+function namedLike(group: Morpheme[]): boolean {
+  const [head, tail] = group;
+  return group.length === 2 && head?.pos1 === '固有名詞' && tail?.pos1 === '接尾' &&
+    PERSON_SUFFIX.has(tail.surface) && !WORDS_WITH_SUFFIX.has(head.surface + tail.surface);
+}
+
 /**
  * Written forms merging would like the dictionary's view of: noun groups
  * built from a prefix, a number, or suffixes, whose word — and whose reading
@@ -700,6 +726,8 @@ export function lexiconQueries(morphemes: Morpheme[]): string[] {
     for (const { i, j, numeric } of spans(group)) {
       for (const [form] of variants(join(group, i, j), numeric)) out.add(form);
     }
+    // 未来ちゃん: whether the name is also a word.
+    if (namedLike(group)) out.add(group[0]!.surface);
   }
   return [...out];
 }
@@ -842,10 +870,14 @@ function merge(group: Morpheme[], lexicon: Lexicon | undefined): MergedToken {
     lemmaReading = numeric ? undefined : lemmaReadingOf(lead);
   }
 
+  // A name that is also a word: its reading is a guess, and it is not for learning.
+  const name = namedLike(group) && Boolean(lexicon?.(head.surface)?.length);
+
   return {
     ...common,
+    ...(name ? { content: false, name: true } : {}),
     lemma,
-    reading: tokenReading,
+    reading: name ? undefined : tokenReading,
     pos: lead.pos,
     lemmaReading,
     lookup: lookupKeys(

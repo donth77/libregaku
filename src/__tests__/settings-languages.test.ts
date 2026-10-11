@@ -102,8 +102,8 @@ describe('a language written two ways', () => {
 describe('what each language gets', () => {
   const tier = (code: string) => TARGET_LANGUAGES.find((l) => l.code === code)?.tier;
 
-  it('gives Japanese, Korean and Chinese an analyser, and Spanish its dictionary forms', () => {
-    expect(['ja', 'ko', 'zh', 'es', 'fr'].map(tier)).toEqual([2, 2, 2, 1, 0]);
+  it('gives Japanese, Korean and Chinese an analyser, and Spanish, French and German their dictionary forms', () => {
+    expect(['ja', 'ko', 'zh', 'es', 'fr', 'de', 'it'].map(tier)).toEqual([2, 2, 2, 1, 1, 1, 0]);
   });
 
   it('has a dictionary for every language above boundaries alone, and for no other', () => {
@@ -118,7 +118,9 @@ describe('what each language gets', () => {
     expect(dictionaryOf('zh', { native: 'de', definitions: 'en' })).toEqual({ source: 'cedict', edition: 'en' });
     expect(dictionaryOf('ko', { native: 'en', definitions: 'en' })).toEqual({ source: 'wty-ko-en', edition: 'en' });
     expect(dictionaryOf('es', { native: 'ja', definitions: 'en' })).toEqual({ source: 'wty-es-en', edition: 'en' });
-    expect(dictionaryOf('fr', { native: 'en', definitions: 'en' })).toBeNull();
+    expect(dictionaryOf('fr', { native: 'en', definitions: 'en' })).toEqual({ source: 'wty-fr-en', edition: 'en' });
+    expect(dictionaryOf('de', { native: 'ja', definitions: 'en' })).toEqual({ source: 'wty-de-en', edition: 'en' });
+    expect(dictionaryOf('it', { native: 'en', definitions: 'en' })).toBeNull();
   });
 
   it('names what each language draws above its words, and what it calls its characters', () => {
@@ -134,7 +136,9 @@ describe('what each language gets', () => {
     expect(site('zh', '学校')).toContain('mdbg.net/chinese/dictionary?page=worddict&wdqb=%E5%AD%A6%E6%A0%A1');
     expect(site('ko', '먹다')).toContain('korean.dict.naver.com/koendict/#/search?query=%EB%A8%B9%EB%8B%A4');
     expect(site('es', 'hablar')).toBe('https://www.spanishdict.com/translate/hablar');
-    expect(featuresOf('fr').dictionary).toBeUndefined();
+    expect(site('fr', 'manger')).toBe('https://en.wiktionary.org/wiki/manger#French');
+    expect(site('de', 'Haus')).toBe('https://en.wiktionary.org/wiki/Haus#German');
+    expect(featuresOf('it').dictionary).toBeUndefined();
   });
 });
 

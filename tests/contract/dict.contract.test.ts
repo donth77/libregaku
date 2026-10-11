@@ -7,6 +7,7 @@ import { gunzipText } from '../../src/dict/download';
 import { CANTO_URLS, CEDICT_URL, CXDICT_URL, HANDEDICT_URL, krdictUrl, parseCanto, wtyUrl } from '../../src/dict/sources';
 import { zipFiles as unzip } from '../../src/dict/zip';
 import { jmdictUrl, kanjidicUrl } from '../../src/dict/store';
+import { wikdictEntries, wikdictUrl } from '../../src/dict/wikdict';
 import { readRow } from '../../src/dict/wty';
 import { zipFiles } from '../../src/dict/zip';
 import { LINDERA_DICTS } from '../../src/morphology/dictionaries';
@@ -71,6 +72,21 @@ describe('dictionary contract', () => {
       expect(res.ok, `${name}: ${url} returned HTTP ${res.status}.\n${describeFailure('dict.lindera-release')}`).toBe(true);
     }
   }, 60_000);
+
+  it('dict.wikdict — a pair is still served, as a SQLite file the reader reads, with the words people look up', async () => {
+    const why = describeFailure('dict.wikdict');
+    const res = await fetchCheckingHops(wikdictUrl('fr', 'es'), {}, why);
+    expect(res.ok, `${wikdictUrl('fr', 'es')} returned HTTP ${res.status}.\n${why}`).toBe(true);
+    const found: Record<string, string> = {};
+    let n = 0;
+    for (const e of wikdictEntries(new Uint8Array(await res.arrayBuffer()))) {
+      n++;
+      if (['manger', 'maison'].includes(e.word)) found[e.word] = e.senses[0]?.glosses.join(', ') ?? '';
+    }
+    expect(n, `only ${n} entries.\n${why}`).toBeGreaterThan(30_000);
+    expect(found.manger, why).toContain('comer');
+    expect(found.maison, why).toContain('casa');
+  }, 120_000);
 
   it('dict.wty-release — the pinned Wiktionary dictionaries are still downloadable, and read as the reader reads them', async () => {
     const why = describeFailure('dict.wty-release');

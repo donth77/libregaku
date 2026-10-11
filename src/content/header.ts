@@ -100,6 +100,8 @@ button {
   background: none; border: 0; border-radius: 8px;
   color: #9AA4BF; cursor: pointer;
 }
+/* A button's own display beats the hidden attribute: say so, or a hidden one still shows. */
+button[hidden] { display: none; }
 button:hover { background: rgba(255,255,255,.09); color: #E8ECF6; }
 /* On is more than a lighter colour: a shade behind it and a bar under it, as a tab marks the one open. */
 button.on { color: #F2F5FC; background: rgba(242, 245, 252, .14); }

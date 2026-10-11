@@ -30,6 +30,7 @@ function source(over: Partial<Source> = {}, words = 1200): Source & { reads: num
           entries: [
             { entry: entry('00000001', 'hablar', 'to speak', ['v']), keys: ['hablar'] },
             { entry: entry('00000002', 'casa', 'house', ['n', 'fem']), keys: ['casa'] },
+            { entry: entry('00000005', 'conoser', 'to know (another spelling of conocer)', ['v']), keys: ['conoser'] },
             // One word, two rows: the dictionary has a row for each part of speech.
             { entry: entry('00000003', 'haber', 'to have', ['v']), keys: ['haber'] },
             { entry: { ...entry('00000004', 'haber', 'asset', ['n', 'masc']), senses: [{ pos: [], glosses: ['asset'] }, { pos: [], glosses: ['credit'] }] }, keys: ['haber'] },
@@ -40,6 +41,9 @@ function source(over: Partial<Source> = {}, words = 1200): Source & { reads: num
             // ha is filed under her, an old spelling with no entry of its own, which is a form of haber.
             { form: 'ha', of: [{ lemma: 'her', tags: ['third-person singular present subjunctive'] }], pos: 'v' },
             { form: 'her', of: [{ lemma: 'haber', tags: ['obsolete'] }] },
+            // conoser is a headword that is only another way of writing conocer, and conocía is filed under it.
+            { form: 'conoser', of: [{ lemma: 'conocer', tags: ['alternative'] }], pos: 'v' },
+            { form: 'conocía', of: [{ lemma: 'conoser', tags: ['first-person singular imperfect indicative'] }], pos: 'v' },
           ],
           percent: 50,
         };
@@ -219,6 +223,10 @@ describe('the table of inflected forms', () => {
       word: true, senses: 1, kind: ['n', 'fem'],
       of: [{ lemma: 'casar', tags: ['third-person singular present indicative'], pos: 'v', senses: 0 }],
     });
+    // Filed under a word that is only another way of writing another: it says so, so a card does not offer it as a second word.
+    expect((await store.formsOf(['conocía'], es)).conocía?.of).toEqual([
+      { lemma: 'conoser', tags: ['first-person singular imperfect indicative'], pos: 'v', senses: 1, spellingOf: ['conocer'] },
+    ]);
     // Nothing known of it: left out, rather than answered with a guess.
     expect(forms.nada).toBeUndefined();
   });

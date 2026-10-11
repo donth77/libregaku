@@ -38,7 +38,7 @@ export const vi: HelpTranslation = {
           body: [
             'Anki là ứng dụng thẻ ghi nhớ miễn phí. Ứng dụng cho bạn xem lại từng thẻ đúng lúc bạn sắp quên (lặp lại ngắt quãng).',
             'Libregaku thêm thẻ vào Anki từ những từ và câu bạn chọn. Libregaku cũng đọc các thẻ Anki của bạn để xác định những từ bạn đã biết.',
-            'Bạn cần có Anki trên máy tính, cùng tiện ích AnkiConnect. Tải Anki tại https://apps.ankiweb.net.',
+            'Bạn cần có Anki trên máy tính, cùng tiện ích [AnkiConnect](https://ankiweb.net/shared/info/2055492159). Tải Anki tại https://apps.ankiweb.net.',
           ],
           keywords: ['flashcard', 'tải về', 'cài đặt', 'ôn tập', 'add-on', 'srs', 'spaced repetition', 'download'],
         },
@@ -164,7 +164,7 @@ export const vi: HelpTranslation = {
             'Các nút nhỏ cạnh từ trong cửa sổ tra từ.',
             [
               'Đã biết (`K`): bạn đã biết từ này — không gạch dưới, và được tính là đã biết.',
-              'Theo dõi: gạch dưới màu tím, để bạn để ý từ đó khi nó xuất hiện. Bật trong {Cài đặt → Cửa sổ tra từ → Nút Theo dõi}.',
+              'Theo dõi: gạch dưới màu tím, để bạn để ý từ đó khi nó xuất hiện.',
               'Bỏ qua: dành cho tên riêng và tiếng cảm thán — không bao giờ gạch dưới, không bao giờ được đếm.',
             ],
             'Nhấp vào một dấu lần nữa để bỏ, hoặc tìm từ đó trong tab “Đã lưu” của bảng chép lời.',
@@ -288,7 +288,7 @@ export const vi: HelpTranslation = {
           id: 'q-ankiweb',
           title: 'Có dùng được với AnkiWeb không?',
           body: [
-            'Không trực tiếp: Libregaku làm việc với Anki trên máy tính của bạn thông qua tiện ích AnkiConnect. Sau đó Anki đồng bộ thẻ lên AnkiWeb và điện thoại của bạn như bình thường.',
+            'Không trực tiếp: Libregaku làm việc với Anki trên máy tính của bạn thông qua tiện ích [AnkiConnect](https://ankiweb.net/shared/info/2055492159). Sau đó Anki đồng bộ thẻ lên AnkiWeb và điện thoại của bạn như bình thường.',
           ],
           keywords: ['ankiweb', 'ankiconnect', 'điện thoại', 'di động', 'đồng bộ', 'sync', 'add-on'],
         },

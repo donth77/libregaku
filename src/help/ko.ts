@@ -38,7 +38,7 @@ export const ko: HelpTranslation = {
           body: [
             'Anki는 무료 플래시카드 앱입니다. 각 카드를 잊어버리기 직전에 다시 보여 줍니다(간격 반복).',
             'Libregaku는 내가 고른 단어와 문장으로 Anki에 카드를 추가합니다. 또 Anki 카드를 읽어서 이미 아는 단어가 무엇인지 확인합니다.',
-            '컴퓨터에 Anki와 AnkiConnect 확장 프로그램이 있어야 합니다. Anki는 https://apps.ankiweb.net에서 다운로드할 수 있습니다.',
+            '컴퓨터에 Anki와 [AnkiConnect](https://ankiweb.net/shared/info/2055492159) 확장 프로그램이 있어야 합니다. Anki는 https://apps.ankiweb.net에서 다운로드할 수 있습니다.',
           ],
           keywords: ['암기 카드', '설치', '복습', '부가 기능', '애드온', 'srs', 'spaced repetition', 'flashcard'],
         },
@@ -164,7 +164,7 @@ export const ko: HelpTranslation = {
             '팝업에서 단어 옆에 있는 작은 버튼들입니다.',
             [
               '아는 단어(`K`): 이미 아는 단어입니다. 밑줄이 없어지고 아는 단어로 셉니다.',
-              '관심 단어: 보라색 밑줄을 그어 단어가 나올 때 눈에 띄게 합니다. {설정 → 단어 팝업 → 관심 단어 버튼}에서 켜세요.',
+              '관심 단어: 보라색 밑줄을 그어 단어가 나올 때 눈에 띄게 합니다.',
               '무시: 이름이나 감탄사처럼 밑줄도 긋지 않고 세지도 않을 단어입니다.',
             ],
             '표시를 해제하려면 버튼을 다시 클릭하거나, 스크립트 패널의 저장됨 탭에서 그 단어를 찾으세요.',
@@ -288,7 +288,7 @@ export const ko: HelpTranslation = {
           id: 'q-ankiweb',
           title: 'AnkiWeb에서도 작동하나요?',
           body: [
-            '직접 연결되지는 않습니다. Libregaku는 AnkiConnect 확장 프로그램을 통해 컴퓨터의 Anki와 통신합니다. 그다음 Anki가 평소처럼 카드를 AnkiWeb과 휴대폰에 동기화합니다.',
+            '직접 연결되지는 않습니다. Libregaku는 [AnkiConnect](https://ankiweb.net/shared/info/2055492159) 확장 프로그램을 통해 컴퓨터의 Anki와 통신합니다. 그다음 Anki가 평소처럼 카드를 AnkiWeb과 휴대폰에 동기화합니다.',
           ],
           keywords: ['휴대폰', '모바일', '스마트폰', '동기화', '애드온', '부가 기능', 'ankiweb', 'ankiconnect', 'ankidroid', 'sync'],
         },

@@ -359,6 +359,17 @@ describe('recordings of Spanish, Chinese and Korean words', () => {
     expect(up.asked).toHaveLength(1);
   });
 
+  it('goes on to Lingua Libre for a Japanese word JapanesePod101 lacks', async () => {
+    const { asked } = relay((url) => {
+      if (url.includes('languagepod101')) return 52288;   // its "not found" recording
+      if (search(url).includes('-狸\\.wav')) return found(file('File:LL-Q5287 (jpn)-Fukujinzuke-狸.wav', '4/4d/Tanuki.wav', 'CC BY-SA 4.0'));
+      return url.endsWith('Tanuki.wav.mp3') ? 12000 : undefined;
+    });
+    expect(await findRecording('狸', 'たぬき', 'ja')).toMatchObject({ source: 'commons', credit: { by: 'Fukujinzuke', licence: 'CC BY-SA 4.0' } });
+    expect(asked[0]).toContain('languagepod101');
+    expect(search(asked[1]!)).toContain('Lingua_Libre_pronunciation-jpn');
+  });
+
   it('does not ask Commons about what is not a word', async () => {
     const { asked } = relay(() => nothing);
     expect(await findRecording('¿qué?', undefined, 'es')).toBeNull();

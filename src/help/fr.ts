@@ -38,7 +38,7 @@ export const fr: HelpTranslation = {
           body: [
             'Anki est une application gratuite de cartes mémoire. Elle vous présente à nouveau chaque carte juste avant que vous ne l’oubliiez (répétition espacée).',
             'Libregaku ajoute des cartes à Anki à partir des mots et des phrases que vous choisissez. Il lit aussi vos cartes Anki pour savoir quels mots vous connaissez déjà.',
-            'Il vous faut Anki sur votre ordinateur, avec le greffon AnkiConnect. Téléchargez Anki sur https://apps.ankiweb.net.',
+            'Il vous faut Anki sur votre ordinateur, avec le greffon [AnkiConnect](https://ankiweb.net/shared/info/2055492159). Téléchargez Anki sur https://apps.ankiweb.net.',
           ],
           keywords: ['flashcards', 'fiches', 'srs', 'télécharger', 'installer', 'réviser', 'révision', 'module complémentaire'],
         },
@@ -164,7 +164,7 @@ export const fr: HelpTranslation = {
             'Les petits boutons à côté du mot, dans sa fenêtre contextuelle.',
             [
               'Connu (`K`) : vous le connaissez. Pas de soulignement, et il compte comme connu.',
-              'Suivre : un soulignement violet, pour remarquer le mot quand il apparaît. Activez-le dans {Paramètres → Fenêtre contextuelle → Bouton Suivre}.',
+              'Suivre : un soulignement violet, pour remarquer le mot quand il apparaît.',
               'Ignorer : pour les noms et les sons. Jamais soulignés, jamais comptés.',
             ],
             'Cliquez à nouveau sur une marque pour la retirer, ou retrouvez le mot dans l’onglet Favoris du panneau de transcription.',
@@ -288,7 +288,7 @@ export const fr: HelpTranslation = {
           id: 'q-ankiweb',
           title: 'Libregaku fonctionne-t-il avec AnkiWeb ?',
           body: [
-            'Pas directement : Libregaku communique avec Anki sur votre ordinateur grâce au greffon AnkiConnect. Anki synchronise ensuite vos cartes avec AnkiWeb et votre téléphone, comme d’habitude.',
+            'Pas directement : Libregaku communique avec Anki sur votre ordinateur grâce au greffon [AnkiConnect](https://ankiweb.net/shared/info/2055492159). Anki synchronise ensuite vos cartes avec AnkiWeb et votre téléphone, comme d’habitude.',
           ],
           keywords: ['téléphone', 'mobile', 'android', 'iphone', 'ankidroid', 'synchroniser', 'sync', 'extension', 'add-on'],
         },

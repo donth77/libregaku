@@ -125,6 +125,11 @@ const STYLE = `
     background: #36508C;
   }
   .t.inphrase.phrase-last::before, .p.inphrase.phrase-last::before { right: 0; }
+  /* The word whose card is open: the same band a phrase gets. */
+  .t.picked:not(.inphrase)::before {
+    content: ''; position: absolute; top: 0; bottom: 0; left: 0; right: 0; z-index: -1;
+    background: #36508C;
+  }
   /*
    * Furigana is taken out of flow.
    *

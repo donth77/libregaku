@@ -38,7 +38,7 @@ export const id: HelpTranslation = {
           body: [
             'Anki adalah aplikasi flashcard gratis. Anki menampilkan lagi setiap kartu tepat sebelum Anda melupakannya (pengulangan berjarak).',
             'Libregaku menambahkan kartu ke Anki dari kata dan kalimat yang Anda pilih. Libregaku juga membaca kartu Anki Anda untuk mengetahui kata mana yang sudah Anda kenal.',
-            'Anda memerlukan Anki di komputer, dengan add-on AnkiConnect. Unduh Anki dari https://apps.ankiweb.net.',
+            'Anda memerlukan Anki di komputer, dengan add-on [AnkiConnect](https://ankiweb.net/shared/info/2055492159). Unduh Anki dari https://apps.ankiweb.net.',
           ],
           keywords: ['kartu hafalan', 'spaced repetition', 'srs', 'download', 'instal', 'pasang', 'mengulang', 'plugin'],
         },
@@ -164,7 +164,7 @@ export const id: HelpTranslation = {
             'Tombol-tombol kecil di samping kata di pop-up.',
             [
               'Dikenal (`K`): Anda sudah tahu kata itu — tanpa garis bawah, dan dihitung sebagai dikenal.',
-              'Pantau: garis bawah ungu, agar Anda memperhatikan kata itu saat muncul. Aktifkan di {Setelan → Pop-up kata → Tombol Pantau}.',
+              'Pantau: garis bawah ungu, agar Anda memperhatikan kata itu saat muncul.',
               'Abaikan: nama dan bunyi — tidak pernah digarisbawahi, tidak pernah dihitung.',
             ],
             'Klik tanda sekali lagi untuk menghapusnya, atau temukan kata itu di tab Tersimpan di panel transkrip.',
@@ -288,7 +288,7 @@ export const id: HelpTranslation = {
           id: 'q-ankiweb',
           title: 'Apakah ini berfungsi dengan AnkiWeb?',
           body: [
-            'Tidak secara langsung: Libregaku berkomunikasi dengan Anki di komputer Anda melalui add-on AnkiConnect. Lalu Anki menyinkronkan kartu Anda ke AnkiWeb dan ponsel Anda seperti biasa.',
+            'Tidak secara langsung: Libregaku berkomunikasi dengan Anki di komputer Anda melalui add-on [AnkiConnect](https://ankiweb.net/shared/info/2055492159). Lalu Anki menyinkronkan kartu Anda ke AnkiWeb dan ponsel Anda seperti biasa.',
           ],
           keywords: ['ponsel', 'hp', 'android', 'iphone', 'sinkronisasi', 'sync', 'ekstensi'],
         },

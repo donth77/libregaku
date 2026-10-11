@@ -38,7 +38,7 @@ export const de: HelpTranslation = {
           body: [
             'Anki ist eine kostenlose Lernkarten-App. Sie zeigt dir jede Karte erneut, kurz bevor du sie vergessen würdest (verteilte Wiederholung).',
             'Libregaku erstellt in Anki Karten aus den Wörtern und Sätzen, die du auswählst. Außerdem liest es deine Anki-Karten, um zu sehen, welche Wörter du schon kennst.',
-            'Du brauchst Anki auf deinem Computer, mit der Erweiterung AnkiConnect. Lade Anki von https://apps.ankiweb.net herunter.',
+            'Du brauchst Anki auf deinem Computer, mit der Erweiterung [AnkiConnect](https://ankiweb.net/shared/info/2055492159). Lade Anki von https://apps.ankiweb.net herunter.',
           ],
           keywords: ['karteikarten', 'flashcards', 'spaced repetition', 'srs', 'herunterladen', 'installieren', 'add-on', 'wiederholen'],
         },
@@ -164,7 +164,7 @@ export const de: HelpTranslation = {
             'Die kleinen Schaltflächen neben dem Wort in seinem Pop-up.',
             [
               '„Bekannt“ (`K`): Du kennst das Wort – keine Unterstreichung, und es zählt als bekannt.',
-              '„Beobachten“: eine lila Unterstreichung, damit dir das Wort auffällt, wenn es vorkommt. Schalte die Schaltfläche unter {Einstellungen → Wort-Pop-up → Schaltfläche „Beobachten“} ein.',
+              '„Beobachten“: eine lila Unterstreichung, damit dir das Wort auffällt, wenn es vorkommt.',
               '„Ignorieren“: für Namen und Geräusche – nie unterstrichen, nie gezählt.',
             ],
             'Klicke erneut auf eine Markierung, um sie aufzuheben, oder suche das Wort im Tab „Gespeichert“ der Transkriptleiste.',
@@ -288,7 +288,7 @@ export const de: HelpTranslation = {
           id: 'q-ankiweb',
           title: 'Funktioniert es mit AnkiWeb?',
           body: [
-            'Nicht direkt: Libregaku spricht über die Erweiterung AnkiConnect mit Anki auf deinem Computer. Anki synchronisiert deine Karten dann wie gewohnt mit AnkiWeb und deinem Handy.',
+            'Nicht direkt: Libregaku spricht über die Erweiterung [AnkiConnect](https://ankiweb.net/shared/info/2055492159) mit Anki auf deinem Computer. Anki synchronisiert deine Karten dann wie gewohnt mit AnkiWeb und deinem Handy.',
           ],
           keywords: ['ankiweb', 'ankiconnect', 'handy', 'smartphone', 'mobil', 'ankidroid', 'synchronisieren', 'sync', 'add-on'],
         },

@@ -157,7 +157,8 @@ describe('the track pickers', () => {
     });
     const shown = (id: string): Array<string | null> =>
       Array.from(document.querySelectorAll(`#${id} option`)).map((o) => o.textContent);
-    expect(shown('track')).toEqual(['Chinese (Simplified)', 'English']);
+    // Subtitles: the language learned, which is not Chinese here, so only the track in use. Translation: the languages offered.
+    expect(shown('track')).toEqual(['Chinese (Simplified)']);
     expect(shown('second')).toEqual(['None', 'Chinese (Simplified)', 'Off (forced)', 'English']);
   });
 });
@@ -179,7 +180,7 @@ describe('the track pickers and the page', () => {
     Array.from(document.querySelectorAll(`#${id} option`)).map((o) => o.textContent);
   const value = (id: string): string => (document.getElementById(id) as HTMLSelectElement).value;
 
-  async function open(onPick?: (msg: Record<string, unknown>) => void): Promise<void> {
+  async function open(onPick?: (msg: Record<string, unknown>) => void, target = 'ja'): Promise<void> {
     sent = [];
     document.body.innerHTML = PAGE;
     vi.stubGlobal('chrome', {
@@ -196,7 +197,7 @@ describe('the track pickers and the page', () => {
         },
       },
       runtime: { openOptionsPage: () => {}, sendMessage: async () => ({ ok: false, kind: 'offline', offline: true }) },
-      storage: { local: { get: async () => ({}) } },
+      storage: { local: { get: async () => ({}) }, sync: { get: async () => ({ 'libregaku.settings': { target } }) } },
     });
     vi.resetModules();
     await import('../action');
@@ -212,14 +213,14 @@ describe('the track pickers and the page', () => {
   };
 
   it('show nothing chosen, not an empty box, when the video has none in the language learned', async () => {
-    // Learning Chinese on a video with Japanese and English only: nothing is loaded.
-    page = { rendering: true, tracks: [ja, en], track: null, second: null };
+    // Learning Japanese on a video with Chinese and English only: nothing is loaded, and Subtitles offers nothing.
+    page = { rendering: true, tracks: [hans, en], track: null, second: null };
     await open();
-    expect(shown('track')).toEqual(['—', 'Japanese', 'English']);
+    expect(shown('track')).toEqual(['—']);
     expect(value('track')).toBe('');
     expect((document.querySelector('#track option') as HTMLOptionElement).disabled).toBe(true);
     // The translation's list has its own first choice for that.
-    expect(shown('second')).toEqual(['None', 'Japanese', 'English']);
+    expect(shown('second')).toEqual(['None', 'Chinese (Simplified)', 'English']);
   });
 
   it('are drawn again from the page after a pick, which can move the other list too', async () => {
@@ -227,16 +228,18 @@ describe('the track pickers and the page', () => {
     await open((msg) => {
       // The page loads the pick; the subtitles' track cannot also be the translation's.
       if (typeof msg.track === 'string') page = { ...page, track: msg.track, second: msg.track === 'en' ? null : page.second };
-    });
-    expect(shown('track')).toEqual(['Chinese (Simplified)', 'Chinese (Traditional)', 'English']);
+    }, 'zh');
+    expect(shown('track')).toEqual(['Chinese (Simplified)', 'Chinese (Traditional)']);
     expect([value('track'), value('second')]).toEqual(['hans', 'en']);
 
     pick('track', 'hant');
     await vi.waitFor(() => expect(sent).toEqual([{ type: 'lg-set-tracks', track: 'hant' }]));
     await vi.waitFor(() => expect([value('track'), value('second')]).toEqual(['hant', 'en']));
 
-    pick('track', 'en');
-    await vi.waitFor(() => expect([value('track'), value('second')]).toEqual(['en', '']));
+    // The page can still be moved to a track Subtitles does not list; the one in use is then listed.
+    page = { ...page, track: 'en', second: null };
+    pick('track', 'hans');
+    await vi.waitFor(() => expect(sent.at(-1)).toEqual({ type: 'lg-set-tracks', track: 'hans' }));
   });
 
   it('follow a page that had not finished loading when the popup opened', async () => {
@@ -291,10 +294,10 @@ describe('the track pickers and the page', () => {
     page = { rendering: true, tracks: [ja, hans, en], track: 'ja', second: 'en' };
     await open((msg) => {
       if (msg.track === 'hans') page = { ...page, track: null, second: null };
-    });
+    }, 'zh');
     pick('track', 'hans');
     await vi.waitFor(() => expect(sent).toEqual([{ type: 'lg-set-tracks', track: 'hans' }]));
-    await vi.waitFor(() => expect(shown('track')).toEqual(['—', 'Japanese', 'Chinese (Simplified)', 'English']));
+    await vi.waitFor(() => expect(shown('track')).toEqual(['—', 'Chinese (Simplified)']));
     expect([value('track'), value('second')]).toEqual(['', '']);
   });
 
@@ -303,7 +306,7 @@ describe('the track pickers and the page', () => {
     try {
       // Opened a moment after the language was changed: the page is starting over.
       page = { rendering: false, tracks: [ja, hans, hant, en], track: null, second: null };
-      await open();
+      await open(undefined, 'zh');
       expect(document.getElementById('status')?.textContent).toContain('Waiting for subtitles');
       expect(value('track')).toBe('');
 
@@ -312,7 +315,7 @@ describe('the track pickers and the page', () => {
       expect(document.getElementById('status')?.textContent).toContain('Active');
       expect([value('track'), value('second')]).toEqual(['hans', 'en']);
       // The placeholder goes once a track is in use.
-      expect(shown('track')).toEqual(['Japanese', 'Chinese (Simplified)', 'Chinese (Traditional)', 'English']);
+      expect(shown('track')).toEqual(['Chinese (Simplified)', 'Chinese (Traditional)']);
 
       // Closed: it stops asking.
       window.dispatchEvent(new Event('pagehide'));

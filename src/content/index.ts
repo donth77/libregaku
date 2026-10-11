@@ -23,7 +23,8 @@ import { AnkiUnavailable } from '../anki/rpc';
 import { cardAudio } from '../audio/card-audio';
 import { sourceField } from '../anki/source';
 import { buildStatusMap, lemmaReading, type OverrideStatus, type Status, type StatusMap } from '../anki/status';
-import { loadOverrides, marksIn, setMark, syncMarks, type MarkSync } from '../anki/marks';
+import { keepMarkReading, loadMarkReadings, loadOverrides, marksIn, setMark, syncMarks, type MarkSync } from '../anki/marks';
+import { phonetic } from '../anki/text';
 import {
   DICTIONARIES, cardDeck, definitionLanguage, dictionaryOf, featuresOf, loadSettings, nextRuby, ownDictionaryOf, trackLanguageMatch,
   onSettingsChange, targetVariant,
@@ -169,6 +170,72 @@ let manualRevision = 0;
 let statusReadAt = 0;
 
 /**
+ * Marked words by the kana they are found by, kana → word. A subtitle writes
+ * 行く as いこう, whose dictionary form is いく: the mark on 行く is found by it.
+ * Only a word the subtitle writes in kana is found this way, and only when
+ * the marked word is the dictionary's first entry for that kana: marking 聞く
+ * must not clear きく meaning 効く, nor 殺る clear やる meaning 遣る. A word
+ * written in kanji is matched as written and no other way.
+ */
+let markReadings = new Map<string, string>();
+/** Marked words whose reading has been asked of the dictionary this session. */
+const readingAsked = new Set<string>();
+
+function markedByReading(key: string): OverrideStatus | undefined {
+  const kana = phonetic(key);
+  const word = kana ? markReadings.get(kana) : undefined;
+  return word ? overrides.get(word) : undefined;
+}
+
+/**
+ * Read how the marked words are read, and look up the ones nothing says: a
+ * mark made from a list, or before readings were kept. A few at a time, once
+ * each, and kept (keepMarkReading).
+ */
+async function refreshMarkReadings(): Promise<void> {
+  const lang = targetLang();
+  const known = await loadMarkReadings(lang);
+  if (lang !== targetLang()) return;
+  const index = (): void => {
+    const next = new Map<string, string>();
+    for (const [word, reading] of known) if (overrides.has(word) && phonetic(word) === null) next.set(reading, word);
+    markReadings = next;
+  };
+  index();
+  repaint();
+  const missing = [...overrides.keys()].filter((w) => !known.has(w) && phonetic(w) === null && !readingAsked.has(w)).slice(0, 300);
+  let found = false;
+  for (const word of missing) {
+    readingAsked.add(word);
+    try {
+      const result = await lookupToken({ surface: word, lemma: word });
+      if (lang !== targetLang()) return;
+      const reading = result.state === 'ok' ? phonetic(result.entries[0]?.reading ?? '') : null;
+      if (result.state !== 'ok' && result.state !== 'empty') readingAsked.delete(word);   // the dictionary may still be loading
+      if (!reading) continue;
+      // Is it what that kana most likely means? The dictionary ranks its entries.
+      const byKana = await lookupToken({ surface: reading, lemma: reading });
+      if (lang !== targetLang()) return;
+      if (byKana.state !== 'ok') {
+        readingAsked.delete(word);
+        continue;
+      }
+      const top = byKana.entries[0];
+      if (!top || (top.word !== word && !top.forms?.some((f) => f.text === word))) continue;
+      known.set(word, reading);
+      void keepMarkReading(lang, word, reading);
+      found = true;
+    } catch {
+      readingAsked.delete(word);
+    }
+  }
+  if (found) {
+    index();
+    repaint();
+  }
+}
+
+/**
  * A token's status, by dictionary form.
  *
  * The lemma is the key, which is the whole reason M2 merges morphemes: 来た has
@@ -177,7 +244,7 @@ let statusReadAt = 0;
 function statusOf(tok: Token): Status {
   if (tok.punct || !tok.content) return 'ignored';
   const key = tok.lemma ?? tok.surface;
-  const manual = overrides.get(key);
+  const manual = overrides.get(key) ?? markedByReading(key);
   if (manual) return manual;
   const fromAnki = ankiStatus(tok);
   return (addedCards.has(key) || queuedWords.has(key)) && fromAnki !== 'known' ? 'learning' : fromAnki;
@@ -229,6 +296,7 @@ async function mark(word: string, next: OverrideStatus | null, reading?: string)
   if (next) overrides.set(word, next);
   else overrides.delete(word);
   repaint();
+  if (next) void refreshMarkReadings();
   // The mark shows at once either way; a failed write only costs it on reload,
   // which the learner should hear now rather than discover then.
   if (!(await setMark(targetLang(), word, next, reading))) {
@@ -266,6 +334,7 @@ async function pushMarks(): Promise<MarkSync | null | 'here'> {
   if (!synced) return null;   // Anki closed: the marks wait in the browser
   // A mark made while this was in flight is newer than what came back.
   if (revision === manualRevision) overrides = marksIn(synced.marks, targetLang());
+  void refreshMarkReadings();
   if (synced.error) {
     log('marks could not be saved to Anki:', synced.error);
     if (currentMount) showNotice(currentMount, 'marks-not-synced', synced.error);
@@ -316,6 +385,7 @@ async function refreshStatus(): Promise<void> {
   // a language changed to during it has marks of its own.
   if (revision === manualRevision && lang === targetLang()) overrides = nextOverrides;
   repaint();
+  void refreshMarkReadings();
 }
 
 /**
@@ -330,6 +400,7 @@ async function reloadMarks(): Promise<void> {
   if (revision !== manualRevision || lang !== targetLang()) return;
   overrides = next;
   repaint();
+  void refreshMarkReadings();
 }
 
 /**
@@ -1132,7 +1203,7 @@ function wireHover(o: Overlay, mount: HTMLElement): void {
       // Leaving the word is often moving onto its card, to read it or press
       // Add. Playback resumes when the card closes (its onClose), not here —
       // resuming here restarted the video on the way to the card.
-      closePopupSoon();
+      if (!pinnedCard) closePopupSoon();
       return;
     }
     const how = settings().interaction;
@@ -1174,7 +1245,14 @@ function lookUnderPointer(): void {
 }
 
 /** Resume a hover pause when the card goes away — unless another took its place. */
+/**
+ * A card opened by a click or a key stays until it is closed: leaving the word
+ * is not closing it. A hover card still closes as the pointer goes.
+ */
+let pinnedCard = false;
+
 const onCardClosed = (why: 'closed' | 'replaced'): void => {
+  pinnedCard = false;
   if (why === 'closed') resumeAfterHover();
 };
 
@@ -1569,6 +1647,7 @@ function rememberLookup(token: Token, result: LookupResult, sentence: string, li
 
 async function openLookup(mount: HTMLElement, el: HTMLElement, token: Token, byHover = false): Promise<void> {
   cancelPopupClose();
+  pinnedCard = !byHover;
   const seq = ++lookupSeq;
   // Captured now: by the time the lookup returns, the line may have moved on.
   const sentence = currentLine;
@@ -1592,14 +1671,12 @@ async function openLookup(mount: HTMLElement, el: HTMLElement, token: Token, byH
       marked: overrides.get(token.lemma ?? token.surface) ?? null,
       onMark: (word, next) => mark(word, next, lemmaReading(word, token.surface, token.reading)),
       onAddCard: (draft) => addCard(draft, token, line),
-      onAddLine: settings().cardAddLine && sentence.trim() ? () => addLineCard(sentence, line) : undefined,
+      onAddLine: sentence.trim() ? () => addLineCard(sentence, line) : undefined,
       onShowInAnki: () => showInAnki(token),
       noAdd: settings().cardHideAdd,
       deck: cardDeck(settings()),
       decks: settings().cardDeckMenu ? deckList() : undefined,
       onDeck: settings().cardDeckMenu ? chooseDeck : undefined,
-      track: settings().cardTrack,
-      marks: settings().cardMarks,
       colors: underlineVars(settings()),
       dictionary: dictionaryFor(token, result),
       hasCard: hasCardFor(token),
@@ -1723,14 +1800,12 @@ function mountSidebar(mount: HTMLElement, video: HTMLVideoElement, adapter: Subt
         marked: overrides.get(token.lemma ?? token.surface) ?? null,
         onMark: (word, next) => mark(word, next, lemmaReading(word, token.surface, token.reading)),
         onAddCard: (draft) => addCard(draft, token, line),
-        onAddLine: settings().cardAddLine && sentence.trim() ? () => addLineCard(sentence, line) : undefined,
+        onAddLine: sentence.trim() ? () => addLineCard(sentence, line) : undefined,
         onShowInAnki: () => showInAnki(token),
         noAdd: settings().cardHideAdd,
         deck: cardDeck(settings()),
         decks: settings().cardDeckMenu ? deckList() : undefined,
         onDeck: settings().cardDeckMenu ? chooseDeck : undefined,
-        track: settings().cardTrack,
-        marks: settings().cardMarks,
         colors: underlineVars(settings()),
         dictionary: dictionaryFor(token, result),
         hasCard: hasCardFor(token),

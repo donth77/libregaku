@@ -21,4 +21,13 @@ export const SPANISH: LemmaHints = {
   common: ['creer', 'sentir', 'mirar', 'esperar', 'llamar', 'dejar', 'quedar', 'hablar', 'tomar', 'pensar'],
   // ha pasado, he hecho, había dicho: the perfect tenses.
   auxiliaries: ['haber'],
+  // Spanish often leaves the pronoun out, and where it is written it names the person: yo hablaba, ellos hablaban.
+  subjects: {
+    yo: 'first-person singular', 'tú': 'second-person singular', vos: 'second-person singular',
+    'él': 'third-person singular', ella: 'third-person singular', usted: 'third-person singular',
+    nosotros: 'first-person plural', nosotras: 'first-person plural',
+    vosotros: 'second-person plural', vosotras: 'second-person plural',
+    ellos: 'third-person plural', ellas: 'third-person plural', ustedes: 'third-person plural',
+  },
+  between: ['no', 'se', 'me', 'te', 'lo', 'la', 'le', 'les', 'los', 'las', 'nos', 'os', 'ya', 'también', 'siempre', 'nunca'],
 };

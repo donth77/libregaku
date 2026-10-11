@@ -38,7 +38,7 @@ export const zhHant: HelpTranslation = {
           body: [
             'Anki 是免費的閃卡應用程式。它會在你快要忘記時，再次讓你看到每張卡片（間隔重複）。',
             'Libregaku 會用你選取的單字和句子，在 Anki 中新增卡片。它也會讀取你的 Anki 卡片，以得知你已經會哪些單字。',
-            '你需要在電腦上安裝 Anki 和 AnkiConnect 附加元件。Anki 可從 https://apps.ankiweb.net 下載。',
+            '你需要在電腦上安裝 Anki 和 [AnkiConnect](https://ankiweb.net/shared/info/2055492159) 附加元件。Anki 可從 https://apps.ankiweb.net 下載。',
           ],
           keywords: ['字卡', '記憶卡', '複習', '外掛', 'srs', 'spaced repetition', 'flashcard', 'download'],
         },
@@ -164,7 +164,7 @@ export const zhHant: HelpTranslation = {
             '單字視窗中，單字旁邊的小按鈕。',
             [
               '已知（`K`）：你已經會的單字。不加底線，並計入已知。',
-              '追蹤：加上紫色底線，讓你在單字出現時注意到它。請在{設定 → 單字視窗 → 追蹤按鈕}開啟。',
+              '追蹤：加上紫色底線，讓你在單字出現時注意到它。',
               '忽略：用於人名和語氣詞。不加底線，也不列入統計。',
             ],
             '再點一次標記即可取消，也可以在轉錄稿面板的「已儲存」分頁中找到該單字。',
@@ -288,7 +288,7 @@ export const zhHant: HelpTranslation = {
           id: 'q-ankiweb',
           title: '可以搭配 AnkiWeb 使用嗎？',
           body: [
-            '無法直接搭配：Libregaku 是透過 AnkiConnect 附加元件，和你電腦上的 Anki 溝通。之後 Anki 會像平常一樣，將卡片同步到 AnkiWeb 和你的手機。',
+            '無法直接搭配：Libregaku 是透過 [AnkiConnect](https://ankiweb.net/shared/info/2055492159) 附加元件，和你電腦上的 Anki 溝通。之後 Anki 會像平常一樣，將卡片同步到 AnkiWeb 和你的手機。',
           ],
           keywords: ['行動裝置', '雲端', 'ankidroid', 'ankimobile', 'iphone', 'mobile', 'sync'],
         },

@@ -38,7 +38,7 @@ export const pl: HelpTranslation = {
           body: [
             'Anki to darmowa aplikacja do fiszek. Pokazuje każdą kartę ponownie, tuż zanim ją zapomnisz (powtórki rozłożone w czasie).',
             'Libregaku dodaje do Anki karty ze słów i zdań, które wybierasz. Odczytuje też twoje karty Anki, by wiedzieć, które słowa już znasz.',
-            'Potrzebujesz Anki na komputerze, z dodatkiem AnkiConnect. Pobierz Anki ze strony https://apps.ankiweb.net.',
+            'Potrzebujesz Anki na komputerze, z dodatkiem [AnkiConnect](https://ankiweb.net/shared/info/2055492159). Pobierz Anki ze strony https://apps.ankiweb.net.',
           ],
           keywords: ['fiszki', 'spaced repetition', 'srs', 'instalacja', 'zainstaluj', 'pobieranie', 'wtyczka', 'powtarzanie'],
         },
@@ -164,7 +164,7 @@ export const pl: HelpTranslation = {
             'Małe przyciski obok słowa w jego okienku.',
             [
               'Znane (`K`): znasz to słowo — nie jest podkreślane i liczy się jako znane.',
-              'Śledź: fioletowe podkreślenie, by słowo rzucało się w oczy, gdy się pojawi. Przycisk włączysz tutaj: {Ustawienia → Okienko słowa → Przycisk Śledź}.',
+              'Śledź: fioletowe podkreślenie, by słowo rzucało się w oczy, gdy się pojawi.',
               'Ignoruj: imiona i dźwięki — nigdy nie są podkreślane ani liczone.',
             ],
             'Kliknij oznaczenie ponownie, by je usunąć, albo znajdź słowo w zakładce Zapisane w panelu transkrypcji.',
@@ -288,7 +288,7 @@ export const pl: HelpTranslation = {
           id: 'q-ankiweb',
           title: 'Czy to działa z AnkiWeb?',
           body: [
-            'Nie bezpośrednio: Libregaku łączy się z Anki na twoim komputerze przez dodatek AnkiConnect. Anki synchronizuje potem karty z AnkiWeb i z telefonem jak zwykle.',
+            'Nie bezpośrednio: Libregaku łączy się z Anki na twoim komputerze przez dodatek [AnkiConnect](https://ankiweb.net/shared/info/2055492159). Anki synchronizuje potem karty z AnkiWeb i z telefonem jak zwykle.',
           ],
           keywords: ['telefon', 'komórka', 'android', 'iphone', 'synchronizacja', 'sync', 'dodatek', 'ankiconnect'],
         },

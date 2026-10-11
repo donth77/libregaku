@@ -1,4 +1,4 @@
-import { trackLanguageMatch } from '../settings';
+import { TRANSLATION_LANGUAGES, trackLanguageMatch } from '../settings';
 import type { TrackInfo } from '../adapters/types';
 
 /**
@@ -57,4 +57,25 @@ export function sameTracks(a: readonly TrackInfo[], b: readonly TrackInfo[]): bo
       Boolean(t.cc) === Boolean(o.cc) &&
       Boolean(t.onRequest) === Boolean(o.onRequest);
   });
+}
+
+/**
+ * What the toolbar's Subtitles menu lists: the video's tracks in the language
+ * being learned, in either script where it has two. A film on Netflix has
+ * thirty, and the other twenty-nine are not what is studied. The one in use
+ * stays, so the menu always says what is loaded.
+ */
+export function studyTracks(tracks: readonly TrackInfo[], want: string, selected: string | null): TrackInfo[] {
+  return tracks.filter((t) => t.id === selected || trackLanguageMatch(t.lang, want) > 0);
+}
+
+/**
+ * What the Translation menu lists: tracks in a language the extension can
+ * show a translation in, the languages "Your language" offers. The one in use
+ * stays.
+ */
+export function translationTracks(tracks: readonly TrackInfo[], selected: string | null): TrackInfo[] {
+  return tracks.filter(
+    (t) => t.id === selected || TRANSLATION_LANGUAGES.some((l) => trackLanguageMatch(t.lang, l.code) > 0),
+  );
 }

@@ -387,8 +387,11 @@ async function storedTemplate(): Promise<string | null> {
  * learner's own, if they set one.
  */
 const RECORDED: Record<string, readonly Finder[]> = {
-  ja: [tryJpod],
+  // Lingua Libre after JapanesePod101: far fewer words, and a file is named for how a word is written, not how it is read.
+  ja: [tryJpod, linguaLibre(LINGUA_LIBRE.ja ?? 'jpn')],
   es: [linguaLibre(LINGUA_LIBRE.es ?? 'spa')],
+  fr: [linguaLibre(LINGUA_LIBRE.fr ?? 'fra')],
+  de: [linguaLibre(LINGUA_LIBRE.de ?? 'deu')],
   zh: [tryAudioCmn, linguaLibre(LINGUA_LIBRE.zh ?? 'cmn')],
   yue: [linguaLibre(LINGUA_LIBRE.yue ?? 'yue')],
   ko: [named(NAMED.ko ?? 'Ko'), linguaLibre(LINGUA_LIBRE.ko ?? 'kor'), tryNaver],

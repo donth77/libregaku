@@ -61,6 +61,10 @@ describe('phraseToken', () => {
 
   it('keeps the text as it is when the last word has no dictionary form', () => {
     expect(phraseToken([tok('ありがとう'), tok('ございます')], 'ありがとうございます').lemma).toBe('ありがとうございます');
+    // 新名所 is looked up as 名所, which is not its form: the phrase keeps the 新.
+    expect(phraseToken([tok('ラーメン'), tok('新名所', { lemma: '名所' })], 'ラーメン新名所').lemma).toBe('ラーメン新名所');
+    // An inflected last word still goes to its dictionary form.
+    expect(phraseToken([tok('気に'), tok('した', { lemma: 'する' })], '気にした').lemma).toBe('気にする');
   });
 
   it('keeps spaces between words, and does not run their readings together', () => {

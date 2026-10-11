@@ -76,12 +76,6 @@ export const settings = {
   // Word popup: the card that opens on a word
   popupHeading: 'Word popup',
   popupAbout: 'Choose what the popup shows when you look up a word.',
-  /** Known and Ignore are buttons on the word popup, named as the popup names them. */
-  cardMarks: 'Known and Ignore buttons',
-  cardMarksHint: "Known hides a word's underline; Ignore leaves it out of counts. Neither adds a card.",
-  /** Track is a button on the word popup, named as the popup names it. */
-  cardTrack: 'Track button',
-  cardTrackHint: "Gives words you want to notice a purple underline. Doesn't add a card.",
   /** A small menu beside the popup's Add to Anki button. */
   cardDeckMenu: 'Deck menu',
   /** ▾ is the menu's arrow, shown as it is. Add to Anki is the popup's button, named as the popup names it. */
@@ -89,9 +83,6 @@ export const settings = {
   /** Leaves the popup's Add to Anki button off, with the deck menu beside it. Add to Anki is the button's name. */
   cardHideAdd: 'Hide Add to Anki',
   cardHideAddHint: 'Leaves the Add to Anki button, and the deck menu beside it, off the card.',
-  /** A button on the popup that makes one card of the whole subtitle line. */
-  cardAddLine: 'Sentence cards',
-  cardAddLineHint: 'Adds a button that makes a card from the whole sentence, with its audio and a screenshot.',
   /** The kanji in a word, each with its meanings and readings, on the popup. */
   cardKanji: 'Kanji breakdown',
   cardKanjiHint: "Shows each kanji's meanings and readings.",

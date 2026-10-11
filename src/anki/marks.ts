@@ -59,6 +59,15 @@ interface Pending {
   at: number;
 }
 
+/**
+ * The kana a marked word may be found by, in hiragana, by language and word:
+ * 行く by いく, so a subtitle that writes 行く as いこう finds the mark. Kept
+ * only for a word that is the dictionary's first entry for its kana — see the
+ * page (markedByReading) — and written only by it. Never trimmed: an entry
+ * for a word no longer marked matches nothing.
+ */
+const READINGS = 'libregaku.marks.readings';
+
 /** By language, then by word. */
 type ByLanguage<T> = Map<string, Map<string, T>>;
 type Marks = ByLanguage<OverrideStatus>;
@@ -306,6 +315,40 @@ export function setMark(
     console.warn('[libregaku] could not store the mark for', word, e);
     return false;
   });
+}
+
+const readingOf = (v: unknown): string | null => (typeof v === 'string' && v ? v : null);
+
+/** Add to the readings kept. A failure costs only the match by reading. */
+async function keepReadings(found: Array<[lang: string, word: string, reading: string]>): Promise<void> {
+  if (!found.length) return;
+  try {
+    const all = read((await chrome.storage.local.get(READINGS))[READINGS], readingOf);
+    let changed = false;
+    for (const [lang, word, reading] of found) {
+      if (all.get(lang)?.get(word) === reading) continue;
+      put(all, lang, word, reading);
+      changed = true;
+    }
+    if (changed) await chrome.storage.local.set({ [READINGS]: stored(all) });
+  } catch (e) {
+    console.warn('[libregaku] could not keep the readings of marked words:', e);
+  }
+}
+
+/** How one language's marked words are read, word → hiragana, as far as that is known. */
+export async function loadMarkReadings(lang: string): Promise<Map<string, string>> {
+  try {
+    return new Map(read((await chrome.storage.local.get(READINGS))[READINGS], readingOf).get(code(lang)));
+  } catch {
+    return new Map();
+  }
+}
+
+/** The reading of a marked word, found by the page: kept so it is looked up once. */
+export function keepMarkReading(lang: string, word: string, reading: string): Promise<void> {
+  const kana = phonetic(reading.trim());
+  return kana ? serial(() => keepReadings([[code(lang), word, kana]])) : Promise.resolve();
 }
 
 /**
@@ -579,6 +622,7 @@ function commit(
     }
     const cache = after ? layered(after, queue) : now.cache;
     await chrome.storage.local.set({ [CACHE]: stored(cache), [QUEUE]: stored(queue), [SEEDED]: true });
+
     return {
       marks: cache,
       pending: count(queue),

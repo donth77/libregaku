@@ -7,7 +7,8 @@ import { uiLanguageFor } from '../i18n/languages';
  * with three marks: a word in `backticks` is drawn as a key, {Settings →
  * Anki → Screenshot} as the path to a setting, which names the setting as the
  * settings do in that language, and a web address, https://…, as a link to it
- * that leaves the https:// off. A paragraph that is a list is numbered steps;
+ * that leaves the https:// off; [words](https://…) links those words instead.
+ * A paragraph that is a list is numbered steps;
  * one that is { tip } is set apart; { head, rows } is a table. Keywords are
  * what someone might search for that the text itself does not say.
  *
@@ -109,7 +110,7 @@ const en: HelpContent = {
           body: [
             'Anki is a free flashcard app. It shows each card again just before you would forget it (spaced repetition).',
             'Libregaku adds cards to Anki from the words and sentences you pick. It also reads your Anki cards to see which words you already know.',
-            'You need Anki on your computer, with the AnkiConnect add-on. Get Anki from https://apps.ankiweb.net.',
+            'You need Anki on your computer, with the [AnkiConnect](https://ankiweb.net/shared/info/2055492159) add-on. Get Anki from https://apps.ankiweb.net.',
           ],
           keywords: ['flashcards', 'srs', 'download', 'install', 'addon', 'plugin', 'review', 'desktop'],
         },
@@ -235,7 +236,7 @@ const en: HelpContent = {
             'The small buttons beside the word in its popup.',
             [
               'Known (`K`): you know it — no underline, and it counts as known.',
-              'Track: a purple underline, so you notice the word when it comes up. Turn it on in {Settings → Word popup → Track button}.',
+              'Track: a purple underline, so you notice the word when it comes up.',
               'Ignore: names and sounds — never underlined, never counted.',
             ],
             'Click a mark again to take it off, or find the word under Saved in the transcript panel.',
@@ -360,7 +361,7 @@ const en: HelpContent = {
           id: 'q-ankiweb',
           title: 'Does it work with AnkiWeb?',
           body: [
-            'Not directly: Libregaku talks to Anki on your computer through the AnkiConnect add-on. Anki then syncs your cards to AnkiWeb and your phone as usual.',
+            'Not directly: Libregaku talks to Anki on your computer through the [AnkiConnect](https://ankiweb.net/shared/info/2055492159) add-on. Anki then syncs your cards to AnkiWeb and your phone as usual.',
           ],
           keywords: ['ankiweb', 'ankiconnect', 'phone', 'mobile', 'sync'],
         },

@@ -238,8 +238,17 @@ let returnFocus: HTMLElement | null = null;
  */
 export type CloseReason = 'closed' | 'replaced';
 
+/** The word the open card is about, marked on its line while the card is open. */
+let picked: HTMLElement | null = null;
+
+function unpick(): void {
+  picked?.classList.remove('picked');
+  picked = null;
+}
+
 function dismiss(why: CloseReason): void {
   clearTimeout(hideTimer);
+  unpick();
   const had = host !== null;
   const done = onClose;
   // Focus in the card (on the page, its host) goes back to what had it
@@ -394,12 +403,8 @@ interface Context {
    * a warning when that deck is one word status does not read.
    */
   onDeck?: (deck: string, create: boolean) => Promise<{ deck: string; warning?: string }>;
-  /** Offer Track beside Known and Ignore. A word already tracked shows it regardless. */
-  track?: boolean;
   /** A dictionary site for the word, where the language has one. */
   dictionary?: { name: string; url: string };
-  /** Offer Known and Ignore. A word already marked shows its mark regardless, so it can come off. */
-  marks?: boolean;
   /** The underline colours, which the mark buttons wear too. */
   colors?: Record<string, string>;
   /**
@@ -454,6 +459,11 @@ export function showPopup(
   }
   dismiss('replaced');
   openFor = key;
+  // The word shows which it is. A phrase is already marked as one, and keeps its own band.
+  if (!anchor.classList.contains('inphrase')) {
+    anchor.classList.add('picked');
+    picked = anchor;
+  }
   returnFocus = focused();
 
   host = document.createElement('div');
@@ -517,6 +527,12 @@ export function showPopup(
   if (top) {
     const meta = document.createElement('div');
     meta.className = 'meta';
+    if (ctx.token.name) {
+      const b = document.createElement('span');
+      b.className = 'badge';
+      b.textContent = ui.popup.nameBadge;
+      meta.appendChild(b);
+    }
     if (top.common) {
       const b = document.createElement('span');
       b.className = 'badge';
@@ -734,9 +750,21 @@ export function showPopup(
     const said = top!.lang ?? meaningsLanguage(learned);
     if (said) ol.lang = said;
     const senses = top!.senses.slice(0, MAX_SENSES);
+    // A word that is several parts of speech says which each meaning is, where it changes: tout is "all" as a
+    // determiner and "totally" as an adverb. Only an entry gathered from rows of its own (top.kind) has them to say.
+    const part = (sense: (typeof senses)[number]): string => (top!.kind ? sense.pos[0] ?? '' : '');
+    const several = new Set(senses.map(part).filter(Boolean)).size > 1;
     senses.forEach((sense, i) => {
       const li = document.createElement('li');
-      li.textContent = sense.glosses.slice(0, 4).join('; ');
+      if (several && part(sense) && part(sense) !== (i ? part(senses[i - 1]!) : '')) {
+        const tag = document.createElement('span');
+        tag.className = 'sense-pos';
+        // A noun's gender goes with it here, since the header names it only for a word that is a noun first.
+        const gender = NOUN_PARTS.has(part(sense)) ? sense.pos.slice(1).filter((code) => GENDERS.has(code)) : [];
+        tag.textContent = `${partsOfSpeech([part(sense), ...gender])} `;
+        li.appendChild(tag);
+      }
+      li.append(sense.glosses.slice(0, 4).join('; '));
       li.hidden = i >= SENSES_SHOWN;
       ol.appendChild(li);
     });
@@ -1033,10 +1061,9 @@ export function showPopup(
     });
     marks.appendChild(b);
   };
-  const offerMarks = ctx.marks !== false;
-  if (offerMarks || ctx.marked === 'known') mark('known', 'circleCheck', ui.popup.knownButton, 'known');
-  if (ctx.track || ctx.marked === 'tracking') mark('track', 'target', ui.popup.trackButton, 'tracking');
-  if (offerMarks || ctx.marked === 'ignored') mark('ignore', 'ban', ui.popup.ignoreButton, 'ignored');
+  mark('known', 'circleCheck', ui.popup.knownButton, 'known');
+  mark('track', 'target', ui.popup.trackButton, 'tracking');
+  mark('ignore', 'ban', ui.popup.ignoreButton, 'ignored');
   card.appendChild(foot);
 
   card.appendChild(toast);
@@ -1133,6 +1160,11 @@ function characterName(id: string): string {
   const name = names[id];
   return typeof name === 'string' ? name : id;
 }
+
+/** The dictionary's codes for a noun's gender, said beside "noun" on a meaning. */
+const GENDERS = new Set(['masc', 'fem', 'neut']);
+/** The codes for the parts of speech that have a gender of their own: on an adjective it says only that there are two forms. */
+const NOUN_PARTS = new Set(['n', 'name']);
 
 /**
  * The parts of speech of a sense, by name. JMdict's codes ("v5k", "adj-na")

@@ -150,7 +150,7 @@ describe('a Wiktionary dictionary', () => {
     // mi has one, without "my": ours is numbered first, so it leads the merged entry.
     const mi = words.filter((w) => w.word === 'mi').sort((a, b) => a.id.localeCompare(b.id));
     expect(mi.map((w) => w.senses[0]?.glosses[0])).toEqual(['my', 'mi (the musical note)']);
-    expect(source.rank(mi, 'mi')[0]).toMatchObject({ word: 'mi', kind: ['det', 'n', 'masc'], senses: [{ glosses: ['my'] }, { glosses: ['mi (the musical note)'] }] });
+    expect(source.rank(mi, 'mi')[0]).toMatchObject({ word: 'mi', kind: ['det', 'n'], senses: [{ glosses: ['my'] }, { glosses: ['mi (the musical note)'] }] });
     // And its plural, which the file files under a word it does not have.
     expect(batches.flatMap((b) => b.inflections ?? [])).toContainEqual({ form: 'mis', pos: 'det', of: [{ lemma: 'mi', tags: ['plural'] }] });
   });
@@ -190,7 +190,7 @@ describe('a Wiktionary dictionary', () => {
     const source = SOURCES['wty-es-en']!;
     const rows = (await all(await source.read('en'))).flatMap((b) => b.entries.map((e) => e.entry)).filter((e) => e.word.startsWith('ser'));
     expect(source.rank(rows, 'ser')).toEqual([
-      expect.objectContaining({ word: 'ser', kind: ['v', 'n', 'masc'], senses: [expect.objectContaining({ glosses: ['to be'] }), expect.objectContaining({ glosses: ['a being'] })] }),
+      expect.objectContaining({ word: 'ser', kind: ['v', 'n'], senses: [expect.objectContaining({ glosses: ['to be'] }), expect.objectContaining({ glosses: ['a being'] })] }),
     ]);
   });
 

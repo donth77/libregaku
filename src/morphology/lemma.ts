@@ -21,7 +21,7 @@ export interface FormInfo {
   /** What kinds of word it is, in the dictionary's codes: n, v, prep. */
   kind?: string[];
   /** What it is a form of, where it is one, each with how many meanings that word has. */
-  of: Array<{ lemma: string; tags: string[]; pos?: string; senses?: number }>;
+  of: Array<{ lemma: string; tags: string[]; pos?: string; senses?: number; spellingOf?: string[] }>;
 }
 
 export type Forms = Record<string, FormInfo>;
@@ -58,6 +58,9 @@ export const FORM_LABELS: readonly string[] = [
   'formal', 'informal', 'with-tú', 'with-vos', 'vos-form', 'voseo', 'second-person-semantically',
   'accusative', 'dative', 'object-first-person', 'object-second-person', 'object-third-person',
   'object-singular', 'object-plural', 'diminutive', 'augmentative', 'superlative', 'alternative', 'alt-of',
+  // French and German: the cases are renamed by the hints (LemmaHints.renamed), since accusative and dative above are Spanish pronouns.
+  'nominative', 'genitive', 'accusative-case', 'dative-case', 'neuter', 'definite', 'indefinite', 'comparative',
+  'strong', 'weak', 'mixed', 'without-article', 'reflexive',
 ];
 
 /**
@@ -69,8 +72,9 @@ export const FORM_LABELS: readonly string[] = [
 const RENAMED: Record<string, string> = { conditional: 'conditional-mood' };
 
 /** One reading of a form as a label: the dictionary's words for it, in its order. */
-const labelOf = (tags: readonly string[]): string =>
-  tags.join(' ').split(/\s+/).filter(Boolean).map((w) => w.split('/').map((x) => RENAMED[x] ?? x).join('/')).join(' ');
+const labelOf = (tags: readonly string[], renamed: Readonly<Record<string, string>> = {}): string =>
+  tags.join(' ').split(/\s+/).filter(Boolean)
+    .map((w) => w.split('/').map((x) => renamed[x] ?? RENAMED[x] ?? x).join('/')).join(' ');
 
 /**
  * The readings one label holds. The dictionary runs two together with
@@ -139,6 +143,21 @@ export interface LemmaHints {
    * is the verb, not the noun or adjective it also is.
    */
   auxiliaries: readonly string[];
+  /**
+   * Words the dictionary describes a form with that mean something else here
+   * than the interface's name for them: Spanish accusative is a pronoun's, "with
+   * a direct object"; German's is a case. Each is given a label of its own.
+   */
+  renamed?: Readonly<Record<string, string>>;
+  /**
+   * The pronouns that name who does a verb, each with the person and number
+   * the verb after it is in: je is "first-person singular". A form that can be
+   * read as two persons — connaissais is je and tu — is read as the one the
+   * pronoun before it says. A pronoun that is more than one person (sie) is left out.
+   */
+  subjects?: Readonly<Record<string, string>>;
+  /** Little words that may come between the pronoun and its verb: je ne connaissais, je le connaissais. */
+  between?: readonly string[];
 }
 
 const NO_HINTS: LemmaHints = { first: [], common: [], auxiliaries: [] };
@@ -194,6 +213,8 @@ interface Candidate {
   spelt: string[];
   /** Where it stood in the dictionary's order. */
   at: number;
+  /** The words this one is only another way of writing: connaitre, of connaître. */
+  variantOf: string[];
 }
 
 /**
@@ -252,7 +273,7 @@ function best(of: Candidate[], ...measures: Array<(c: Candidate) => number>): Ca
 export function lemmaOf(
   surface: string,
   forms: Forms,
-  opts: { first?: boolean; locale?: string; expecting?: Expecting; hints?: LemmaHints } = {},
+  opts: { first?: boolean; locale?: string; expecting?: Expecting; hints?: LemmaHints; person?: string } = {},
 ): Lemma {
   const hints = opts.hints ?? NO_HINTS;
   const lower = surface.toLocaleLowerCase(opts.locale);
@@ -269,7 +290,7 @@ export function lemmaOf(
   if (info.word) {
     const kind = info.kind ?? [];
     candidates.push({
-      lemma: form, self: true, weight: info.senses ?? 1, said: [], spelt: [], at: 0,
+      lemma: form, self: true, weight: info.senses ?? 1, said: [], spelt: [], at: 0, variantOf: [],
       nominal: kind.some((k) => NOMINAL.has(k)), verbal: kind.includes('v'),
     });
   }
@@ -279,13 +300,13 @@ export function lemmaOf(
     if (!c) {
       c = {
         lemma: way.lemma, self: false, weight: way.senses ?? 1, said: [], spelt: [], nominal: false, verbal: false,
-        at: candidates.length,
+        at: candidates.length, variantOf: way.spellingOf ?? [],
       };
       candidates.push(c);
     }
     c.nominal ||= NOMINAL.has(way.pos ?? '');
     c.verbal ||= way.pos === 'v';
-    const label = labelOf(way.tags);
+    const label = labelOf(way.tags, hints.renamed);
     const into = isSpelling(way.tags) ? c.spelt : c.said;
     if (label && !into.includes(label)) into.push(label);
   }
@@ -326,7 +347,8 @@ export function lemmaOf(
     // 3. como, para, entre.
     closed ??
     // 4. se casa, ha pasado; los estados.
-    (opts.expecting === 'verb' ? closest(pool.filter((c) => c.verbal && !c.self)) : undefined) ??
+    // (A word that is itself a verb stays so: German wir tun is tun, not a form of tunen.)
+    (opts.expecting === 'verb' ? (self?.verbal ? self : closest(pool.filter((c) => c.verbal && !c.self))) : undefined) ??
     (opts.expecting === 'article' || opts.expecting === 'noun'
       ? (self?.nominal ? self : closest(others.filter((c) => c.nominal)))
       : undefined) ??
@@ -347,8 +369,13 @@ export function lemmaOf(
   for (const reading of (chosen.said.length ? chosen.said : chosen.spelt).flatMap(readings)) {
     if (!said.some((s) => sameAs(s) === sameAs(reading))) said.push(reading);
   }
-  const inflections = said.sort((a, b) => ordinary(b) - ordinary(a)).slice(0, NAMED);
-  for (const other of rest.slice(0, NAMED)) inflections.push(`or ${other}`);
+  // After a pronoun, the reading in its person: je connaissais is first-person, though tu connaissais is the same word.
+  const person = opts.person?.split(' ') ?? [];
+  const inPerson = person.length ? said.filter((r) => person.every((w) => r.split(' ').includes(w))) : said;
+  const inflections = (inPerson.length ? inPerson : said).sort((a, b) => ordinary(b) - ordinary(a)).slice(0, NAMED);
+  // A word that is only another way of writing the chosen one is no other word to name.
+  const named = rest.filter((name) => !pool.find((c) => c.lemma === name)?.variantOf.includes(chosen.lemma));
+  for (const other of named.slice(0, NAMED)) inflections.push(`or ${other}`);
   return { lemma: chosen.lemma, inflections, lookup };
 }
 
@@ -370,23 +397,38 @@ const DIGITS = /^[\d.,]+$/;
  * Boundaries from the browser, dictionary forms from `forms`. Its own
  * function so the choice of lemma can be tested without a dictionary.
  */
-export function lemmaTokens(tokens: Token[], forms: Forms, locale?: string, hints?: LemmaHints): Token[] {
+export function lemmaTokens(
+  tokens: Token[], forms: Forms, locale?: string, hints?: LemmaHints, fold: (surface: string) => string = (s) => s,
+): Token[] {
   let first = true;
   let expecting: Expecting;
+  /** Who the pronoun before says does the verb, until a word that is neither. */
+  let subject: string | undefined;
   return tokens.map((t) => {
     if (t.punct) {
       if (BREAK.test(t.surface)) first = true;
       // Only a space leaves two words next to each other.
-      if (t.surface.trim()) expecting = undefined;
+      if (t.surface.trim()) {
+        expecting = undefined;
+        subject = undefined;
+      }
       return t;
     }
+    const word = fold(t.surface).toLocaleLowerCase(locale);
+    const says = hints?.subjects?.[word];
+    // The person is the first pronoun's: il nous connaissait is "il", and nous is what he knew.
+    const person = subject;
+    if (says && !subject) subject = says;
+    else if (!hints?.between?.includes(word)) subject = undefined;
     const opening = first;
     first = false;
     if (DIGITS.test(t.surface)) {
       expecting = 'noun';   // tres casas, 3 casas
       return { ...t, content: false };
     }
-    const found = lemmaOf(t.surface, forms, { first: opening, locale, expecting, hints });
+    // The dictionary writes l' one way; a line may write it another.
+    const key = fold(t.surface);
+    const found = lemmaOf(key, forms, { first: opening, locale, expecting, hints, ...(person && !says ? { person } : {}) });
     const info = forms[found.lemma];
     expecting = leads(found.lemma, info, hints ?? NO_HINTS);
     return {
@@ -396,7 +438,7 @@ export function lemmaTokens(tokens: Token[], forms: Forms, locale?: string, hint
       lemma: found.lemma,
       lookup: found.lookup.map((key) => ({ key })),
       // The card's trace reads "hablábamos → hablar"; a word in its own form has none.
-      ...(found.lemma !== t.surface && found.inflections.length
+      ...(found.lemma !== key && found.inflections.length
         ? { parts: [t.surface], inflections: found.inflections }
         : {}),
     };
@@ -409,24 +451,37 @@ export class LemmaSegmenter implements Segmenter {
 
   readonly #locale: string;
   readonly #hints: LemmaHints | undefined;
+  readonly #prepare: (tokens: Token[]) => Token[];
+  readonly #fold: (surface: string) => string;
   readonly #words: IntlSegmenter;
   readonly #cache = new LineCache();
 
-  constructor(locale: string, hints?: LemmaHints) {
+  /**
+   * `prepare` reshapes the browser's words before the dictionary is asked, for
+   * a language that writes two words as one (French: l'eau); `fold` writes a
+   * word as the dictionary does.
+   */
+  constructor(
+    locale: string, hints?: LemmaHints,
+    opts: { prepare?: (tokens: Token[]) => Token[]; fold?: (surface: string) => string } = {},
+  ) {
     this.#locale = locale;
     this.#hints = hints;
+    this.#prepare = opts.prepare ?? ((tokens) => tokens);
+    this.#fold = opts.fold ?? ((surface) => surface);
     this.#words = new IntlSegmenter(locale);
   }
 
   async segment(text: string): Promise<Token[]> {
     const hit = this.#cache.get(text);
     if (hit) return hit;
-    const tokens = this.#words.segment(text);
+    const tokens = this.#prepare(this.#words.segment(text));
     const asked = new Set<string>();
     for (const t of tokens) {
       if (t.punct) continue;
-      asked.add(t.surface);
-      asked.add(t.surface.toLocaleLowerCase(this.#locale));
+      const key = this.#fold(t.surface);
+      asked.add(key);
+      asked.add(key.toLocaleLowerCase(this.#locale));
     }
     if (!asked.size) return tokens;
 
@@ -438,7 +493,7 @@ export class LemmaSegmenter implements Segmenter {
     // The dictionary is still coming: boundaries for now, and not kept, so
     // the line gains its dictionary forms once the table is in.
     if (!res?.ok || !res.forms) return tokens;
-    const out = lemmaTokens(tokens, res.forms, this.#locale, this.#hints);
+    const out = lemmaTokens(tokens, res.forms, this.#locale, this.#hints, this.#fold);
     this.#cache.set(text, out);
     return out;
   }

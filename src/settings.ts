@@ -21,6 +21,8 @@ export const DICTIONARIES: Record<string, string> = {
   zh: 'cedict',
   yue: 'canto',
   es: 'wty-es-en',
+  fr: 'wty-fr-en',
+  de: 'wty-de-en',
 };
 
 /**
@@ -50,7 +52,24 @@ export const OWN_DICTIONARIES: Record<string, Record<string, string>> = {
   // CFDICT (by way of CxDICT) and HanDeDict, as CC-CEDICT is written; Wiktionary in Japanese and Korean.
   zh: { fr: 'cxdict-fr', de: 'handedict', ja: 'wty-zh-ja', ko: 'wty-zh-ko' },
   // Wiktionary in French, Chinese and Polish: each nine words in ten of the commonest Spanish.
-  es: { fr: 'wty-es-fr', zh: 'wty-es-zh', 'zh-Hant': 'wty-es-zh', pl: 'wty-es-pl' },
+  // WikDict for German, Portuguese and Italian: Wiktionary's files in them hold a few thousand words, and WikDict's 10 to 12 thousand.
+  es: {
+    fr: 'wty-es-fr', zh: 'wty-es-zh', 'zh-Hant': 'wty-es-zh', pl: 'wty-es-pl',
+    de: 'wikdict-es-de', pt: 'wikdict-es-pt', it: 'wikdict-es-it',
+  },
+  // French Wiktionary holds nearly all of German (98% of the English file's size); the rest each a quarter to a third of it.
+  de: {
+    fr: 'wty-de-fr', ru: 'wty-de-ru', zh: 'wty-de-zh', 'zh-Hant': 'wty-de-zh',
+    // WikDict: 24,000 to 55,000 words each, of the 1% to 3% of the English file Wiktionary has in these.
+    es: 'wikdict-de-es', pt: 'wikdict-de-pt', it: 'wikdict-de-it',
+  },
+  // Wiktionary in Chinese, Turkish, Vietnamese, Russian, Thai, Dutch and Polish: 13 to 30% of the English file's size.
+  fr: {
+    zh: 'wty-fr-zh', 'zh-Hant': 'wty-fr-zh', tr: 'wty-fr-tr', vi: 'wty-fr-vi', ru: 'wty-fr-ru', th: 'wty-fr-th',
+    nl: 'wty-fr-nl', pl: 'wty-fr-pl',
+    // WikDict: 29,000 to 69,000 words each, of the 3% to 5% of the English file Wiktionary has in these.
+    es: 'wikdict-fr-es', pt: 'wikdict-fr-pt', it: 'wikdict-fr-it',
+  },
 };
 
 /**
@@ -83,8 +102,8 @@ export const TARGET_LANGUAGES: Array<{ code: string; label: string; tier: 0 | 1 
   // Its own language, not a kind of Chinese: what is said differs, and so are its readings, its words and its decks.
   { code: 'yue', label: 'Cantonese', tier: 2, flag: '🇭🇰' },
   { code: 'es', label: 'Spanish', tier: 1, flag: '🇪🇸' },
-  { code: 'fr', label: 'French', tier: 0, flag: '🇫🇷' },
-  { code: 'de', label: 'German', tier: 0, flag: '🇩🇪' },
+  { code: 'fr', label: 'French', tier: 1, flag: '🇫🇷' },
+  { code: 'de', label: 'German', tier: 1, flag: '🇩🇪' },
   { code: 'it', label: 'Italian', tier: 0, flag: '🇮🇹' },
   { code: 'pt', label: 'Portuguese', tier: 0, flag: '🇧🇷' },
   { code: 'th', label: 'Thai', tier: 0, flag: '🇹🇭' },
@@ -153,6 +172,18 @@ const LANGUAGE_FEATURES: Record<string, LanguageFeatures> = {
     characters: false,
     definitions: false,
     dictionary: { name: 'SpanishDict', url: (w) => `https://www.spanishdict.com/translate/${encodeURIComponent(w)}` },
+  },
+  fr: {
+    readings: false,
+    characters: false,
+    definitions: false,
+    dictionary: { name: 'Wiktionary', url: (w) => `https://en.wiktionary.org/wiki/${encodeURIComponent(w)}#French` },
+  },
+  de: {
+    readings: false,
+    characters: false,
+    definitions: false,
+    dictionary: { name: 'Wiktionary', url: (w) => `https://en.wiktionary.org/wiki/${encodeURIComponent(w)}#German` },
   },
 };
 
@@ -318,19 +349,10 @@ export interface Settings {
   sidebarHover: boolean;
   /** List the video's other lines with the word on its lookup card. */
   lookupElsewhere: boolean;
-  /**
-   * Track beside Known and Ignore on the card. Off by default: beside Add it
-   * was taken for Add, and a purple underline with no card is for few.
-   */
-  cardTrack: boolean;
-  /** Known and Ignore beside the word on its card. */
-  cardMarks: boolean;
   /** A menu beside Add, for adding the card to another deck. */
   cardDeckMenu: boolean;
   /** Leave Add to Anki, and the deck menu beside it, off the card. */
   cardHideAdd: boolean;
-  /** The button for a card of the whole line. */
-  cardAddLine: boolean;
   /** The word's kanji on its card, where the language has them. */
   cardKanji: boolean;
   /** The player bar names the language being learned by its flag, or by its code. */
@@ -454,11 +476,8 @@ export const DEFAULTS: Settings = {
   blurPrimary: false,
   sidebarHover: true,
   lookupElsewhere: true,
-  cardTrack: false,
-  cardMarks: true,
   cardDeckMenu: false,
   cardHideAdd: false,
-  cardAddLine: true,
   cardKanji: true,
   languageBadge: 'flag',
   badgeFlag: {},

@@ -38,7 +38,7 @@ export const pt: HelpTranslation = {
           body: [
             'O Anki é um app gratuito de flashcards. Ele mostra cada cartão de novo pouco antes de você esquecê-lo (repetição espaçada).',
             'O Libregaku adiciona cartões ao Anki a partir das palavras e frases que você escolhe. Ele também lê seus cartões do Anki para saber quais palavras você já conhece.',
-            'Você precisa do Anki no seu computador, com o complemento AnkiConnect. Baixe o Anki em https://apps.ankiweb.net.',
+            'Você precisa do Anki no seu computador, com o complemento [AnkiConnect](https://ankiweb.net/shared/info/2055492159). Baixe o Anki em https://apps.ankiweb.net.',
           ],
           keywords: ['cartões de memória', 'srs', 'baixar', 'download', 'instalar', 'revisão', 'revisar', 'add-on'],
         },
@@ -164,7 +164,7 @@ export const pt: HelpTranslation = {
             'Os botões pequenos ao lado da palavra, no pop-up dela.',
             [
               'Conhecida (`K`): você conhece a palavra — sem sublinhado, e ela conta como conhecida.',
-              'Acompanhar: um sublinhado roxo, para você notar a palavra quando ela aparecer. Ative em {Configurações → Pop-up da palavra → Botão Acompanhar}.',
+              'Acompanhar: um sublinhado roxo, para você notar a palavra quando ela aparecer.',
               'Ignorar: nomes e sons — nunca sublinhados, nunca contados.',
             ],
             'Clique em uma marcação de novo para removê-la, ou encontre a palavra na aba Salvas do painel de transcrição.',
@@ -288,7 +288,7 @@ export const pt: HelpTranslation = {
           id: 'q-ankiweb',
           title: 'Funciona com o AnkiWeb?',
           body: [
-            'Não diretamente: o Libregaku se comunica com o Anki no seu computador pelo complemento AnkiConnect. Depois, o Anki sincroniza seus cartões com o AnkiWeb e com o seu celular, como sempre.',
+            'Não diretamente: o Libregaku se comunica com o Anki no seu computador pelo complemento [AnkiConnect](https://ankiweb.net/shared/info/2055492159). Depois, o Anki sincroniza seus cartões com o AnkiWeb e com o seu celular, como sempre.',
           ],
           keywords: ['celular', 'telefone', 'android', 'iphone', 'sincronizar', 'extensão', 'add-on'],
         },

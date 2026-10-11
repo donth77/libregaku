@@ -169,8 +169,15 @@ export const ASSUMPTIONS: Assumption[] = [
     id: 'dict.wty-release',
     site: 'external',
     claim: 'The pinned dated release of the wiktionary-to-yomitan files on Hugging Face (src/dict/sources.ts) still serves wty-<language>-<language>.zip, every redirect hop is a host in host_permissions, and a term bank is rows of [term, reading, tags, rules, score, definitions, …] with an inflected form tagged non-lemma and pointing at its word; a word\'s meanings are the list items of the node marked glosses, their labels sit in a div marked tags, and another spelling of a word is filed under the word, marked alt-of',
-    breaks: 'The Korean or Spanish dictionary never downloads: no definitions, and Spanish words are never traced to their dictionary forms, so none matches its card',
+    breaks: 'The Korean, Spanish, French or German dictionary never downloads: no definitions, and Spanish, French and German words are never traced to their dictionary forms, so none matches its card',
     fallback: null,
+  },
+  {
+    id: 'dict.wikdict',
+    site: 'external',
+    claim: 'download.wikdict.com/dictionaries/sqlite/2/<language>-<language>.sqlite3 is a SQLite file (UTF-8, ordinary rowid tables) whose translation table has lexentry, written_rep, trans_list, score and is_good columns, where is_good = 1 rows are the matches WikDict stands behind and trans_list is equivalents joined with " | "; and the host serves it directly, with no redirect to one missing from host_permissions',
+    breaks: 'The Spanish, Portuguese and Italian dictionaries for learners of French and German, and the German, Portuguese and Italian ones for learners of Spanish, never download: those learners see English definitions instead',
+    fallback: 'The language\'s own dictionary, in English',
   },
   {
     id: 'dict.krdict',

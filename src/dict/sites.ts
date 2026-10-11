@@ -27,6 +27,22 @@ const naverLearners = (lang: string): DictionarySite =>
 /** Naver's other bilingual dictionaries, which look Korean words up too. */
 const naver = (lang: string): DictionarySite => site('Naver', (w) => `https://dict.naver.com/${lang}kodict/#/search?query=${w}`);
 const hanzii = (lang: string): DictionarySite => site('Hanzii', (w) => `https://hanzii.net/search/word/${w}?hl=${lang}`);
+/**
+ * Wiktionary in the learner's own language, which has an entry for a French or
+ * German word in its own words. It is the page for a pair where there is no
+ * dedicated dictionary worth sending anyone to: the editions listed were each
+ * opened with a French and a German word in October 2026 and had its entry.
+ * Wiktionary in English is the language's usual one (settings.ts, featuresOf),
+ * and Hindi's has neither word.
+ */
+const wiktionary = (edition: string): DictionarySite => site('Wiktionary', (w) => `https://${edition}.wiktionary.org/wiki/${w}`);
+const WIKTIONARY_EDITIONS: Record<string, string> = {
+  es: 'es', fr: 'fr', de: 'de', it: 'it', pt: 'pt', ru: 'ru', ja: 'ja', zh: 'zh', 'zh-Hant': 'zh', ko: 'ko', pl: 'pl',
+  nl: 'nl', tr: 'tr', ar: 'ar', vi: 'vi', id: 'id', sv: 'sv', uk: 'uk', th: 'th',
+};
+const inWiktionary = (): Record<string, DictionarySite> =>
+  Object.fromEntries(Object.entries(WIKTIONARY_EDITIONS).map(([native, edition]) => [native, wiktionary(edition)]));
+
 const wordReference = (pair: string): DictionarySite => site('WordReference', (w) => `https://www.wordreference.com/${pair}/${w}`);
 
 /** The kinds of words Japoński Pomocnik's search must be told to look among. */
@@ -92,6 +108,8 @@ export const DICTIONARY_SITES: Record<string, Record<string, DictionarySite>> = 
     hi: lingea('cinsko-hindi'),
     uk: lingea('китаисько-украінськии'),
   },
+  fr: inWiktionary(),
+  de: inWiktionary(),
   es: {
     fr: wordReference('esfr'),
     pt: wordReference('espt'),

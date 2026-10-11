@@ -100,7 +100,7 @@ describe('audio contract', () => {
   }
 
   it('audio.commons — Lingua Libre still has common words, each with a licence and an MP3', async () => {
-    for (const [word, iso] of [['casa', 'spa'], ['图书馆', 'cmn'], ['먹다', 'kor']] as const) {
+    for (const [word, iso] of [['casa', 'spa'], ['图书馆', 'cmn'], ['먹다', 'kor'], ['maison', 'fra'], ['Haus', 'deu'], ['猫', 'jpn']] as const) {
       const hit = linguaLibreOf(filesIn(await ask(linguaLibreSearch(word, iso))), word, iso);
       expect(hit, `No Lingua Libre recording of ${word} (${iso}) was found.\n${describeFailure('audio.commons')}`).not.toBeNull();
       expect(hit!.speaker.length, `no speaker in ${hit!.file.title}`).toBeGreaterThan(0);
