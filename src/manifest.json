@@ -21,6 +21,8 @@
   "host_permissions": [
     "https://*.youtube.com/*",
     "https://*.netflix.com/*",
+    "https://*.disneyplus.com/*",
+    "https://*.primevideo.com/*",
     "https://assets.languagepod101.com/*",
     "https://cdn.innovativelanguage.com/*",
     "https://jotoba.de/*",
@@ -57,7 +59,29 @@
     {
       "matches": [
         "https://www.youtube.com/*",
-        "https://www.netflix.com/*"
+    {
+      "matches": [
+        "https://www.disneyplus.com/*"
+      ],
+      "js": [
+        "inject-disney.js"
+      ],
+      "world": "MAIN",
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://www.primevideo.com/*"
+      ],
+      "js": [
+        "inject-prime.js"
+      ],
+      "world": "MAIN",
+      "run_at": "document_start"
+    },
+        "https://www.netflix.com/*",
+        "https://www.disneyplus.com/*",
+        "https://www.primevideo.com/*"
       ],
       "js": [
         "content.js"

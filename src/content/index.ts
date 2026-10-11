@@ -1,4 +1,6 @@
+import { DisneyAdapter } from '../adapters/disney';
 import { NetflixAdapter } from '../adapters/netflix';
+import { PrimeAdapter } from '../adapters/prime';
 import { mergeRepeats, pairCues } from '../adapters/pair';
 import { YouTubeAdapter } from '../adapters/youtube';
 import type { Cue, SubtitleSource, TrackInfo } from '../adapters/types';
@@ -74,7 +76,7 @@ const quiet = (msg: string, id?: string, detail?: () => string) => {
   log(msg);
 };
 
-const ADAPTERS: SubtitleSource[] = [new YouTubeAdapter(), new NetflixAdapter()];
+const ADAPTERS: SubtitleSource[] = [new YouTubeAdapter(), new NetflixAdapter(), new DisneyAdapter(), new PrimeAdapter()];
 
 let overlay: Overlay | null = null;
 let cues: Cue[] = [];
@@ -565,7 +567,8 @@ function tick(video: HTMLVideoElement, seg: Segmenter, adapter: SubtitleSource):
     return;
   }
 
-  const idx = cueIndex.at(video.currentTime);
+  const at = adapter.time?.() ?? video.currentTime;
+  const idx = cueIndex.at(at);
   const key = idx.join(',');
   if (key !== activeKey) {
     activeKey = key;
@@ -574,7 +577,7 @@ function tick(video: HTMLVideoElement, seg: Segmenter, adapter: SubtitleSource):
     } else {
       paint(idx);
     }
-    sidebar?.setActive(transcript.activeAt(video.currentTime));
+    sidebar?.setActive(transcript.activeAt(at));
   }
   raf = requestAnimationFrame(() => tick(video, seg, adapter));
 }
@@ -710,7 +713,7 @@ async function run(gen: number): Promise<boolean> {
     }
     quiet(
       'waiting for a subtitle track list, or for subtitles to be switched on',
-      adapter.id === 'netflix' ? 'nf.textTracks' : 'yt.player-response',
+      adapter.id === 'netflix' ? 'nf.textTracks' : adapter.id === 'disney' ? 'dp.master-playlist' : adapter.id === 'prime' ? 'pv.resources' : 'yt.player-response',
       () => ui.notices.subtitlesMaybeOff,
     );
     return false;
@@ -888,7 +891,7 @@ function startDomFallback(
   if (!source.container()) {
     quiet(
       'waiting for a caption container — are subtitles switched on?',
-      adapter.id === 'netflix' ? 'nf.caption-dom' : 'yt.caption-dom',
+      adapter.id === 'netflix' ? 'nf.caption-dom' : adapter.id === 'disney' ? 'dp.caption-dom' : adapter.id === 'prime' ? 'pv.caption-dom' : 'yt.caption-dom',
       () => ui.notices.lookedFor(adapter.domCaptions.container),
     );
     return false;
@@ -904,7 +907,7 @@ function startDomFallback(
     if (adapter.isAd?.()) return overlay?.clear();
     if (!text) return overlay?.clear();
     currentLine = text;
-    const at = activeVideo?.currentTime ?? 0;
+    const at = playhead();
     transcript.observe(text, at);
     // The panel has no clock to follow in this mode; the caption is the clock.
     sidebar?.setActive(transcript.activeAt(at));
@@ -1162,7 +1165,7 @@ async function addCard(draft: CardDraft, token: Token, line: LineContext): Promi
   // not to wherever playback has drifted to by the time Add is pressed, and
   // not to the playhead at all for a word picked from further down the
   // transcript.
-  const at = line.start ?? activeVideo?.currentTime ?? 0;
+  const at = line.start ?? playhead();
 
   /*
    * The reading of the headword, not of the word as it was said. The token's
@@ -1314,7 +1317,7 @@ async function addLineCard(text: string, line: LineContext): Promise<Added> {
   if (!deck) throw new Error(ui.player.pickDeck);
 
   const adapter = pickAdapter();
-  const at = line.start ?? activeVideo?.currentTime ?? 0;
+  const at = line.start ?? playhead();
   const tokens = lineTokens.get(text) ?? (await segmentText(text));
   const ruby = settings().ruby;
   // The words that showed a reading, as the overlay decides it.
@@ -1409,7 +1412,7 @@ async function lineMedia(line: LineContext): Promise<{ audio: Media | null; pict
   if (!video || line.start === undefined || (!wantAudio && !wantPicture)) return out;
   const start = line.start;
   const end = Math.min(line.end ?? start + 5, start + LONGEST_LINE);
-  const back = video.currentTime;
+  const back = playhead();
   const wasPaused = video.paused;
 
   let recorder: LineRecorder | null = null;
@@ -1448,7 +1451,7 @@ async function lineMedia(line: LineContext): Promise<{ audio: Media | null; pict
     let whole = false;
     for (;;) {
       await new Promise((resolve) => window.setTimeout(resolve, 50));
-      const t = video.currentTime;
+      const t = playhead();
       if (!pictured && t >= start + 0.3) {
         pictured = true;
         out.picture = await stillOf(video);
@@ -1553,7 +1556,7 @@ async function openLookup(mount: HTMLElement, el: HTMLElement, token: Token, byH
  */
 function videoContext(atSeconds?: number): { site: string; video: string; title: string; url: string; lang: string } {
   const adapter = pickAdapter();
-  const at = Math.floor(atSeconds ?? activeVideo?.currentTime ?? 0);
+  const at = Math.floor(atSeconds ?? playhead());
   return {
     site: adapter?.id ?? 'unknown',
     video: adapter?.videoId() ?? location.pathname,
@@ -1561,6 +1564,11 @@ function videoContext(atSeconds?: number): { site: string; video: string; title:
     url: adapter?.deepLink(at) ?? location.href,
     lang: targetLang(),
   };
+}
+
+/** Where playback is on the cues' clock: the site's own position where its <video>'s time is not that. */
+function playhead(): number {
+  return pickAdapter()?.time?.() ?? activeVideo?.currentTime ?? 0;
 }
 
 /** Move playback, the way the site allows it to be moved. */
@@ -1588,7 +1596,7 @@ function mountSidebar(mount: HTMLElement, video: HTMLVideoElement, adapter: Subt
       };
     },
     seek: seekTo,
-    currentTime: () => activeVideo?.currentTime ?? 0,
+    currentTime: () => playhead(),
     context: videoContext,
     onWordClick: (token, el, sentence, context) => openFromTranscript(token, el, sentence, context),
     onPhrase: (words, text, el, sentence, context, again) => {
@@ -1712,7 +1720,7 @@ function mountSidebar(mount: HTMLElement, video: HTMLVideoElement, adapter: Subt
 
 /** Save the line on screen right now. The keyboard path to the bookmark. */
 async function saveCurrentLine(): Promise<void> {
-  const i = transcript.activeAt(activeVideo?.currentTime ?? 0);
+  const i = transcript.activeAt(playhead());
   const line = transcript.lines[i];
   if (!line || !sidebar) return;
   const saved = await sidebar.saveLine(line);
@@ -1818,7 +1826,7 @@ if (/netflix\.com/.test(location.hostname)) {
 let lineSeek: { to: number; at: number } | null = null;
 
 function lineClock(): number {
-  const now = activeVideo?.currentTime ?? 0;
+  const now = playhead();
   if (lineSeek && Date.now() - lineSeek.at < 1500 && Math.abs(now - lineSeek.to) > 0.5) return lineSeek.to;
   return now;
 }

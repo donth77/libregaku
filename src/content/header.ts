@@ -82,6 +82,7 @@ const STYLE = `
   height: auto; padding: 0; background: none; border-radius: 0;
   font: 20px/1 "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; letter-spacing: 0;
 }
+.badge.flag svg { display: block; height: 20px; width: auto; border-radius: 2px; }
 .stat { color: #9AA4BF; white-space: nowrap; font-size: 14px; }
 .stat b { color: #E8ECF6; font-weight: 700; font-variant-numeric: tabular-nums; }
 .stat.good b { color: #63AF97; }
@@ -264,8 +265,11 @@ export class Header {
     const lang = TARGET_LANGUAGES.find((l) => l.code === s.target);
     const badge = document.createElement('span');
     const flag = s.languageBadge === 'flag' && lang?.flag;
-    badge.className = flag ? 'badge flag' : 'badge';
-    badge.textContent = flag || s.target;
+    const flagSvg = s.languageBadge === 'flag' ? lang?.flagSvg : undefined;
+    badge.className = flag || flagSvg ? 'badge flag' : 'badge';
+    // The SVG is the build's own file (src/flags/), not user input.
+    if (flagSvg) badge.innerHTML = flagSvg;
+    else badge.textContent = flag || s.target;
     const name = languageLabel(s.target);
     badge.dataset.tip = name;
     badge.setAttribute('role', 'img');

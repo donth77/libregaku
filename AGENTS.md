@@ -61,7 +61,7 @@ whether the tokenizer works.
 ## Layout
 
 ```
-build.mjs               esbuild build — eight entry points, no plugin framework
+build.mjs               esbuild build — ten entry points, no plugin framework
 src/manifest.json       MV3 manifest
 src/assumptions.ts      every live-site assumption, and the notices shown when one breaks
 src/settings.ts         settings, defaults, and which languages get which tier
@@ -69,8 +69,8 @@ src/background.ts       service worker: offscreen lifecycle, the AnkiConnect rel
                         audio fetches, page-world injection on Netflix
 src/offscreen.{html,ts} WASM host — the only place the tokenizer runs. The lindera
                         dictionary lives in OPFS; JMdict in IndexedDB
-src/adapters/           one module per subtitle source (youtube, netflix), their
-                        parsers (ttml, json3), the DOM-reading fallback
+src/adapters/           one module per subtitle source (youtube, netflix, disney, prime), their
+                        parsers (ttml, json3, hls), the DOM-reading fallback
 src/morphology/         Segmenter implementations, merge rules, furigana alignment, and the
                         words from JMdict that IPADIC misreads, added to the analyser
 src/dict/               JMdict and KANJIDIC2 download, storage and lookup; remote fallbacks
@@ -81,6 +81,10 @@ src/audio/              pronunciation, the recording a new card carries, and a t
 src/content/
   inject.ts             YouTube page world: captures signed caption URLs, reads the player
   inject-netflix.ts     Netflix page world: reads the manifest, drives the player's seek
+  inject-disney.ts      Disney+ page world: passes on the HLS master playlist the player fetched,
+                        keeps the programme's clock, seeks
+  inject-prime.ts       Prime Video page world: passes on the subtitle tracks in the playback
+                        resources the player asked for
   index.ts              isolated world: orchestrates adapter → segmenter → UI
   renderer.ts           subtitle overlay
   sidebar.ts            transcript panel, saved lines, settings

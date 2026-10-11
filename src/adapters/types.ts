@@ -81,6 +81,14 @@ export interface SubtitleSource {
    */
   controlsHeight?(): number;
   /**
+   * Where playback is on the clock cue times are on, in seconds.
+   *
+   * Optional: without it that is the <video>'s currentTime. Disney+'s element
+   * counts from wherever the session began and starts again after a seek, so
+   * the position has to come from its player. Null while it is not known yet.
+   */
+  time?(): number | null;
+  /**
    * True once the site has said this video carries no subtitle tracks at all —
    * as opposed to not having said anything yet. Lets the orchestrator stop
    * waiting and say so, instead of giving up after a timeout with a message

@@ -23,4 +23,6 @@
 
 /* Netflix renders into .player-timedtext. Same two modes as YouTube. */
 .libregaku-active .player-timedtext { display: none !important; }
+/* Prime Video */
+.libregaku-active .atvwebplayersdk-captions-text { display: none !important; }
 .libregaku-reading .player-timedtext { opacity: 0 !important; pointer-events: none !important; }

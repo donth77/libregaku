@@ -15,7 +15,7 @@ import type { Strings } from './i18n/en';
 export interface Assumption {
   id: string;
   /** 'external' is a third-party service we borrow, not a site we render on. */
-  site: 'youtube' | 'netflix' | 'external';
+  site: 'youtube' | 'netflix' | 'disney' | 'prime' | 'external';
   /** What we rely on. */
   claim: string;
   /** What stops working when it stops being true. */
@@ -297,6 +297,69 @@ export const ASSUMPTIONS: Assumption[] = [
     claim: 'AnkiConnect\'s default webCorsOriginList admits a chrome-extension:// origin',
     breaks: 'The first connection, before the learner has edited AnkiConnect\'s config',
     fallback: 'The "blocked" state names the line to add',
+  },
+  {
+    id: 'dp.master-playlist',
+    site: 'disney',
+    claim: 'The player fetches an HLS master playlist (.m3u8, by fetch or XMLHttpRequest, readable as text) that lists each subtitle track as #EXT-X-MEDIA:TYPE=SUBTITLES with LANGUAGE, NAME, FORCED, CHARACTERISTICS and a URI relative to it',
+    breaks: 'The track list on Disney+: no transcript, no second line',
+    fallback: null,
+  },
+  {
+    id: 'dp.media-hosts',
+    site: 'disney',
+    claim: 'Playlists and segments are served over https from dssott.com, dssedge.com or bamgrid.com, with the signed token in the URL path, so a URL resolved against the playlist keeps it, and the page may fetch them cross-origin',
+    breaks: 'Every track is dropped as not Disney-hosted, or its fetch is refused',
+    fallback: null,
+  },
+  {
+    id: 'dp.vtt-segments',
+    site: 'disney',
+    claim: 'A subtitle rendition is a playlist of a few long WebVTT segments (pts_<ms>.vtt) whose cue times are already programme time, with no X-TIMESTAMP-MAP; the programme\'s own sit under a folder ending "-MAIN/"',
+    breaks: 'No cues, or every line early or late',
+    fallback: null,
+  },
+  {
+    id: 'dp.clock',
+    site: 'disney',
+    claim: 'The <video>\'s currentTime is not programme time (it counts from where the session began, and again from a seek); <disney-web-player>.mediaPlayer.timeline.info.playheadPositionMs is, and mediaPlayer.seek(ms) moves to a programme time',
+    breaks: 'Every line shows at the wrong moment, by minutes; clicking a transcript line and the line keys do nothing',
+    fallback: 'The <video>\'s own clock, which is right only for a session that began at the start and never seeked',
+  },
+  {
+    id: 'dp.caption-dom',
+    site: 'disney',
+    claim: 'The player draws its subtitles in .hive-subtitle-renderer-wrapper inside the open shadow root of <timed-text-override-region>',
+    breaks: 'Disney+\'s own subtitles are not hidden, so two sets show',
+    fallback: null,
+  },
+  {
+    id: 'pv.resources',
+    site: 'prime',
+    claim: 'Before playing, the player requests GetVodPlaybackResources (by fetch or XMLHttpRequest, answered as JSON) whose timedTextUrls.result lists subtitleUrls and forcedNarrativeUrls, each with url, languageCode, displayName and type ("Subtitle" or "Sdh")',
+    breaks: 'The track list on Prime Video: no transcript, no second line',
+    fallback: 'DOM reading, current line only (pv.caption-dom)',
+  },
+  {
+    id: 'pv.subtitle-files',
+    site: 'prime',
+    claim: 'Each track is one TTML file ("TTMLv2", begin and end as clock times) on pv-cdn.net, fetchable from the page, with times on the same clock as the <video>\'s currentTime',
+    breaks: 'No cues: the track is dropped as not Amazon-hosted, its fetch is refused, or nothing parses',
+    fallback: null,
+  },
+  {
+    id: 'pv.caption-dom',
+    site: 'prime',
+    claim: 'The player draws its subtitles in .atvwebplayersdk-captions-text, in the page\'s own DOM. Unverified: inside .atvwebplayersdk-captions-overlay',
+    breaks: 'Prime Video\'s own subtitles are not hidden, so two sets show; and the DOM fallback',
+    fallback: null,
+  },
+  {
+    id: 'pv.video',
+    site: 'prime',
+    claim: 'The player opens over the title\'s /detail/<id> page without changing the address; the player and its <video> are inside #dv-web-player, apart from the trailer on the page, which is drawn with the same classes outside it. Unverified: setting its currentTime seeks, and adverts do not play in it',
+    breaks: 'Nothing renders (the wrong element), or lines show over an advert, or clicking a transcript line does nothing',
+    fallback: null,
   },
 ];
 

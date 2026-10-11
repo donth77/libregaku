@@ -53,7 +53,7 @@ async function askPage(tabId: number, msg: unknown): Promise<PageState | null> {
 
 /** A site as people write it: the content script reports its adapter's id, "netflix". */
 function siteName(site: string | null): string {
-  return ({ youtube: 'YouTube', netflix: 'Netflix' } as Record<string, string>)[site ?? ''] ?? String(site);
+  return ({ youtube: 'YouTube', netflix: 'Netflix', disney: 'Disney+', prime: 'Prime Video' } as Record<string, string>)[site ?? ''] ?? String(site);
 }
 
 function describe(state: PageState | null): { text: string; cls: string } {

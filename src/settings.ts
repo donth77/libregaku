@@ -1,3 +1,5 @@
+import arabLeagueFlag from './flags/arab-league.svg';
+
 import { languageOfLocale } from './i18n/languages';
 
 /**
@@ -33,9 +35,10 @@ export const DICTIONARIES: Record<string, string> = {
 /**
  * The languages that can be learned. `flag` is the player bar's badge: a
  * country standing for a language, so the one most learners of it mean —
- * Brazil for Portuguese, as most courses do.
+ * Brazil for Portuguese, as most courses do. Arabic has no country's flag
+ * here, so its badge is the Arab League's (`flagSvg`), which is no one state's.
  */
-export const TARGET_LANGUAGES: Array<{ code: string; label: string; tier: 0 | 1 | 2; flag: string }> = [
+export const TARGET_LANGUAGES: Array<{ code: string; label: string; tier: 0 | 1 | 2; flag?: string; flagSvg?: string }> = [
   { code: 'ja', label: 'Japanese', tier: 2, flag: '🇯🇵' },
   { code: 'ko', label: 'Korean', tier: 0, flag: '🇰🇷' },
   { code: 'zh', label: 'Chinese', tier: 0, flag: '🇨🇳' },
@@ -45,6 +48,10 @@ export const TARGET_LANGUAGES: Array<{ code: string; label: string; tier: 0 | 1 
   { code: 'it', label: 'Italian', tier: 0, flag: '🇮🇹' },
   { code: 'pt', label: 'Portuguese', tier: 0, flag: '🇧🇷' },
   { code: 'th', label: 'Thai', tier: 0, flag: '🇹🇭' },
+  { code: 'en', label: 'English', tier: 0, flag: '🇺🇸' },
+  { code: 'hi', label: 'Hindi', tier: 0, flag: '🇮🇳' },
+  { code: 'ar', label: 'Arabic', tier: 0, flagSvg: arabLeagueFlag },
+  { code: 'tr', label: 'Turkish', tier: 0, flag: '🇹🇷' },
 ];
 
 /**

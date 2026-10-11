@@ -193,8 +193,11 @@ export class Overlay {
 
     this.#primary = document.createElement('div');
     this.#primary.className = 'primary';
+    // Right-to-left subtitles (Arabic) run from the right; the browser picks the direction from the text.
+    this.#primary.dir = 'auto';
     this.#secondary = document.createElement('div');
     this.#secondary.className = 'secondary hidden';
+    this.#secondary.dir = 'auto';
 
     wrap.append(this.#primary, this.#secondary);
     wrap.style.bottom = '12%';   // default; setAnchor overrides
