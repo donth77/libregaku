@@ -1057,6 +1057,7 @@ function makeOverlay(mount: HTMLElement, adapter: SubtitleSource): Overlay {
   o.setRubyMode(settings().ruby);
   o.setBlurred(settings().blurPrimary);
   o.setMarkKnown(settings().markKnown);
+  o.setUnderlines(settings().underlines);
   o.setColors(underlineVars(settings()));
   o.setLanguages(settings().target, settings().native);
   o.setRuby((tok) => rubyOf(segmenter, tok));
@@ -2124,6 +2125,7 @@ onSettingsChange((s) => {
   overlay?.setRubyMode(s.ruby);
   overlay?.setBlurred(s.blurPrimary);
   overlay?.setMarkKnown(s.markKnown);
+  overlay?.setUnderlines(s.underlines);
   overlay?.setColors(underlineVars(s));
 
   const languageChanged =

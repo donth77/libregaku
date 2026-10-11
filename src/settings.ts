@@ -318,6 +318,8 @@ export interface Settings {
    * point of having the script — and a button brings the current line back.
    */
   sidebarFollow: boolean;
+  /** Draw the underlines at all. Off leaves plain subtitles for someone who only wants to watch. */
+  underlines: boolean;
   /** Underline known words too, rather than leaving them bare. */
   markKnown: boolean;
   /**
@@ -392,6 +394,7 @@ export const DEFAULTS: Settings = {
   decks: {},
   sidebarStats: true,
   sidebarFollow: true,
+  underlines: true,
   markKnown: false,
   colorUnknown: '#e5806c',
   colorLearning: '#d9a64a',

@@ -581,6 +581,7 @@ export function buildSettings(onChange: Rerender, opts: SettingsPanelOptions = {
   check('dualSubtitles', t.dualSubtitles, t.dualSubtitlesHint);
 
   group('underlines', t.underlinesHeading, t.underlinesAbout);
+  check('underlines', t.underlines, t.underlinesHint);
   color('colorUnknown', t.colorUnknown, t.colorUnknownHint);
   color('colorLearning', t.colorLearning, t.colorLearningHint);
   color('colorTracking', t.colorTracking, t.colorTrackingHint);
@@ -606,7 +607,6 @@ export function buildSettings(onChange: Rerender, opts: SettingsPanelOptions = {
   }
 
   group('transcript', t.transcriptHeading, t.transcriptAbout);
-  check('sidebarOpen', t.sidebarOpen, t.sidebarOpenHint);
   check('sidebarFollow', t.sidebarFollow, t.sidebarFollowHint);
   check('headerBar', t.headerBar, t.headerBarHint);
   const badge = select('languageBadge', t.languageBadge, [['flag', t.languageBadgeFlag], ['code', t.languageBadgeCode]],

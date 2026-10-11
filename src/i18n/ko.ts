@@ -116,6 +116,8 @@ export const ko: Translation = {
     colorTrackingHint: '관심 단어로 표시한 단어입니다.',
     colorKnown: '아는 단어',
     colorKnownHint: '성숙 카드가 있거나 아는 단어로 표시한 단어입니다.',
+    underlines: '단어에 밑줄',
+    underlinesHint: '끄면 단어 아래 색이 없는 일반 자막으로 표시됩니다.',
     markKnown: '아는 단어에도 밑줄',
     markKnownHint: '기본적으로 꺼져 있어서, 배울수록 화면이 깔끔해집니다.',
     defaultColours: '기본 색상',
@@ -124,8 +126,6 @@ export const ko: Translation = {
     // Transcript
     transcriptHeading: '스크립트',
     transcriptAbout: '동영상 옆에서 모든 자막 줄을 보여 주는 패널입니다.',
-    sidebarOpen: '스크립트 패널 표시',
-    sidebarOpenHint: '시청 중에 S를 눌러 표시하거나 숨길 수 있습니다.',
     sidebarFollow: '동영상 따라 스크롤',
     sidebarFollowHint: '현재 줄이 계속 보이게 합니다. 직접 스크롤하면 멈추고, 버튼을 누르면 다시 따라갑니다.',
     headerBar: '헤더 표시',

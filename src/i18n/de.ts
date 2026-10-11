@@ -135,6 +135,8 @@ export const de: Translation = {
     colorTrackingHint: 'Wörter, die du beobachtest.',
     colorKnown: 'Bekannt',
     colorKnownHint: 'Wörter, deren Karte ein langes Intervall hat oder die als bekannt markiert sind.',
+    underlines: 'Wörter unterstreichen',
+    underlinesHint: 'Ausschalten für schlichte Untertitel ohne Farben unter den Wörtern.',
     markKnown: 'Bekannte Wörter unterstreichen',
     markKnownHint: 'Standardmäßig aus, damit der Bildschirm beim Lernen ruhiger wird.',
     defaultColours: 'Standardfarben',
@@ -143,8 +145,6 @@ export const de: Translation = {
     // Transkript
     transcriptHeading: 'Transkript',
     transcriptAbout: 'Die Leiste neben dem Video mit allen Untertitelzeilen.',
-    sidebarOpen: 'Transkriptleiste anzeigen',
-    sidebarOpenHint: 'Drücke S, um sie beim Schauen ein- oder auszublenden.',
     sidebarFollow: 'Mit dem Video scrollen',
     sidebarFollowHint: 'Hält die aktuelle Zeile im Blick. Scrollst du selbst, pausiert das; eine Schaltfläche setzt es fort.',
     headerBar: 'Kopfleiste anzeigen',

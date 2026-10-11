@@ -122,6 +122,8 @@ export const pt: Translation = {
     colorTrackingHint: 'Palavras que você está acompanhando.',
     colorKnown: 'Conhecidas',
     colorKnownHint: 'Palavras com um cartão maduro ou marcadas como conhecidas.',
+    underlines: 'Sublinhar palavras',
+    underlinesHint: 'Desative para legendas simples, sem cores sob as palavras.',
     markKnown: 'Sublinhar palavras conhecidas',
     markKnownHint: 'Desativado por padrão, para a tela ficar mais limpa conforme você aprende.',
     defaultColours: 'Cores padrão',
@@ -130,8 +132,6 @@ export const pt: Translation = {
     // Transcript
     transcriptHeading: 'Transcrição',
     transcriptAbout: 'O painel ao lado do vídeo com todas as linhas da legenda.',
-    sidebarOpen: 'Mostrar o painel de transcrição',
-    sidebarOpenHint: 'Pressione S para mostrar ou ocultar o painel enquanto assiste.',
     sidebarFollow: 'Rolar com o vídeo',
     sidebarFollowHint: 'Mantém a linha atual à vista. Se você rolar a lista, isso pausa; um botão retoma.',
     headerBar: 'Mostrar a barra superior',

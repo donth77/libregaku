@@ -148,6 +148,8 @@ export const ar: Translation = {
     colorTrackingHint: 'كلمات تتتبّعها.',
     colorKnown: 'معروفة',
     colorKnownHint: 'كلمات لها بطاقة ناضجة، أو عليها علامة «معروفة».',
+    underlines: 'تسطير الكلمات',
+    underlinesHint: 'أوقفه لترجمة عادية بلا ألوان تحت الكلمات.',
     markKnown: 'تسطير الكلمات المعروفة',
     markKnownHint: 'متوقف افتراضيًا، فتهدأ الشاشة كلما تعلّمت أكثر.',
     defaultColours: 'الألوان الافتراضية',
@@ -156,8 +158,6 @@ export const ar: Translation = {
     // النص
     transcriptHeading: 'النص',
     transcriptAbout: 'اللوحة بجانب الفيديو التي تعرض كل أسطر الترجمة.',
-    sidebarOpen: 'إظهار لوحة النص',
-    sidebarOpenHint: 'اضغط S لإظهارها أو إخفائها أثناء المشاهدة.',
     sidebarFollow: 'التمرير مع الفيديو',
     sidebarFollowHint: 'يُبقي السطر الحالي ظاهرًا. إذا مرّرت بنفسك يتوقف ذلك، ويستأنفه زر.',
     headerBar: 'إظهار الشريط العلوي',

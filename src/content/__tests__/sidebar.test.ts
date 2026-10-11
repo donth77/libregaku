@@ -127,6 +127,7 @@ afterEach(async () => {
   await setSetting('sidebarHover', true);
   await setSetting('ruby', 'unknown');
   await setSetting('markKnown', false);
+  await setSetting('underlines', true);
 });
 
 describe('tooltips in the panel', () => {
@@ -748,6 +749,14 @@ describe('Sidebar readings and marks', () => {
     expect(list.classList.contains('mark-known')).toBe(true);
     await setSetting('markKnown', false);
     expect(list.classList.contains('mark-known')).toBe(false);
+
+    // Every underline at once, in the transcript and the saved lists: on the panel, which holds both.
+    const panel = list.closest('.panel')!;
+    expect(panel.classList.contains('no-underlines')).toBe(false);
+    await setSetting('underlines', false);
+    expect(panel.classList.contains('no-underlines')).toBe(true);
+    await setSetting('underlines', true);
+    expect(panel.classList.contains('no-underlines')).toBe(false);
   });
 });
 

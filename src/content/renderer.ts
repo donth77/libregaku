@@ -158,6 +158,8 @@ const STYLE = `
    */
   .t[data-s="known"] { box-shadow: none; }
   .wrap.mark-known .t[data-s="known"] { box-shadow: inset 0 -1.5px 0 var(--lg-known, #63AF97); }
+  /* The learner has turned underlines off: every status, known words included. */
+  .wrap.no-underlines .t[data-s] { box-shadow: none; }
   /*
    * Listening practice: the line is there, unreadable, until the cursor
    * reaches it. The words are blurred and their box is not, so it still
@@ -424,6 +426,11 @@ export class Overlay {
   /** Whether known words carry a green underline, as Migaku does. */
   setMarkKnown(on: boolean): void {
     this.#primary.parentElement?.classList.toggle('mark-known', on);
+  }
+
+  /** Whether words are underlined at all. */
+  setUnderlines(on: boolean): void {
+    this.#primary.parentElement?.classList.toggle('no-underlines', !on);
   }
 
   /**

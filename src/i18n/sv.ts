@@ -126,6 +126,8 @@ export const sv: Translation = {
     colorTrackingHint: 'Ord som du följer.',
     colorKnown: 'Kända',
     colorKnownHint: 'Ord med ett moget kort, eller markerade som kända.',
+    underlines: 'Stryk under ord',
+    underlinesHint: 'Stäng av för vanliga undertexter, utan färger under orden.',
     markKnown: 'Stryk under kända ord',
     markKnownHint: 'Av som standard, så att skärmen blir lugnare ju mer du lär dig.',
     defaultColours: 'Standardfärger',
@@ -134,8 +136,6 @@ export const sv: Translation = {
     // Transkription
     transcriptHeading: 'Transkription',
     transcriptAbout: 'Panelen bredvid videon som visar alla undertextrader.',
-    sidebarOpen: 'Visa transkriptionspanelen',
-    sidebarOpenHint: 'Tryck på S för att visa eller dölja den medan du tittar.',
     sidebarFollow: 'Rulla med videon',
     sidebarFollowHint: 'Håller den aktuella raden synlig. Om du rullar själv pausas det; en knapp återupptar det.',
     headerBar: 'Visa toppfältet',

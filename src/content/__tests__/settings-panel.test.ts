@@ -399,14 +399,14 @@ describe('settings panel selects', () => {
   it('can be brought back in step with settings changed elsewhere', async () => {
     const root = buildSettings(() => {});
     await setSetting('ruby', 'never');
-    await setSetting('sidebarOpen', false);
+    await setSetting('underlines', false);
     expect(selectFor(root, 'Furigana').value).not.toBe('never');
     syncSettingsControls(root);
     expect(selectFor(root, 'Furigana').value).toBe('never');
-    expect(switchFor(root, 'Show the transcript panel').checked).toBe(false);
-    await setSetting('sidebarOpen', true);
+    expect(switchFor(root, 'Underline words').checked).toBe(false);
+    await setSetting('underlines', true);
     syncSettingsControls(root);
-    expect(switchFor(root, 'Show the transcript panel').checked).toBe(true);
+    expect(switchFor(root, 'Underline words').checked).toBe(true);
   });
 
   it('offers a colour for each underline, and underlines the row in it', async () => {

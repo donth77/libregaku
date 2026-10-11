@@ -126,6 +126,8 @@ export const tr: Translation = {
     colorTrackingHint: 'Takip ettiğiniz kelimeler.',
     colorKnown: 'Bilinen',
     colorKnownHint: 'Olgun kartı olan ya da bilinen olarak işaretlenmiş kelimeler.',
+    underlines: 'Kelimelerin altını çiz',
+    underlinesHint: 'Kelimelerin altında renk olmayan sade altyazılar için kapatın.',
     markKnown: 'Bilinen kelimelerin altını çiz',
     markKnownHint: 'Varsayılan olarak kapalıdır; böylece öğrendikçe ekran sadeleşir.',
     defaultColours: 'Varsayılan renkler',
@@ -134,8 +136,6 @@ export const tr: Translation = {
     // Transkript
     transcriptHeading: 'Transkript',
     transcriptAbout: 'Videonun yanında, tüm altyazı satırlarını listeleyen panel.',
-    sidebarOpen: 'Transkript panelini göster',
-    sidebarOpenHint: 'İzlerken göstermek veya gizlemek için S tuşuna basın.',
     sidebarFollow: 'Videoyla birlikte kaydır',
     sidebarFollowHint: 'Geçerli satırı görünür tutar. Kendiniz kaydırırsanız durur; bir düğme yeniden başlatır.',
     headerBar: 'Üst çubuğu göster',

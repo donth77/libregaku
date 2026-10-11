@@ -116,6 +116,8 @@ export const vi: Translation = {
     colorTrackingHint: 'Từ bạn đang theo dõi.',
     colorKnown: 'Đã biết',
     colorKnownHint: 'Từ có thẻ đã trưởng thành, hoặc được đánh dấu đã biết.',
+    underlines: 'Gạch dưới từ',
+    underlinesHint: 'Tắt để xem phụ đề thường, không có màu dưới từ.',
     markKnown: 'Gạch dưới từ đã biết',
     markKnownHint: 'Mặc định tắt, để màn hình gọn dần khi bạn học.',
     defaultColours: 'Màu mặc định',
@@ -124,8 +126,6 @@ export const vi: Translation = {
     // Bản chép lời
     transcriptHeading: 'Bản chép lời',
     transcriptAbout: 'Bảng bên cạnh video, liệt kê mọi dòng phụ đề.',
-    sidebarOpen: 'Hiện bảng chép lời',
-    sidebarOpenHint: 'Nhấn S để hiện hoặc ẩn bảng khi đang xem.',
     sidebarFollow: 'Cuộn theo video',
     sidebarFollowHint: 'Luôn hiện dòng đang phát. Khi bạn tự cuộn, tính năng này tạm dừng; một nút sẽ cho tiếp tục.',
     headerBar: 'Hiện thanh tiêu đề',

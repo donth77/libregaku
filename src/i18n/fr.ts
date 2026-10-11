@@ -151,6 +151,8 @@ export const fr: Translation = {
     colorTrackingHint: 'Mots que vous suivez.',
     colorKnown: 'Connus',
     colorKnownHint: 'Mots avec une carte mature, ou marqués comme connus.',
+    underlines: 'Souligner les mots',
+    underlinesHint: 'Désactivez pour des sous-titres simples, sans couleurs sous les mots.',
     markKnown: 'Souligner les mots connus',
     markKnownHint: 'Désactivé par défaut, pour que l’écran s’allège à mesure que vous apprenez.',
     defaultColours: 'Couleurs par défaut',
@@ -159,8 +161,6 @@ export const fr: Translation = {
     // Transcription
     transcriptHeading: 'Transcription',
     transcriptAbout: 'Le panneau à côté de la vidéo, qui liste toutes les lignes de sous-titres.',
-    sidebarOpen: 'Afficher le panneau de transcription',
-    sidebarOpenHint: 'Appuyez sur S pour l’afficher ou le masquer pendant la lecture.',
     sidebarFollow: 'Défilement automatique',
     sidebarFollowHint:
       'Garde la ligne en cours à l’écran. Si vous faites défiler vous-même, il s’interrompt ; un bouton le relance.',

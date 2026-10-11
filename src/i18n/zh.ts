@@ -110,6 +110,8 @@ export const zh: Translation = {
     colorTrackingHint: '你关注的单词。',
     colorKnown: '已掌握',
     colorKnownHint: '卡片已熟练或标为已掌握的单词。',
+    underlines: '为单词加下划线',
+    underlinesHint: '关闭后显示普通字幕，单词下方没有颜色。',
     markKnown: '为已掌握的单词加下划线',
     markKnownHint: '默认关闭，这样学得越多，画面越清爽。',
     defaultColours: '默认颜色',
@@ -118,8 +120,6 @@ export const zh: Translation = {
     // Transcript: the panel beside the video
     transcriptHeading: '侧边栏',
     transcriptAbout: '视频旁边列出全部字幕的面板。',
-    sidebarOpen: '显示侧边栏',
-    sidebarOpenHint: '观看时按 S 显示或隐藏。',
     sidebarFollow: '随视频滚动',
     sidebarFollowHint: '让当前这句始终可见。手动滚动时会暂停跟随，点击按钮即可恢复。',
     headerBar: '显示顶栏',

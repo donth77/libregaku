@@ -116,6 +116,8 @@ export const th: Translation = {
     colorTrackingHint: 'คำที่คุณกำลังติดตาม',
     colorKnown: 'รู้แล้ว',
     colorKnownHint: 'คำที่มีการ์ดแก่กล้าแล้ว หรือทำเครื่องหมายว่ารู้แล้ว',
+    underlines: 'ขีดเส้นใต้คำ',
+    underlinesHint: 'ปิดเพื่อดูคำบรรยายธรรมดา ไม่มีสีใต้คำ',
     markKnown: 'ขีดเส้นใต้คำที่รู้แล้ว',
     markKnownHint: 'ปิดไว้เป็นค่าเริ่มต้น หน้าจอจะได้โล่งขึ้นเมื่อคุณเรียนไปเรื่อยๆ',
     defaultColours: 'สีเริ่มต้น',
@@ -124,8 +126,6 @@ export const th: Translation = {
     // ข้อความถอดเสียง
     transcriptHeading: 'ข้อความถอดเสียง',
     transcriptAbout: 'แผงข้างวิดีโอที่แสดงคำบรรยายทุกบรรทัด',
-    sidebarOpen: 'แสดงแผงข้อความถอดเสียง',
-    sidebarOpenHint: 'กด S เพื่อแสดงหรือซ่อนขณะดู',
     sidebarFollow: 'เลื่อนตามวิดีโอ',
     sidebarFollowHint: 'ให้บรรทัดปัจจุบันอยู่ในมุมมองเสมอ ถ้าเลื่อนเองจะหยุดชั่วคราว และมีปุ่มให้กลับมาเลื่อนตาม',
     headerBar: 'แสดงส่วนหัว',

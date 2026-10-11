@@ -113,6 +113,8 @@ export const id: Translation = {
     colorTrackingHint: 'Kata yang Anda pantau.',
     colorKnown: 'Dikenal',
     colorKnownHint: 'Kata dengan kartu matang, atau yang ditandai dikenal.',
+    underlines: 'Garis bawahi kata',
+    underlinesHint: 'Matikan untuk subtitle polos, tanpa warna di bawah kata.',
     markKnown: 'Garis bawahi kata yang dikenal',
     markKnownHint: 'Nonaktif secara default, jadi layar makin bersih seiring Anda belajar.',
     defaultColours: 'Warna default',
@@ -121,8 +123,6 @@ export const id: Translation = {
     // Transcript
     transcriptHeading: 'Transkrip',
     transcriptAbout: 'Panel di samping video yang mencantumkan setiap baris subtitel.',
-    sidebarOpen: 'Tampilkan panel transkrip',
-    sidebarOpenHint: 'Tekan S untuk menampilkan atau menyembunyikannya saat menonton.',
     sidebarFollow: 'Gulir mengikuti video',
     sidebarFollowHint: 'Menjaga baris saat ini tetap terlihat. Menggulir sendiri menjeda fitur ini; sebuah tombol melanjutkannya.',
     headerBar: 'Tampilkan bilah atas',

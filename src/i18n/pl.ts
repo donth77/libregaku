@@ -132,6 +132,8 @@ export const pl: Translation = {
     colorTrackingHint: 'Słowa, które śledzisz.',
     colorKnown: 'Znane',
     colorKnownHint: 'Słowa z dojrzałą kartą lub oznaczone jako znane.',
+    underlines: 'Podkreślaj słowa',
+    underlinesHint: 'Wyłącz, aby oglądać zwykłe napisy, bez kolorów pod słowami.',
     markKnown: 'Podkreślaj znane słowa',
     markKnownHint: 'Domyślnie wyłączone, więc w miarę nauki podkreśleń jest coraz mniej.',
     defaultColours: 'Domyślne kolory',
@@ -140,8 +142,6 @@ export const pl: Translation = {
     // Transkrypcja
     transcriptHeading: 'Transkrypcja',
     transcriptAbout: 'Panel obok filmu ze wszystkimi linijkami napisów.',
-    sidebarOpen: 'Pokazuj panel transkrypcji',
-    sidebarOpenHint: 'Naciśnij S, by go pokazać lub ukryć podczas oglądania.',
     sidebarFollow: 'Przewijaj z filmem',
     sidebarFollowHint: 'Utrzymuje bieżącą linijkę w widoku. Ręczne przewijanie to wstrzymuje, a przycisk wznawia.',
     headerBar: 'Pokazuj nagłówek',

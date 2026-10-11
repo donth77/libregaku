@@ -129,6 +129,9 @@ export const settings = {
   // Underlines: the colour under each word says how well it is known
   underlinesHeading: 'Underlines',
   underlinesAbout: 'Each colour shows how well you know a word. Click one to change it.',
+  /** The switch for every underline at once. */
+  underlines: 'Underline words',
+  underlinesHint: 'Turn off for plain subtitles, with no colours under words.',
   /** The underline colour for words with no card. */
   colorUnknown: 'New words',
   colorUnknownHint: 'Words with no card in Anki.',
@@ -151,9 +154,6 @@ export const settings = {
   // Transcript: the panel beside the video
   transcriptHeading: 'Transcript',
   transcriptAbout: 'The panel beside the video that lists every subtitle line.',
-  sidebarOpen: 'Show the transcript panel',
-  /** S is the key, shown as it is. */
-  sidebarOpenHint: 'Press S to show or hide it while watching.',
   /** Keep the line being spoken in view as the video plays. */
   sidebarFollow: 'Scroll with the video',
   sidebarFollowHint: 'Keeps the current line in view. Scrolling yourself pauses this; a button resumes it.',

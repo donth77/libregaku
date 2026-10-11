@@ -132,6 +132,8 @@ export const nl: Translation = {
     colorTrackingHint: 'Woorden die je volgt.',
     colorKnown: 'Bekend',
     colorKnownHint: 'Woorden met een volwassen kaart, of gemarkeerd als bekend.',
+    underlines: 'Woorden onderstrepen',
+    underlinesHint: 'Zet uit voor gewone ondertitels, zonder kleuren onder de woorden.',
     markKnown: 'Bekende woorden onderstrepen',
     markKnownHint: 'Standaard uit, zodat het scherm rustiger wordt naarmate je leert.',
     defaultColours: 'Standaardkleuren',
@@ -140,8 +142,6 @@ export const nl: Translation = {
     // Transcript
     transcriptHeading: 'Transcript',
     transcriptAbout: 'Het paneel naast de video met alle ondertitelregels.',
-    sidebarOpen: 'Transcriptpaneel tonen',
-    sidebarOpenHint: 'Druk op S om het tijdens het kijken te tonen of te verbergen.',
     sidebarFollow: 'Meescrollen met de video',
     sidebarFollowHint: 'Houdt de huidige regel in beeld. Scrol je zelf, dan pauzeert dit; een knop hervat het.',
     headerBar: 'Bovenbalk tonen',

@@ -118,6 +118,8 @@ export const ja: Translation = {
     colorTrackingHint: '注目している単語。',
     colorKnown: '既知',
     colorKnownHint: '定着したカードがある単語、または既知にした単語。',
+    underlines: '単語に下線を引く',
+    underlinesHint: 'オフにすると、下線の色がない普通の字幕になります。',
     markKnown: '既知の単語にも下線を引く',
     markKnownHint: '初期設定ではオフです。覚えるほど画面がすっきりします。',
     defaultColours: '初期設定の色',
@@ -126,8 +128,6 @@ export const ja: Translation = {
     // 文字起こし
     transcriptHeading: '文字起こし',
     transcriptAbout: '動画の横に、字幕のすべての行を一覧表示するパネルです。',
-    sidebarOpen: '文字起こしパネルを表示',
-    sidebarOpenHint: '視聴中はSキーで表示と非表示を切り替えられます。',
     sidebarFollow: '動画に合わせてスクロール',
     sidebarFollowHint: '再生中の行を表示し続けます。自分でスクロールすると止まり、ボタンで再開できます。',
     headerBar: 'ヘッダーを表示',

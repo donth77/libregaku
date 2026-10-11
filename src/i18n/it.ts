@@ -149,6 +149,8 @@ export const it: Translation = {
     colorTrackingHint: 'Parole che segui.',
     colorKnown: 'Conosciute',
     colorKnownHint: 'Parole con una carta matura, o segnate come conosciute.',
+    underlines: 'Sottolinea le parole',
+    underlinesHint: 'Disattiva per sottotitoli semplici, senza colori sotto le parole.',
     markKnown: 'Sottolinea le parole conosciute',
     markKnownHint: 'Disattivato di default, così lo schermo si alleggerisce man mano che impari.',
     defaultColours: 'Colori predefiniti',
@@ -157,8 +159,6 @@ export const it: Translation = {
     // Trascrizione
     transcriptHeading: 'Trascrizione',
     transcriptAbout: 'Il pannello accanto al video che elenca tutte le righe dei sottotitoli.',
-    sidebarOpen: 'Mostra il pannello della trascrizione',
-    sidebarOpenHint: 'Premi S per mostrarlo o nasconderlo mentre guardi.',
     sidebarFollow: 'Scorrimento automatico',
     sidebarFollowHint: 'Tiene in vista la riga corrente. Se scorri tu, si interrompe; un pulsante lo riattiva.',
     headerBar: 'Mostra l’intestazione',

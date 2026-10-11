@@ -108,6 +108,8 @@ export const zhHant: Translation = {
     colorTrackingHint: '正在追蹤的單字。',
     colorKnown: '已知',
     colorKnownHint: '卡片已熟練，或標為已知的單字。',
+    underlines: '為單字加底線',
+    underlinesHint: '關閉後顯示一般字幕，單字下方沒有顏色。',
     markKnown: '已知單字加底線',
     markKnownHint: '預設為關閉，學得越多，畫面就越清爽。',
     defaultColours: '預設顏色',
@@ -116,8 +118,6 @@ export const zhHant: Translation = {
     // Transcript
     transcriptHeading: '轉錄稿',
     transcriptAbout: '影片旁列出每一句字幕的面板。',
-    sidebarOpen: '顯示轉錄稿面板',
-    sidebarOpenHint: '觀看時按 S 顯示或隱藏。',
     sidebarFollow: '隨影片捲動',
     sidebarFollowHint: '讓目前的句子保持在畫面中。自行捲動時會暫停，按下按鈕即可恢復。',
     headerBar: '顯示頂端列',

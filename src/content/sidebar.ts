@@ -583,6 +583,8 @@ const STYLE = `
   .tw[data-s="tracking"] { box-shadow: inset 0 -2px 0 var(--lg-tracking, #A78BFA); }
   .tw[data-s="known"] { box-shadow: inset 0 -2px 0 var(--lg-known, #63AF97); }
   .tw[data-s="ignored"] { color: #A3ACC4; }
+  /* The learner has turned underlines off: in the transcript and in the saved lists. */
+  .panel.no-underlines .w[data-s], .panel.no-underlines .tw[data-s] { box-shadow: none; }
   /* Which marks the Words view lists: one list at a time, each with its count. */
   .wchips { display: flex; flex-wrap: wrap; gap: 6px; padding: 14px 16px 2px; }
   .wchip {
@@ -1205,6 +1207,7 @@ export class Sidebar {
     this.#list.classList.toggle('ruby-all', s.ruby === 'always');
     this.#list.classList.toggle('ruby-off', s.ruby === 'never');
     this.#list.classList.toggle('mark-known', s.markKnown);
+    this.#panel.classList.toggle('no-underlines', !s.underlines);
     applyVars(this.#host, underlineVars(s));
   }
 
