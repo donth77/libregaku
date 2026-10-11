@@ -3,7 +3,9 @@ import {
   FIELDS, MARK_SEARCH, MODEL, MODEL_NAME, ROOT_TAG, fieldHtml, furiganaField, keyField, toAnkiFurigana,
 } from './model';
 import { ankiCall as call, ankiTry } from './rpc';
+import { creditField } from './source';
 import { deckQuery } from './status';
+import type { Credit } from '../audio/recordings';
 
 /**
  * AnkiConnect, spoken to over HTTP.
@@ -149,6 +151,8 @@ export interface CardAudio {
   data: string;
   /** mediaFilename()'s: the service worker refuses any other. */
   filename: string;
+  /** Who recorded it and under what licence, written into the field ahead of it (creditField). */
+  credit?: Credit;
 }
 
 export async function createDeck(name: string): Promise<void> {
@@ -256,7 +260,8 @@ export async function addNote(card: NewCard): Promise<number> {
       Sentence: fieldHtml(card.sentence ?? ''),
       SentenceMeaning: fieldHtml(card.sentenceMeaning ?? ''),
       Source: card.source ?? '',
-      Audio: '',
+      // The recording itself is written in after this by AnkiConnect.
+      Audio: card.audio?.credit ? creditField(card.audio.credit) : '',
       Image: '',
     },
     tags: card.tags,

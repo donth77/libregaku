@@ -58,6 +58,12 @@ export const popup = {
   playedRecording: (word: string): string => `${word} · recording`,
   /** Said on the card once the word has played, in the browser's synthesised voice. */
   playedSynthesised: (word: string): string => `${word} · synthesised`,
+  /**
+   * Under the buttons once a recording has played: who spoke it and the
+   * licence it is shared under, a link to its page. `speaker` is a name and
+   * `licence` a licence's short name ("CC BY-SA 4.0"); both stay as they are.
+   */
+  recordingBy: (speaker: string, licence: string): string => `Recording by ${speaker} · ${licence}`,
   /** Said on the card when the word could not be played. */
   pronounceFailed: 'could not play audio',
   /** Button: make a card of the whole subtitle line, with its sound and a still. */

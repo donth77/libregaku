@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  DEFAULTS, DICTIONARIES, TARGET_LANGUAGES, cardDeck, dictionaryOf, featuresOf, withDecks, withDefaults, type Settings,
+  DEFAULTS, DICTIONARIES, TARGET_LANGUAGES, cardDeck, dictionaryOf, featuresOf, targetVariant, withDecks, withDefaults, type Settings,
 } from '../settings';
 
 /** What each language being learned gets, and the decks kept for each. */
@@ -70,6 +70,30 @@ describe('the flag picked for each language', () => {
   it('keeps each language its own, and reads them defensively', () => {
     const odd = { es: '🇲🇽', ja: '', fr: 3, de: null } as unknown as Settings['badgeFlag'];
     expect(withDefaults({ target: 'ja', badgeFlag: odd }).badgeFlag).toEqual({ es: '🇲🇽' });
+  });
+});
+
+describe('a language written two ways', () => {
+  it('is learned in Simplified Chinese until Traditional is picked', () => {
+    expect(targetVariant(at({ target: 'zh' }))).toBe('zh-Hans');
+    expect(targetVariant(at({ target: 'zh', scripts: { zh: 'zh-Hant' } }))).toBe('zh-Hant');
+    expect(targetVariant(at({ target: 'zh', scripts: { zh: 'zh-Hans' } }))).toBe('zh-Hans');
+  });
+
+  it('is the language itself for one written one way, whatever is stored for another', () => {
+    expect(targetVariant(at({ target: 'ja', scripts: { zh: 'zh-Hant' } }))).toBe('ja');
+    expect(targetVariant(at({ target: 'es' }))).toBe('es');
+    expect(featuresOf('ja').scripts).toBeUndefined();
+  });
+
+  it('keeps only a script the language has', () => {
+    const odd = { zh: 'zh-Hant', ja: 'ja-Latn', ko: 7, es: null } as unknown as Settings['scripts'];
+    expect(withDefaults({ scripts: odd }).scripts).toEqual({ zh: 'zh-Hant' });
+    expect(withDefaults({ scripts: { zh: 'yue' } }).scripts).toEqual({});
+    expect(withDefaults({ scripts: 'zh-Hant' as unknown as Settings['scripts'] }).scripts).toEqual({});
+    expect(withDefaults(undefined).scripts).toEqual({});
+    // A script that is not the language's is as good as none picked.
+    expect(targetVariant(at({ target: 'zh', scripts: { zh: 'yue' } }))).toBe('zh-Hans');
   });
 });
 

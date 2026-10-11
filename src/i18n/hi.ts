@@ -43,6 +43,8 @@ export const hi: Translation = {
     supportFull: 'पूरा सपोर्ट, उच्चारण और फ़ुरिगाना के साथ।',
     supportPinyin: 'पूरा सपोर्ट, पिनयिन के साथ। अर्थ अंग्रेज़ी में हैं।',
     supportWords: 'पूरा सपोर्ट। अर्थ अंग्रेज़ी में हैं।',
+    script: 'लिपि',
+    scriptHint: 'जब वीडियो में दोनों हों, तब यही इस्तेमाल होती है।',
     supportBasic: 'बुनियादी सपोर्ट: शब्द अलग किए जाते हैं, पर अभी कोई शब्दकोश या उच्चारण नहीं है।',
     native: 'आपकी भाषा',
     nativeHint: 'अनुवाद और अर्थ इसी भाषा में दिखते हैं, जहां वीडियो और शब्दकोश में यह भाषा हो।',
@@ -237,6 +239,8 @@ export const hi: Translation = {
     creditUnihan: 'किसी चीनी अक्षर का कौन सा उच्चारण पहले दिखे। © Unicode, Inc., Unicode License के तहत इस्तेमाल।',
     creditJotoba: 'शब्दकोश डाउनलोड होने तक अर्थ देखने के लिए इस्तेमाल होते हैं। दोनों JMdict का इस्तेमाल करते हैं।',
     creditLucide: 'आइकॉन। ISC लाइसेंस।',
+    creditCommons: 'स्पेनिश, चीनी और कोरियाई शब्दों की रिकॉर्डिंग, स्वयंसेवकों की आवाज़ में। हर रिकॉर्डिंग का अपना लाइसेंस है, ज़्यादातर का CC BY-SA 4.0, जो बजाते समय और कार्ड पर बोलने वाले के नाम के साथ दिखता है।',
+    creditAudioCmn: 'चीनी शब्दों की रिकॉर्डिंग, Yue Tan की आवाज़ में, कां विश्वविद्यालय। CC BY-SA 3.0 US।',
     licence: 'Libregaku MIT लाइसेंस के तहत है। शब्दकोश का डेटा उसके स्रोतों से डाउनलोड होता है, साथ में शामिल नहीं होता।',
     built: (when: string): string => `यह कॉपी ${when} को बनी थी।`,
 
@@ -473,6 +477,7 @@ export const hi: Translation = {
     pronounce: 'उच्चारण सुनें',
     playedRecording: (word: string): string => `${word} · रिकॉर्डिंग`,
     playedSynthesised: (word: string): string => `${word} · कृत्रिम आवाज़`,
+    recordingBy: (speaker: string, licence: string): string => `रिकॉर्डिंग: ${speaker} · ${licence}`,
     pronounceFailed: 'ऑडियो नहीं चल सका',
     addSentence: 'वाक्य जोड़ें',
     sentenceAdded: 'वाक्य जोड़ा गया',
@@ -634,6 +639,7 @@ export const hi: Translation = {
 
     // इस वीडियो के सबटाइटल
     subtitlesOff: 'प्लेयर में सबटाइटल चालू करें, Libregaku उन्हें पढ़ लेगा।',
+    trackNotSent: 'प्लेयर ने ये सबटाइटल अभी लोड नहीं किए हैं।',
     noTargetTrack: 'यहां उस भाषा में सबटाइटल नहीं हैं जो आप सीख रहे हैं।',
     noSecondTrack: 'यहां आपकी अपनी भाषा में सबटाइटल नहीं हैं, इसलिए दूसरी लाइन नहीं है।',
     onlyOneTrack: 'इस वीडियो में सबटाइटल का सिर्फ़ एक ट्रैक है, इसलिए दूसरी लाइन नहीं है।',
@@ -655,6 +661,7 @@ export const hi: Translation = {
     noTargetTrackDetail: (languages: readonly string[]): string =>
       `इस वीडियो में हैं: ${languages.join(', ') || 'कोई नहीं'}। सेटिंग में सीखने की भाषा बदलें, या कोई दूसरा वीडियो चुनें।`,
     onlyPictures: 'इस वीडियो में ये सबटाइटल सिर्फ़ तस्वीरों के रूप में हैं, टेक्स्ट नहीं, इसलिए Libregaku इन्हें पढ़ नहीं सकता।',
+    chooseInPlayer: (track: string): string => `प्लेयर के अपने सबटाइटल मेन्यू में ${track} चुनें, Libregaku उन्हें पढ़ लेगा।`,
     noHumanTrack: 'इस वीडियो के लिए किसी इंसान का लिखा ट्रैक उपलब्ध नहीं था।',
     secondTrackError: (track: string, error: string): string => `${track}: ${error}`,
     noSecondTrackDetail: (languages: readonly string[]): string => `इस वीडियो में हैं: ${languages.join(', ')}।`,
@@ -716,6 +723,7 @@ export const hi: Translation = {
 
     // सबटाइटल का ट्रैक जो लोड नहीं हुआ
     unknownTrack: (id: string): string => `अज्ञात ट्रैक ${id}`,
+    trackNotSent: 'प्लेयर ने इसे अभी लोड नहीं किया है — प्लेयर के सबटाइटल मेन्यू में इसे एक बार चुनें',
     noCaptionFormat: (attempts: readonly string[]): string =>
       `कोई भी कैप्शन फ़ॉर्मैट काम नहीं आया — ${attempts.join(', ')}`,
     noSubtitleUrl: (attempts: readonly string[]): string =>

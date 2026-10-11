@@ -48,6 +48,8 @@ export const sv: Translation = {
     supportFull: 'Fullt stöd, med läsningar och furigana.',
     supportPinyin: 'Fullt stöd, med pinyin. Definitionerna är på engelska.',
     supportWords: 'Fullt stöd. Definitionerna är på engelska.',
+    script: 'Skrivtecken',
+    scriptHint: 'Används när en video har båda.',
     supportBasic: 'Grundläggande stöd: orden delas upp, men det finns ännu ingen ordbok och inga läsningar.',
     native: 'Ditt språk',
     nativeHint: 'Översättningar och definitioner visas på det här språket, när videon och ordboken har det.',
@@ -241,6 +243,8 @@ export const sv: Translation = {
     creditUnihan: 'Vilken läsning av ett kinesiskt tecken som visas först. © Unicode, Inc., används under Unicode License.',
     creditJotoba: 'Används för uppslag medan ordboken laddas ned. Båda använder JMdict.',
     creditLucide: 'Ikoner. ISC-licens.',
+    creditCommons: 'Inspelningar av spanska, kinesiska och koreanska ord, inlästa av frivilliga. Varje inspelning har sin egen licens, oftast CC BY-SA 4.0, som visas med talarens namn vid uppspelning och på kortet.',
+    creditAudioCmn: 'Inspelningar av kinesiska ord av Yue Tan, universitetet i Caen. CC BY-SA 3.0 US.',
     licence: 'Libregaku är MIT-licensierat. Ordboksdata laddas ned från källorna och ingår inte.',
     built: (when: string): string => `Den här kopian byggdes ${when}.`,
 
@@ -471,6 +475,7 @@ export const sv: Translation = {
     pronounce: 'Lyssna',
     playedRecording: (word: string): string => `${word} · inspelning`,
     playedSynthesised: (word: string): string => `${word} · syntetisk röst`,
+    recordingBy: (speaker: string, licence: string): string => `Inspelning av ${speaker} · ${licence}`,
     pronounceFailed: 'kunde inte spela upp ljudet',
     addSentence: 'Lägg till mening',
     sentenceAdded: 'Mening tillagd',
@@ -633,6 +638,7 @@ export const sv: Translation = {
 
     // Videons undertexter
     subtitlesOff: 'Slå på undertexter i spelaren så hämtar Libregaku dem.',
+    trackNotSent: 'Spelaren har inte läst in de här undertexterna än.',
     noTargetTrack: 'Det finns inga undertexter här på språket du lär dig.',
     noSecondTrack: 'Det finns inga undertexter här på ditt språk, så det blir ingen andra rad.',
     onlyOneTrack: 'Videon har bara ett undertextspår, så det blir ingen andra rad.',
@@ -657,6 +663,7 @@ export const sv: Translation = {
       `Undertexter i videon: ${languages.join(', ') || 'inga'}. ` +
       'Byt språket du lär dig i inställningarna, eller välj en annan video.',
     onlyPictures: 'Videon har dem bara som bilder, inte som text, så Libregaku kan inte läsa dem.',
+    chooseInPlayer: (track: string): string => `Välj ${track} i spelarens undertextmeny så hämtar Libregaku dem.`,
     noHumanTrack: 'Den här videon hade inget spår skrivet av en människa.',
     secondTrackError: (track: string, error: string): string => `${track}: ${error}`,
     noSecondTrackDetail: (languages: readonly string[]): string => `Undertexter i videon: ${languages.join(', ')}.`,
@@ -719,6 +726,7 @@ export const sv: Translation = {
 
     // Ett undertextspår som inte laddades
     unknownTrack: (id: string): string => `okänt spår ${id}`,
+    trackNotSent: 'inte inläst av spelaren än – välj det en gång i spelarens undertextmeny',
     noCaptionFormat: (attempts: readonly string[]): string =>
       `inget undertextformat fungerade – ${attempts.join(', ')}`,
     noSubtitleUrl: (attempts: readonly string[]): string =>

@@ -6,20 +6,30 @@
  * real recordings come first and synthesis is only the floor.
  *
  * The chain, best to worst:
- *   1. JapanesePod101 — human recordings, free, no key, wide coverage
+ *   1. A recording of a person, from the language's own sources (RECORDED):
+ *      JapanesePod101 for Japanese; free recordings on Wikimedia Commons for
+ *      Spanish, Chinese and Korean, and for Chinese the HSK words of audio-cmn
+ *      before those (recordings.ts)
  *   2. A user-supplied URL template — for anyone with their own source
  *   3. speechSynthesis — always available, never fails, never great
  *
  * Forvo was the obvious second source and is not usable: its API is paid, and
  * a libre extension should not ship a dependency most users cannot exercise.
- * Wikimedia Commons was the next candidate and is too thin to matter — 538
- * Japanese files in total, keyed by romaji, with nothing for 食べる or 勉強.
- * So the template exists instead: anyone with a Forvo key, a local collection
- * or another service can point at it without the project taking on either the
- * cost or the licence.
+ * Wikimedia Commons is too thin for Japanese to matter — 538 files in total,
+ * keyed by romaji, with nothing for 食べる or 勉強 — and is most of what there
+ * is for Spanish. So the template exists as well: anyone with a Forvo key, a
+ * local collection or another service can point at it without the project
+ * taking on either the cost or the licence.
  */
 
 import { toHiragana } from '../morphology/furigana';
+import {
+  AUDIO_CMN, AUDIO_CMN_CREDIT, COMMONS_API, COMMONS_FILES, LINGUA_LIBRE, NAMED,
+  askable, audioCmnUrl, creditOf, filesIn, linguaLibreOf, linguaLibreSearch, mp3Of, namedOf, namedQuery, namedTitle,
+  type CommonsFile, type Credit,
+} from './recordings';
+
+export type { Credit } from './recordings';
 
 const JPOD = 'https://assets.languagepod101.com/dictionary/japanese/audiomp3.php';
 
@@ -40,6 +50,13 @@ export const TEMPLATE_KEY = 'libregaku.audioTemplate';
  */
 export const AUDIO_HOSTS: readonly string[] = ['assets.languagepod101.com', 'cdn.innovativelanguage.com'];
 
+/**
+ * Sources that are one corner of a host with much else on it: Wikimedia
+ * Commons' query API and its files, and one repository's folder on GitHub at
+ * one commit. Each is allowed by how its address starts, not by its host.
+ */
+export const AUDIO_PLACES: readonly string[] = [COMMONS_API, COMMONS_FILES, AUDIO_CMN];
+
 /** No recording of one word comes near this; anything bigger is not one. */
 export const MAX_AUDIO_BYTES = 4 * 1024 * 1024;
 
@@ -57,7 +74,8 @@ export function templateHost(template: unknown): string | null {
 /**
  * Whether the service worker may fetch this URL as audio: https, no
  * credentials in it, and a host this module actually uses — jpod101's, or
- * the one the user's own template names.
+ * the one the user's own template names — or one of the places above. The
+ * address is read as the browser would write it, so "/../" gets nowhere.
  */
 export function audioUrlAllowed(url: string, template?: unknown): boolean {
   let u: URL;
@@ -68,16 +86,19 @@ export function audioUrlAllowed(url: string, template?: unknown): boolean {
   }
   if (u.protocol !== 'https:' || u.username || u.password) return false;
   if (AUDIO_HOSTS.includes(u.host)) return true;
+  if (AUDIO_PLACES.some((place) => u.href.startsWith(place))) return true;
   const own = templateHost(template);
   return own !== null && u.host === own;
 }
 
-export type Source = 'jpod101' | 'custom' | 'synthesis';
+export type Source = 'jpod101' | 'commons' | 'audio-cmn' | 'custom' | 'synthesis';
 
 export interface Spoken {
   source: Source;
   /** False when we fell through to synthesis. */
   human: boolean;
+  /** Who recorded it and under what licence, where the source says. */
+  credit?: Credit;
 }
 
 /** A recording, as bytes: to play now, or to put on a card. */
@@ -87,8 +108,19 @@ export interface Recording {
   /** Decoded size, in bytes. */
   size: number;
   type: string;
-  source: 'jpod101' | 'custom';
+  source: 'jpod101' | 'commons' | 'audio-cmn' | 'custom';
+  /** Who recorded it and under what licence, where the source says: shown where it plays, kept on the card. */
+  credit?: Credit;
 }
+
+/** What asking one source came to: a recording, none there, or no answer to go by. */
+type Asked = Recording | 'none' | 'unsure';
+
+/**
+ * One source of recordings. `also` is how else the word is written — a
+ * Chinese word's other script — for a source that files it under that.
+ */
+type Finder = (word: string, reading: string | undefined, also: readonly string[]) => Promise<Asked>;
 
 let current: HTMLAudioElement | null = null;
 let currentUrl: string | null = null;
@@ -101,12 +133,16 @@ function stop(): void {
   if ('speechSynthesis' in window) speechSynthesis.cancel();
 }
 
-async function play(rec: Recording): Promise<void> {
-  stop();
-  const bin = atob(rec.data);
+function bytesOf(b64: string): Uint8Array<ArrayBuffer> {
+  const bin = atob(b64);
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  currentUrl = URL.createObjectURL(new Blob([bytes], { type: rec.type }));
+  return bytes;
+}
+
+async function play(rec: Recording): Promise<void> {
+  stop();
+  currentUrl = URL.createObjectURL(new Blob([bytesOf(rec.data)], { type: rec.type }));
   const audio = new Audio(currentUrl);
   current = audio;
   await audio.play();
@@ -144,34 +180,41 @@ export function decodedSize(b64: string): number {
  * script every recording failed as "Failed to fetch", and synthesis quietly
  * took its place. Host permissions apply in the worker; CORS does not.
  */
-async function fetchBytes(url: string): Promise<{ ok: true; data: string; size: number; type: string } | { ok: false; reason: string }> {
+async function fetchBytes(
+  url: string,
+): Promise<{ ok: true; data: string; size: number; type: string } | { ok: false; reason: string; status?: number }> {
   const r = (await chrome.runtime.sendMessage({ type: 'fetch-audio', url })) as
     | { ok: boolean; status?: number; type?: string; bytes?: string; error?: string }
     | undefined;
   if (!r) return { ok: false, reason: 'no reply from the service worker' };
-  if (!r.ok || !r.bytes) return { ok: false, reason: r.error ?? `HTTP ${r.status}` };
+  if (!r.ok || !r.bytes) {
+    return { ok: false, reason: r.error ?? `HTTP ${r.status}`, ...(r.status === undefined ? {} : { status: r.status }) };
+  }
   return { ok: true, data: r.bytes, size: decodedSize(r.bytes), type: r.type ?? 'audio/mpeg' };
 }
 
+/** What came of asking a source, in the console: a fallback to the voice hides every failure otherwise. */
+const report = (verdict: string, what: string): void =>
+  console.log(`%c[libregaku]%c audio ${verdict} · ${what}`, 'color:#8AA2E8', '');
+
 /** Fetched as bytes so the body can be inspected before anything is played. */
-async function tryJpod(word: string, reading?: string): Promise<Recording | null> {
+const tryJpod: Finder = async (word, reading) => {
   const q = jpodQuery(word, reading);
-  const say = (verdict: string): void =>
-    console.log(`%c[libregaku]%c audio ${verdict} · ${q}`, 'color:#8AA2E8', '');
+  const say = (verdict: string): void => report(verdict, q);
 
   try {
     const got = await fetchBytes(`${JPOD}?${q}`);
     if (!got.ok) {
       say(got.reason);
-      return null;
+      return 'unsure';
     }
     if (got.size === JPOD_MISSING_BYTES) {
       say('not in jpod101');
-      return null;
+      return 'none';
     }
     if (got.size < 512) {
       say(`suspiciously small (${got.size}b)`);
-      return null;
+      return 'unsure';
     }
     say(`recording ${got.size}b`);
     return { data: got.data, size: got.size, type: got.type, source: 'jpod101' };
@@ -179,9 +222,91 @@ async function tryJpod(word: string, reading?: string): Promise<Recording | null
     // A blocked host reports identically to a dead network here, and the
     // fallback hides it — so name it rather than failing quietly.
     say(`fetch failed (${String(e)})`);
+    return 'unsure';
+  }
+};
+
+/** The word, then how else it is written: each once, in that order. */
+const written = (word: string, also: readonly string[]): string[] => [...new Set([word, ...also])];
+
+/** What Commons says to a question, or null when it would not answer. */
+async function askCommons(url: string): Promise<unknown> {
+  try {
+    const got = await fetchBytes(url);
+    return got.ok ? (JSON.parse(new TextDecoder().decode(bytesOf(got.data))) as unknown) : null;
+  } catch {
     return null;
   }
 }
+
+/** A Commons file as a recording: the MP3 Commons makes of it, or the file itself where that is missing. */
+async function fromCommons(file: CommonsFile, speaker?: string): Promise<Asked> {
+  const mp3 = mp3Of(file.url);
+  for (const url of mp3 ? [mp3, file.url] : [file.url]) {
+    try {
+      const got = await fetchBytes(url);
+      if (got.ok && got.size >= 512) {
+        report(`recording ${got.size}b`, file.title);
+        return { data: got.data, size: got.size, type: got.type, source: 'commons', credit: creditOf(file, speaker) };
+      }
+    } catch {
+      /* the next address */
+    }
+  }
+  report('could not fetch', file.title);
+  return 'unsure';
+}
+
+/** Lingua Libre's recordings on Commons, in the language it calls `iso`. */
+function linguaLibre(iso: string): Finder {
+  return async (word, _reading, also) => {
+    let unsure = false;
+    for (const form of written(word, also).filter(askable)) {
+      const answer = await askCommons(linguaLibreSearch(form, iso));
+      if (answer === null) {
+        unsure = true;
+        continue;
+      }
+      const hit = linguaLibreOf(filesIn(answer), form, iso);
+      if (hit) return fromCommons(hit.file, hit.speaker);
+    }
+    if (!unsure) report('not in Lingua Libre', `${word} (${iso})`);
+    return unsure ? 'unsure' : 'none';
+  };
+}
+
+/** Wiktionary's own recordings on Commons, named `<prefix>-<word>.ogg`. */
+function named(prefix: string): Finder {
+  return async (word) => {
+    if (!askable(word)) return 'none';
+    const title = namedTitle(prefix, word);
+    const answer = await askCommons(namedQuery(title));
+    if (answer === null) return 'unsure';
+    const file = namedOf(filesIn(answer), title);
+    return file ? fromCommons(file) : 'none';
+  };
+}
+
+/** audio-cmn's HSK words, which it files under the simplified characters. */
+const tryAudioCmn: Finder = async (word, _reading, also) => {
+  let unsure = false;
+  for (const form of written(word, also)) {
+    const url = audioCmnUrl(form);
+    if (!url) continue;
+    try {
+      const got = await fetchBytes(url);
+      if (got.ok && got.size >= 512) {
+        report(`recording ${got.size}b`, `audio-cmn ${form}`);
+        return { data: got.data, size: got.size, type: got.type, source: 'audio-cmn', credit: AUDIO_CMN_CREDIT };
+      }
+      // No such file is its answer for a word it lacks; anything else is no answer.
+      if (got.ok || got.status !== 404) unsure = true;
+    } catch {
+      unsure = true;
+    }
+  }
+  return unsure ? 'unsure' : 'none';
+};
 
 /**
  * A user-supplied audio URL, e.g.
@@ -211,42 +336,70 @@ async function storedTemplate(): Promise<string | null> {
 }
 
 /**
- * Where human recordings of a language's words can be had, by language.
- * JapanesePod101 has Japanese only; a language with no source here goes
- * straight to the learner's own, if they set one.
+ * Where human recordings of a language's words can be had, by language, best
+ * first. JapanesePod101 has Japanese only. Chinese goes to one speaker's HSK
+ * words before the volunteers', for the same voice from word to word; Korean
+ * to Wiktionary's own files, which have more of its common words, before
+ * Lingua Libre's. A language with no source here goes straight to the
+ * learner's own, if they set one.
  */
-const RECORDED: Record<string, (word: string, reading?: string) => Promise<Recording | null>> = {
-  ja: tryJpod,
+const RECORDED: Record<string, readonly Finder[]> = {
+  ja: [tryJpod],
+  es: [linguaLibre(LINGUA_LIBRE.es ?? 'spa')],
+  zh: [tryAudioCmn, linguaLibre(LINGUA_LIBRE.zh ?? 'cmn')],
+  ko: [named(NAMED.ko ?? 'Ko'), linguaLibre(LINGUA_LIBRE.ko ?? 'kor')],
 };
 
-async function lookFor(word: string, reading: string | undefined, lang: string): Promise<Recording | null> {
-  const recorded = await RECORDED[lang]?.(word, reading);
-  if (recorded) return recorded;
+/**
+ * A recording from the language's sources, then from the learner's own.
+ * `sure` says every source answered and none had it, which is worth
+ * remembering; a source that did not answer may have it the next time.
+ */
+async function lookFor(
+  word: string, reading: string | undefined, lang: string, also: readonly string[],
+): Promise<{ rec: Recording | null; sure: boolean }> {
+  let sure = true;
+  for (const find of RECORDED[lang] ?? []) {
+    const got = await find(word, reading, also).catch((): Asked => 'unsure');
+    if (got === 'unsure') sure = false;
+    else if (got !== 'none') return { rec: got, sure: true };
+  }
   const template = await storedTemplate();
-  return template ? tryTemplate(template, word, reading) : null;
+  if (!template) return { rec: null, sure };
+  // The learner's own source says nothing of why it has none.
+  return { rec: await tryTemplate(template, word, reading), sure: false };
 }
 
 /** Recordings found this session, so pronouncing a word and then carding it fetches it once. */
 const found = new Map<string, Recording>();
+/** Words every source answered for and none had: asked once a session, not at every press. */
+const absent = new Set<string>();
 const KEEP = 40;
+const KEEP_ABSENT = 400;
 
 /**
  * A human recording of the word, or null when no source has one.
  *
  * Never synthesis. A synthesised voice can be played but not stored on a
  * card, and should not be: it is the poorest model there is to imitate.
- * JapanesePod101 has Japanese only, so other languages go straight to the
- * learner's own source, if they set one.
+ * `also` is how else the word is written: a Chinese word's other script.
  */
-export async function findRecording(word: string, reading?: string, lang = 'ja'): Promise<Recording | null> {
+export async function findRecording(
+  word: string, reading?: string, lang = 'ja', also: readonly string[] = [],
+): Promise<Recording | null> {
   const key = `${lang}|${word}|${reading ?? ''}`;
   const known = found.get(key);
   if (known) return known;
-  // Misses are not kept: a network that failed once may not fail again.
-  const rec = await lookFor(word, reading, lang);
+  // Known to be nowhere, unless the learner has named a source of their own since.
+  if (absent.has(key) && !(await storedTemplate())) return null;
+  const { rec, sure } = await lookFor(word, reading, lang, also);
   if (rec) {
     found.set(key, rec);
     if (found.size > KEEP) found.delete(found.keys().next().value as string);
+  } else if (sure) {
+    // Only an answer of "none" is kept: a network that failed once may not fail again.
+    absent.add(key);
+    if (absent.size > KEEP_ABSENT) absent.delete(absent.values().next().value as string);
   }
   return rec;
 }
@@ -277,13 +430,15 @@ function synthesise(word: string, lang: string): void {
 /**
  * Say a word: a recording where one exists, the browser's voice for the
  * language otherwise. `lang` is the language being learned — a Spanish word
- * read by a Japanese voice is no model at all.
+ * read by a Japanese voice is no model at all. `also` as for findRecording.
  */
-export async function pronounce(word: string, reading?: string, lang = 'ja'): Promise<Spoken> {
-  const rec = await findRecording(word, reading, lang);
+export async function pronounce(
+  word: string, reading?: string, lang = 'ja', also: readonly string[] = [],
+): Promise<Spoken> {
+  const rec = await findRecording(word, reading, lang, also);
   if (rec) {
     await play(rec);
-    return { source: rec.source, human: true };
+    return { source: rec.source, human: true, ...(rec.credit ? { credit: rec.credit } : {}) };
   }
   synthesise(word, lang);
   return { source: 'synthesis', human: false };

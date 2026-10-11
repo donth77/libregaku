@@ -39,6 +39,8 @@ export const ko: Translation = {
     supportFull: '읽는 법과 후리가나까지 모두 지원합니다.',
     supportPinyin: '병음까지 모두 지원합니다. 뜻은 영어로 나옵니다.',
     supportWords: '모두 지원합니다. 뜻은 영어로 나옵니다.',
+    script: '문자',
+    scriptHint: '영상에 둘 다 있으면 이쪽을 사용합니다.',
     supportBasic: '기본 지원: 단어를 나누기만 하며, 사전과 읽는 법은 아직 없습니다.',
     native: '내 언어',
     nativeHint: '동영상과 사전에 이 언어가 있으면 번역과 뜻을 이 언어로 보여 줍니다.',
@@ -230,6 +232,8 @@ export const ko: Translation = {
     creditUnihan: '한자의 여러 읽는 법 중 먼저 보여 줄 것을 정합니다. © Unicode, Inc., Unicode License에 따라 사용합니다.',
     creditJotoba: '사전을 다운로드하는 동안 단어 찾기에 사용합니다. 둘 다 JMdict를 씁니다.',
     creditLucide: '아이콘. ISC 라이선스.',
+    creditCommons: '자원봉사자들이 읽은 스페인어, 중국어, 한국어 단어 녹음입니다. 녹음마다 라이선스가 다르며(대부분 CC BY-SA 4.0), 재생할 때와 카드에 화자 이름과 함께 표시됩니다.',
+    creditAudioCmn: 'Yue Tan(캉 대학교)이 읽은 중국어 단어 녹음입니다. CC BY-SA 3.0 US.',
     licence: 'Libregaku는 MIT 라이선스입니다. 사전 데이터는 포함되어 있지 않고, 원래 출처에서 다운로드합니다.',
     built: (when: string): string => `이 버전은 ${when}에 빌드되었습니다.`,
 
@@ -447,6 +451,7 @@ export const ko: Translation = {
     pronounce: '발음 듣기',
     playedRecording: (word: string): string => `${word} · 녹음`,
     playedSynthesised: (word: string): string => `${word} · 합성 음성`,
+    recordingBy: (speaker: string, licence: string): string => `녹음: ${speaker} · ${licence}`,
     pronounceFailed: '오디오를 재생할 수 없음',
     addSentence: '문장 추가',
     sentenceAdded: '문장 추가됨',
@@ -604,6 +609,7 @@ export const ko: Translation = {
 
     // Titles: this video's subtitles
     subtitlesOff: '플레이어에서 자막을 켜면 Libregaku가 자막을 읽어 옵니다.',
+    trackNotSent: '플레이어가 이 자막을 아직 불러오지 않았습니다.',
     noTargetTrack: '학습 언어로 된 자막이 없습니다.',
     noSecondTrack: '내 언어로 된 자막이 없어서 번역 줄을 표시할 수 없습니다.',
     onlyOneTrack: '이 동영상은 자막 트랙이 하나뿐이라 번역 줄을 표시할 수 없습니다.',
@@ -625,6 +631,7 @@ export const ko: Translation = {
     noTargetTrackDetail: (languages: readonly string[]): string =>
       `이 동영상의 자막: ${languages.join(', ') || '없음'}. 설정에서 학습 언어를 바꾸거나 다른 동영상을 고르세요.`,
     onlyPictures: '이 동영상의 자막은 텍스트가 아닌 이미지로만 되어 있어 Libregaku가 읽을 수 없습니다.',
+    chooseInPlayer: (track: string): string => `플레이어의 자막 메뉴에서 ${track}을(를) 선택하면 Libregaku가 자막을 읽어 옵니다.`,
     noHumanTrack: '이 동영상에는 사람이 작성한 자막이 없습니다.',
     secondTrackError: (track: string, error: string): string => `${track}: ${error}`,
     noSecondTrackDetail: (languages: readonly string[]): string => `이 동영상의 자막: ${languages.join(', ')}.`,
@@ -687,6 +694,7 @@ export const ko: Translation = {
 
     // A subtitle track that would not load
     unknownTrack: (id: string): string => `알 수 없는 트랙 ${id}`,
+    trackNotSent: '플레이어가 아직 불러오지 않았습니다. 플레이어의 자막 메뉴에서 한 번 선택해 주세요',
     noCaptionFormat: (attempts: readonly string[]): string => `작동하는 자막 형식이 없음 — ${attempts.join(', ')}`,
     noSubtitleUrl: (attempts: readonly string[]): string =>
       `작동하는 자막 URL이 없음 — ${attempts.join('; ') || '목록 없음'}`,

@@ -25,7 +25,7 @@ import { buildStatusMap, lemmaReading, type OverrideStatus, type Status, type St
 import { loadOverrides, marksIn, setMark, syncMarks, type MarkSync } from '../anki/marks';
 import {
   DICTIONARIES, cardDeck, definitionLanguage, dictionaryOf, featuresOf, loadSettings, nextRuby,
-  onSettingsChange, trackLanguageMatch,
+  onSettingsChange, targetVariant,
   setSetting, settings, underlineVars,
 } from '../settings';
 import { languageList, loadUiLanguage, setTranslationLoader, setUiLanguage, ui } from '../i18n';
@@ -47,7 +47,8 @@ import * as bookmarks from './bookmarks';
 import { Header } from './header';
 import { Transcript } from './transcript';
 import { CueIndex } from './cue-index';
-import { clearNotice, showNotice } from './notice';
+import { chooseSecond, chooseTrack, sameTracks } from './track-choice';
+import { clearNotice, noticeShown, showNotice } from './notice';
 import { Overlay } from './renderer';
 
 /**
@@ -74,6 +75,30 @@ const targetInPictures = (adapter: SubtitleSource): boolean =>
 function noTargetDetail(adapter: SubtitleSource, tracks: TrackInfo[]): string {
   if (targetInPictures(adapter)) return ui.notices.onlyPictures;
   return ui.notices.noTargetTrackDetail(languageList(tracks.filter((t) => !t.forced).map((t) => t.lang)));
+}
+
+/**
+ * The tracks a run would load from this list: the toolbar's picks first, then
+ * the languages in settings. Asked again when a newer list arrives, to tell
+ * whether it changes what is on screen (followTracks).
+ *
+ * Forced-narrative tracks carry only the lines that translate on-screen
+ * text, so a whole episode may hold three of them. Netflix lists one before
+ * the real subtitles in several languages, and taking the first match meant
+ * choosing it — which reads as a video whose subtitles barely exist.
+ */
+function wantedTracks(tracks: TrackInfo[]): { track: TrackInfo | undefined; second: TrackInfo | undefined } {
+  const inTarget = tracks.filter((t) => t.lang.startsWith(targetLang()) && !t.forced);
+  // An explicit pick from the toolbar wins over the automatic one: a person's
+  // subtitles, in the script being learned (chooseTrack).
+  const track =
+    (chosenTrack ? tracks.find((t) => t.id === chosenTrack) : undefined) ??
+    chooseTrack(inTarget, targetVariant(settings()));
+  // '' is an explicit "no second line" from the toolbar; null means pick one.
+  if (!track || !settings().dualSubtitles || chosenSecond === '') return { track, second: undefined };
+  // The track being studied is not also its own translation, even when picked as both.
+  const picked = chosenSecond && chosenSecond !== track.id ? tracks.find((t) => t.id === chosenSecond) : undefined;
+  return { track, second: picked ?? chooseSecond(tracks, settings().native, track.id) };
 }
 
 /** Loud by default while the adapters are young. */
@@ -778,13 +803,6 @@ async function run(gen: number): Promise<boolean> {
   // used to be cleared at the end of this same run, a frame after appearing.
   clearNotice();
 
-  /*
-   * Prefer a human track over an auto-generated one in the same language.
-   * ASR output has no punctuation and invents words, so segmenting it teaches
-   * a learner nothing about the language and quite a lot about speech
-   * recognition. Taking the first match regardless meant silently studying
-   * ASR whenever it happened to be listed first.
-   */
   knownTracks = tracks;
 
   // A pick from the toolbar is for this video only. Track ids are positions
@@ -797,19 +815,7 @@ async function run(gen: number): Promise<boolean> {
     chosenForVideo = videoId;
   }
 
-  /*
-   * Forced-narrative tracks carry only the lines that translate on-screen
-   * text, so a whole episode may hold three of them. Netflix lists one before
-   * the real subtitles in several languages, and taking the first match meant
-   * choosing it — which reads as a video whose subtitles barely exist.
-   */
-  const inTarget = tracks.filter((t) => t.lang.startsWith(targetLang()) && !t.forced);
-  // An explicit pick from the toolbar wins over the automatic one.
-  const track =
-    (chosenTrack ? tracks.find((t) => t.id === chosenTrack) : undefined) ??
-    inTarget.find((t) => !t.generated && !t.cc) ??
-    inTarget.find((t) => !t.generated) ??
-    inTarget[0];
+  const { track, second: pick } = wantedTracks(tracks);
 
   if (!track) {
     const have = tracks.map((t) => t.lang);
@@ -829,6 +835,22 @@ async function run(gen: number): Promise<boolean> {
   } catch (err) {
     if (gen !== generation) return false;
     log('could not fetch the track:', err);
+    if (track.onRequest) {
+      const still = (await adapter.listTracks()).find((t) => t.id === track.id);
+      if (gen !== generation) return false;
+      if (!still || still.onRequest) {
+        // Nothing of this track is here, so no track is in use.
+        activeTrack = null;
+        // It came with nothing in it to read and is off the list: choose again from what is left.
+        if (!still) return run(gen);
+        // The site named the track and its player would not hand it over. What
+        // the player draws meanwhile is another language's subtitles, not to
+        // be read as this one's; say what brings the track instead. The list
+        // that follows the learner's own choice is picked up (followTracks).
+        showNotice(mount, 'track-not-sent', ui.notices.chooseInPlayer(track.label || track.lang));
+        return true;
+      }
+    }
     // Before settling for the current line only, ask the adapter whether it
     // knows another way to the whole transcript.
     const alt = (await adapter.fallbackTrack?.().catch(() => [])) ?? [];
@@ -862,17 +884,8 @@ async function run(gen: number): Promise<boolean> {
   let second: string | null = null;
   if (settings().dualSubtitles && chosenSecond !== '') {
     const want = settings().native;
-    // Same trap as above, plus a preference for plain subtitles over closed
-    // captions: a translation line reading "[door creaks]" helps nobody.
-    // The language itself first; for Chinese, the other script after it, as
-    // sites label tracks by script (zh-Hant) or by place (zh-TW).
-    const inNative = tracks
-      .filter((t) => trackLanguageMatch(t.lang, want) > 0 && t.id !== track.id && !t.forced)
-      .sort((a, b) => trackLanguageMatch(b.lang, want) - trackLanguageMatch(a.lang, want));
-    const pick =
-      (chosenSecond ? tracks.find((t) => t.id === chosenSecond) : undefined) ??
-      inNative.find((t) => !t.cc) ??
-      inNative[0];
+    // The toolbar's pick, or a track in the learner's own language that is
+    // not a forced one (wantedTracks, chooseSecond).
     if (pick) {
       try {
         const other = await adapter.loadTrack(pick.id);
@@ -1011,7 +1024,7 @@ let replace: (() => void) | null = null;
 /** What the overlay was last told, so a settings change applies only what moved. */
 let appearance = { size: 0, bottom: 0, dual: true };
 /** The languages the current run was built for. */
-let languages = { target: '', native: '', definitions: '' };
+let languages = { target: '', variant: '', native: '', definitions: '' };
 /** The status scope last read from Anki. */
 let scopeRead: string | null = null;
 /** The language whose hand marks are in `overrides`. */
@@ -1250,7 +1263,9 @@ async function addCard(draft: CardDraft, token: Token, line: LineContext): Promi
   };
   const word = token.lemma ?? token.surface;
   // The headword and its reading: the pair recordings are filed under.
-  const audio = settings().cardAudio ? { word: draft.expression, reading, lang: targetLang() } : undefined;
+  const audio = settings().cardAudio
+    ? { word: draft.expression, reading, lang: targetLang(), ...(draft.alt ? { also: [draft.alt] } : {}) }
+    : undefined;
 
   let missing: MissingMedia[] = [];
   let id = 0;
@@ -1845,8 +1860,38 @@ for (const a of ADAPTERS) {
       restart();
       return;
     }
+    // Settled on an earlier list: this one is followed, and the subtitles
+    // start over only where it changes them.
+    if (rendering) {
+      void followTracks(a);
+      return;
+    }
     void start();
   });
+}
+
+/**
+ * A track list that arrives once the page has settled on an earlier one.
+ *
+ * Netflix sends another when its player fetches a track it had only named,
+ * and a list can come twice for one video. The toolbar's lists follow it
+ * either way. The subtitles start over only when this list would give
+ * different ones than are on screen — a language that was missing, a second
+ * line that could not be had — so a list that changes nothing for the learner
+ * rebuilds nothing. start() used to drop every list after the first, which
+ * left "no subtitles in your language" up after the subtitles had arrived.
+ */
+async function followTracks(adapter: SubtitleSource): Promise<void> {
+  const gen = generation;
+  const tracks = await adapter.listTracks();
+  // Moved on meanwhile; or a run is in flight, which reads the list itself.
+  if (gen !== generation || !rendering || starting || pickAdapter() !== adapter) return;
+  if (!tracks.length || sameTracks(tracks, knownTracks)) return;
+  knownTracks = tracks;
+  const { track, second } = wantedTracks(tracks);
+  if ((track?.id ?? null) === activeTrack && (second?.id ?? null) === activeSecond) return;
+  log('the track list changed — starting over with it');
+  restart();
 }
 
 /** Tear down and run again from the top, for a change that needs new tracks. */
@@ -2084,7 +2129,7 @@ void loadSettings().then(async (s) => {
   log(`lookup opens on ${s.interaction}`);
   await reloadQueued();
   appearance = { size: s.subtitleSize, bottom: s.subtitleBottom, dual: s.dualSubtitles };
-  languages = { target: s.target, native: s.native, definitions: definitionLanguage(s) };
+  languages = { target: s.target, variant: targetVariant(s), native: s.native, definitions: definitionLanguage(s) };
   scopeRead = s.statusScope;
   marksRead = s.target;
   settingsReady = true;
@@ -2128,17 +2173,23 @@ onSettingsChange((s) => {
   overlay?.setUnderlines(s.underlines);
   overlay?.setColors(underlineVars(s));
 
-  const languageChanged =
-    s.target !== languages.target || s.native !== languages.native || definitionLanguage(s) !== languages.definitions;
+  // The script counts with the language: Traditional Chinese is another track of the same video.
+  const learningChanged = s.target !== languages.target || targetVariant(s) !== languages.variant;
+  const nativeChanged = s.native !== languages.native;
+  const languageChanged = learningChanged || nativeChanged || definitionLanguage(s) !== languages.definitions;
   const dualTurnedOn = s.dualSubtitles && !appearance.dual;
   appearance = { size: s.subtitleSize, bottom: s.subtitleBottom, dual: s.dualSubtitles };
-  languages = { target: s.target, native: s.native, definitions: definitionLanguage(s) };
+  languages = { target: s.target, variant: targetVariant(s), native: s.native, definitions: definitionLanguage(s) };
 
   if (languageChanged) {
     // A new target needs a new analyser and new tracks; a new native language
     // a new dictionary edition and a new second line. None of it is live
     // without starting over.
     log('language changed — starting over');
+    // A track picked in the toolbar was picked for the language just left:
+    // kept, it stayed on screen in the old language, read as the new one.
+    if (learningChanged) chosenTrack = null;
+    if (nativeChanged) chosenSecond = null;
     segmenter = null;
     analyserNoticed = false;
     clearLookupCache();
@@ -2196,7 +2247,11 @@ chrome.runtime.onMessage.addListener((msg: { type?: string; track?: string; seco
       title: adapter?.title() ?? null,
       rendering,
       tracks: knownTracks,
-      track: activeTrack ?? chosenTrack,
+      // The track in use; while a pick is loading, the pick. Settled with
+      // nothing loaded, nothing: a pick that failed is not in use.
+      track: activeTrack ?? (rendering ? null : chosenTrack),
+      // What the notice over the player says, for when nothing is in use.
+      notice: noticeShown()?.title ?? null,
       // Null when no second line is loaded, which is not the same as a
       // deliberate "None" — the popup must not echo one back as the other.
       second: activeSecond,

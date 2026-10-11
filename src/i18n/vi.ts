@@ -38,6 +38,8 @@ export const vi: Translation = {
     supportFull: 'Hỗ trợ đầy đủ, gồm cả cách đọc và furigana.',
     supportPinyin: 'Hỗ trợ đầy đủ, gồm cả pinyin. Nghĩa được viết bằng tiếng Anh.',
     supportWords: 'Hỗ trợ đầy đủ. Nghĩa được viết bằng tiếng Anh.',
+    script: 'Chữ viết',
+    scriptHint: 'Được dùng khi video có cả hai.',
     supportBasic: 'Hỗ trợ cơ bản: có tách từ, nhưng chưa có từ điển hay cách đọc.',
     native: 'Ngôn ngữ của bạn',
     nativeHint: 'Bản dịch và nghĩa của từ hiện bằng ngôn ngữ này, nếu video và từ điển có ngôn ngữ đó.',
@@ -231,6 +233,8 @@ export const vi: Translation = {
     creditUnihan: 'Cách đọc nào của chữ Hán được hiện trước. © Unicode, Inc., dùng theo Unicode License.',
     creditJotoba: 'Dùng để tra từ trong lúc từ điển đang tải. Cả hai đều dùng JMdict.',
     creditLucide: 'Biểu tượng. Giấy phép ISC.',
+    creditCommons: 'Bản ghi âm các từ tiếng Tây Ban Nha, tiếng Trung và tiếng Hàn do tình nguyện viên đọc. Mỗi bản có giấy phép riêng, phần lớn là CC BY-SA 4.0, được ghi kèm tên người đọc khi phát và trên thẻ.',
+    creditAudioCmn: 'Bản ghi âm từ tiếng Trung của Yue Tan, Đại học Caen. CC BY-SA 3.0 US.',
     licence: 'Libregaku dùng giấy phép MIT. Dữ liệu từ điển được tải từ nguồn của nó, không đi kèm sẵn.',
     built: (when: string): string => `Bản dựng này được tạo lúc ${when}.`,
 
@@ -460,6 +464,7 @@ export const vi: Translation = {
     pronounce: 'Phát âm',
     playedRecording: (word: string): string => `${word} · bản ghi âm`,
     playedSynthesised: (word: string): string => `${word} · giọng máy`,
+    recordingBy: (speaker: string, licence: string): string => `Bản ghi âm của ${speaker} · ${licence}`,
     pronounceFailed: 'không phát được âm thanh',
     addSentence: 'Thêm câu',
     sentenceAdded: 'Đã thêm câu',
@@ -618,6 +623,7 @@ export const vi: Translation = {
 
     // Phụ đề của video này
     subtitlesOff: 'Hãy bật phụ đề trong trình phát, Libregaku sẽ tự nhận.',
+    trackNotSent: 'Trình phát chưa tải phụ đề này.',
     noTargetTrack: 'Ở đây không có phụ đề bằng ngôn ngữ bạn đang học.',
     noSecondTrack: 'Ở đây không có phụ đề bằng ngôn ngữ của bạn, nên không có dòng thứ hai.',
     onlyOneTrack: 'Video này chỉ có một bản phụ đề, nên không có dòng thứ hai.',
@@ -641,6 +647,7 @@ export const vi: Translation = {
     noTargetTrackDetail: (languages: readonly string[]): string =>
       `Video này có: ${languages.join(', ') || 'không có'}. Hãy đổi ngôn ngữ đang học trong cài đặt, hoặc chọn video khác.`,
     onlyPictures: 'Video này chỉ có phụ đề dạng hình ảnh, không phải văn bản, nên Libregaku không đọc được.',
+    chooseInPlayer: (track: string): string => `Hãy chọn ${track} trong menu phụ đề của trình phát, Libregaku sẽ tự nhận.`,
     noHumanTrack: 'Video này không có bản phụ đề do người viết.',
     secondTrackError: (track: string, error: string): string => `${track}: ${error}`,
     noSecondTrackDetail: (languages: readonly string[]): string => `Video này có: ${languages.join(', ')}.`,
@@ -698,6 +705,7 @@ export const vi: Translation = {
 
     // Một bản phụ đề không tải được
     unknownTrack: (id: string): string => `bản phụ đề không xác định ${id}`,
+    trackNotSent: 'trình phát chưa tải — hãy chọn một lần trong menu phụ đề của trình phát',
     noCaptionFormat: (attempts: readonly string[]): string =>
       `không định dạng phụ đề nào dùng được — ${attempts.join(', ')}`,
     noSubtitleUrl: (attempts: readonly string[]): string =>

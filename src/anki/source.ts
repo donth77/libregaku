@@ -27,6 +27,20 @@ export function sourceField(p: Provenance): string {
   return `<a href="${escapeHtml(p.url)}">${escapeHtml(label)}</a>`;
 }
 
+/**
+ * A recording's credit, for the Audio field ahead of the recording: who spoke
+ * it and under what licence, linked to its page. Most free recordings ask
+ * that this go wherever they go (CC BY, CC BY-SA), and a deck that is shared
+ * takes its cards' sound with it. Small: it is not what the card is for.
+ */
+export function creditField(credit: { by: string; licence: string; page: string }): string {
+  // Square brackets are Anki's own markup ([sound:…]); a name must not write any.
+  const text = escapeHtml(`${credit.by} · ${credit.licence}`).replace(/\[/g, '&#91;').replace(/\]/g, '&#93;');
+  const page = credit.page.replace(/\[/g, '%5B').replace(/\]/g, '%5D');
+  const said = /^https:\/\//.test(page) ? `<a href="${escapeHtml(page)}">${text}</a>` : text;
+  return `<span style="font-size:11px;opacity:.6">${said}</span> `;
+}
+
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c,

@@ -34,6 +34,8 @@ export const id: Translation = {
     supportFull: 'Dukungan penuh, termasuk cara baca dan furigana.',
     supportPinyin: 'Dukungan penuh, termasuk pinyin. Definisi dalam bahasa Inggris.',
     supportWords: 'Dukungan penuh. Definisi dalam bahasa Inggris.',
+    script: 'Aksara',
+    scriptHint: 'Yang dipakai saat video punya keduanya.',
     supportBasic: 'Dukungan dasar: kata-kata dipisahkan, tetapi belum ada kamus atau cara baca.',
     native: 'Bahasa Anda',
     nativeHint: 'Terjemahan dan definisi ditampilkan dalam bahasa ini, jika video dan kamus menyediakannya.',
@@ -229,6 +231,8 @@ export const id: Translation = {
     creditUnihan: 'Cara baca karakter Tionghoa yang ditampilkan pertama. © Unicode, Inc., digunakan dengan Unicode License.',
     creditJotoba: 'Dipakai untuk pencarian selama kamus diunduh. Keduanya memakai JMdict.',
     creditLucide: 'Ikon. Lisensi ISC.',
+    creditCommons: 'Rekaman kata bahasa Spanyol, Tionghoa, dan Korea yang diucapkan para sukarelawan. Setiap rekaman punya lisensinya sendiri, kebanyakan CC BY-SA 4.0, yang ditampilkan bersama nama penuturnya saat diputar dan di kartu.',
+    creditAudioCmn: 'Rekaman kata bahasa Tionghoa oleh Yue Tan, Universitas Caen. CC BY-SA 3.0 US.',
     licence: 'Libregaku berlisensi MIT. Data kamus diunduh dari sumbernya, tidak disertakan.',
     built: (when: string): string => `Salinan ini dibuat pada ${when}.`,
 
@@ -458,6 +462,7 @@ export const id: Translation = {
     pronounce: 'Dengarkan',
     playedRecording: (word: string): string => `${word} · rekaman`,
     playedSynthesised: (word: string): string => `${word} · suara sintetis`,
+    recordingBy: (speaker: string, licence: string): string => `Rekaman oleh ${speaker} · ${licence}`,
     pronounceFailed: 'audio tidak dapat diputar',
     addSentence: 'Tambahkan kalimat',
     sentenceAdded: 'Kalimat ditambahkan',
@@ -616,6 +621,7 @@ export const id: Translation = {
 
     // This video's subtitles
     subtitlesOff: 'Aktifkan subtitel di pemutar, dan Libregaku akan membacanya.',
+    trackNotSent: 'Pemutar belum memuat subtitel ini.',
     noTargetTrack: 'Tidak ada subtitel di sini dalam bahasa yang Anda pelajari.',
     noSecondTrack: 'Tidak ada subtitel di sini dalam bahasa Anda, jadi tidak ada baris kedua.',
     onlyOneTrack: 'Video ini hanya punya satu trek subtitel, jadi tidak ada baris kedua.',
@@ -640,6 +646,7 @@ export const id: Translation = {
       `Subtitel video ini: ${languages.join(', ') || 'tidak ada'}. ` +
       'Ubah bahasa yang Anda pelajari di setelan, atau pilih video lain.',
     onlyPictures: 'Video ini hanya menyediakannya sebagai gambar, bukan teks, jadi Libregaku tidak bisa membacanya.',
+    chooseInPlayer: (track: string): string => `Pilih ${track} di menu subtitel pemutar, dan Libregaku akan membacanya.`,
     noHumanTrack: 'Tidak ada trek yang ditulis manusia untuk video ini.',
     secondTrackError: (track: string, error: string): string => `${track}: ${error}`,
     noSecondTrackDetail: (languages: readonly string[]): string => `Subtitel video ini: ${languages.join(', ')}.`,
@@ -699,6 +706,7 @@ export const id: Translation = {
 
     // A subtitle track that would not load
     unknownTrack: (id: string): string => `trek tidak dikenal ${id}`,
+    trackNotSent: 'belum dimuat oleh pemutar — pilih sekali di menu subtitel pemutar',
     noCaptionFormat: (attempts: readonly string[]): string =>
       `tidak ada format subtitel yang berhasil — ${attempts.join(', ')}`,
     noSubtitleUrl: (attempts: readonly string[]): string =>

@@ -43,6 +43,8 @@ async function footer(): Promise<HTMLElement> {
 }
 
 beforeEach(() => {
+  // A popup opened by an earlier test is closed: it would go on asking its page.
+  window.dispatchEvent(new Event('pagehide'));
   answers = {};
   local = {};
   mount();
@@ -157,6 +159,169 @@ describe('the track pickers', () => {
       Array.from(document.querySelectorAll(`#${id} option`)).map((o) => o.textContent);
     expect(shown('track')).toEqual(['Chinese (Simplified)', 'English']);
     expect(shown('second')).toEqual(['None', 'Chinese (Simplified)', 'Off (forced)', 'English']);
+  });
+});
+
+describe('the track pickers and the page', () => {
+  type Track = { id: string; lang: string; label: string };
+  const ja: Track = { id: 'ja', lang: 'ja', label: 'Japanese' };
+  const hans: Track = { id: 'hans', lang: 'zh-Hans', label: 'Chinese (Simplified)' };
+  const hant: Track = { id: 'hant', lang: 'zh-Hant', label: 'Chinese (Traditional)' };
+  const en: Track = { id: 'en', lang: 'en', label: 'English' };
+
+  /** What the page says of itself, which a test changes as the page would. */
+  let page: { rendering: boolean; tracks: Track[]; track: string | null; second: string | null; notice?: string | null };
+  /** True while the page has nothing of ours on it to answer: still loading, or not a site we read. */
+  let absent = false;
+  let sent: Array<Record<string, unknown>>;
+
+  const shown = (id: string): Array<string | null> =>
+    Array.from(document.querySelectorAll(`#${id} option`)).map((o) => o.textContent);
+  const value = (id: string): string => (document.getElementById(id) as HTMLSelectElement).value;
+
+  async function open(onPick?: (msg: Record<string, unknown>) => void): Promise<void> {
+    sent = [];
+    document.body.innerHTML = PAGE;
+    vi.stubGlobal('chrome', {
+      tabs: {
+        query: async () => [{ id: 5 }],
+        sendMessage: async (_tab: number, msg: Record<string, unknown>) => {
+          if (msg.type === 'lg-state') {
+            if (absent) throw new Error('Could not establish connection. Receiving end does not exist.');
+            return { supported: true, site: 'netflix', title: 'x', sidebarOpen: true, ...page };
+          }
+          sent.push(msg);
+          onPick?.(msg);
+          return { ok: true };
+        },
+      },
+      runtime: { openOptionsPage: () => {}, sendMessage: async () => ({ ok: false, kind: 'offline', offline: true }) },
+      storage: { local: { get: async () => ({}) } },
+    });
+    vi.resetModules();
+    await import('../action');
+    await vi.waitFor(() => {
+      if (document.getElementById('status')?.textContent === '') throw new Error('not yet');
+    });
+  }
+
+  const pick = (id: string, to: string): void => {
+    const sel = document.getElementById(id) as HTMLSelectElement;
+    sel.value = to;
+    sel.dispatchEvent(new Event('change'));
+  };
+
+  it('show nothing chosen, not an empty box, when the video has none in the language learned', async () => {
+    // Learning Chinese on a video with Japanese and English only: nothing is loaded.
+    page = { rendering: true, tracks: [ja, en], track: null, second: null };
+    await open();
+    expect(shown('track')).toEqual(['—', 'Japanese', 'English']);
+    expect(value('track')).toBe('');
+    expect((document.querySelector('#track option') as HTMLOptionElement).disabled).toBe(true);
+    // The translation's list has its own first choice for that.
+    expect(shown('second')).toEqual(['None', 'Japanese', 'English']);
+  });
+
+  it('are drawn again from the page after a pick, which can move the other list too', async () => {
+    page = { rendering: true, tracks: [hans, hant, en], track: 'hans', second: 'en' };
+    await open((msg) => {
+      // The page loads the pick; the subtitles' track cannot also be the translation's.
+      if (typeof msg.track === 'string') page = { ...page, track: msg.track, second: msg.track === 'en' ? null : page.second };
+    });
+    expect(shown('track')).toEqual(['Chinese (Simplified)', 'Chinese (Traditional)', 'English']);
+    expect([value('track'), value('second')]).toEqual(['hans', 'en']);
+
+    pick('track', 'hant');
+    await vi.waitFor(() => expect(sent).toEqual([{ type: 'lg-set-tracks', track: 'hant' }]));
+    await vi.waitFor(() => expect([value('track'), value('second')]).toEqual(['hant', 'en']));
+
+    pick('track', 'en');
+    await vi.waitFor(() => expect([value('track'), value('second')]).toEqual(['en', '']));
+  });
+
+  it('follow a page that had not finished loading when the popup opened', async () => {
+    vi.useFakeTimers();
+    try {
+      absent = true;
+      page = { rendering: true, tracks: [ja, en], track: 'ja', second: 'en' };
+      await open();
+      expect(document.getElementById('status')?.textContent).toContain('Not active on this page');
+      expect(document.getElementById('tracks')?.hidden).toBe(true);
+      expect(document.getElementById('quick')?.hidden).toBe(true);
+
+      // The page's own script is in: lists, status and the panel's button all arrive.
+      absent = false;
+      await vi.advanceTimersByTimeAsync(1100);
+      expect(document.getElementById('status')?.textContent).toContain('Active');
+      expect(document.getElementById('tracks')?.hidden).toBe(false);
+      expect(document.getElementById('quick')?.hidden).toBe(false);
+      expect([value('track'), value('second')]).toEqual(['ja', 'en']);
+
+      // And go again if the tab moves on to a page with nothing of ours.
+      absent = true;
+      await vi.advanceTimersByTimeAsync(1100);
+      expect(document.getElementById('tracks')?.hidden).toBe(true);
+      expect(document.getElementById('quick')?.hidden).toBe(true);
+    } finally {
+      absent = false;
+      window.dispatchEvent(new Event('pagehide'));
+      vi.useRealTimers();
+    }
+  });
+
+  it('come with what the page says, in place of "active", when no track is in use', async () => {
+    const said = "The player hasn't loaded these subtitles yet.";
+    page = { rendering: true, tracks: [ja, hans, en], track: null, second: null, notice: said };
+    await open();
+    const status = document.getElementById('status') as HTMLElement;
+    expect(status.textContent).toBe(said);
+    expect(status.className).toBe('status off');
+    expect(value('track')).toBe('');
+
+    // A notice beside subtitles that are showing is about something else: the page is active.
+    window.dispatchEvent(new Event('pagehide'));
+    page = { rendering: true, tracks: [ja, en], track: 'ja', second: null, notice: 'This video has only one subtitle track, so there is no second line.' };
+    await open();
+    expect(document.getElementById('status')?.textContent).toContain('Active');
+    expect(document.getElementById('status')?.className).toBe('status ok');
+  });
+
+  it('show nothing in use when the pick could not be loaded', async () => {
+    // Asked for a track the player would not hand over: the page loads nothing, and says so.
+    page = { rendering: true, tracks: [ja, hans, en], track: 'ja', second: 'en' };
+    await open((msg) => {
+      if (msg.track === 'hans') page = { ...page, track: null, second: null };
+    });
+    pick('track', 'hans');
+    await vi.waitFor(() => expect(sent).toEqual([{ type: 'lg-set-tracks', track: 'hans' }]));
+    await vi.waitFor(() => expect(shown('track')).toEqual(['—', 'Japanese', 'Chinese (Simplified)', 'English']));
+    expect([value('track'), value('second')]).toEqual(['', '']);
+  });
+
+  it('follow the page while it starts over for another language', async () => {
+    vi.useFakeTimers();
+    try {
+      // Opened a moment after the language was changed: the page is starting over.
+      page = { rendering: false, tracks: [ja, hans, hant, en], track: null, second: null };
+      await open();
+      expect(document.getElementById('status')?.textContent).toContain('Waiting for subtitles');
+      expect(value('track')).toBe('');
+
+      page = { rendering: true, tracks: [ja, hans, hant, en], track: 'hans', second: 'en' };
+      await vi.advanceTimersByTimeAsync(1100);
+      expect(document.getElementById('status')?.textContent).toContain('Active');
+      expect([value('track'), value('second')]).toEqual(['hans', 'en']);
+      // The placeholder goes once a track is in use.
+      expect(shown('track')).toEqual(['Japanese', 'Chinese (Simplified)', 'Chinese (Traditional)', 'English']);
+
+      // Closed: it stops asking.
+      window.dispatchEvent(new Event('pagehide'));
+      page = { ...page, track: 'hant' };
+      await vi.advanceTimersByTimeAsync(3000);
+      expect(value('track')).toBe('hans');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

@@ -52,6 +52,8 @@ export const nl: Translation = {
     supportFull: 'Volledige ondersteuning, met lezingen en furigana.',
     supportPinyin: 'Volledige ondersteuning, met pinyin. Definities zijn in het Engels.',
     supportWords: 'Volledige ondersteuning. Definities zijn in het Engels.',
+    script: 'Schrifttekens',
+    scriptHint: 'Worden gebruikt als een video beide heeft.',
     supportBasic: 'Basisondersteuning: woorden worden gesplitst, maar er is nog geen woordenboek en er zijn geen lezingen.',
     native: 'Jouw taal',
     nativeHint: 'Vertalingen en definities worden in deze taal getoond, als de video en het woordenboek die hebben.',
@@ -255,6 +257,8 @@ export const nl: Translation = {
       'Welke lezing van een Chinees karakter eerst wordt getoond. © Unicode, Inc., gebruikt onder de Unicode License.',
     creditJotoba: 'Gebruikt voor opzoeken zolang het woordenboek downloadt. Beide gebruiken JMdict.',
     creditLucide: 'Iconen. ISC-licentie.',
+    creditCommons: 'Opnamen van Spaanse, Chinese en Koreaanse woorden, ingesproken door vrijwilligers. Elke opname heeft een eigen licentie, meestal CC BY-SA 4.0. Die staat met de naam van de spreker bij het afspelen en op de kaart.',
+    creditAudioCmn: 'Opnamen van Chinese woorden door Yue Tan, Universiteit van Caen. CC BY-SA 3.0 US.',
     licence: 'Libregaku heeft een MIT-licentie. Woordenboekgegevens worden van hun bronnen gedownload, niet meegeleverd.',
     built: (when: string): string => `Deze kopie is gebouwd op ${when}.`,
 
@@ -490,6 +494,7 @@ export const nl: Translation = {
     pronounce: 'Luisteren',
     playedRecording: (word: string): string => `${word} · opname`,
     playedSynthesised: (word: string): string => `${word} · synthetisch`,
+    recordingBy: (speaker: string, licence: string): string => `Opname van ${speaker} · ${licence}`,
     pronounceFailed: 'kon de audio niet afspelen',
     addSentence: 'Zin toevoegen',
     sentenceAdded: 'Zin toegevoegd',
@@ -651,6 +656,7 @@ export const nl: Translation = {
 
     // De ondertitels van deze video
     subtitlesOff: 'Zet ondertitels aan in de speler, dan pikt Libregaku ze op.',
+    trackNotSent: 'De speler heeft deze ondertitels nog niet geladen.',
     noTargetTrack: 'Hier zijn geen ondertitels in de taal die je leert.',
     noSecondTrack: 'Hier zijn geen ondertitels in jouw taal, dus er is geen tweede regel.',
     onlyOneTrack: 'Deze video heeft maar één ondertitelspoor, dus er is geen tweede regel.',
@@ -676,6 +682,7 @@ export const nl: Translation = {
       `Deze video heeft: ${languages.join(', ') || 'geen'}. ` +
       'Wijzig in de instellingen wat je leert, of kies een andere video.',
     onlyPictures: 'Deze video heeft ze alleen als afbeeldingen, niet als tekst, dus Libregaku kan ze niet lezen.',
+    chooseInPlayer: (track: string): string => `Kies ${track} in het ondertitelmenu van de speler, dan pikt Libregaku ze op.`,
     noHumanTrack: 'Er was voor deze video geen spoor dat door mensen is geschreven.',
     secondTrackError: (track: string, error: string): string => `${track}: ${error}`,
     noSecondTrackDetail: (languages: readonly string[]): string => `Deze video heeft: ${languages.join(', ')}.`,
@@ -740,6 +747,7 @@ export const nl: Translation = {
 
     // Een ondertitelspoor dat niet laadde
     unknownTrack: (id: string): string => `onbekend spoor ${id}`,
+    trackNotSent: 'nog niet geladen door de speler: kies het één keer in het ondertitelmenu van de speler',
     noCaptionFormat: (attempts: readonly string[]): string =>
       `geen enkel ondertitelformaat werkte – ${attempts.join(', ')}`,
     noSubtitleUrl: (attempts: readonly string[]): string =>

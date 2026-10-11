@@ -70,6 +70,8 @@ export const ar: Translation = {
     supportFull: 'دعم كامل، يشمل القراءات والفوريغانا.',
     supportPinyin: 'دعم كامل، يشمل البينيين. التعريفات بالإنجليزية.',
     supportWords: 'دعم كامل. التعريفات بالإنجليزية.',
+    script: 'الكتابة',
+    scriptHint: 'هي المستخدمة عندما يتوفّر الفيديو بالنوعين.',
     supportBasic: 'دعم أساسي: تُقسَّم الكلمات، لكن لا يوجد قاموس ولا قراءات بعد.',
     native: 'لغتك',
     nativeHint: 'تظهر الترجمات والتعريفات بهذه اللغة، حيثما توفّرت في الفيديو والقاموس.',
@@ -262,6 +264,8 @@ export const ar: Translation = {
     creditUnihan: 'أي قراءة للحرف الصيني تظهر أولًا. © Unicode, Inc.، مستخدم بموجب Unicode License.',
     creditJotoba: 'يُستخدمان للبحث أثناء تنزيل القاموس. كلاهما يعتمد على JMdict.',
     creditLucide: 'الرموز. ترخيص ISC.',
+    creditCommons: 'تسجيلات لكلمات إسبانية وصينية وكورية بأصوات متطوعين. لكل تسجيل ترخيصه، وهو CC BY-SA 4.0 في الغالب، ويُذكر مع اسم المتحدث عند تشغيله وعلى البطاقة.',
+    creditAudioCmn: 'تسجيلات لكلمات صينية بصوت Yue Tan من جامعة كان. ترخيص CC BY-SA 3.0 US.',
     licence: 'Libregaku مرخّص بموجب MIT. تُنزَّل بيانات القواميس من مصادرها، ولا تأتي مضمّنة فيه.',
     built: (when: string): string => `أُنشئت هذه النسخة في ${when}.`,
 
@@ -487,6 +491,7 @@ export const ar: Translation = {
     pronounce: 'استماع',
     playedRecording: (word: string): string => `${word} · تسجيل`,
     playedSynthesised: (word: string): string => `${word} · صوت اصطناعي`,
+    recordingBy: (speaker: string, licence: string): string => `تسجيل بصوت ${speaker} · ${licence}`,
     pronounceFailed: 'تعذّر تشغيل الصوت',
     addSentence: 'إضافة الجملة',
     sentenceAdded: 'تمت إضافة الجملة',
@@ -653,6 +658,7 @@ export const ar: Translation = {
 
     // ترجمة هذا الفيديو
     subtitlesOff: 'فعّل الترجمة في المشغّل وسيلتقطها Libregaku.',
+    trackNotSent: 'لم يحمّل المشغّل هذه الترجمة بعد.',
     noTargetTrack: 'لا توجد ترجمة هنا باللغة التي تتعلمها.',
     noSecondTrack: 'لا توجد ترجمة هنا بلغتك، لذا لا يوجد سطر ثانٍ.',
     onlyOneTrack: 'لهذا الفيديو مسار ترجمة واحد فقط، لذا لا يوجد سطر ثانٍ.',
@@ -674,6 +680,7 @@ export const ar: Translation = {
     noTargetTrackDetail: (languages: readonly string[]): string =>
       `ترجمات هذا الفيديو: ${languages.join('، ') || 'لا شيء'}. غيّر ما تتعلمه في الإعدادات، أو اختر فيديو آخر.`,
     onlyPictures: 'هذه الترجمة موجودة هنا كصور فقط، لا كنص، لذا لا يستطيع Libregaku قراءتها.',
+    chooseInPlayer: (track: string): string => `اختر ${track} من قائمة الترجمة في المشغّل نفسه وسيلتقطها Libregaku.`,
     noHumanTrack: 'لا يوجد لهذا الفيديو مسار ترجمة كتبه إنسان.',
     secondTrackError: (track: string, error: string): string => `${track}: ${error}`,
     noSecondTrackDetail: (languages: readonly string[]): string => `ترجمات هذا الفيديو: ${languages.join('، ')}.`,
@@ -734,6 +741,7 @@ export const ar: Translation = {
 
     // مسار ترجمة لم يُحمَّل
     unknownTrack: (id: string): string => `مسار غير معروف ${id}`,
+    trackNotSent: 'لم يحمّلها المشغّل بعد؛ اخترها مرة واحدة من قائمة الترجمة في المشغّل',
     noCaptionFormat: (attempts: readonly string[]): string => `لم تنجح أي صيغة للترجمة — ${attempts.join('، ')}`,
     noSubtitleUrl: (attempts: readonly string[]): string =>
       `لم ينجح أي عنوان URL للترجمة — ${attempts.join('؛ ') || 'لا يوجد أي عنوان'}`,

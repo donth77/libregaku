@@ -55,10 +55,21 @@ const STYLE = `
 const dismissed = new Set<string>();
 
 let host: HTMLElement | null = null;
+/** The notice on screen, in the words it was shown with. */
+let shown: { id: string; title: string } | null = null;
 
 export function clearNotice(): void {
   host?.remove();
   host = null;
+  shown = null;
+}
+
+/**
+ * The notice on screen now, if any: for the toolbar popup, which says the
+ * same thing rather than "active" while nothing is being shown.
+ */
+export function noticeShown(): { id: string; title: string } | null {
+  return shown;
 }
 
 export function showNotice(mount: HTMLElement, id: string, detail?: string): void {
@@ -86,6 +97,7 @@ export function showNotice(mount: HTMLElement, id: string, detail?: string): voi
   const title = document.createElement('div');
   title.className = 'title';
   title.textContent = key ? ui.notices[key] : ui.notices.unexpected;
+  shown = { id, title: title.textContent };
 
   body.appendChild(title);
 

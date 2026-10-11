@@ -37,6 +37,8 @@ export interface AudioWanted {
   word: string;
   reading?: string;
   lang: string;
+  /** How else the word is written, for a source that files it under that: a Chinese word's other script. */
+  also?: string[];
 }
 
 export function isQueueKey(key: string): boolean {

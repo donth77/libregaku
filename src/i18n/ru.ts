@@ -61,6 +61,8 @@ export const ru: Translation = {
     supportFull: 'Полная поддержка, включая чтения и фуригану.',
     supportPinyin: 'Полная поддержка, включая пиньинь. Определения на английском.',
     supportWords: 'Полная поддержка. Определения на английском.',
+    script: 'Письменность',
+    scriptHint: 'Используется, когда в видео есть обе.',
     supportBasic: 'Базовая поддержка: текст делится на слова, но словаря и чтений пока нет.',
     native: 'Ваш язык',
     nativeHint: 'Переводы и определения показываются на этом языке, если он есть у видео и в словаре.',
@@ -258,6 +260,8 @@ export const ru: Translation = {
     creditUnihan: 'Какое чтение китайского иероглифа показывать первым. © Unicode, Inc., по лицензии Unicode License.',
     creditJotoba: 'Используются для поиска, пока загружается словарь. Оба основаны на JMdict.',
     creditLucide: 'Значки. Лицензия ISC.',
+    creditCommons: 'Записи испанских, китайских и корейских слов, начитанные добровольцами. У каждой своя лицензия, чаще всего CC BY-SA 4.0; она указана вместе с именем диктора при воспроизведении и на карточке.',
+    creditAudioCmn: 'Записи китайских слов: Yue Tan, Канский университет. CC BY-SA 3.0 US.',
     licence: 'Libregaku распространяется по лицензии MIT. Данные словарей скачиваются из источников, а не входят в расширение.',
     built: (when: string): string => `Эта копия собрана ${when}.`,
 
@@ -496,6 +500,7 @@ export const ru: Translation = {
     pronounce: 'Прослушать',
     playedRecording: (word: string): string => `${word} · запись`,
     playedSynthesised: (word: string): string => `${word} · синтез речи`,
+    recordingBy: (speaker: string, licence: string): string => `Запись: ${speaker} · ${licence}`,
     pronounceFailed: 'не удалось воспроизвести аудио',
     addSentence: 'Добавить предложение',
     sentenceAdded: 'Предложение добавлено',
@@ -660,6 +665,7 @@ export const ru: Translation = {
 
     // Субтитры этого видео
     subtitlesOff: 'Включите субтитры в плеере, и Libregaku их подхватит.',
+    trackNotSent: 'Плеер ещё не загрузил эти субтитры.',
     noTargetTrack: 'Здесь нет субтитров на изучаемом языке.',
     noSecondTrack: 'Здесь нет субтитров на вашем языке, поэтому второй строки не будет.',
     onlyOneTrack: 'У этого видео только одна дорожка субтитров, поэтому второй строки не будет.',
@@ -684,6 +690,7 @@ export const ru: Translation = {
       `Субтитры в этом видео: ${languages.join(', ') || 'нет'}. ` +
       'Измените изучаемый язык в настройках или выберите другое видео.',
     onlyPictures: 'В этом видео они есть только в виде картинок, а не текста, поэтому Libregaku не может их прочитать.',
+    chooseInPlayer: (track: string): string => `Выберите ${track} в меню субтитров плеера, и Libregaku их подхватит.`,
     noHumanTrack: 'Для этого видео нет дорожки, написанной человеком.',
     secondTrackError: (track: string, error: string): string => `${track}: ${error}`,
     noSecondTrackDetail: (languages: readonly string[]): string => `Субтитры в этом видео: ${languages.join(', ')}.`,
@@ -747,6 +754,7 @@ export const ru: Translation = {
 
     // Дорожка субтитров, которая не загрузилась
     unknownTrack: (id: string): string => `неизвестная дорожка ${id}`,
+    trackNotSent: 'плеер её ещё не загрузил — выберите её один раз в меню субтитров плеера',
     noCaptionFormat: (attempts: readonly string[]): string =>
       `ни один формат субтитров не сработал — ${attempts.join(', ')}`,
     noSubtitleUrl: (attempts: readonly string[]): string =>

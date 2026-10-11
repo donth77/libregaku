@@ -16,6 +16,11 @@ import type { Cue, SubtitleSource, TrackInfo } from './types';
  * Unlike YouTube, the subtitle URLs Netflix hands out are directly fetchable —
  * no signing dance. The DOM fallback is still declared, because M0 established
  * that assuming a fetch will succeed is how this breaks silently.
+ *
+ * Not every track comes with its URLs. A title's manifest carries the files of
+ * a few tracks and only names the rest, which Netflix's player fetches when
+ * the viewer chooses one. Those are listed with the others, and the page hook
+ * has the player fetch one when it is to be loaded (#sent).
  */
 
 const TAG = 'libregaku';
@@ -41,6 +46,31 @@ const SEEK_ACK_MS = 1000;
 /** How long to wait for this title's manifest before saying it may never come. */
 const MISSING_LIST_WARN_MS = 10_000;
 
+/**
+ * How long the page hook has to fetch a track Netflix listed without its
+ * files. It gives the player 20 s itself; this is for a hook that never
+ * answers at all, because it was blocked or predates this version.
+ */
+const SEND_TRACK_MS = 25_000;
+
+/**
+ * What the page hook says when the player could not be put on a track at
+ * all: it is not there yet, it is on another title — an advert of its own,
+ * before the film — it does not offer the track yet, or it refused. Asking
+ * again a little later is worth it, and changes nothing in the player until
+ * it works. The hook puts the player on a track once, whatever is asked.
+ */
+const ASK_AGAIN: readonly string[] = ['no-player', 'another-title', 'not-offered', 'refused'];
+/** How many times in all, and how far apart: fifteen seconds, then the learner is told what to choose. */
+const ASK_TRIES = 6;
+const ASK_EVERY_MS = 3000;
+
+/**
+ * Netflix's id for a track, as a manifest writes it ("T:2:0;1;zh-Hans;0;1;0;").
+ * Only ever compared with the ids in the player's own list.
+ */
+const TRACK_ID = /^[\x21-\x7e]{1,160}$/;
+
 interface NfTrack {
   /**
    * Language, kind, and position among tracks sharing both. Stable across a
@@ -55,6 +85,13 @@ interface NfTrack {
   cc: boolean;
   /** Subtitles in this language exist only as pictures: listed, never loaded. */
   pictures?: boolean;
+  /** Netflix's own id for the track, which the player knows it by. */
+  trackId?: string;
+  /**
+   * Listed without its files (nf-manifest.ts, NfPublished.waiting): the page
+   * hook asks the player for them before the track is loaded.
+   */
+  waiting?: boolean;
 }
 
 /** The id in a /watch/<id> path, or null anywhere else. */
@@ -97,11 +134,14 @@ function readTracks(raw: unknown): NfTrack[] {
   for (const entry of raw as unknown[]) {
     if (typeof entry !== 'object' || entry === null) continue;
     const r = entry as Record<string, unknown>;
-    const listed: unknown[] = Array.isArray(r.urls) ? (r.urls as unknown[]) : [r.url];
-    const urls = [...new Set(listed.filter(isSubtitleUrl))];
-    if (!urls.length) continue;
-
     const language = typeof r.language === 'string' ? r.language : '';
+    const trackId = typeof r.trackId === 'string' && TRACK_ID.test(r.trackId) ? r.trackId : undefined;
+    // A track not sent yet has no address: its id, to ask the player by, and a language to list it under.
+    const waiting = r.waiting === true;
+    const listed: unknown[] = waiting ? [] : Array.isArray(r.urls) ? (r.urls as unknown[]) : [r.url];
+    const urls = [...new Set(listed.filter(isSubtitleUrl))];
+    if (waiting ? !(trackId && language) : !urls.length) continue;
+
     const forced = r.forced === true;
     const cc = r.cc === true;
     const key = `${language}:${forced ? 'forced' : cc ? 'cc' : 'sub'}`;
@@ -115,6 +155,8 @@ function readTracks(raw: unknown): NfTrack[] {
       label: typeof r.label === 'string' && r.label ? r.label : language,
       forced,
       cc,
+      ...(trackId ? { trackId } : {}),
+      ...(waiting ? { waiting: true } : {}),
     });
   }
   return out;
@@ -188,6 +230,11 @@ export class NetflixAdapter implements SubtitleSource {
   #cues = new Map<string, Promise<Cue[]>>();
   #seekToken = 0;
   #pendingSeek = 0;
+  /** Tracks the page hook is fetching, by title and track, so two loads of one share the asking. */
+  #asking = new Map<string, Promise<string | null>>();
+  /** What to call when the hook answers, by the token sent with the request. */
+  #asked = new Map<number, (why: string | null) => void>();
+  #askToken = 0;
   /** Episode titles by /watch/ id, read while the title bar was showing. */
   #titles = new Map<string, string>();
   /** The control bar's last measured height; it is absent while hidden. */
@@ -307,16 +354,75 @@ export class NetflixAdapter implements SubtitleSource {
       generated: false,
       forced: t.forced,
       cc: t.cc,
+      ...(t.waiting ? { onRequest: true } : {}),
     }));
   }
 
   async loadTrack(id: string): Promise<Cue[]> {
-    const track = this.#current().find((t) => t.id === id && !t.pictures);
+    let track = this.#current().find((t) => t.id === id && !t.pictures);
     if (!track) throw new Error(`libregaku: ${ui.errors.unknownTrack(id)}`);
+    if (track.waiting) track = await this.#sent(track);
 
     const cached = track.urls.map((u) => this.#cues.get(u)).find((p) => p !== undefined);
     const cues = await (cached ?? this.#fetch(track.urls));
     return cues.slice();
+  }
+
+  /**
+   * A track Netflix listed without its files, once the player has fetched
+   * them. The page hook puts the player on the track for a moment, as
+   * choosing it in Netflix's menu would, and the manifest that follows is
+   * read like any other (#receive) before the hook says it is done.
+   */
+  async #sent(track: NfTrack): Promise<NfTrack> {
+    const movieId = this.videoId();
+    let why: string | null = 'no-id';
+    for (let n = 0; movieId && track.trackId && n < ASK_TRIES; n++) {
+      if (n) await new Promise((resolve) => setTimeout(resolve, ASK_EVERY_MS));
+      // Another title by now: its tracks are not this one's, whatever they are called.
+      if (this.videoId() !== movieId) {
+        why = 'left';
+        break;
+      }
+      why = await this.#ask(movieId, track.trackId);
+      if (this.videoId() !== movieId) {
+        why = 'left';
+        break;
+      }
+      const now = this.#current().find((t) => t.id === track.id && !t.pictures);
+      if (now && !now.waiting && now.urls.length) return now;
+      if (why === null || !ASK_AGAIN.includes(why)) break;
+    }
+    console.warn(
+      this.pictureLanguages().includes(track.language)
+        ? `[libregaku] netflix sent the "${track.language}" subtitles as pictures, with no text to read`
+        : `[libregaku] netflix did not send the "${track.language}" subtitles when its player was asked ` +
+            `(${why ?? 'they came with nothing to read'}). Choosing them in Netflix's own menu may still bring them.`,
+    );
+    throw new Error(`libregaku: ${ui.errors.trackNotSent}`);
+  }
+
+  /** Ask the page hook for a track's files. Why not, as the hook says it; null once they are here. */
+  #ask(movieId: string, trackId: string): Promise<string | null> {
+    const key = `${movieId}\n${trackId}`;
+    const going = this.#asking.get(key);
+    if (going) return going;
+
+    const token = ++this.#askToken;
+    const answer = new Promise<string | null>((resolve) => {
+      const timer = setTimeout(() => {
+        this.#asked.delete(token);
+        resolve('no-answer');
+      }, SEND_TRACK_MS);
+      this.#asked.set(token, (why) => {
+        clearTimeout(timer);
+        this.#asked.delete(token);
+        resolve(why);
+      });
+    }).finally(() => this.#asking.delete(key));
+    this.#asking.set(key, answer);
+    window.postMessage({ source: TAG, kind: 'nf-send-track', movieId, trackId, token }, '*');
+    return answer;
   }
 
   /** Languages this title has subtitles in only as pictures, which cannot be read. */
@@ -342,6 +448,9 @@ export class NetflixAdapter implements SubtitleSource {
 
     if (m.kind === 'nf-tracks') this.#receive(m.tracks, m.movieId, m.pictures);
     else if (m.kind === 'nf-seek-done' && m.token === this.#pendingSeek) this.#pendingSeek = 0;
+    else if (m.kind === 'nf-track-sent' && typeof m.token === 'number') {
+      this.#asked.get(m.token)?.(typeof m.why === 'string' ? m.why.slice(0, 40) : null);
+    }
   }
 
   #receive(rawTracks: unknown, rawId: unknown, rawPictures?: unknown): void {

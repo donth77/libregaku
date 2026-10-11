@@ -450,6 +450,71 @@ describe('settings panel selects', () => {
   });
 });
 
+describe('a language written two ways', () => {
+  const scriptOf = (root: HTMLElement): HTMLSelectElement => root.querySelector<HTMLSelectElement>('select[name=script]')!;
+  const rowOf = (sel: HTMLSelectElement): HTMLElement => sel.closest('label.set') as HTMLElement;
+  const choices = (sel: HTMLSelectElement): Array<[string, string | null]> =>
+    Array.from(sel.options).map((o) => [o.value, o.textContent]);
+
+  it('offers Simplified or Traditional for Chinese, Simplified until the other is picked', async () => {
+    await setSetting('target', 'zh');
+    try {
+      const root = buildSettings(() => {});
+      const script = scriptOf(root);
+      expect(rowOf(script).hidden).toBe(false);
+      expect(rowOf(script).querySelector('.name')?.textContent).toBe('Characters');
+      expect(choices(script)).toEqual([['zh-Hans', 'Chinese (Simplified)'], ['zh-Hant', 'Chinese (Traditional)']]);
+      expect(script.value).toBe('zh-Hans');
+      expect(settings().scripts).toEqual({});
+
+      choose(script, 'zh-Hant');
+      expect(settings().scripts).toEqual({ zh: 'zh-Hant' });
+      // A panel opened afterwards shows what was picked.
+      expect(scriptOf(buildSettings(() => {})).value).toBe('zh-Hant');
+    } finally {
+      await setSetting('scripts', {});
+      await setSetting('target', 'ja');
+    }
+  });
+
+  it('shows the row only for such a language, and keeps each language its own pick', async () => {
+    await setSetting('scripts', { zh: 'zh-Hant' });
+    try {
+      const root = buildSettings(() => {});
+      const script = scriptOf(root);
+      // Japanese is written one way: nothing to choose.
+      expect(rowOf(script).hidden).toBe(true);
+
+      // Chinese, chosen on this page: the row comes, on the script picked for it before.
+      const learning = selectFor(root, "I'm learning");
+      learning.value = 'zh';
+      learning.dispatchEvent(new Event('change', { bubbles: true }));
+      expect(rowOf(script).hidden).toBe(false);
+      expect(script.value).toBe('zh-Hant');
+
+      // Korean, chosen somewhere else and brought in step here: it goes again.
+      await setSetting('target', 'ko');
+      syncSettingsControls(root);
+      expect(rowOf(script).hidden).toBe(true);
+      expect(settings().scripts).toEqual({ zh: 'zh-Hant' });
+    } finally {
+      await setSetting('scripts', {});
+      await setSetting('target', 'ja');
+    }
+  });
+
+  it('names the scripts in the interface language', async () => {
+    await setSetting('target', 'zh');
+    setUiLanguage('es');
+    try {
+      expect(choices(scriptOf(buildSettings(() => {}))).map(([, name]) => name)).toEqual(['Chino (simplificado)', 'Chino (tradicional)']);
+    } finally {
+      setUiLanguage('en');
+      await setSetting('target', 'ja');
+    }
+  });
+});
+
 describe('settings panel decks', () => {
   it('never picks one of the learner\'s decks for them: cards go to the language\'s own until they do', async () => {
     anki.probe.mockResolvedValue(connected(['Core 2k', 'Vocabulary']));

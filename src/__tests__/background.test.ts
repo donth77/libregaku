@@ -16,6 +16,7 @@ vi.stubGlobal('chrome', {
   runtime: {
     id: 'self',
     getURL: (p: string) => `chrome-extension://self/${p}`,
+    getManifest: () => ({ version: '1.2.3' }),
     onInstalled: { addListener: () => {} },
     onMessage: { addListener: (fn: Listener) => { listener = fn; } },
   },
@@ -165,6 +166,32 @@ describe('the audio relay', () => {
     fetchMock.mockResolvedValueOnce(audio(2048, { url: 'https://audio.example.org/x.mp3' }));
     expect(await send({ type: 'fetch-audio', url: 'https://audio.example.org/x.mp3' })).toMatchObject({ ok: true });
     expect(await send({ type: 'fetch-audio', url: 'https://other.example.org/x.mp3' })).toMatchObject({ ok: false });
+  });
+
+  it("fetches Commons' answers and files, and tells Wikimedia what is asking", async () => {
+    const api = 'https://commons.wikimedia.org/w/api.php?action=query&titles=File%3AKo-%EC%82%AC%EB%9E%8C.ogg';
+    const file = 'https://upload.wikimedia.org/wikipedia/commons/transcoded/8/89/Ko-x.ogg/Ko-x.ogg.mp3';
+    for (const url of [api, file]) {
+      fetchMock.mockResolvedValueOnce(audio(2048, { url }));
+      expect(await send({ type: 'fetch-audio', url })).toMatchObject({ ok: true });
+    }
+    for (const [, init] of fetchMock.mock.calls as Array<[string, RequestInit]>) {
+      expect(init.headers).toEqual({ 'Api-User-Agent': 'Libregaku/1.2.3 (https://github.com/donth77/libregaku)' });
+      expect(init.credentials).toBe('omit');
+    }
+    // No one else is told anything.
+    fetchMock.mockResolvedValueOnce(audio(2048, { url: JPOD }));
+    await send({ type: 'fetch-audio', url: JPOD });
+    expect((fetchMock.mock.calls.at(-1) as [string, RequestInit])[1]).not.toHaveProperty('headers');
+  });
+
+  it('fetches nothing else from Wikimedia or GitHub', async () => {
+    for (const url of [
+      'https://commons.wikimedia.org/wiki/Special:UserLogin',
+      'https://upload.wikimedia.org/wikipedia/en/a/ab/x.ogg',
+      'https://raw.githubusercontent.com/someone/else/main/x.mp3',
+    ]) expect(await send({ type: 'fetch-audio', url })).toMatchObject({ ok: false });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('refuses a body too large to be a recording, declared or not', async () => {

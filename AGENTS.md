@@ -93,17 +93,20 @@ src/dict/               one dictionary per language (sources.ts): download, stor
                         fallbacks for Japanese
 src/anki/               AnkiConnect client, note type, word status, hand marks, cards
                         waiting for Anki
-src/audio/              pronunciation, the recording a new card carries, and a tab's
-                        sound for sentence audio where the video is encrypted
+src/audio/              pronunciation and where a word's recording is found (recordings.ts),
+                        the recording a new card carries, and a tab's sound for sentence
+                        audio where the video is encrypted
 src/content/
   inject.ts             YouTube page world: captures signed caption URLs, reads the player
-  inject-netflix.ts     Netflix page world: reads the manifest, drives the player's seek
+  inject-netflix.ts     Netflix page world: reads a title's manifests, has the player fetch a
+                        track it was sent only by name, drives the player's seek
   inject-disney.ts      Disney+ page world: passes on the HLS master playlist the player fetched,
                         keeps the programme's clock, seeks
   inject-prime.ts       Prime Video page world: passes on the subtitle tracks in the playback
                         resources the player asked for
   inject-max.ts         Max page world: passes on the DASH manifest the player fetched
   index.ts              isolated world: orchestrates adapter → segmenter → UI
+  track-choice.ts       which of a video's tracks is studied, and which is the line under it
   renderer.ts           subtitle overlay
   sidebar.ts            transcript panel, saved lines, settings
   popup.ts              lookup card

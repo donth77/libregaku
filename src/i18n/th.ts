@@ -38,6 +38,8 @@ export const th: Translation = {
     supportFull: 'รองรับเต็มรูปแบบ รวมถึงคำอ่านและฟุริงานะ',
     supportPinyin: 'รองรับเต็มรูปแบบ รวมถึงพินอิน ความหมายเป็นภาษาอังกฤษ',
     supportWords: 'รองรับเต็มรูปแบบ ความหมายเป็นภาษาอังกฤษ',
+    script: 'ตัวอักษร',
+    scriptHint: 'ใช้เมื่อวิดีโอมีทั้งสองแบบ',
     supportBasic: 'รองรับขั้นพื้นฐาน: ตัดคำได้ แต่ยังไม่มีพจนานุกรมหรือคำอ่าน',
     native: 'ภาษาของคุณ',
     nativeHint: 'คำแปลและความหมายจะแสดงเป็นภาษานี้ หากวิดีโอและพจนานุกรมมีภาษานี้',
@@ -228,6 +230,8 @@ export const th: Translation = {
     creditUnihan: 'คำอ่านที่แสดงก่อนของอักษรจีนแต่ละตัว © Unicode, Inc. ใช้ภายใต้ Unicode License',
     creditJotoba: 'ใช้ดูความหมายระหว่างที่พจนานุกรมกำลังดาวน์โหลด ทั้งสองใช้ JMdict',
     creditLucide: 'ไอคอน สัญญาอนุญาต ISC',
+    creditCommons: 'เสียงบันทึกคำภาษาสเปน จีน และเกาหลี อ่านโดยอาสาสมัคร แต่ละเสียงมีสัญญาอนุญาตของตัวเอง ส่วนใหญ่เป็น CC BY-SA 4.0 ซึ่งแสดงพร้อมชื่อผู้อ่านขณะเล่นและบนการ์ด',
+    creditAudioCmn: 'เสียงบันทึกคำภาษาจีนโดย Yue Tan มหาวิทยาลัยก็อง CC BY-SA 3.0 US',
     licence: 'Libregaku ใช้สัญญาอนุญาต MIT ข้อมูลพจนานุกรมดาวน์โหลดจากแหล่งที่มา ไม่ได้รวมมาด้วย',
     built: (when: string): string => `สำเนานี้สร้างเมื่อ ${when}`,
 
@@ -454,6 +458,7 @@ export const th: Translation = {
     pronounce: 'ออกเสียง',
     playedRecording: (word: string): string => `${word} · เสียงบันทึก`,
     playedSynthesised: (word: string): string => `${word} · เสียงสังเคราะห์`,
+    recordingBy: (speaker: string, licence: string): string => `เสียงบันทึกโดย ${speaker} · ${licence}`,
     pronounceFailed: 'เล่นเสียงไม่ได้',
     addSentence: 'เพิ่มประโยค',
     sentenceAdded: 'เพิ่มประโยคแล้ว',
@@ -614,6 +619,7 @@ export const th: Translation = {
 
     // คำบรรยายของวิดีโอนี้
     subtitlesOff: 'เปิดคำบรรยายในโปรแกรมเล่น แล้ว Libregaku จะอ่านคำบรรยายนั้น',
+    trackNotSent: 'โปรแกรมเล่นยังไม่ได้โหลดคำบรรยายนี้',
     noTargetTrack: 'ไม่มีคำบรรยายในภาษาที่คุณเรียน',
     noSecondTrack: 'ไม่มีคำบรรยายในภาษาของคุณ จึงไม่มีบรรทัดที่สอง',
     onlyOneTrack: 'วิดีโอนี้มีคำบรรยายแทร็กเดียว จึงไม่มีบรรทัดที่สอง',
@@ -635,6 +641,7 @@ export const th: Translation = {
     noTargetTrackDetail: (languages: readonly string[]): string =>
       `วิดีโอนี้มี: ${languages.join(', ') || 'ไม่มี'} เปลี่ยนภาษาที่เรียนในการตั้งค่า หรือเลือกวิดีโออื่น`,
     onlyPictures: 'วิดีโอนี้มีคำบรรยายเป็นรูปภาพเท่านั้น ไม่ใช่ข้อความ Libregaku จึงอ่านไม่ได้',
+    chooseInPlayer: (track: string): string => `เลือก ${track} ในเมนูคำบรรยายของโปรแกรมเล่น แล้ว Libregaku จะอ่านคำบรรยายนั้น`,
     noHumanTrack: 'วิดีโอนี้ไม่มีแทร็กที่คนเขียน',
     secondTrackError: (track: string, error: string): string => `${track}: ${error}`,
     noSecondTrackDetail: (languages: readonly string[]): string => `วิดีโอนี้มี: ${languages.join(', ')}`,
@@ -693,6 +700,7 @@ export const th: Translation = {
 
     // แทร็กคำบรรยายที่โหลดไม่ได้
     unknownTrack: (id: string): string => `ไม่รู้จักแทร็ก ${id}`,
+    trackNotSent: 'โปรแกรมเล่นยังไม่ได้โหลด ให้เลือกหนึ่งครั้งในเมนูคำบรรยายของโปรแกรมเล่น',
     noCaptionFormat: (attempts: readonly string[]): string =>
       `ไม่มีรูปแบบคำบรรยายใดใช้ได้ — ${attempts.join(', ')}`,
     noSubtitleUrl: (attempts: readonly string[]): string =>

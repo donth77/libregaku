@@ -28,6 +28,14 @@ export const settings = {
   supportPinyin: 'Full support, including pinyin. Definitions are in English.',
   /** Under "I'm learning", for a language with a dictionary and no readings to show, such as Korean or Spanish. */
   supportWords: 'Full support. Definitions are in English.',
+  /**
+   * A menu under "I'm learning", for a language written in more than one
+   * script: Chinese, in Simplified or Traditional characters. Its choices are
+   * named by the browser ("Chinese (Simplified)"). A video on Netflix or
+   * YouTube often has subtitles in both, and this says which to use.
+   */
+  script: 'Characters',
+  scriptHint: 'The ones used when a video has both.',
   /** Under "I'm learning", for a language with no dictionary yet: it is only split into words. */
   supportBasic: 'Basic support: words are split, but there is no dictionary or readings yet.',
   /**
@@ -316,6 +324,15 @@ export const settings = {
   creditUnihan: 'Which reading a Chinese character shows first. © Unicode, Inc., used under the Unicode License.',
   /** Under Jotoba · Jisho. */
   creditJotoba: 'Used for lookups while the dictionary downloads. Both use JMdict.',
+  /**
+   * Under Lingua Libre · Wikimedia Commons: recordings of single words, played
+   * by the lookup card's Pronounce button and put on new cards.
+   */
+  creditCommons:
+    'Recordings of Spanish, Chinese and Korean words, spoken by volunteers. Each has its own licence, ' +
+    'CC BY-SA 4.0 for most, named with its speaker where it plays and on the card.',
+  /** Under audio-cmn · Shtooka. Yue Tan is the speaker's name; Caen is a city in France. */
+  creditAudioCmn: 'Recordings of Chinese words by Yue Tan, University of Caen. CC BY-SA 3.0 US.',
   /** Under Lucide. */
   creditLucide: 'Icons. ISC licence.',
   licence: 'Libregaku is MIT-licensed. Dictionary data is downloaded from its sources, not bundled.',

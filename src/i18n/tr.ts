@@ -48,6 +48,8 @@ export const tr: Translation = {
     supportFull: 'Tam destek; okunuşlar ve furigana dahil.',
     supportPinyin: 'Tam destek; pinyin dahil. Tanımlar İngilizcedir.',
     supportWords: 'Tam destek. Tanımlar İngilizcedir.',
+    script: 'Yazı',
+    scriptHint: 'Videoda ikisi de varsa bu kullanılır.',
     supportBasic: 'Temel destek: kelimeler ayrılır ama henüz sözlük ya da okunuş yok.',
     native: 'Diliniz',
     nativeHint: 'Çeviriler ve tanımlar, videoda ve sözlükte bulunduğu sürece bu dilde gösterilir.',
@@ -242,6 +244,8 @@ export const tr: Translation = {
     creditUnihan: 'Bir Çince karakterin önce hangi okunuşunun gösterileceği. © Unicode, Inc.; Unicode License kapsamında kullanılmaktadır.',
     creditJotoba: 'Sözlük inerken aramalar için kullanılır. İkisi de JMdict kullanır.',
     creditLucide: 'Simgeler. ISC lisansı.',
+    creditCommons: 'Gönüllülerin seslendirdiği İspanyolca, Çince ve Korece sözcük kayıtları. Her kaydın kendi lisansı vardır, çoğunda CC BY-SA 4.0; çalınırken ve kartta konuşanın adıyla birlikte gösterilir.',
+    creditAudioCmn: 'Çince sözcük kayıtları: Yue Tan, Caen Üniversitesi. CC BY-SA 3.0 US.',
     licence: 'Libregaku MIT lisanslıdır. Sözlük verileri pakete dahil değildir; kaynaklarından indirilir.',
     built: (when: string): string => `Bu kopyanın derlenme tarihi: ${when}.`,
 
@@ -469,6 +473,7 @@ export const tr: Translation = {
     pronounce: 'Dinle',
     playedRecording: (word: string): string => `${word} · kayıt`,
     playedSynthesised: (word: string): string => `${word} · yapay ses`,
+    recordingBy: (speaker: string, licence: string): string => `Kayıt: ${speaker} · ${licence}`,
     pronounceFailed: 'ses çalınamadı',
     addSentence: 'Cümle ekle',
     sentenceAdded: 'Cümle eklendi',
@@ -629,6 +634,7 @@ export const tr: Translation = {
 
     // Bu videonun altyazıları
     subtitlesOff: 'Oynatıcıda altyazıları açın; Libregaku onları algılayacaktır.',
+    trackNotSent: 'Oynatıcı bu altyazıları henüz yüklemedi.',
     noTargetTrack: 'Burada öğrendiğiniz dilde altyazı yok.',
     noSecondTrack: 'Burada kendi dilinizde altyazı yok, bu yüzden ikinci satır yok.',
     onlyOneTrack: 'Bu videoda yalnızca bir altyazı var, bu yüzden ikinci satır yok.',
@@ -651,6 +657,7 @@ export const tr: Translation = {
     noTargetTrackDetail: (languages: readonly string[]): string =>
       `Bu videodaki altyazılar: ${languages.join(', ') || 'yok'}. Ayarlarda öğrendiğiniz dili değiştirin ya da başka bir video seçin.`,
     onlyPictures: 'Bu videoda altyazılar yalnızca resim olarak var, metin olarak değil; bu yüzden Libregaku onları okuyamaz.',
+    chooseInPlayer: (track: string): string => `Oynatıcının kendi altyazı menüsünden ${track} seçeneğini seçin; Libregaku onları algılayacaktır.`,
     noHumanTrack: 'Bu video için insan tarafından yazılmış altyazı yok.',
     secondTrackError: (track: string, error: string): string => `${track}: ${error}`,
     noSecondTrackDetail: (languages: readonly string[]): string => `Bu videodaki altyazılar: ${languages.join(', ')}.`,
@@ -711,6 +718,7 @@ export const tr: Translation = {
 
     // Yüklenmeyen bir altyazı
     unknownTrack: (id: string): string => `bilinmeyen altyazı: ${id}`,
+    trackNotSent: 'oynatıcı henüz yüklemedi; oynatıcının altyazı menüsünden bir kez seçin',
     noCaptionFormat: (attempts: readonly string[]): string => `hiçbir altyazı biçimi çalışmadı — ${attempts.join(', ')}`,
     noSubtitleUrl: (attempts: readonly string[]): string =>
       `hiçbir altyazı URL'si çalışmadı — ${attempts.join('; ') || 'listelenen yok'}`,

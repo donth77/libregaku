@@ -10,14 +10,23 @@ const PATIENCE_MS = 6000;
  * or it is too slow in coming. A card is never held up long by its audio: the
  * word, the sentence and the definition are what it is for.
  */
-export async function cardAudio(want: { word: string; reading?: string; lang: string }): Promise<CardAudio | null> {
+export async function cardAudio(
+  want: { word: string; reading?: string; lang: string; also?: readonly string[] },
+): Promise<CardAudio | null> {
   let timer = 0;
   const late = new Promise<null>((resolve) => {
     timer = window.setTimeout(() => resolve(null), PATIENCE_MS);
   });
   try {
-    const rec = await Promise.race([findRecording(want.word, want.reading, want.lang).catch(() => null), late]);
-    return rec ? { data: rec.data, filename: mediaFilename(want.word, want.reading, rec.type) } : null;
+    const looking = findRecording(want.word, want.reading, want.lang, want.also ?? []).catch(() => null);
+    const rec = await Promise.race([looking, late]);
+    if (!rec) return null;
+    return {
+      data: rec.data,
+      filename: mediaFilename(want.word, want.reading, rec.type),
+      // Who to thank goes on the card with the recording.
+      ...(rec.credit ? { credit: rec.credit } : {}),
+    };
   } finally {
     window.clearTimeout(timer);
   }

@@ -163,13 +163,24 @@ async function readCapped(res: Response, cap: number): Promise<Uint8Array | null
  * uses, checked again where a redirect lands, no cookies sent, and a size
  * cap. Anything wider would let a content script fetch as the extension.
  */
+/**
+ * Wikimedia asks every program that reads from it to say what it is, and
+ * limits those that do not. A browser will not let a page name itself in
+ * User-Agent, so Wikimedia reads this header in its place.
+ */
+function wikimediaHeaders(url: string): Record<string, string> | null {
+  if (!/(^|\.)wikimedia\.org$/.test(new URL(url).hostname)) return null;
+  return { 'Api-User-Agent': `Libregaku/${chrome.runtime.getManifest().version} (https://github.com/donth77/libregaku)` };
+}
+
 async function fetchAudio(url: string): Promise<{ ok: boolean; status?: number; type?: string; bytes?: string; error?: string }> {
   const template = await audioTemplate();
   if (!audioUrlAllowed(url, template)) return { ok: false, error: 'not an audio source Libregaku uses' };
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), 15_000);
   try {
-    const res = await fetch(url, { credentials: 'omit', signal: ctl.signal });
+    const headers = wikimediaHeaders(url);
+    const res = await fetch(url, { credentials: 'omit', signal: ctl.signal, ...(headers ? { headers } : {}) });
     // A redirect can land anywhere; what matters is where the bytes came from.
     if (!audioUrlAllowed(res.url || url, template)) {
       return { ok: false, status: res.status, error: 'audio redirected to a host Libregaku does not use' };

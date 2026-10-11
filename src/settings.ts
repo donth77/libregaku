@@ -80,6 +80,13 @@ export interface LanguageFeatures {
   dictionary?: { name: string; url: (word: string) => string };
   /** Definitions in more than one language, so a choice of which. */
   definitions: boolean;
+  /**
+   * The ways the language is written, where a video can have subtitles in
+   * more than one: each a tag a subtitle track is matched by
+   * (trackLanguageMatch) and named by (languageLabel), the first being the
+   * one used until the learner picks another (targetVariant).
+   */
+  scripts?: readonly string[];
 }
 
 const LANGUAGE_FEATURES: Record<string, LanguageFeatures> = {
@@ -99,6 +106,8 @@ const LANGUAGE_FEATURES: Record<string, LanguageFeatures> = {
     readings: 'pinyin',
     characters: 'hanzi',
     definitions: false,
+    // Simplified first: what most learners of Mandarin study, and what HSK and most courses use.
+    scripts: ['zh-Hans', 'zh-Hant'],
     dictionary: { name: 'MDBG', url: (w) => `https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=${encodeURIComponent(w)}` },
   },
   es: {
@@ -218,6 +227,13 @@ export interface LanguageDecks {
 export interface Settings {
   /** BCP-47 of the language being learned. */
   target: string;
+  /**
+   * How each language written in more than one script is being learned, by
+   * the language's code: Chinese as Simplified (zh-Hans) or Traditional (zh-Hant).
+   * A language with nothing here is learned in the first of its scripts.
+   * Read it through targetVariant().
+   */
+  scripts: Record<string, string>;
   /**
    * BCP-47 of the learner's own language: the translation under the subtitle,
    * the definitions wherever the dictionary is written in it, and the words
@@ -368,6 +384,7 @@ export interface Settings {
 
 export const DEFAULTS: Settings = {
   target: 'ja',
+  scripts: {},
   native: browserLanguage(),
   definitions: 'en',
   configured: false,
@@ -480,7 +497,32 @@ export function withDefaults(stored: Partial<Settings> | undefined): Settings {
   }
   out.decks = decksFrom(out.decks);
   out.badgeFlag = flagsFrom(out.badgeFlag, out.target);
+  out.scripts = scriptsFrom(out.scripts);
   return out;
+}
+
+/** The script picked for each language, with anything that is not one of that language's left out. */
+function scriptsFrom(stored: unknown): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!stored || typeof stored !== 'object') return out;
+  for (const [lang, script] of Object.entries(stored as Record<string, unknown>)) {
+    if (typeof script === 'string' && featuresOf(lang).scripts?.includes(script)) out[lang] = script;
+  }
+  return out;
+}
+
+/**
+ * The language being learned as its subtitles should be written: the
+ * language itself, or, where it is written more than one way, the script the
+ * learner picked — Simplified Chinese (zh-Hans) until they pick Traditional
+ * (zh-Hant). What a video's tracks are matched against; decks, marks and
+ * the dictionary go by the language alone.
+ */
+export function targetVariant(s: Pick<Settings, 'target' | 'scripts'>): string {
+  const offered = featuresOf(s.target).scripts;
+  if (!offered?.length) return s.target;
+  const picked = s.scripts[s.target];
+  return picked && offered.includes(picked) ? picked : offered[0] ?? s.target;
 }
 
 /**

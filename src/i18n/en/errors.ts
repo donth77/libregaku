@@ -16,6 +16,11 @@ export const errors = {
   /** A track was asked for that the site's list no longer has. `id` is the extension's own name for the track. */
   unknownTrack: (id: string): string => `unknown track ${id}`,
   /**
+   * The site lists the track and its player has not fetched it yet, which it
+   * does when the track is chosen in the player's own subtitle menu.
+   */
+  trackNotSent: 'not loaded by the player yet — choose it once in the player’s subtitle menu',
+  /**
    * YouTube: none of the caption formats tried gave any lines. `attempts`
    * says how each went: the format's internal name, then a result such as
    * HTTP 403, emptyAnswer or noCues.

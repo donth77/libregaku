@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
-import { AUDIO_HOSTS, audioUrlAllowed, decodedSize, findRecording, jpodQuery, pronounce, templateHost } from '../pronounce';
+import { AUDIO_HOSTS, AUDIO_PLACES, audioUrlAllowed, decodedSize, findRecording, jpodQuery, pronounce, templateHost } from '../pronounce';
 import { cardAudio } from '../card-audio';
+import { AUDIO_CMN, AUDIO_CMN_CREDIT, COMMONS_API, COMMONS_FILES } from '../recordings';
 
 const parse = (q: string) => Object.fromEntries(new URLSearchParams(q));
 
@@ -62,6 +63,34 @@ describe('what the service worker may fetch as audio', () => {
     expect(templateHost('http://example.org/{word}.mp3')).toBeNull();
     expect(templateHost(42)).toBeNull();
     expect(audioUrlAllowed('https://example.org/x.mp3', 'http://example.org/{word}.mp3')).toBe(false);
+  });
+
+  it("allows Commons' query API and its files, and one folder of one repository at one commit", () => {
+    expect(AUDIO_PLACES).toEqual([COMMONS_API, COMMONS_FILES, AUDIO_CMN]);
+    for (const url of [
+      `${COMMONS_API}action=query&titles=File%3AKo-%EC%82%AC%EB%9E%8C.ogg`,
+      `${COMMONS_FILES}c/c1/LL-Q1321_%28spa%29-Julie_Samothrace-casa.wav`,
+      `${COMMONS_FILES}transcoded/c/c1/x.wav/x.wav.mp3`,
+      `${AUDIO_CMN}cmn-%E5%9B%BE%E4%B9%A6%E9%A6%86.mp3`,
+    ]) expect(audioUrlAllowed(url), url).toBe(true);
+  });
+
+  it('allows nothing else on those hosts, however the address is dressed', () => {
+    for (const url of [
+      // The rest of Commons, of Wikimedia's files, and of GitHub.
+      'https://commons.wikimedia.org/wiki/Special:UserLogin',
+      'https://commons.wikimedia.org/w/index.php?title=Special:Upload',
+      'https://commons.wikimedia.org/w/api.phpx?action=query',
+      'https://upload.wikimedia.org/wikipedia/en/a/ab/x.ogg',
+      'https://en.wikipedia.org/w/api.php?action=query',
+      'https://raw.githubusercontent.com/hugolpz/audio-cmn/master/64k/hsk/cmn-x.mp3',
+      'https://raw.githubusercontent.com/someone/else/main/x.mp3',
+      // Climbing out of an allowed folder gets nowhere: the address is read as the browser would write it.
+      `${COMMONS_FILES}../../w/index.php`,
+      `${AUDIO_CMN}../../../../../../someone/else/main/x.mp3`,
+      `${COMMONS_FILES.replace('https://', 'https://user:pw@')}c/c1/x.wav`,
+      COMMONS_FILES.replace('https:', 'http:') + 'c/c1/x.wav',
+    ]) expect(audioUrlAllowed(url), url).toBe(false);
   });
 });
 
@@ -184,3 +213,188 @@ describe('cardAudio', () => {
     vi.useRealTimers();
   });
 });
+
+/**
+ * Spanish, Chinese and Korean: free recordings, found through the service
+ * worker's relay. Commons' answers are cut down from what it returned on
+ * 2026-10-11 (recordings.test.ts reads them in full). Each test has words of
+ * its own, since what is found, and what is known to be nowhere, is kept for
+ * the session.
+ */
+describe('recordings of Spanish, Chinese and Korean words', () => {
+  type Reply = number | { json: unknown } | { status: number } | { type: string; bytes: number } | undefined;
+
+  /** The relay, answering each address as `answer` says: so many bytes of sound, an answer from Commons, a failure. */
+  function relay(answer: (url: string) => Reply, template?: string): { asked: string[] } {
+    const asked: string[] = [];
+    const sendMessage = vi.fn(async (msg: { type: string; url: string }) => {
+      asked.push(msg.url);
+      const reply = answer(msg.url);
+      if (reply === undefined) return { ok: false, status: 404 };
+      if (typeof reply === 'number') return { ok: true, status: 200, type: 'audio/mpeg', bytes: btoa('x'.repeat(reply)) };
+      if ('status' in reply) return { ok: false, status: reply.status };
+      if ('bytes' in reply) return { ok: true, status: 200, type: reply.type, bytes: btoa('x'.repeat(reply.bytes)) };
+      const text = String.fromCharCode(...new TextEncoder().encode(JSON.stringify(reply.json)));
+      return { ok: true, status: 200, type: 'application/json', bytes: btoa(text) };
+    });
+    vi.stubGlobal('chrome', {
+      runtime: { sendMessage },
+      storage: { sync: { get: async () => (template ? { 'libregaku.audioTemplate': template } : {}) } },
+    });
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    return { asked };
+  }
+
+  const file = (title: string, path: string, licence: string, artist = ''): Record<string, unknown> => ({
+    title,
+    index: 1,
+    imageinfo: [{
+      url: `${COMMONS_FILES}${path}?utm_source=commons.wikimedia.org`,
+      descriptionurl: `https://commons.wikimedia.org/wiki/${title.replace(/ /g, '_')}`,
+      extmetadata: { LicenseShortName: { value: licence }, Artist: { value: artist } },
+    }],
+  });
+  const found = (...pages: Array<Record<string, unknown>>) => ({ json: { batchcomplete: true, query: { pages } } });
+  const nothing = { json: { batchcomplete: true } };
+  /** What an address asks Commons, read back out of it. */
+  const search = (url: string): string => new URL(url).searchParams.get('gsrsearch') ?? '';
+  const titles = (url: string): string => new URL(url).searchParams.get('titles') ?? '';
+
+  it("finds a Spanish word in Lingua Libre, and fetches the MP3 Commons makes of it", async () => {
+    const { asked } = relay((url) => {
+      if (search(url).includes('-mesa\\.wav')) return found(file('File:LL-Q1321 (spa)-Millars-mesa.wav', 'a/a1/LL-Q1321_%28spa%29-Millars-mesa.wav', 'CC BY-SA 4.0'));
+      if (url.endsWith('.wav.mp3')) return 19000;
+      return undefined;
+    });
+    const rec = await findRecording('mesa', undefined, 'es');
+    expect(rec).toMatchObject({
+      size: 19000, type: 'audio/mpeg', source: 'commons',
+      credit: { by: 'Millars', licence: 'CC BY-SA 4.0', page: 'https://commons.wikimedia.org/wiki/File:LL-Q1321_(spa)-Millars-mesa.wav' },
+    });
+    expect(asked).toHaveLength(2);
+    expect(asked[0]?.startsWith(COMMONS_API)).toBe(true);
+    expect(search(asked[0]!)).toBe('intitle:/-mesa\\.wav/i incategory:"Lingua_Libre_pronunciation-spa"');
+    expect(asked[1]).toBe(`${COMMONS_FILES}transcoded/a/a1/LL-Q1321_%28spa%29-Millars-mesa.wav/LL-Q1321_%28spa%29-Millars-mesa.wav.mp3`);
+    // Every address asked is one the service worker will fetch.
+    for (const url of asked) expect(audioUrlAllowed(url), url).toBe(true);
+  });
+
+  it('takes the file itself where Commons has made no MP3 of it', async () => {
+    const { asked } = relay((url) => {
+      if (search(url).includes('-silla\\.wav')) return found(file('File:LL-Q1321 (spa)-Ana-silla.wav', 'b/b2/Silla.wav', 'CC0'));
+      if (url === `${COMMONS_FILES}b/b2/Silla.wav`) return { type: 'audio/x-wav', bytes: 90000 };
+      return undefined;
+    });
+    expect(await findRecording('silla', undefined, 'es')).toMatchObject({ type: 'audio/x-wav', size: 90000, credit: { by: 'Ana', licence: 'CC0' } });
+    // The MP3 first, then the file.
+    expect(asked.slice(1)).toEqual([`${COMMONS_FILES}transcoded/b/b2/Silla.wav/Silla.wav.mp3`, `${COMMONS_FILES}b/b2/Silla.wav`]);
+  });
+
+  it("finds a Chinese word in audio-cmn first, credited to its one speaker", async () => {
+    const { asked } = relay((url) => (url === `${AUDIO_CMN}cmn-${encodeURIComponent('学生')}.mp3` ? 11000 : undefined));
+    const rec = await findRecording('学生', 'xué shēng', 'zh');
+    expect(rec).toMatchObject({ source: 'audio-cmn', size: 11000, credit: AUDIO_CMN_CREDIT });
+    expect(asked).toEqual([`${AUDIO_CMN}cmn-${encodeURIComponent('学生')}.mp3`]);
+  });
+
+  it('asks for a traditional word by its simplified form too, which is what audio-cmn names it by', async () => {
+    const { asked } = relay((url) => (url.includes(encodeURIComponent('医生')) ? 12000 : undefined));
+    expect(await findRecording('醫生', 'yī shēng', 'zh', ['医生'])).toMatchObject({ source: 'audio-cmn', size: 12000 });
+    expect(asked.map((u) => decodeURIComponent(u.slice(AUDIO_CMN.length)))).toEqual(['cmn-醫生.mp3', 'cmn-医生.mp3']);
+  });
+
+  it('goes on to Lingua Libre for a Chinese word audio-cmn lacks', async () => {
+    const { asked } = relay((url) => {
+      if (search(url).includes('-奶茶\\.wav')) return found(file('File:LL-Q9192 (cmn)-Luilui6666-奶茶.wav', '2/2c/Naicha.wav', 'CC BY-SA 4.0'));
+      if (url.endsWith('Naicha.wav.mp3')) return 18000;
+      return undefined;
+    });
+    expect(await findRecording('奶茶', 'nǎi chá', 'zh')).toMatchObject({ source: 'commons', credit: { by: 'Luilui6666' } });
+    expect(asked[0]?.startsWith(AUDIO_CMN)).toBe(true);
+    expect(search(asked[1]!)).toBe('intitle:/-奶茶\\.wav/i incategory:"Lingua_Libre_pronunciation-cmn"');
+  });
+
+  it("finds a Korean word in Wiktionary's own files by name, then in Lingua Libre", async () => {
+    const first = relay((url) => {
+      if (titles(url) === 'File:Ko-나무.ogg') return found(file('File:Ko-나무.ogg', '8/89/Ko-namu.ogg', 'CC BY-SA 4.0', '<a href="//commons.wikimedia.org/wiki/User:HappyMidnight">HappyMidnight</a>'));
+      if (url.endsWith('Ko-namu.ogg.mp3')) return 9000;
+      return undefined;
+    });
+    expect(await findRecording('나무', undefined, 'ko')).toMatchObject({ source: 'commons', credit: { by: 'HappyMidnight', licence: 'CC BY-SA 4.0' } });
+    expect(first.asked).toHaveLength(2);
+
+    const second = relay((url) => {
+      if (titles(url)) return found({ title: 'File:Ko-구름.ogg', missing: true });
+      if (search(url).includes('-구름\\.wav')) return found(file('File:LL-Q9176 (kor)-호로조-구름.wav', '7/70/Gureum.wav', 'CC0'));
+      if (url.endsWith('Gureum.wav.mp3')) return 9500;
+      return undefined;
+    });
+    expect(await findRecording('구름', undefined, 'ko')).toMatchObject({ source: 'commons', credit: { by: '호로조', licence: 'CC0' } });
+    expect(titles(second.asked[0]!)).toBe('File:Ko-구름.ogg');
+    expect(search(second.asked[1]!)).toContain('Lingua_Libre_pronunciation-kor');
+  });
+
+  it('asks once for a word no source has, and again once the learner names a source of their own', async () => {
+    const none = relay(() => nothing);
+    expect(await findRecording('zarigüeya', undefined, 'es')).toBeNull();
+    expect(none.asked).toHaveLength(1);
+    expect(await findRecording('zarigüeya', undefined, 'es')).toBeNull();
+    expect(none.asked).toHaveLength(1);
+
+    const own = relay((url) => (url.includes('audio.example.org') ? 4000 : nothing), 'https://audio.example.org/es/{word}.mp3');
+    expect(await findRecording('zarigüeya', undefined, 'es')).toMatchObject({ source: 'custom' });
+    expect(own.asked.at(-1)).toBe('https://audio.example.org/es/zarig%C3%BCeya.mp3');
+  });
+
+  it('asks again for a word whose source gave no answer the first time', async () => {
+    const down = relay(() => ({ status: 503 }));
+    expect(await findRecording('tormenta', undefined, 'es')).toBeNull();
+    expect(await findRecording('雷雨', undefined, 'zh')).toBeNull();
+    const before = down.asked.length;
+    expect(await findRecording('tormenta', undefined, 'es')).toBeNull();
+    expect(down.asked.length).toBeGreaterThan(before);
+
+    const up = relay((url) => (url.startsWith(AUDIO_CMN) ? 10000 : undefined));
+    expect(await findRecording('雷雨', undefined, 'zh')).toMatchObject({ source: 'audio-cmn' });
+    expect(up.asked).toHaveLength(1);
+  });
+
+  it('does not ask Commons about what is not a word', async () => {
+    const { asked } = relay(() => nothing);
+    expect(await findRecording('¿qué?', undefined, 'es')).toBeNull();
+    expect(await findRecording('a|b', undefined, 'ko')).toBeNull();
+    expect(asked).toEqual([]);
+  });
+
+  it("goes on to the learner's own source when the free ones have nothing", async () => {
+    const { asked } = relay((url) => (url.includes('audio.example.org') ? 4000 : nothing), 'https://audio.example.org/{word}.mp3');
+    expect(await findRecording('murciélago', undefined, 'es')).toMatchObject({ source: 'custom' });
+    expect(asked[0]?.startsWith(COMMONS_API)).toBe(true);
+    expect(asked[1]).toBe('https://audio.example.org/murci%C3%A9lago.mp3');
+  });
+
+  it('says who recorded the word it plays', async () => {
+    relay((url) => {
+      if (search(url).includes('-luna\\.wav')) return found(file('File:LL-Q1321 (spa)-Rodelar-luna.wav', 'c/c3/Luna.wav', 'CC BY 4.0'));
+      return url.endsWith('.mp3') ? 15000 : undefined;
+    });
+    vi.stubGlobal('Audio', class { play = async (): Promise<void> => {}; pause(): void {} });
+    const make = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:recording');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    expect(await pronounce('luna', undefined, 'es')).toEqual({
+      source: 'commons', human: true,
+      credit: { by: 'Rodelar', licence: 'CC BY 4.0', page: 'https://commons.wikimedia.org/wiki/File:LL-Q1321_(spa)-Rodelar-luna.wav' },
+    });
+    expect(make).toHaveBeenCalledOnce();
+  });
+
+  it('puts the credit on the card with the recording, named for the word', async () => {
+    relay((url) => (url.includes(encodeURIComponent('老师')) ? 11000 : undefined));
+    expect(await cardAudio({ word: '老師', reading: 'lǎo shī', lang: 'zh', also: ['老师'] })).toEqual({
+      data: btoa('x'.repeat(11000)),
+      filename: 'libregaku_老師_lǎo_shī.mp3',
+      credit: AUDIO_CMN_CREDIT,
+    });
+  });
+});
+

@@ -277,6 +277,253 @@ describe('NetflixAdapter.loadTrack', () => {
   });
 });
 
+describe('a track Netflix listed without its files', () => {
+  /** As the page hook posts one: named, with the id the player knows it by, and no address. */
+  const waiting = (language: string, label: string, trackId: string, extra: { cc?: boolean } = {}) =>
+    ({ language, label, forced: false, cc: false, url: '', urls: [], trackId, waiting: true, ...extra });
+  const sent = (language: string, label: string, trackId: string, urls: string[]) =>
+    ({ ...track(language, label, urls), trackId });
+
+  const asks = (post: { mock: { calls: unknown[][] } }) =>
+    post.mock.calls.map((c) => c[0] as Record<string, unknown>).filter((m) => m?.kind === 'nf-send-track');
+  const answer = (token: unknown, why: string | null) =>
+    fromPage({ source: TAG, kind: 'nf-track-sent', token, why });
+
+  /** A title sent with Japanese and English, and Chinese only named. */
+  const first = () =>
+    manifest('111', [
+      sent('ja', 'Japanese', 'T:ja', [cdn('ja')]),
+      waiting('zh-Hans', 'Chinese (Simplified)', 'T:hans'),
+      waiting('ja', 'Japanese [CC]', 'T:ja-cc', { cc: true }),
+      sent('en', 'English', 'T:en', [cdn('en')]),
+    ]);
+  /** The same title once the player has fetched Chinese: what the hook posts then. */
+  const withChinese = () =>
+    manifest('111', [
+      sent('ja', 'Japanese', 'T:ja', [cdn('ja')]),
+      sent('zh-Hans', 'Chinese (Simplified)', 'T:hans', [cdn('hans')]),
+      waiting('ja', 'Japanese [CC]', 'T:ja-cc', { cc: true }),
+      sent('en', 'English', 'T:en', [cdn('en')]),
+    ]);
+
+  it('is listed with the others, in its place, as one to ask for', async () => {
+    const a = new NetflixAdapter();
+    first();
+    expect(await a.listTracks()).toEqual([
+      { id: 'ja:sub:0', lang: 'ja', label: 'Japanese', generated: false, forced: false, cc: false },
+      { id: 'zh-Hans:sub:0', lang: 'zh-Hans', label: 'Chinese (Simplified)', generated: false, forced: false, cc: false, onRequest: true },
+      { id: 'ja:cc:0', lang: 'ja', label: 'Japanese [CC]', generated: false, forced: false, cc: true, onRequest: true },
+      { id: 'en:sub:0', lang: 'en', label: 'English', generated: false, forced: false, cc: false },
+    ]);
+  });
+
+  it('is asked of the page hook, then loaded from the manifest that answers', async () => {
+    const a = new NetflixAdapter();
+    const post = vi.spyOn(window, 'postMessage');
+    const told = vi.fn();
+    a.onTracks(told);
+    first();
+    const fetch = serve({ [cdn('hans')]: { body: ttml('字幕') } });
+
+    const loading = a.loadTrack('zh-Hans:sub:0');
+    const [ask] = asks(post);
+    expect(ask).toMatchObject({ source: TAG, kind: 'nf-send-track', movieId: '111', trackId: 'T:hans' });
+    // Nothing is fetched until the player has been sent the track.
+    expect(fetch).not.toHaveBeenCalled();
+
+    withChinese();
+    answer(ask?.token, null);
+    expect(await loading).toEqual([{ start: 1, end: 2, text: '字幕' }]);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    // The same name for the track as while it waited, and no longer one to ask for.
+    expect((await a.listTracks())[1]).toEqual(
+      { id: 'zh-Hans:sub:0', lang: 'zh-Hans', label: 'Chinese (Simplified)', generated: false, forced: false, cc: false },
+    );
+    // Both manifests were announced: the page follows the list.
+    expect(told).toHaveBeenCalledTimes(2);
+    // Here now, it is not asked for again.
+    await a.loadTrack('zh-Hans:sub:0');
+    expect(asks(post)).toHaveLength(1);
+  });
+
+  it('is asked for once by two loads in flight together', async () => {
+    const a = new NetflixAdapter();
+    const post = vi.spyOn(window, 'postMessage');
+    first();
+    serve({ [cdn('hans')]: { body: ttml('字幕') } });
+
+    const both = Promise.all([a.loadTrack('zh-Hans:sub:0'), a.loadTrack('zh-Hans:sub:0')]);
+    expect(asks(post)).toHaveLength(1);
+    withChinese();
+    answer(asks(post)[0]?.token, null);
+    expect((await both).map((cues) => cues.length)).toEqual([1, 1]);
+  });
+
+  it('fails, saying what to do, when the player changed track and nothing followed', async () => {
+    const a = new NetflixAdapter();
+    const post = vi.spyOn(window, 'postMessage');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    first();
+    const fetch = serve({});
+
+    const loading = a.loadTrack('zh-Hans:sub:0');
+    answer(asks(post)[0]?.token, 'nothing-came');
+    await expect(loading).rejects.toThrow(/not loaded by the player yet/);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('nothing-came'));
+    expect(fetch).not.toHaveBeenCalled();
+    // Asking again at once would bring the same nothing: it was asked the one time.
+    expect(asks(post)).toHaveLength(1);
+    // Still listed as one to ask for.
+    expect((await a.listTracks())[1]).toMatchObject({ id: 'zh-Hans:sub:0', onRequest: true });
+  });
+
+  it('asks again while the player is not ready to be asked, and loads the track once it is', async () => {
+    const a = new NetflixAdapter();
+    const post = vi.spyOn(window, 'postMessage');
+    first();
+    serve({ [cdn('hans')]: { body: ttml('字幕') } });
+
+    const loading = a.loadTrack('zh-Hans:sub:0');
+    // Still starting, then in an advert of its own before the film.
+    answer(asks(post)[0]?.token, 'no-player');
+    await vi.advanceTimersByTimeAsync(2_900);
+    expect(asks(post)).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(200);
+    expect(asks(post)).toHaveLength(2);
+    answer(asks(post)[1]?.token, 'another-title');
+    await vi.advanceTimersByTimeAsync(3_000);
+    expect(asks(post)).toHaveLength(3);
+
+    withChinese();
+    answer(asks(post)[2]?.token, null);
+    expect(await loading).toEqual([{ start: 1, end: 2, text: '字幕' }]);
+  });
+
+  it('does not wait on a player that cannot be asked at all', async () => {
+    const a = new NetflixAdapter();
+    const post = vi.spyOn(window, 'postMessage');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    first();
+
+    const loading = a.loadTrack('zh-Hans:sub:0');
+    answer(asks(post)[0]?.token, 'cannot-ask');
+    await expect(loading).rejects.toThrow(/not loaded by the player yet/);
+    expect(asks(post)).toHaveLength(1);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('cannot-ask'));
+  });
+
+  it('stops asking after fifteen seconds of a player that is never ready', async () => {
+    const a = new NetflixAdapter();
+    const post = vi.spyOn(window, 'postMessage');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    first();
+
+    const failed = expect(a.loadTrack('zh-Hans:sub:0')).rejects.toThrow(/not loaded by the player yet/);
+    for (let n = 0; n < 6; n++) {
+      expect(asks(post)).toHaveLength(n + 1);
+      answer(asks(post)[n]?.token, 'no-player');
+      await vi.advanceTimersByTimeAsync(3_000);
+    }
+    await failed;
+    expect(asks(post)).toHaveLength(6);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('no-player'));
+  });
+
+  it('stops asking when the viewer has gone on to another title', async () => {
+    const a = new NetflixAdapter();
+    const post = vi.spyOn(window, 'postMessage');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    first();
+    // The next episode has a track of the same name, already sent.
+    manifest('222', [sent('zh-Hans', 'Chinese (Simplified)', 'T:hans', [cdn('hans222')])]);
+    const fetch = serve({ [cdn('hans222')]: { body: ttml('次回') } });
+
+    const failed = expect(a.loadTrack('zh-Hans:sub:0')).rejects.toThrow(/not loaded by the player yet/);
+    history.pushState({}, '', '/watch/222');
+    answer(asks(post)[0]?.token, 'no-player');
+    await vi.advanceTimersByTimeAsync(3_000);
+    await failed;
+    // Not the other title's subtitles in this one's name.
+    expect(fetch).not.toHaveBeenCalled();
+    expect(asks(post)).toHaveLength(1);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('left'));
+  });
+
+  it('fails when the track came with nothing in it to read', async () => {
+    const a = new NetflixAdapter();
+    const post = vi.spyOn(window, 'postMessage');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    first();
+
+    const loading = a.loadTrack('zh-Hans:sub:0');
+    // Sent as pictures: the hook drops the track and names its language.
+    fromPage({
+      source: TAG, kind: 'nf-tracks', movieId: '111', pictures: ['zh-Hans'],
+      tracks: [sent('ja', 'Japanese', 'T:ja', [cdn('ja')]), waiting('ja', 'Japanese [CC]', 'T:ja-cc', { cc: true }), sent('en', 'English', 'T:en', [cdn('en')])],
+    });
+    answer(asks(post)[0]?.token, 'nothing-came');
+    await expect(loading).rejects.toThrow(/not loaded by the player yet/);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('as pictures'));
+    expect(a.pictureLanguages()).toEqual(['zh-Hans']);
+    expect(await labels(a)).toEqual(['Japanese', 'Japanese [CC]', 'English']);
+  });
+
+  it('gives up on a page hook that never answers', async () => {
+    const a = new NetflixAdapter();
+    const post = vi.spyOn(window, 'postMessage');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    first();
+
+    const failed = expect(a.loadTrack('zh-Hans:sub:0')).rejects.toThrow(/not loaded by the player yet/);
+    await vi.advanceTimersByTimeAsync(24_000);
+    expect(warn).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(2_000);
+    await failed;
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('no-answer'));
+    // An answer that comes after all is for a request no one is waiting on.
+    expect(() => answer(asks(post)[0]?.token, null)).not.toThrow();
+  });
+
+  it('waits for its own answer, not one for another request', async () => {
+    const a = new NetflixAdapter();
+    const post = vi.spyOn(window, 'postMessage');
+    first();
+    serve({ [cdn('hans')]: { body: ttml('字幕') } });
+
+    let done = false;
+    const loading = a.loadTrack('zh-Hans:sub:0').then((cues) => {
+      done = true;
+      return cues;
+    });
+    const token = asks(post)[0]?.token as number;
+    answer(token + 1, null);
+    answer(String(token), null);
+    await vi.advanceTimersByTimeAsync(100);
+    expect(done).toBe(false);
+
+    withChinese();
+    answer(token, null);
+    expect(await loading).toHaveLength(1);
+  });
+
+  it('is left out when it has no id the player could be asked by, or no language to list it under', async () => {
+    const a = new NetflixAdapter();
+    manifest('111', [
+      sent('en', 'English', 'T:en', [cdn('en')]),
+      waiting('ko', 'Korean', 'has a space'),
+      waiting('', 'Nameless', 'T:x'),
+      { language: 'fr', label: 'French', forced: false, cc: false, url: '', urls: [], waiting: true },
+      { ...waiting('de', 'German', 'T:de'), trackId: 42 },
+      // Marked as waiting, an address it carries is not taken either: it has not been sent.
+      { ...waiting('it', 'Italian', 'T:it'), urls: [cdn('it')] },
+    ]);
+    expect(await a.listTracks()).toEqual([
+      { id: 'en:sub:0', lang: 'en', label: 'English', generated: false, forced: false, cc: false },
+      { id: 'it:sub:0', lang: 'it', label: 'Italian', generated: false, forced: false, cc: false, onRequest: true },
+    ]);
+  });
+});
+
 describe('NetflixAdapter.seek', () => {
   const lastSeek = (post: { mock: { calls: unknown[][] } }) =>
     post.mock.calls.map((c) => c[0] as Record<string, unknown>).filter((m) => m?.kind === 'nf-seek').at(-1);

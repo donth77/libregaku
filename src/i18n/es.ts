@@ -43,6 +43,8 @@ export const es: Translation = {
     supportFull: 'Compatibilidad completa, incluidas las lecturas y el furigana.',
     supportPinyin: 'Compatibilidad completa, incluido el pinyin. Las definiciones están en inglés.',
     supportWords: 'Compatibilidad completa. Las definiciones están en inglés.',
+    script: 'Caracteres',
+    scriptHint: 'Los que se usan cuando un video tiene ambos.',
     supportBasic: 'Compatibilidad básica: se separan las palabras, pero aún no hay diccionario ni lecturas.',
     native: 'Tu idioma',
     nativeHint: 'Las traducciones y las definiciones se muestran en este idioma, cuando el video y el diccionario lo tienen.',
@@ -246,6 +248,8 @@ export const es: Translation = {
     creditUnihan: 'Qué lectura de un carácter chino se muestra primero. © Unicode, Inc., con la Unicode License.',
     creditJotoba: 'Se usan para las búsquedas mientras se descarga el diccionario. Ambos usan JMdict.',
     creditLucide: 'Iconos. Licencia ISC.',
+    creditCommons: 'Grabaciones de palabras en español, chino y coreano, hechas por voluntarios. Cada una tiene su propia licencia, CC BY-SA 4.0 en la mayoría, que se indica junto al hablante al reproducirla y en la tarjeta.',
+    creditAudioCmn: 'Grabaciones de palabras en chino de Yue Tan, Universidad de Caen. CC BY-SA 3.0 US.',
     licence: 'Libregaku tiene licencia MIT. Los datos de los diccionarios se descargan de sus fuentes; no vienen incluidos.',
     built: (when: string): string => `Esta copia se compiló el ${when}.`,
 
@@ -480,6 +484,7 @@ export const es: Translation = {
     pronounce: 'Escuchar',
     playedRecording: (word: string): string => `${word} · grabación`,
     playedSynthesised: (word: string): string => `${word} · voz sintética`,
+    recordingBy: (speaker: string, licence: string): string => `Grabación de ${speaker} · ${licence}`,
     pronounceFailed: 'no se pudo reproducir el audio',
     addSentence: 'Añadir oración',
     sentenceAdded: 'Oración añadida',
@@ -641,6 +646,7 @@ export const es: Translation = {
 
     // Los subtítulos de este video
     subtitlesOff: 'Activa los subtítulos en el reproductor y Libregaku los detectará.',
+    trackNotSent: 'El reproductor aún no ha cargado estos subtítulos.',
     noTargetTrack: 'Aquí no hay subtítulos en el idioma que aprendes.',
     noSecondTrack: 'Aquí no hay subtítulos en tu idioma, así que no hay segunda línea.',
     onlyOneTrack: 'Este video solo tiene una pista de subtítulos, así que no hay segunda línea.',
@@ -665,6 +671,7 @@ export const es: Translation = {
       `Subtítulos de este video: ${languages.join(', ') || 'ninguno'}. ` +
       'Cambia el idioma que aprendes en la configuración o elige otro video.',
     onlyPictures: 'Este video solo los tiene como imágenes, no como texto, así que Libregaku no puede leerlos.',
+    chooseInPlayer: (track: string): string => `Elige ${track} en el menú de subtítulos del reproductor y Libregaku los detectará.`,
     noHumanTrack: 'Este video no tiene ninguna pista escrita por una persona.',
     secondTrackError: (track: string, error: string): string => `${track}: ${error}`,
     noSecondTrackDetail: (languages: readonly string[]): string => `Subtítulos de este video: ${languages.join(', ')}.`,
@@ -725,6 +732,7 @@ export const es: Translation = {
 
     // Una pista de subtítulos que no se cargó
     unknownTrack: (id: string): string => `pista desconocida ${id}`,
+    trackNotSent: 'el reproductor aún no la ha cargado; elígela una vez en su menú de subtítulos',
     noCaptionFormat: (attempts: readonly string[]): string =>
       `ningún formato de subtítulos funcionó: ${attempts.join(', ')}`,
     noSubtitleUrl: (attempts: readonly string[]): string =>

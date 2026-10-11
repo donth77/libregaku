@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { describeFailure } from '../../src/assumptions';
 import { audioUrlAllowed } from '../../src/audio/pronounce';
+import {
+  audioCmnUrl, filesIn, linguaLibreOf, linguaLibreSearch, mp3Of, namedOf, namedQuery, namedTitle,
+} from '../../src/audio/recordings';
 import { fetchCheckingHops } from './hosts';
 
 /**
@@ -67,5 +70,71 @@ describe('audio contract', () => {
     // rather than load-bearing — worth knowing, not worth breaking over.
     const n = await size('食べる', 'タベル');
     expect(n).toBe(PLACEHOLDER_BYTES);
+  }, 60_000);
+
+  /*
+   * The free recordings of Spanish, Chinese and Korean words. Asked the way
+   * the extension asks, with its own questions (src/audio/recordings.ts), so
+   * a change in what Commons answers, in how Lingua Libre names its files or
+   * in where the MP3s live shows here and not as a voice quietly taking a
+   * recording's place. Wikimedia limits clients that do not say who they are.
+   */
+  const WHO = {
+    'User-Agent': 'Libregaku-canary/1 (https://github.com/donth77/libregaku)',
+    'Api-User-Agent': 'Libregaku-canary/1 (https://github.com/donth77/libregaku)',
+  };
+
+  /** A recording at an address the extension would fetch: its type and size. */
+  async function recording(url: string, id: string): Promise<{ type: string; bytes: number }> {
+    expect(audioUrlAllowed(url), `${url} is not a place the service worker fetches from.\n${describeFailure(id)}`).toBe(true);
+    const res = await fetchCheckingHops(url, { headers: WHO }, describeFailure(id));
+    expect(res.ok, `${url} returned HTTP ${res.status}.\n${describeFailure(id)}`).toBe(true);
+    return { type: res.headers.get('content-type') ?? '', bytes: (await res.arrayBuffer()).byteLength };
+  }
+
+  async function ask(url: string): Promise<unknown> {
+    expect(audioUrlAllowed(url), `${url} is not a place the service worker fetches from`).toBe(true);
+    const res = await fetchCheckingHops(url, { headers: WHO }, describeFailure('audio.commons'));
+    expect(res.ok, `Commons returned HTTP ${res.status}.\n${describeFailure('audio.commons')}`).toBe(true);
+    return res.json();
+  }
+
+  it('audio.commons — Lingua Libre still has common words, each with a licence and an MP3', async () => {
+    for (const [word, iso] of [['casa', 'spa'], ['图书馆', 'cmn'], ['먹다', 'kor']] as const) {
+      const hit = linguaLibreOf(filesIn(await ask(linguaLibreSearch(word, iso))), word, iso);
+      expect(hit, `No Lingua Libre recording of ${word} (${iso}) was found.\n${describeFailure('audio.commons')}`).not.toBeNull();
+      expect(hit!.speaker.length, `no speaker in ${hit!.file.title}`).toBeGreaterThan(0);
+      expect(hit!.file.licence, `${hit!.file.title} names no Creative Commons licence`).toMatch(/^CC/);
+      const mp3 = mp3Of(hit!.file.url);
+      expect(mp3, `${hit!.file.url} is not where Commons files were`).not.toBeNull();
+      const got = await recording(mp3!, 'audio.commons');
+      expect(
+        got.type.startsWith('audio/mpeg') && got.bytes > 512,
+        `${mp3} is ${got.bytes} bytes of ${got.type}.\n${describeFailure('audio.commons')}`,
+      ).toBe(true);
+    }
+  }, 120_000);
+
+  it("audio.commons — a Korean word is still found by its file's name, and a missing one is said to be missing", async () => {
+    const title = namedTitle('Ko', '사람');
+    const file = namedOf(filesIn(await ask(namedQuery(title))), title);
+    expect(file, `${title} was not found.\n${describeFailure('audio.commons')}`).not.toBeNull();
+    expect(file!.licence).toMatch(/^CC/);
+    const got = await recording(mp3Of(file!.url)!, 'audio.commons');
+    expect(got.type.startsWith('audio/mpeg') && got.bytes > 512, `${got.bytes} bytes of ${got.type}`).toBe(true);
+
+    const none = namedTitle('Ko', '없는단어없는단어');
+    expect(namedOf(filesIn(await ask(namedQuery(none))), none)).toBeNull();
+  }, 60_000);
+
+  it('audio.audio-cmn — the commit read still serves its words, and 404s for one it lacks', async () => {
+    const got = await recording(audioCmnUrl('图书馆')!, 'audio.audio-cmn');
+    expect(
+      got.type.startsWith('audio/mpeg') && got.bytes > 512,
+      `cmn-图书馆.mp3 is ${got.bytes} bytes of ${got.type}.\n${describeFailure('audio.audio-cmn')}`,
+    ).toBe(true);
+    // A word it lacks is told from a failure by this status.
+    const missing = await fetch(audioCmnUrl('你好')!);
+    expect(missing.status, describeFailure('audio.audio-cmn')).toBe(404);
   }, 60_000);
 });

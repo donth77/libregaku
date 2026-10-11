@@ -8,7 +8,7 @@ import { fill, languageLabel, languageName, ownName, ui, uiLocale } from '../i18
 import { markSites, siteInfo, SITE_INFO_STYLE } from '../site-info';
 import { copyText } from './share';
 import {
-  DEFAULTS, DEFINITION_LANGUAGES, cardDeck, featuresOf, setSetting, settings, type Settings, TARGET_LANGUAGES,
+  DEFAULTS, DEFINITION_LANGUAGES, cardDeck, featuresOf, setSetting, settings, type Settings, TARGET_LANGUAGES, targetVariant,
   TRANSLATION_LANGUAGES, UNDERLINES, type UnderlineKey,
 } from '../settings';
 
@@ -271,6 +271,7 @@ export function syncSettingsControls(root: ParentNode): void {
     if (el.type === 'color') swatch(el as HTMLInputElement);
   }
   showFor(root, cur.target);
+  redrawScripts(root);
   // The flag menu is the language's own, and only means something while the
   // badge is a flag; a change made in another tab arrives here.
   redrawFlags(root);
@@ -288,6 +289,29 @@ const deckLists = new WeakMap<Element, () => void>();
 function redrawDecks(root: ParentNode): void {
   const list = root.querySelector('select[name=deck]');
   if (list) deckLists.get(list)?.();
+}
+
+/**
+ * The ways the language being learned is written, as that menu's choices:
+ * Chinese (Simplified), Chinese (Traditional), named by the browser in the
+ * interface's language, with the one in use chosen. None for a language
+ * written one way, whose row is hidden.
+ */
+function fillScripts(sel: HTMLSelectElement): void {
+  const cur = settings();
+  sel.replaceChildren();
+  for (const tag of featuresOf(cur.target).scripts ?? []) {
+    const o = document.createElement('option');
+    o.value = tag;
+    o.textContent = languageLabel(tag);
+    sel.appendChild(o);
+  }
+  sel.value = targetVariant(cur);
+}
+
+function redrawScripts(root: ParentNode): void {
+  const sel = root.querySelector<HTMLSelectElement>('select[name=script]');
+  if (sel) fillScripts(sel);
 }
 
 /** Underline a colour row's name in the colour its picker holds. */
@@ -337,7 +361,7 @@ function fillFlags(sel: HTMLSelectElement): void {
 }
 
 /** A setting only some languages have a use for, such as Furigana. */
-type Feature = 'readings' | 'characters' | 'definitions';
+type Feature = 'readings' | 'characters' | 'definitions' | 'scripts';
 
 /** Give a setting's row its name and its hint. */
 function named(root: ParentNode, setting: keyof Settings, [name, hint]: [string, string]): void {
@@ -394,6 +418,8 @@ export function buildSettings(onChange: Rerender, opts: SettingsPanelOptions = {
     if (which === 'target') showFor(root, (e.target as HTMLSelectElement).value);
     // The language's own decks, in place of those of the one just left.
     if (which === 'target') redrawDecks(root);
+    // And the scripts it is written in, where there is more than one.
+    if (which === 'target') redrawScripts(root);
     // Its own flags too, and the one picked for it.
     if (which === 'target') redrawFlags(root);
     if (which === 'native') showFor(root, settings().target, (e.target as HTMLSelectElement).value);
@@ -538,6 +564,19 @@ export function buildSettings(onChange: Rerender, opts: SettingsPanelOptions = {
     const hint = target.closest('.set')?.querySelector('.hint');
     if (hint) hint.textContent = tierNote(target.value);
   });
+  // Which script, for a language written in more than one: a video often has
+  // subtitles in both. Not a data-setting: it holds one choice of each
+  // language's, and fillScripts keeps it in step.
+  const script = document.createElement('select');
+  script.name = 'script';
+  fillScripts(script);
+  script.addEventListener('change', () => {
+    const { target: lang, scripts } = settings();
+    void setSetting('scripts', { ...scripts, [lang]: script.value });
+    onChange();
+  });
+  row(t.script, script, t.scriptHint);
+  needs(script, 'scripts');
   // Each language in itself, so yours can be found whatever the interface is in.
   // A translation chosen from the old, shorter list stays offered, so it is never silently changed.
   const translations = TRANSLATION_LANGUAGES.map((l): [string, string] => [l.code, ownName(l.code)]);
@@ -1121,6 +1160,8 @@ function credits(): HTMLElement {
   entry('Lindera · IPADIC · mecab-ko-dic', 'https://github.com/lindera/lindera', ui.settings.creditLindera);
   entry('Unihan', 'https://www.unicode.org/reports/tr38/', ui.settings.creditUnihan);
   entry('Jotoba · Jisho', 'https://jotoba.de/', ui.settings.creditJotoba);
+  entry('Lingua Libre · Wikimedia Commons', 'https://commons.wikimedia.org/wiki/Commons:Lingua_Libre', ui.settings.creditCommons);
+  entry('audio-cmn · Shtooka', 'https://github.com/hugolpz/audio-cmn', ui.settings.creditAudioCmn);
   entry('Lucide', 'https://lucide.dev/', ui.settings.creditLucide);
 
   const fine = document.createElement('dd');

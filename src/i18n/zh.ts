@@ -35,6 +35,8 @@ export const zh: Translation = {
     supportFull: '完整支持，包括读音和假名注音。',
     supportPinyin: '完整支持，包括拼音。释义为英文。',
     supportWords: '完整支持。释义为英文。',
+    script: '文字',
+    scriptHint: '视频两种都有时，使用这一种。',
     supportBasic: '基础支持：可以分词，但暂时没有词典和读音。',
     native: '母语',
     nativeHint: '视频和词典提供这种语言时，翻译和释义就用它显示。',
@@ -221,6 +223,8 @@ export const zh: Translation = {
     creditUnihan: '决定汉字优先显示哪个读音。© Unicode, Inc.，依据 Unicode License 使用。',
     creditJotoba: '词典下载期间用于查词。两者都使用 JMdict。',
     creditLucide: '图标。ISC 许可。',
+    creditCommons: '西班牙语、中文和韩语单词的录音，由志愿者朗读。每段录音各有许可，多数为 CC BY-SA 4.0，播放时和卡片上会连同朗读者姓名一并标明。',
+    creditAudioCmn: '中文单词录音，由 Yue Tan（卡昂大学）朗读。CC BY-SA 3.0 US。',
     licence: 'Libregaku 采用 MIT 许可。词典数据从各自的来源下载，不随扩展打包。',
     built: (when: string): string => `此版本构建于 ${when}。`,
 
@@ -430,6 +434,7 @@ export const zh: Translation = {
     pronounce: '发音',
     playedRecording: (word: string): string => `${word} · 录音`,
     playedSynthesised: (word: string): string => `${word} · 合成语音`,
+    recordingBy: (speaker: string, licence: string): string => `录音：${speaker} · ${licence}`,
     pronounceFailed: '无法播放音频',
     addSentence: '添加句子',
     sentenceAdded: '句子已添加',
@@ -587,6 +592,7 @@ export const zh: Translation = {
 
     // Titles: this video's subtitles
     subtitlesOff: '在播放器中打开字幕，Libregaku 就能读取。',
+    trackNotSent: '播放器尚未加载这些字幕。',
     noTargetTrack: '此视频没有你正在学习的语言的字幕。',
     noSecondTrack: '此视频没有你母语的字幕，因此无法显示翻译。',
     onlyOneTrack: '此视频只有一种字幕，因此无法显示翻译。',
@@ -607,6 +613,7 @@ export const zh: Translation = {
     noTargetTrackDetail: (languages: readonly string[]): string =>
       `此视频的字幕语言：${languages.join('、') || '无'}。请在设置中更改学习语言，或换一个视频。`,
     onlyPictures: '此视频的字幕只有图片形式，不是文字，Libregaku 无法读取。',
+    chooseInPlayer: (track: string): string => `在播放器的字幕菜单中选择“${track}”，Libregaku 就能读取。`,
     noHumanTrack: '此视频没有人工制作的字幕。',
     secondTrackError: (track: string, error: string): string => `${track}：${error}`,
     noSecondTrackDetail: (languages: readonly string[]): string => `此视频的字幕语言：${languages.join('、')}。`,
@@ -665,6 +672,7 @@ export const zh: Translation = {
 
     // A subtitle track that would not load
     unknownTrack: (id: string): string => `未知的字幕轨道 ${id}`,
+    trackNotSent: '播放器尚未加载；请在播放器的字幕菜单中选择一次',
     noCaptionFormat: (attempts: readonly string[]): string => `所有字幕格式都无法使用——${attempts.join('，')}`,
     noSubtitleUrl: (attempts: readonly string[]): string =>
       `所有字幕地址都无法使用——${attempts.join('；') || '未列出地址'}`,

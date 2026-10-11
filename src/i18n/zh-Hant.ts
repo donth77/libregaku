@@ -32,6 +32,8 @@ export const zhHant: Translation = {
     supportFull: '完整支援，包括讀音和振假名。',
     supportPinyin: '完整支援，包括拼音。釋義為英文。',
     supportWords: '完整支援。釋義為英文。',
+    script: '文字',
+    scriptHint: '影片兩種都有時，使用這一種。',
     supportBasic: '基本支援：可以分詞，但還沒有字典和讀音。',
     native: '母語',
     nativeHint: '影片和字典有提供時，翻譯和釋義會以這個語言顯示。',
@@ -221,6 +223,8 @@ export const zhHant: Translation = {
     creditUnihan: '決定漢字優先顯示哪個讀音。© Unicode, Inc.，依 Unicode License 授權使用。',
     creditJotoba: '字典下載期間用於查詢。兩者都使用 JMdict。',
     creditLucide: '圖示。ISC 授權。',
+    creditCommons: '西班牙語、中文和韓語單字的錄音，由志願者朗讀。每段錄音各有授權，多數為 CC BY-SA 4.0，播放時和卡片上會連同朗讀者姓名一併標示。',
+    creditAudioCmn: '中文單字錄音，由 Yue Tan（卡昂大學）朗讀。CC BY-SA 3.0 US。',
     licence: 'Libregaku 採用 MIT 授權。字典資料是從各自的來源下載，並未內建。',
     built: (when: string): string => `此版本建置於 ${when}。`,
 
@@ -441,6 +445,7 @@ export const zhHant: Translation = {
     pronounce: '發音',
     playedRecording: (word: string): string => `${word} · 真人錄音`,
     playedSynthesised: (word: string): string => `${word} · 合成語音`,
+    recordingBy: (speaker: string, licence: string): string => `錄音：${speaker} · ${licence}`,
     pronounceFailed: '無法播放音訊',
     addSentence: '新增句子',
     sentenceAdded: '已新增句子',
@@ -600,6 +605,7 @@ export const zhHant: Translation = {
 
     // This video's subtitles
     subtitlesOff: '請在播放器中開啟字幕，Libregaku 就會讀取。',
+    trackNotSent: '播放器尚未載入這些字幕。',
     noTargetTrack: '這裡沒有你所學語言的字幕。',
     noSecondTrack: '這裡沒有母語字幕，因此無法顯示第二行。',
     onlyOneTrack: '這部影片只有一條字幕軌，因此無法顯示第二行。',
@@ -620,6 +626,7 @@ export const zhHant: Translation = {
     noTargetTrackDetail: (languages: readonly string[]): string =>
       `這部影片有：${languages.join('、') || '無'}。請在設定中變更學習語言，或選擇其他影片。`,
     onlyPictures: '這部影片的字幕只有圖片形式，不是文字，Libregaku 無法讀取。',
+    chooseInPlayer: (track: string): string => `請在播放器的字幕選單中選擇「${track}」，Libregaku 就會讀取。`,
     noHumanTrack: '這部影片沒有人工撰寫的字幕軌。',
     secondTrackError: (track: string, error: string): string => `${track}：${error}`,
     noSecondTrackDetail: (languages: readonly string[]): string => `這部影片有：${languages.join('、')}。`,
@@ -677,6 +684,7 @@ export const zhHant: Translation = {
 
     // A subtitle track that would not load
     unknownTrack: (id: string): string => `未知的字幕軌 ${id}`,
+    trackNotSent: '播放器尚未載入；請在播放器的字幕選單中選擇一次',
     noCaptionFormat: (attempts: readonly string[]): string => `所有字幕格式都無法使用：${attempts.join('、')}`,
     noSubtitleUrl: (attempts: readonly string[]): string =>
       `所有字幕網址都無法使用：${attempts.join('；') || '未列出任何網址'}`,

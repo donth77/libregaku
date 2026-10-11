@@ -28,6 +28,8 @@ interface PageState {
   tracks: Array<{ id: string; lang: string; label: string; generated?: boolean; forced?: boolean }>;
   track: string | null;
   second: string | null;
+  /** The title of the notice over the player, when there is one. */
+  notice?: string | null;
   sidebarOpen: boolean;
   /** How a line's sound can be recorded here: from the video, from the tab, or not at all. */
   capture?: 'element' | 'tab' | null;
@@ -63,6 +65,9 @@ function describe(state: PageState | null): { text: string; cls: string } {
   if (!state.rendering) {
     return { text: ui.action.waitingForSubtitles(siteName(state.site)), cls: 'off' };
   }
+  // The video has tracks and none is in use: the page's own notice says why,
+  // and "active" would be the opposite of it.
+  if (state.tracks.length && !state.track && state.notice) return { text: state.notice, cls: 'off' };
   return { text: state.title ? ui.action.activeOn(state.title) : ui.action.active, cls: 'ok' };
 }
 
@@ -91,8 +96,20 @@ function fillTracks(
     o.textContent = t.generated ? ui.action.generatedTrack(name) : name;
     sel.appendChild(o);
   }
+  // Nothing loaded — the video has no subtitles in the language being learned,
+  // say — is shown as nothing chosen, not as an empty box.
+  if (!noneLabel && !state.tracks.some((t) => t.id === selected)) {
+    const o = document.createElement('option');
+    o.value = '';
+    o.textContent = '—';
+    o.disabled = true;
+    sel.prepend(o);
+  }
   sel.value = selected ?? '';
 }
+
+/** How often the open popup asks the page again, in ms. */
+const FOLLOW_MS = 1000;
 
 async function main(): Promise<void> {
   // The name in the header becomes the logo. The text stays in action.html
@@ -114,37 +131,63 @@ async function main(): Promise<void> {
 
   const state = tab?.id ? await askPage(tab.id, { type: 'lg-state' }) : null;
 
-  const { text, cls } = describe(state);
   const status = $('status');
-  status.textContent = text;
-  status.className = `status ${cls}`;
+  const track = $<HTMLSelectElement>('track');
+  const second = $<HTMLSelectElement>('second');
 
-  if (state?.supported && state.tracks.length) {
-    $('tracks').hidden = false;
-    const track = $<HTMLSelectElement>('track');
-    const second = $<HTMLSelectElement>('second');
-    fillTracks(track, state, state.track);
-    fillTracks(second, state, state.second, ui.action.noTranslation);
+  /**
+   * The status line, the two track lists and the panel's button, as the page
+   * has them now. Drawn again only when something in them changed, so a list
+   * being read is not rebuilt under the pointer.
+   */
+  let drawn = '';
+  let offered = false;
+  const show = (now: PageState | null): void => {
+    const key = JSON.stringify([now?.supported, now?.site, now?.title, now?.rendering, now?.tracks, now?.track, now?.second, now?.notice]);
+    if (key === drawn) return;
+    drawn = key;
+    const { text, cls } = describe(now);
+    status.textContent = text;
+    status.className = `status ${cls}`;
+    $('quick').hidden = !now?.supported;
+    if (now?.supported && now.capture === 'tab' && tab?.id != null && !offered) {
+      offered = true;
+      void offerCapture(tab.id, now);
+    }
+    const listed = Boolean(now?.supported && now.tracks.length);
+    $('tracks').hidden = !listed;
+    if (!now || !listed) return;
+    fillTracks(track, now, now.track);
+    fillTracks(second, now, now.second, ui.action.noTranslation);
+  };
+  show(state);
 
-    // Only the picker that changed. Sending both turned the second picker's
-    // "None" — which is also what it shows when no second line happened to
-    // load — into a deliberate choice whenever the first was changed.
-    const apply = (field: 'track' | 'second', value: string): void => {
-      if (!tab?.id) return;
-      void chrome.tabs.sendMessage(tab.id, { type: 'lg-set-tracks', [field]: value });
-    };
-    track.addEventListener('change', () => apply('track', track.value));
-    second.addEventListener('change', () => apply('second', second.value));
+  // Only the picker that changed. Sending both turned the second picker's
+  // "None" — which is also what it shows when no second line happened to
+  // load — into a deliberate choice whenever the first was changed.
+  const apply = async (field: 'track' | 'second', value: string): Promise<void> => {
+    if (!tab?.id) return;
+    // Answered once the page has loaded the pick, or failed to.
+    await chrome.tabs.sendMessage(tab.id, { type: 'lg-set-tracks', [field]: value }).catch(() => null);
+    // What it loaded, which is not always what was asked: the subtitles'
+    // track cannot also be the translation's, so one pick can move the other.
+    show(await askPage(tab.id, { type: 'lg-state' }));
+  };
+  track.addEventListener('change', () => void apply('track', track.value));
+  second.addEventListener('change', () => void apply('second', second.value));
+
+  // The page may still be loading — itself, or its tracks — or starting over
+  // after the language being learned was changed: all of this follows it
+  // while the popup is open. A page with nothing of ours on it answers at once.
+  if (tab?.id != null) {
+    const tabId = tab.id;
+    const follow = window.setInterval(() => void askPage(tabId, { type: 'lg-state' }).then(show), FOLLOW_MS);
+    window.addEventListener('pagehide', () => window.clearInterval(follow), { once: true });
   }
 
-  if (state?.supported && state.capture === 'tab' && tab?.id != null) void offerCapture(tab.id, state);
-
-  if (state?.supported) {
-    $('quick').hidden = false;
-    $('toggleSidebar').addEventListener('click', () => {
-      if (tab?.id) void chrome.tabs.sendMessage(tab.id, { type: 'lg-toggle-sidebar' });
-    });
-  }
+  $('toggleSidebar').addEventListener('click', () => {
+    if (tab?.id) void chrome.tabs.sendMessage(tab.id, { type: 'lg-toggle-sidebar' }).catch(() => null);
+  });
 
   const anki = $('anki');
   const [ankiState, waiting] = await Promise.all([probe(), queuedCards()]);

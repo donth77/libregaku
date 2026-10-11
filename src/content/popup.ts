@@ -52,6 +52,14 @@ const STYLE = `
   }
   .badge { padding: 3px 8px; border-radius: 5px; background: #16281F; color: #63AF97; letter-spacing: .05em; }
   .tools { display: flex; gap: 7px; padding: 12px 16px; border-bottom: 1px solid #212939; }
+  /* Who recorded the word just played, and under what licence: a link to its page. */
+  .credit {
+    flex: none; display: block; padding: 6px 16px; border-bottom: 1px solid #212939;
+    font-size: 11px; line-height: 1.4; color: #8A94AF; text-decoration: none;
+  }
+  .credit[hidden] { display: none; }
+  .credit:hover, .credit:focus-visible { color: #E8ECF6; text-decoration: underline; }
+  .credit:focus-visible { outline: 2px solid #F2F5FC; outline-offset: -2px; }
   .tb {
     width: 34px; height: 34px; border-radius: 50%;
     border: 1px solid #2A3348; background: #1B2234; color: #B4BDD4;
@@ -285,6 +293,8 @@ export interface CardDraft {
   reading: string;
   meaning: string;
   sentence: string;
+  /** The word in the language's other script, where it has one: some recordings are filed under it. */
+  alt?: string;
 }
 
 /**
@@ -299,6 +309,7 @@ export function draftFor(result: LookupResult, token: Token, sentence: string): 
     reading: top?.reading ?? token.reading ?? '',
     meaning: top?.senses.flatMap((x) => x.glosses).slice(0, 4).join('; ') ?? '',
     sentence,
+    ...(top?.alt ? { alt: top.alt } : {}),
   };
 }
 
@@ -539,14 +550,28 @@ export function showPopup(
   const sayWord = top?.word ?? word;
   const sayReading = top?.reading ?? reading;
 
+  // A free recording asks that its speaker and licence be said where it is
+  // played (CC BY, CC BY-SA): a line under the buttons, linked to its page.
+  const credit = document.createElement('a');
+  credit.className = 'credit';
+  credit.target = '_blank';
+  credit.rel = 'noopener noreferrer';
+  credit.hidden = true;
+
   button('volume', ui.popup.pronounce, (b) => {
     b.classList.add('busy');
     b.replaceChildren(icon('loader', 16));
-    void pronounce(sayWord, sayReading, ctx.lang)
+    // Some recordings are filed under the word's other script.
+    void pronounce(sayWord, sayReading, ctx.lang, top?.alt ? [top.alt] : [])
       .then((spoken) => {
         // Say which source was used: a human recording and a synthesised one
         // are not equally trustworthy models to imitate.
         say(spoken.human ? ui.popup.playedRecording(word) : ui.popup.playedSynthesised(word));
+        credit.hidden = !spoken.credit;
+        if (spoken.credit) {
+          credit.textContent = ui.popup.recordingBy(spoken.credit.by, spoken.credit.licence);
+          credit.href = spoken.credit.page;
+        }
       })
       .catch(() => say(ui.popup.pronounceFailed, 4000))
       .finally(() => {
@@ -613,6 +638,7 @@ export function showPopup(
   const site = ctx.dictionary;
   if (site) button('external', site.name, () => window.open(site.url, '_blank', 'noopener'));
   card.appendChild(tools);
+  card.appendChild(credit);
 
   // Everything that can grow goes in one scrolling body, so a long entry
   // costs scrolling rather than the status row.

@@ -140,6 +140,9 @@ describe('media file names', () => {
   it('names a recording by its word and reading, under our prefix', () => {
     expect(mediaFilename('猫', 'ねこ', 'audio/mpeg')).toBe('libregaku_猫_ねこ.mp3');
     expect(mediaFilename('食べる', 'たべる', 'audio/ogg; codecs=opus')).toBe('libregaku_食べる_たべる.ogg');
+    // As Wikimedia Commons serves an Ogg recording.
+    expect(mediaFilename('사람', undefined, 'application/ogg')).toBe('libregaku_사람.ogg');
+    expect(mediaFilename('casa', undefined, 'audio/x-wav')).toBe('libregaku_casa.wav');
   });
 
   it('leaves out a reading that is the word itself', () => {

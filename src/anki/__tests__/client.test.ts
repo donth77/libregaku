@@ -106,6 +106,23 @@ describe('addNote', () => {
     expect(fieldsOf().Audio).toBe('');
   });
 
+  it("writes a free recording's speaker and licence into the field ahead of it", async () => {
+    await addNote({
+      deck: 'Vocabulary', expression: 'casa', reading: 'casa', meaning: 'house', tags: [],
+      audio: {
+        data: 'SUQzBAAAAAAA', filename: 'libregaku_casa.mp3',
+        credit: { by: 'Julie Samothrace', licence: 'CC BY-SA 4.0', page: 'https://commons.wikimedia.org/wiki/File:LL-Q1321_(spa)-Julie_Samothrace-casa.wav' },
+      },
+    });
+    // AnkiConnect adds the recording after what the field holds.
+    expect(fieldsOf().Audio).toBe(
+      '<span style="font-size:11px;opacity:.6"><a href="https://commons.wikimedia.org/wiki/File:LL-Q1321_(spa)-Julie_Samothrace-casa.wav">' +
+        'Julie Samothrace · CC BY-SA 4.0</a></span> ',
+    );
+    // The credit is words on the card, not part of what AnkiConnect is handed as media.
+    expect(added[0]?.audio).toEqual([{ data: 'SUQzBAAAAAAA', filename: 'libregaku_casa.mp3', fields: ['Audio'] }]);
+  });
+
   it('puts the line in SentenceAudio and the still in Image, on a note type made with them', async () => {
     modelFields = [...FIELDS, 'SentenceAudio'];
     await ensureModel();

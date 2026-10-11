@@ -61,6 +61,8 @@ export const uk: Translation = {
     supportFull: 'Повна підтримка, зокрема читання та фурігана.',
     supportPinyin: 'Повна підтримка, зокрема піньїнь. Визначення англійською.',
     supportWords: 'Повна підтримка. Визначення англійською.',
+    script: 'Письмо',
+    scriptHint: 'Використовується, коли у відео є обидва варіанти.',
     supportBasic: 'Базова підтримка: текст ділиться на слова, але словника й читань поки немає.',
     native: 'Ваша мова',
     nativeHint: 'Переклади й визначення показуються цією мовою, якщо вона є у відео та в словнику.',
@@ -258,6 +260,8 @@ export const uk: Translation = {
     creditUnihan: 'Яке читання китайського ієрогліфа показувати першим. © Unicode, Inc., за ліцензією Unicode License.',
     creditJotoba: 'Використовуються для пошуку, поки завантажується словник. Обидва засновані на JMdict.',
     creditLucide: 'Значки. Ліцензія ISC.',
+    creditCommons: 'Записи іспанських, китайських і корейських слів, начитані волонтерами. Кожен має власну ліцензію, найчастіше CC BY-SA 4.0; її вказано разом з іменем диктора під час відтворення та на картці.',
+    creditAudioCmn: 'Записи китайських слів: Yue Tan, Канський університет. CC BY-SA 3.0 US.',
     licence: 'Libregaku поширюється за ліцензією MIT. Дані словників завантажуються з джерел, а не входять до розширення.',
     built: (when: string): string => `Цю копію зібрано ${when}.`,
 
@@ -495,6 +499,7 @@ export const uk: Translation = {
     pronounce: 'Прослухати',
     playedRecording: (word: string): string => `${word} · запис`,
     playedSynthesised: (word: string): string => `${word} · синтез мовлення`,
+    recordingBy: (speaker: string, licence: string): string => `Запис: ${speaker} · ${licence}`,
     pronounceFailed: 'не вдалося відтворити аудіо',
     addSentence: 'Додати речення',
     sentenceAdded: 'Речення додано',
@@ -660,6 +665,7 @@ export const uk: Translation = {
 
     // Субтитри цього відео
     subtitlesOff: 'Увімкніть субтитри в плеєрі, і Libregaku їх підхопить.',
+    trackNotSent: 'Плеєр ще не завантажив ці субтитри.',
     noTargetTrack: 'Тут немає субтитрів мовою, яку ви вивчаєте.',
     noSecondTrack: 'Тут немає субтитрів вашою мовою, тому другого рядка не буде.',
     onlyOneTrack: 'Це відео має лише одну доріжку субтитрів, тому другого рядка не буде.',
@@ -684,6 +690,7 @@ export const uk: Translation = {
       `Субтитри в цьому відео: ${languages.join(', ') || 'немає'}. ` +
       'Змініть мову, яку вивчаєте, у налаштуваннях або виберіть інше відео.',
     onlyPictures: 'У цьому відео вони є лише як зображення, а не текст, тому Libregaku не може їх прочитати.',
+    chooseInPlayer: (track: string): string => `Виберіть ${track} у меню субтитрів плеєра, і Libregaku їх підхопить.`,
     noHumanTrack: 'Для цього відео немає доріжки, написаної людиною.',
     secondTrackError: (track: string, error: string): string => `${track}: ${error}`,
     noSecondTrackDetail: (languages: readonly string[]): string => `Субтитри в цьому відео: ${languages.join(', ')}.`,
@@ -747,6 +754,7 @@ export const uk: Translation = {
 
     // Доріжка субтитрів, яка не завантажилася
     unknownTrack: (id: string): string => `невідома доріжка ${id}`,
+    trackNotSent: 'плеєр її ще не завантажив — виберіть її один раз у меню субтитрів плеєра',
     noCaptionFormat: (attempts: readonly string[]): string =>
       `жоден формат субтитрів не спрацював — ${attempts.join(', ')}`,
     noSubtitleUrl: (attempts: readonly string[]): string =>

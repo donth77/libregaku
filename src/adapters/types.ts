@@ -29,6 +29,13 @@ export interface TrackInfo {
   forced?: boolean;
   /** Closed captions, which describe sound as well as speech. */
   cc?: boolean;
+  /**
+   * Listed by the site without its files, which loadTrack has to ask the
+   * site's player for. Netflix sends a title with a few tracks' files and only
+   * names the rest. Asking can fail in a way of its own: the track is there,
+   * and the player would not hand it over.
+   */
+  onRequest?: boolean;
 }
 
 export interface SubtitleSource {

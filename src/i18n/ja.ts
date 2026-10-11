@@ -40,6 +40,8 @@ export const ja: Translation = {
     supportFull: 'すべての機能に対応しています。読みとふりがなも表示します。',
     supportPinyin: 'すべての機能に対応しています。ピンインも表示します。意味は英語です。',
     supportWords: 'すべての機能に対応しています。意味は英語です。',
+    script: '文字',
+    scriptHint: '動画に両方ある場合は、こちらを使います。',
     supportBasic: '基本対応：単語には区切りますが、辞書と読みはまだありません。',
     native: '母語',
     nativeHint: '動画と辞書が対応していれば、翻訳と意味をこの言語で表示します。',
@@ -232,6 +234,8 @@ export const ja: Translation = {
     creditUnihan: '中国語の漢字で、最初に表示する読みを決めます。© Unicode, Inc.、Unicode Licenseのもとで使用しています。',
     creditJotoba: '辞書のダウンロード中に単語を調べるために使います。どちらもJMdictを使用しています。',
     creditLucide: 'アイコン。ISCライセンス。',
+    creditCommons: 'スペイン語・中国語・韓国語の単語の録音。ボランティアが読み上げたものです。ライセンスは録音ごとに異なり（多くはCC BY-SA 4.0）、再生時とカードに話者名とともに表示されます。',
+    creditAudioCmn: '中国語の単語の録音。Yue Tan（カーン大学）による。CC BY-SA 3.0 US。',
     licence: 'LibregakuはMITライセンスです。辞書データは同梱せず、各配布元からダウンロードします。',
     built: (when: string): string => `このコピーは${when}にビルドされました。`,
 
@@ -455,6 +459,7 @@ export const ja: Translation = {
     pronounce: '発音を聞く',
     playedRecording: (word: string): string => `${word} · 録音`,
     playedSynthesised: (word: string): string => `${word} · 合成音声`,
+    recordingBy: (speaker: string, licence: string): string => `録音：${speaker} · ${licence}`,
     pronounceFailed: '音声を再生できませんでした',
     addSentence: '文を追加',
     sentenceAdded: '文を追加済み',
@@ -613,6 +618,7 @@ export const ja: Translation = {
 
     // この動画の字幕
     subtitlesOff: 'プレーヤーで字幕をオンにすると、Libregakuが読み取ります。',
+    trackNotSent: 'プレーヤーがこの字幕をまだ読み込んでいません。',
     noTargetTrack: 'この動画には学習言語の字幕がありません。',
     noSecondTrack: 'この動画には母語の字幕がないため、2行目は表示できません。',
     onlyOneTrack: 'この動画の字幕は1種類だけなので、2行目は表示できません。',
@@ -635,6 +641,7 @@ export const ja: Translation = {
     noTargetTrackDetail: (languages: readonly string[]): string =>
       `この動画の字幕：${languages.join('、') || 'なし'}。設定で学習言語を変えるか、別の動画を選んでください。`,
     onlyPictures: 'この動画の字幕は画像だけで、テキストではないため、Libregaku では読み取れません。',
+    chooseInPlayer: (track: string): string => `プレーヤーの字幕メニューで${track}を選ぶと、Libregakuが読み取ります。`,
     noHumanTrack: 'この動画には、人が作成した字幕がありません。',
     secondTrackError: (track: string, error: string): string => `${track}：${error}`,
     noSecondTrackDetail: (languages: readonly string[]): string => `この動画の字幕：${languages.join('、')}。`,
@@ -692,6 +699,7 @@ export const ja: Translation = {
 
     // 読み込めなかった字幕トラック
     unknownTrack: (id: string): string => `不明なトラック：${id}`,
+    trackNotSent: 'プレーヤーがまだ読み込んでいません。プレーヤーの字幕メニューで一度選んでください',
     noCaptionFormat: (attempts: readonly string[]): string => `どの字幕形式も使えませんでした：${attempts.join('、')}`,
     noSubtitleUrl: (attempts: readonly string[]): string =>
       `どの字幕URLも使えませんでした：${attempts.join('、') || 'URLがありません'}`,

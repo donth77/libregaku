@@ -113,6 +113,47 @@ describe('netflix contract', () => {
   }, 90_000);
 
   /**
+   * Names again, and weak for the same reason. What the extension relies on
+   * is behaviour no signed-out request shows: a title's manifest sends the
+   * files of a few tracks and names the rest, and the player fetches a named
+   * track's files when it is put on that track. These are the names that
+   * machinery goes by in the bundle. One vanishing says Netflix has reworked
+   * it; all of them staying says only that it has not been renamed.
+   */
+  it('nf.track-request — the player still fetches a track it was not sent', async () => {
+    const { body } = await playerCore();
+    for (const name of [
+      'supportsPartialHydration',
+      'requiredTextTrackId',
+      'hydrated',
+      'getTimedTextTrackList',
+      'getTimedTextTrack',
+      'setTimedTextTrack',
+      'getMovieId',
+    ]) {
+      expect(
+        body.includes(name),
+        `"${name}" is gone from Netflix's player.\n${describeFailure('nf.track-request')}`,
+      ).toBe(true);
+    }
+  }, 90_000);
+
+  /**
+   * The formats the player's own manifest request is recognised by, and the
+   * one added to it. Whether Netflix still answers the added one with a text
+   * file is not something the bundle can say.
+   */
+  it('nf.text-profile — the subtitle formats a manifest request names still exist', async () => {
+    const { body } = await playerCore();
+    for (const format of ['webvtt-lssdh-ios8', 'nflx-cmisc', 'dfxp-ls-sdh', 'simplesdh', 'imsc1.1']) {
+      expect(
+        body.includes(format),
+        `"${format}" is gone from Netflix's player.\n${describeFailure('nf.text-profile')}`,
+      ).toBe(true);
+    }
+  }, 90_000);
+
+  /**
    * Informational, and named for it: this asserts nothing about injection.
    * Whether Chrome lets a manifest-declared MAIN-world script run under
    * Netflix's CSP cannot be observed without a browser. The extension no longer
