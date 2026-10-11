@@ -166,6 +166,11 @@ export const settings = {
   languageBadgeFlag: 'Flag',
   /** Choice: by its language code, such as JA. */
   languageBadgeCode: 'Code',
+  /** A menu of country flags, for the badge of the language being learned. */
+  badgeFlag: 'Badge flag',
+  /** Choice: the language's own flag, which is shown before the word. */
+  badgeFlagDefault: 'Default',
+  badgeFlagHint: "The flag to show for the language you're learning. Each language keeps its own.",
   languageBadgeHint: "How the header shows the language you're learning.",
   sidebarStats: 'Count new words',
   sidebarStatsHint: 'Shows new-word counts on each line, your known-word percentage, and the filters that use them.',

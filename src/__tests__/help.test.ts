@@ -110,6 +110,22 @@ describe('the help', () => {
     expect(matches(allTopics.find((t) => t.id === 'keys')!, terms('ESC'))).toBe(true);
   });
 
+  it('links a web address, in a new tab, shown without its https://', () => {
+    const nodes = inline('Get Anki from https://apps.ankiweb.net.', ['anki']);
+    const a = nodes.find((n) => (n as HTMLElement).tagName === 'A') as HTMLAnchorElement;
+    expect(a.getAttribute('href')).toBe('https://apps.ankiweb.net');
+    expect(a.target).toBe('_blank');
+    expect(a.textContent).toBe('apps.ankiweb.net');
+    expect(a.querySelector('mark')?.textContent).toBe('anki');
+    // The full stop after it stays text, and so do the words of a language written without spaces.
+    expect(nodes.at(-1)?.textContent).toBe('.');
+    expect(inline('Ankiはhttps://apps.ankiweb.netから入手できます。', []).map((n) => n.textContent))
+      .toEqual(['Ankiは', 'apps.ankiweb.net', 'から入手できます。']);
+
+    const { main } = page();
+    expect(main.querySelector('#anki .body a')?.getAttribute('href')).toBe('https://apps.ankiweb.net');
+  });
+
   it('lays the keyboard shortcuts out as a table, a key and what it does on each row', () => {
     const { main } = page();
     const table = main.querySelector<HTMLTableElement>('#keys table')!;

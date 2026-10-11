@@ -25,12 +25,22 @@ export const ko: HelpTranslation = {
           body: [
             [
               '{설정 → 언어}에서 학습 언어와 내 언어를 고르세요.',
-              '{설정 → Anki}에서 안내에 따라 Anki를 연결한 다음, 새 카드를 추가할 덱을 고르세요.',
+              'Anki를 https://apps.ankiweb.net에서 다운로드하세요. {설정 → Anki}에서 안내에 따라 Anki를 연결한 다음, 새 카드를 추가할 덱을 고르세요.',
               '학습 언어 자막이 있는 YouTube나 Netflix 동영상을 열고, 단어에 마우스를 올려 보세요.',
             ],
             { tip: 'Anki는 없어도 됩니다. 자막, 단어 찾기, 스크립트는 모두 Anki 없이 작동합니다. Anki는 어떤 단어를 아는지 기억하는 역할을 합니다.' },
           ],
           keywords: ['설치', '시작', '처음', '준비', '연결', '모국어', 'setup', 'install', 'anki'],
+        },
+        {
+          id: 'anki',
+          title: 'Anki란?',
+          body: [
+            'Anki는 무료 플래시카드 앱입니다. 각 카드를 잊어버리기 직전에 다시 보여 줍니다(간격 반복).',
+            'Libregaku는 내가 고른 단어와 문장으로 Anki에 카드를 추가합니다. 또 Anki 카드를 읽어서 이미 아는 단어가 무엇인지 확인합니다.',
+            '컴퓨터에 Anki와 AnkiConnect 확장 프로그램이 있어야 합니다. Anki는 https://apps.ankiweb.net에서 다운로드할 수 있습니다.',
+          ],
+          keywords: ['암기 카드', '설치', '복습', '부가 기능', '애드온', 'srs', 'spaced repetition', 'flashcard'],
         },
       ],
     },

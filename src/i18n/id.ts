@@ -130,6 +130,9 @@ export const id: Translation = {
     languageBadge: 'Lencana bahasa',
     languageBadgeFlag: 'Bendera',
     languageBadgeCode: 'Kode',
+    badgeFlag: 'Bendera lencana',
+    badgeFlagDefault: 'Default',
+    badgeFlagHint: 'Bendera yang ditampilkan untuk bahasa yang Anda pelajari. Setiap bahasa menyimpan benderanya sendiri.',
     languageBadgeHint: 'Cara bilah atas menampilkan bahasa yang Anda pelajari.',
     sidebarStats: 'Hitung kata baru',
     sidebarStatsHint:
@@ -629,6 +632,7 @@ export const id: Translation = {
     noTargetTrackDetail: (languages: readonly string[]): string =>
       `Subtitel video ini: ${languages.join(', ') || 'tidak ada'}. ` +
       'Ubah bahasa yang Anda pelajari di setelan, atau pilih video lain.',
+    onlyPictures: 'Video ini hanya menyediakannya sebagai gambar, bukan teks, jadi Libregaku tidak bisa membacanya.',
     noHumanTrack: 'Tidak ada trek yang ditulis manusia untuk video ini.',
     secondTrackError: (track: string, error: string): string => `${track}: ${error}`,
     noSecondTrackDetail: (languages: readonly string[]): string => `Subtitel video ini: ${languages.join(', ')}.`,

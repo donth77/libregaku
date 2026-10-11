@@ -25,12 +25,22 @@ export const sv: HelpTranslation = {
           body: [
             [
               'Välj språket du lär dig och ditt eget språk i {Inställningar → Språk}.',
-              'Följ stegen i {Inställningar → Anki} för att ansluta Anki, och välj sedan kortleken som nya kort hamnar i.',
+              'Hämta Anki från https://apps.ankiweb.net. Följ stegen i {Inställningar → Anki} för att ansluta Anki, och välj sedan kortleken som nya kort hamnar i.',
               'Öppna en video på YouTube eller Netflix med undertexter på språket du lär dig, och håll pekaren över ett ord.',
             ],
             { tip: 'Anki är valfritt. Undertexter, uppslag och transkriptionen fungerar utan det; det är Anki som minns vilka ord du kan.' },
           ],
           keywords: ['installera', 'installation', 'börja', 'första gången', 'språk', 'inställning', 'setup', 'install'],
+        },
+        {
+          id: 'anki',
+          title: 'Vad är Anki?',
+          body: [
+            'Anki är en gratis app för flashcards. Den visar varje kort igen strax innan du skulle glömma det (intervallrepetition).',
+            'Libregaku lägger till kort i Anki från orden och meningarna du väljer. Det läser också dina Anki-kort för att se vilka ord du redan kan.',
+            'Du behöver Anki på din dator, med tillägget AnkiConnect. Hämta Anki från https://apps.ankiweb.net.',
+          ],
+          keywords: ['studiekort', 'glosor', 'spaced repetition', 'srs', 'ladda ner', 'installera', 'repetera', 'plugin'],
         },
       ],
     },

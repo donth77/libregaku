@@ -80,16 +80,48 @@ export function selectWhole(root: ShadowRoot, first: HTMLElement, last: HTMLElem
 }
 
 /**
+ * Characters a line break runs together, as CSS has it (segment breaks, CSS
+ * Text 3): Chinese characters, kana and full-width marks, written without
+ * spaces. Hangul is not among them; Korean puts spaces between its words.
+ */
+const UNSPACED = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\u3000-\u303F\u30FC\uFF01-\uFF60]/u;
+
+/**
+ * What a subtitle's line break stands for inside a phrase: a space between
+ * words, as in "Usted piensa / que", and nothing inside Japanese or Chinese,
+ * which break a line wherever it fits. Taken from the characters either side.
+ */
+function breakBetween(before: string, after: string): string {
+  const a = Array.from(before).pop() ?? '';
+  const b = Array.from(after)[0] ?? '';
+  if (!a || !b || /\s/u.test(a) || /\s/u.test(b)) return '';
+  return UNSPACED.test(a) && UNSPACED.test(b) ? '' : ' ';
+}
+
+/**
  * The text from one word to another as it was written — the words'
  * surfaces and whatever sits between them, spaces included, but never the
- * readings drawn above them. Null when the two are not on one line.
+ * readings drawn above them. A line break between them counts as a space
+ * where the language puts one between words. Null when the two are not on
+ * one line.
  */
 export function textFrom(first: HTMLElement, last: HTMLElement): string | null {
   if (first.parentNode !== last.parentNode) return null;
   let text = '';
+  let broken = false;
   for (let n: Node | null = first; n; n = n.nextSibling) {
-    if (n instanceof HTMLElement && n.dataset.tok) text += (JSON.parse(n.dataset.tok) as Token).surface ?? '';
-    else if (!(n instanceof HTMLElement && n.classList.contains('br'))) text += n.textContent ?? '';
+    if (n instanceof HTMLElement && n.classList.contains('br')) {
+      broken = true;
+    } else {
+      const piece = n instanceof HTMLElement && n.dataset.tok
+        ? (JSON.parse(n.dataset.tok) as Token).surface ?? ''
+        : n.textContent ?? '';
+      if (piece) {
+        if (broken) text += breakBetween(text, piece);
+        broken = false;
+        text += piece;
+      }
+    }
     if (n === last) return text;
   }
   return null;

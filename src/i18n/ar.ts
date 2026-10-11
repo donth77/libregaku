@@ -165,6 +165,9 @@ export const ar: Translation = {
     languageBadge: 'شارة اللغة',
     languageBadgeFlag: 'علم',
     languageBadgeCode: 'رمز',
+    badgeFlag: 'علم الشارة',
+    badgeFlagDefault: 'الافتراضي',
+    badgeFlagHint: 'العلم الذي يمثّل اللغة التي تتعلمها. تحتفظ كل لغة بعلمها.',
     languageBadgeHint: 'كيف يعرض الشريط العلوي اللغة التي تتعلمها.',
     sidebarStats: 'عدّ الكلمات الجديدة',
     sidebarStatsHint: 'يعرض عدد الكلمات الجديدة في كل سطر، ونسبة الكلمات التي تعرفها، وعوامل التصفية التي تعتمد عليها.',
@@ -663,6 +666,7 @@ export const ar: Translation = {
     lookedFor: (selector: string): string => `تم البحث عن ${selector}`,
     noTargetTrackDetail: (languages: readonly string[]): string =>
       `ترجمات هذا الفيديو: ${languages.join('، ') || 'لا شيء'}. غيّر ما تتعلمه في الإعدادات، أو اختر فيديو آخر.`,
+    onlyPictures: 'هذه الترجمة موجودة هنا كصور فقط، لا كنص، لذا لا يستطيع Libregaku قراءتها.',
     noHumanTrack: 'لا يوجد لهذا الفيديو مسار ترجمة كتبه إنسان.',
     secondTrackError: (track: string, error: string): string => `${track}: ${error}`,
     noSecondTrackDetail: (languages: readonly string[]): string => `ترجمات هذا الفيديو: ${languages.join('، ')}.`,

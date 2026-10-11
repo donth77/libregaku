@@ -5,12 +5,18 @@ import { Overlay } from '../renderer';
 
 const tok = (surface: string, more: Partial<Token> = {}): Token => ({ surface, start: 0, end: surface.length, content: true, ...more });
 
-/** A line as the overlay draws it: words with readings above, punctuation between. */
+/** A line as the overlay draws it: words with readings above, punctuation between, "\n" a line break. */
 function line(parts: Array<Token | string>): { root: ShadowRoot; box: HTMLElement; words: HTMLElement[] } {
   const host = document.createElement('div');
   const root = host.attachShadow({ mode: 'open' });
   const box = document.createElement('div');
   for (const part of parts) {
+    if (part === '\n') {
+      const br = document.createElement('span');
+      br.className = 'br';
+      box.appendChild(br);
+      continue;
+    }
     if (typeof part === 'string') {
       const p = document.createElement('span');
       p.className = 'p';
@@ -68,6 +74,20 @@ describe('textFrom', () => {
   it('takes the words as written and what lies between them, never the readings', () => {
     const { words } = line([tok('気', { reading: 'き' }), 'に', tok('しない'), '！']);
     expect(textFrom(words[0]!, words[1]!)).toBe('気にしない');
+  });
+
+  it('reads a line break as a space between words that take one, and as nothing in Japanese', () => {
+    const es = line([tok('Usted'), ' ', tok('piensa'), '\n', tok('que')]).words;
+    expect(textFrom(es[0]!, es[2]!)).toBe('Usted piensa que');
+    const ko = line([tok('운동화'), tok('를'), '\n', tok('신으라고')]).words;
+    expect(textFrom(ko[0]!, ko[2]!)).toBe('운동화를 신으라고');
+    const ja = line([tok('気'), 'に', '\n', tok('しない')]).words;
+    expect(textFrom(ja[0]!, ja[1]!)).toBe('気にしない');
+    // A break after a full stop is still nothing in Japanese; one beside a space adds none.
+    const end = line([tok('はい'), '。', '\n', tok('そう')]).words;
+    expect(textFrom(end[0]!, end[1]!)).toBe('はい。そう');
+    const spaced = line([tok('sí'), ' ', '\n', tok('claro')]).words;
+    expect(textFrom(spaced[0]!, spaced[1]!)).toBe('sí claro');
   });
 
   it('will not join words from two lines', () => {

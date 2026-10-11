@@ -23,6 +23,8 @@
  * That is unchanged, and costs nothing that was not already lost.
  */
 
+import { uiDirection } from '../i18n';
+
 /** Below this the picture is too small to watch; better to overlap a little. */
 const MIN_SCALE = 0.35;
 
@@ -80,6 +82,9 @@ export class PlayerInset {
     }
 
     const avail = root.width - this.#inset;
+    // The panel is on the left in a right-to-left interface; the room is then on its right.
+    const panelLeft = uiDirection() === 'rtl';
+    const from = panelLeft ? root.left + this.#inset : root.left;
     if (avail <= 0) {
       this.#report(0);
       return;
@@ -91,7 +96,7 @@ export class PlayerInset {
      * no shrinking at all. It still has to move out from under it.
      */
     const scale = Math.max(MIN_SCALE, Math.min(1, avail / box.width));
-    const already = box.left >= root.left && box.right <= root.left + avail;
+    const already = box.left >= from && box.right <= from + avail;
     if (scale >= 1 && already) {
       this.#report(0);
       return;
@@ -105,12 +110,13 @@ export class PlayerInset {
      * the picture somewhere surprising.
      *
      * At the MIN_SCALE floor the picture is wider than the space left, and
-     * centring it there would push its left edge off the player. Keep the
-     * left edge in; let the overlap fall under the panel instead.
+     * centring it there would push its far edge off the player. Keep that
+     * edge in; let the overlap fall under the panel instead.
      */
     const scaledLeft = stage.left + scale * (box.left - stage.left);
     const scaledTop = stage.top + scale * (box.top - stage.top);
-    const targetLeft = root.left + Math.max(0, (avail - box.width * scale) / 2);
+    const width = box.width * scale;
+    const targetLeft = width <= avail ? from + (avail - width) / 2 : panelLeft ? root.right - width : root.left;
     const targetTop = root.top + (root.height - box.height * scale) / 2;
 
     this.#stage.style.setProperty('transform-origin', '0 0', 'important');

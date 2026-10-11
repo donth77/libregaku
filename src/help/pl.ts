@@ -25,12 +25,22 @@ export const pl: HelpTranslation = {
           body: [
             [
               'Otwórz {Ustawienia → Języki} i wybierz język, którego się uczysz, oraz swój własny.',
-              'Otwórz {Ustawienia → Anki}, wykonaj kroki łączenia z Anki, a potem wybierz talię na nowe karty.',
+              'Pobierz Anki ze strony https://apps.ankiweb.net. Otwórz {Ustawienia → Anki}, wykonaj kroki łączenia z Anki, a potem wybierz talię na nowe karty.',
               'Otwórz film na YouTube lub Netflixie z napisami w języku, którego się uczysz, i najedź kursorem na słowo.',
             ],
             { tip: 'Anki jest opcjonalne. Napisy, sprawdzanie słów i transkrypcja działają bez niego; to Anki pamięta, które słowa znasz.' },
           ],
           keywords: ['instalacja', 'konfiguracja', 'start', 'początek', 'pierwsze uruchomienie', 'język', 'setup', 'install'],
+        },
+        {
+          id: 'anki',
+          title: 'Czym jest Anki?',
+          body: [
+            'Anki to darmowa aplikacja do fiszek. Pokazuje każdą kartę ponownie, tuż zanim ją zapomnisz (powtórki rozłożone w czasie).',
+            'Libregaku dodaje do Anki karty ze słów i zdań, które wybierasz. Odczytuje też twoje karty Anki, by wiedzieć, które słowa już znasz.',
+            'Potrzebujesz Anki na komputerze, z dodatkiem AnkiConnect. Pobierz Anki ze strony https://apps.ankiweb.net.',
+          ],
+          keywords: ['fiszki', 'spaced repetition', 'srs', 'instalacja', 'zainstaluj', 'pobieranie', 'wtyczka', 'powtarzanie'],
         },
       ],
     },

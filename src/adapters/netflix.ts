@@ -53,6 +53,8 @@ interface NfTrack {
   label: string;
   forced: boolean;
   cc: boolean;
+  /** Subtitles in this language exist only as pictures: listed, never loaded. */
+  pictures?: boolean;
 }
 
 /** The id in a /watch/<id> path, or null anywhere else. */
@@ -298,7 +300,7 @@ export class NetflixAdapter implements SubtitleSource {
   }
 
   async listTracks(): Promise<TrackInfo[]> {
-    return this.#current().map((t) => ({
+    return this.#current().filter((t) => !t.pictures).map((t) => ({
       id: t.id,
       lang: t.language,
       label: t.forced ? ui.errors.forcedTrack(t.label) : t.label,
@@ -309,12 +311,17 @@ export class NetflixAdapter implements SubtitleSource {
   }
 
   async loadTrack(id: string): Promise<Cue[]> {
-    const track = this.#current().find((t) => t.id === id);
+    const track = this.#current().find((t) => t.id === id && !t.pictures);
     if (!track) throw new Error(`libregaku: ${ui.errors.unknownTrack(id)}`);
 
     const cached = track.urls.map((u) => this.#cues.get(u)).find((p) => p !== undefined);
     const cues = await (cached ?? this.#fetch(track.urls));
     return cues.slice();
+  }
+
+  /** Languages this title has subtitles in only as pictures, which cannot be read. */
+  pictureLanguages(): string[] {
+    return this.#current().filter((t) => t.pictures).map((t) => t.language);
   }
 
   onNavigate(cb: () => void): void {
@@ -333,12 +340,19 @@ export class NetflixAdapter implements SubtitleSource {
     const m = d as Record<string, unknown>;
     if (m.source !== TAG) return;
 
-    if (m.kind === 'nf-tracks') this.#receive(m.tracks, m.movieId);
+    if (m.kind === 'nf-tracks') this.#receive(m.tracks, m.movieId, m.pictures);
     else if (m.kind === 'nf-seek-done' && m.token === this.#pendingSeek) this.#pendingSeek = 0;
   }
 
-  #receive(rawTracks: unknown, rawId: unknown): void {
-    const tracks = readTracks(rawTracks);
+  #receive(rawTracks: unknown, rawId: unknown, rawPictures?: unknown): void {
+    // Picture-only languages ride along in the same list, kept out of listTracks.
+    const pictures = Array.isArray(rawPictures)
+      ? rawPictures.filter((l): l is string => typeof l === 'string' && /^[\w-]{1,20}$/.test(l))
+      : [];
+    const tracks = [
+      ...readTracks(rawTracks),
+      ...pictures.map((language) => ({ id: `${language}:pictures`, urls: [], language, label: language, forced: false, cc: false, pictures: true })),
+    ];
     if (!tracks.length) return;
     const movieId = typeof rawId === 'string' && /^[\w-]{1,64}$/.test(rawId) ? rawId : null;
 

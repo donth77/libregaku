@@ -122,8 +122,16 @@ function textTracksOf(raw: NfRawTrack[]): NfRawTrack[] {
   return raw.filter((t) => !t.isNoneTrack && !t.isImageBased);
 }
 
-/** Null when this object is not a manifest, which is almost every object. */
-export function tracksFrom(data: unknown): { tracks: NfPublished[]; movieId: string | null } | null {
+/**
+ * Null when this object is not a manifest, which is almost every object.
+ *
+ * `pictures` are the languages whose subtitles Netflix has only as bitmaps
+ * (isImageBased) — Chinese, on some titles. There is no text in them to
+ * read, but a learner of the language is owed a reason it is missing.
+ */
+export function tracksFrom(
+  data: unknown,
+): { tracks: NfPublished[]; movieId: string | null; pictures: string[] } | null {
   const raw = rawTracksOf(data);
   if (!raw) return null;
 
@@ -142,11 +150,14 @@ export function tracksFrom(data: unknown): { tracks: NfPublished[]; movieId: str
     });
   }
 
-  if (!tracks.length) return null;
+  const pictures = [...new Set(
+    raw.filter((t) => t.isImageBased && !t.isNoneTrack && !t.isForcedNarrative && t.language).map((t) => t.language!),
+  )];
+  if (!tracks.length && !pictures.length) return null;
 
   const d = data as NfManifest;
   const id = d.movieId ?? d.result?.movieId;
-  return { tracks, movieId: id != null ? String(id) : null };
+  return { tracks, movieId: id != null ? String(id) : null, pictures };
 }
 
 /**

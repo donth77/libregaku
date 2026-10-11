@@ -25,12 +25,22 @@ export const ja: HelpTranslation = {
           body: [
             [
               '{設定 → 言語}で、学習言語と母語を選びます。',
-              '{設定 → Anki}で、手順に従ってAnkiに接続し、新しいカードの追加先デッキを選びます。',
+              'Ankiをhttps://apps.ankiweb.netから入手します。{設定 → Anki}で、手順に従ってAnkiに接続し、新しいカードの追加先デッキを選びます。',
               '学習言語の字幕があるYouTubeかNetflixの動画を開き、単語にカーソルを合わせます。',
             ],
             { tip: 'Ankiはなくても使えます。字幕も、単語を調べる機能も、文字起こしも、Ankiなしで動きます。Ankiは、あなたが知っている単語を覚えておく役割です。' },
           ],
           keywords: ['セットアップ', 'インストール', '始め方', '使い方', '初めて', '最初', '言語', 'setup', 'install'],
+        },
+        {
+          id: 'anki',
+          title: 'Ankiとは？',
+          body: [
+            'Ankiは無料の暗記カードアプリです。それぞれのカードを、忘れる直前にもう一度出題します（間隔反復）。',
+            'Libregakuは、選んだ単語や文からAnkiにカードを追加します。また、Ankiのカードを読み取って、どの単語をすでに知っているかを判断します。',
+            'パソコン版のAnkiと、AnkiConnectアドオンが必要です。Ankiはhttps://apps.ankiweb.netから入手できます。',
+          ],
+          keywords: ['フラッシュカード', '単語帳', 'ダウンロード', 'インストール', '復習', 'srs', 'spaced repetition', 'flashcard'],
         },
       ],
     },

@@ -149,6 +149,9 @@ export const pl: Translation = {
     languageBadge: 'Plakietka języka',
     languageBadgeFlag: 'Flaga',
     languageBadgeCode: 'Kod',
+    badgeFlag: 'Flaga na plakietce',
+    badgeFlagDefault: 'Domyślna',
+    badgeFlagHint: 'Flaga pokazywana dla języka, którego się uczysz. Wybór jest zapamiętywany dla każdego języka osobno.',
     languageBadgeHint: 'Jak nagłówek pokazuje język, którego się uczysz.',
     sidebarStats: 'Licz nowe słowa',
     sidebarStatsHint: 'Pokazuje liczbę nowych słów w każdej linijce, odsetek znanych słów i filtry, które z nich korzystają.',
@@ -663,6 +666,7 @@ export const pl: Translation = {
     noTargetTrackDetail: (languages: readonly string[]): string =>
       `Napisy w tym filmie: ${languages.join(', ') || 'brak'}. ` +
       'Zmień w ustawieniach język, którego się uczysz, albo wybierz inny film.',
+    onlyPictures: 'W tym filmie są tylko jako obrazy, nie tekst, więc Libregaku nie może ich odczytać.',
     noHumanTrack: 'Ten film nie ma ścieżki napisanej przez człowieka.',
     secondTrackError: (track: string, error: string): string => `${track}: ${error}`,
     noSecondTrackDetail: (languages: readonly string[]): string => `Napisy w tym filmie: ${languages.join(', ')}.`,

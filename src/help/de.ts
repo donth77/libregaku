@@ -25,12 +25,22 @@ export const de: HelpTranslation = {
           body: [
             [
               'Wähle unter {Einstellungen → Sprachen} die Sprache, die du lernst, und deine eigene Sprache.',
-              'Folge unter {Einstellungen → Anki} den Schritten, um Anki zu verbinden, und wähle dann den Stapel für neue Karten.',
+              'Lade Anki von https://apps.ankiweb.net herunter. Folge unter {Einstellungen → Anki} den Schritten, um Anki zu verbinden, und wähle dann den Stapel für neue Karten.',
               'Öffne ein Video auf YouTube oder Netflix mit Untertiteln in der Sprache, die du lernst, und zeige mit der Maus auf ein Wort.',
             ],
             { tip: 'Anki ist optional. Untertitel, Nachschlagen und das Transkript funktionieren auch ohne; Anki merkt sich, welche Wörter du kennst.' },
           ],
           keywords: ['einrichtung', 'installieren', 'installation', 'anfangen', 'beginnen', 'erste schritte', 'start', 'sprache', 'setup'],
+        },
+        {
+          id: 'anki',
+          title: 'Was ist Anki?',
+          body: [
+            'Anki ist eine kostenlose Lernkarten-App. Sie zeigt dir jede Karte erneut, kurz bevor du sie vergessen würdest (verteilte Wiederholung).',
+            'Libregaku erstellt in Anki Karten aus den Wörtern und Sätzen, die du auswählst. Außerdem liest es deine Anki-Karten, um zu sehen, welche Wörter du schon kennst.',
+            'Du brauchst Anki auf deinem Computer, mit der Erweiterung AnkiConnect. Lade Anki von https://apps.ankiweb.net herunter.',
+          ],
+          keywords: ['karteikarten', 'flashcards', 'spaced repetition', 'srs', 'herunterladen', 'installieren', 'add-on', 'wiederholen'],
         },
       ],
     },

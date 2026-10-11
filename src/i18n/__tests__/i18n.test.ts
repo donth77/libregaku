@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  fill, grammarLabel, languageLabel, languageName, localize, onUiLanguageChange, ownName, setUiLanguage, ui, uiLanguage,
+  fill, grammarLabel, languageLabel, languageList, languageName, localize, onUiLanguageChange, ownName, setUiLanguage, ui,
+  uiLanguage,
   uiLanguageFor, uiLocale,
 } from '..';
 import { localeOf } from '../languages';
@@ -124,6 +125,17 @@ describe('language names', () => {
     // A code from damaged storage is shown as it is, not thrown over.
     expect(() => ownName('')).not.toThrow();
     expect(() => ownName('not a tag')).not.toThrow();
+  });
+});
+
+describe("a video's languages, in a sentence", () => {
+  it('are named once each, sorted, and counted past six', () => {
+    expect(languageList(['ja', 'en', 'ja', ''])).toEqual(['English', 'Japanese']);
+    expect(languageList(['ko', 'en', 'fr', 'de', 'es', 'it', 'ja', 'pt'])).toEqual(
+      ['English', 'French', 'German', 'Italian', 'Japanese', '+3'],
+    );
+    setUiLanguage('es');
+    expect(languageList(['ja', 'en'])).toEqual(['inglés', 'japonés']);
   });
 });
 

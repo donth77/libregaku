@@ -19,6 +19,8 @@ const STYLE = `
     z-index: 2147483647 !important;
     pointer-events: none !important;
   }
+  /* Right to left, the panel is on the left and moves the picture right. */
+  :host([dir=rtl]) { left: calc((100% + var(--lg-inset, 0px)) / 2) !important; }
   .msg {
     max-width: min(420px, 80vw); padding: 7px 14px;
     background: rgba(18, 23, 42, .92); color: #E8ECF6;

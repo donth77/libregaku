@@ -267,6 +267,12 @@ export interface Settings {
   /** The player bar names the language being learned by its flag, or by its code. */
   languageBadge: 'flag' | 'code';
   /**
+   * The flag emoji the learner picked for the badge in place of the
+   * language's own, by the language's code (src/flags.ts). A language with
+   * none shows its own, and a flag picked for one never follows to another.
+   */
+  badgeFlag: Record<string, string>;
+  /**
    * Hand marks — Known, Track, Ignore — kept in Anki, where they reach every
    * device. Off, they stay in this browser, waiting to go in if it comes on.
    */
@@ -376,6 +382,7 @@ export const DEFAULTS: Settings = {
   cardAddLine: true,
   cardKanji: true,
   languageBadge: 'flag',
+  badgeFlag: {},
   marksInAnki: true,
   deck: '',
   cardAudio: true,
@@ -469,6 +476,22 @@ export function withDefaults(stored: Partial<Settings> | undefined): Settings {
     if (!/^#[0-9a-f]{6}$/i.test(out[key])) out[key] = DEFAULTS[key];
   }
   out.decks = decksFrom(out.decks);
+  out.badgeFlag = flagsFrom(out.badgeFlag, out.target);
+  return out;
+}
+
+/**
+ * The flag picked for each language, with anything that is not one left out.
+ * It was once one flag for every language: that one goes to the language
+ * being learned, so nobody loses their pick.
+ */
+function flagsFrom(stored: unknown, target: string): Record<string, string> {
+  if (typeof stored === 'string') return stored ? { [target]: stored } : {};
+  const out: Record<string, string> = {};
+  if (!stored || typeof stored !== 'object') return out;
+  for (const [lang, flag] of Object.entries(stored as Record<string, unknown>)) {
+    if (typeof flag === 'string' && flag) out[lang] = flag;
+  }
   return out;
 }
 
@@ -549,8 +572,8 @@ function same(a: Settings, b: Settings): boolean {
   const keys = new Set([...Object.keys(a), ...Object.keys(b)]) as Set<keyof Settings>;
   for (const k of keys) {
     if (a[k] === b[k]) continue;
-    // The one setting that is not a plain value: compared by what it holds.
-    if (k !== 'decks' || JSON.stringify(a[k]) !== JSON.stringify(b[k])) return false;
+    // The settings that are not plain values, each language's decks and flags: compared by what they hold.
+    if (typeof a[k] !== 'object' || JSON.stringify(a[k]) !== JSON.stringify(b[k])) return false;
   }
   return true;
 }

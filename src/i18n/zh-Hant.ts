@@ -125,6 +125,9 @@ export const zhHant: Translation = {
     languageBadge: '語言徽章',
     languageBadgeFlag: '國旗',
     languageBadgeCode: '代碼',
+    badgeFlag: '徽章國旗',
+    badgeFlagDefault: '預設',
+    badgeFlagHint: '代表學習語言的國旗。每種語言分別儲存。',
     languageBadgeHint: '頂端列顯示學習語言的方式。',
     sidebarStats: '統計生詞',
     sidebarStatsHint: '顯示每一句的生詞數、已知單字比例，以及使用這些數字的篩選器。',
@@ -609,6 +612,7 @@ export const zhHant: Translation = {
     lookedFor: (selector: string): string => `已尋找：${selector}`,
     noTargetTrackDetail: (languages: readonly string[]): string =>
       `這部影片有：${languages.join('、') || '無'}。請在設定中變更學習語言，或選擇其他影片。`,
+    onlyPictures: '這部影片的字幕只有圖片形式，不是文字，Libregaku 無法讀取。',
     noHumanTrack: '這部影片沒有人工撰寫的字幕軌。',
     secondTrackError: (track: string, error: string): string => `${track}：${error}`,
     noSecondTrackDetail: (languages: readonly string[]): string => `這部影片有：${languages.join('、')}。`,

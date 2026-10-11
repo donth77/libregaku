@@ -135,6 +135,9 @@ export const ja: Translation = {
     languageBadge: '言語バッジ',
     languageBadgeFlag: '国旗',
     languageBadgeCode: 'コード',
+    badgeFlag: 'バッジの国旗',
+    badgeFlagDefault: '初期設定',
+    badgeFlagHint: '学習言語として表示する国旗です。言語ごとに保存されます。',
     languageBadgeHint: 'ヘッダーでの学習言語の表示方法です。',
     sidebarStats: '未知の単語を数える',
     sidebarStatsHint: '各行の未知の単語の数、既知の単語の割合、それを使うフィルタを表示します。',
@@ -624,6 +627,7 @@ export const ja: Translation = {
     lookedFor: (selector: string): string => `検索したセレクタ：${selector}`,
     noTargetTrackDetail: (languages: readonly string[]): string =>
       `この動画の字幕：${languages.join('、') || 'なし'}。設定で学習言語を変えるか、別の動画を選んでください。`,
+    onlyPictures: 'この動画の字幕は画像だけで、テキストではないため、Libregaku では読み取れません。',
     noHumanTrack: 'この動画には、人が作成した字幕がありません。',
     secondTrackError: (track: string, error: string): string => `${track}：${error}`,
     noSecondTrackDetail: (languages: readonly string[]): string => `この動画の字幕：${languages.join('、')}。`,

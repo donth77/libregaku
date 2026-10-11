@@ -159,6 +159,9 @@ export const uk: Translation = {
     languageBadge: 'Значок мови',
     languageBadgeFlag: 'Прапор',
     languageBadgeCode: 'Код',
+    badgeFlag: 'Прапор на значку',
+    badgeFlagDefault: 'За замовчуванням',
+    badgeFlagHint: 'Прапор, який показується для мови, яку ви вивчаєте. Для кожної мови зберігається свій.',
     languageBadgeHint: 'Як верхня панель показує мову, яку ви вивчаєте.',
     sidebarStats: 'Рахувати нові слова',
     sidebarStatsHint: 'Показує кількість нових слів у кожному рядку, ваш відсоток відомих слів і фільтри на їхній основі.',
@@ -673,6 +676,7 @@ export const uk: Translation = {
     noTargetTrackDetail: (languages: readonly string[]): string =>
       `Субтитри в цьому відео: ${languages.join(', ') || 'немає'}. ` +
       'Змініть мову, яку вивчаєте, у налаштуваннях або виберіть інше відео.',
+    onlyPictures: 'У цьому відео вони є лише як зображення, а не текст, тому Libregaku не може їх прочитати.',
     noHumanTrack: 'Для цього відео немає доріжки, написаної людиною.',
     secondTrackError: (track: string, error: string): string => `${track}: ${error}`,
     noSecondTrackDetail: (languages: readonly string[]): string => `Субтитри в цьому відео: ${languages.join(', ')}.`,

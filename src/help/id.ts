@@ -25,12 +25,22 @@ export const id: HelpTranslation = {
           body: [
             [
               'Di {Setelan → Bahasa}, pilih bahasa yang Anda pelajari dan bahasa Anda sendiri.',
-              'Di {Setelan → Anki}, ikuti langkah-langkah untuk menghubungkan Anki, lalu pilih dek tujuan kartu baru.',
+              'Unduh Anki dari https://apps.ankiweb.net. Di {Setelan → Anki}, ikuti langkah-langkah untuk menghubungkan Anki, lalu pilih dek tujuan kartu baru.',
               'Buka video YouTube atau Netflix dengan subtitel dalam bahasa yang Anda pelajari, lalu arahkan kursor ke sebuah kata.',
             ],
             { tip: 'Anki bersifat opsional. Subtitel, pencarian kata, dan transkrip tetap berfungsi tanpanya; Anki-lah yang mengingat kata mana yang Anda kenal.' },
           ],
           keywords: ['penyiapan', 'pengaturan', 'instal', 'pasang', 'mulai', 'pertama kali', 'setup'],
+        },
+        {
+          id: 'anki',
+          title: 'Apa itu Anki?',
+          body: [
+            'Anki adalah aplikasi flashcard gratis. Anki menampilkan lagi setiap kartu tepat sebelum Anda melupakannya (pengulangan berjarak).',
+            'Libregaku menambahkan kartu ke Anki dari kata dan kalimat yang Anda pilih. Libregaku juga membaca kartu Anki Anda untuk mengetahui kata mana yang sudah Anda kenal.',
+            'Anda memerlukan Anki di komputer, dengan add-on AnkiConnect. Unduh Anki dari https://apps.ankiweb.net.',
+          ],
+          keywords: ['kartu hafalan', 'spaced repetition', 'srs', 'download', 'instal', 'pasang', 'mengulang', 'plugin'],
         },
       ],
     },

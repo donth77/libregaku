@@ -223,6 +223,17 @@ export function languageLabel(code: string): string {
 }
 
 /**
+ * The languages of a video's tracks, named for a sentence: each once, in the
+ * order the reader's language sorts them, and past `most` a count of the
+ * rest ("+24"). Netflix lists thirty-odd tracks, several to a language, and
+ * their codes (pt-BR, zh-Hant) said little to anyone reading them.
+ */
+export function languageList(codes: readonly string[], most = 6): string[] {
+  const names = [...new Set(codes.filter(Boolean).map(languageName))].sort(new Intl.Collator(uiLocale()).compare);
+  return names.length > most ? [...names.slice(0, most - 1), `+${names.length - most + 1}`] : names;
+}
+
+/**
  * A language's name in itself — "Español", "한국어", "中文（简体）" — for
  * choosing your own language, which has to be findable from any interface
  * language, including one chosen by mistake. zh is Simplified Chinese there.

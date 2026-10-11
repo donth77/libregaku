@@ -597,3 +597,96 @@ describe('settings panel decks', () => {
     expect(onAnkiConnected).toHaveBeenCalledOnce();
   });
 });
+
+describe('the badge flag menu', () => {
+  const flagMenu = (root: HTMLElement): HTMLSelectElement => root.querySelector<HTMLSelectElement>('select[name=badgeFlag]')!;
+  /** The flags either side of the rule: where the language is spoken, then every other country. */
+  const groups = (menu: HTMLSelectElement): [HTMLOptionElement[], HTMLOptionElement[]] => {
+    const options = Array.from(menu.options);
+    const rule = options.findIndex((o) => o.disabled);
+    return [options.slice(1, rule), options.slice(rule + 1)];
+  };
+  const texts = (options: HTMLOptionElement[]): string[] => options.map((o) => o.textContent ?? '');
+
+  it('offers the language\'s own flag, then the countries where it is spoken, then every other by name', async () => {
+    await setSetting('target', 'es');
+    try {
+      const menu = flagMenu(buildSettings(() => {}));
+      expect(menu.options[0]?.textContent).toBe('🇪🇸 Default');
+      expect(menu.value).toBe('');
+      const [spoken, others] = groups(menu);
+      expect(texts(spoken).slice(0, 4)).toEqual(['🇪🇸 Spain', '🇲🇽 Mexico', '🇦🇷 Argentina', '🇨🇴 Colombia']);
+      const names = texts(others).map((t) => t.replace(/^\S+ /, ''));
+      expect(names).toEqual([...names].sort(new Intl.Collator('en').compare));
+      expect(texts(others)).not.toContain('🇲🇽 Mexico');
+
+      await setSetting('target', 'en');
+      const english = groups(flagMenu(buildSettings(() => {})))[0];
+      expect(texts(english).slice(0, 3)).toEqual(['🇺🇸 United States', '🇬🇧 United Kingdom', '🇨🇦 Canada']);
+    } finally {
+      await setSetting('target', 'ja');
+    }
+  });
+
+  it('offers only country flags, each country once, named beside its flag', () => {
+    const [spoken, others] = groups(flagMenu(buildSettings(() => {})));
+    const flags = [...spoken, ...others];
+    expect(flags).toHaveLength(249);
+    expect(new Set(flags.map((o) => o.value)).size).toBe(flags.length);
+    for (const o of flags) {
+      expect(o.value).toMatch(/^\p{Regional_Indicator}{2}$/u);
+      expect(o.textContent?.startsWith(`${o.value} `)).toBe(true);
+      expect(o.textContent!.length).toBeGreaterThan(o.value.length + 1);
+    }
+  });
+
+  it('keeps a flag for each language, and shows the one for the language being learned', async () => {
+    await setSetting('target', 'es');
+    try {
+      const root = buildSettings(() => {});
+      const menu = flagMenu(root);
+      choose(menu, '🇲🇽');
+      expect(settings().badgeFlag).toEqual({ es: '🇲🇽' });
+
+      // Japanese, chosen on this page, has none of its own: the default, and Japan first.
+      const learning = selectFor(root, "I'm learning");
+      learning.value = 'ja';
+      learning.dispatchEvent(new Event('change', { bubbles: true }));
+      expect(menu.value).toBe('');
+      expect(texts(Array.from(menu.options)).slice(0, 2)).toEqual(['🇯🇵 Default', '🇯🇵 Japan']);
+
+      // Spanish again, chosen somewhere else and brought in step here: its flag is still there.
+      await setSetting('target', 'es');
+      syncSettingsControls(root);
+      expect(menu.value).toBe('🇲🇽');
+
+      // The default keeps nothing.
+      choose(menu, '');
+      expect(settings().badgeFlag).toEqual({});
+    } finally {
+      await setSetting('badgeFlag', {});
+      await setSetting('target', 'ja');
+    }
+  });
+
+  it('names the countries in the interface language', () => {
+    setUiLanguage('es');
+    try {
+      const menu = flagMenu(buildSettings(() => {}));
+      expect(texts(Array.from(menu.options)).slice(0, 2)).toEqual(['🇯🇵 Predeterminada', '🇯🇵 Japón']);
+    } finally {
+      setUiLanguage('en');
+    }
+  });
+
+  it('keeps offering a flag typed in before there was a menu, rather than changing it unasked', async () => {
+    await setSetting('badgeFlag', { ja: '🇪🇺' });
+    try {
+      const menu = flagMenu(buildSettings(() => {}));
+      expect(menu.value).toBe('🇪🇺');
+      expect(menu.options[1]?.textContent).toBe('🇪🇺');
+    } finally {
+      await setSetting('badgeFlag', {});
+    }
+  });
+});

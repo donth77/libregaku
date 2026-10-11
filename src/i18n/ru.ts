@@ -158,6 +158,9 @@ export const ru: Translation = {
     languageBadge: 'Значок языка',
     languageBadgeFlag: 'Флаг',
     languageBadgeCode: 'Код',
+    badgeFlag: 'Флаг на значке',
+    badgeFlagDefault: 'По умолчанию',
+    badgeFlagHint: 'Флаг, который показывается для изучаемого языка. Для каждого языка сохраняется свой.',
     languageBadgeHint: 'Как верхняя панель показывает изучаемый язык.',
     sidebarStats: 'Считать новые слова',
     sidebarStatsHint: 'Показывает число новых слов в каждой строке, ваш процент известных слов и фильтры на их основе.',
@@ -673,6 +676,7 @@ export const ru: Translation = {
     noTargetTrackDetail: (languages: readonly string[]): string =>
       `Субтитры в этом видео: ${languages.join(', ') || 'нет'}. ` +
       'Измените изучаемый язык в настройках или выберите другое видео.',
+    onlyPictures: 'В этом видео они есть только в виде картинок, а не текста, поэтому Libregaku не может их прочитать.',
     noHumanTrack: 'Для этого видео нет дорожки, написанной человеком.',
     secondTrackError: (track: string, error: string): string => `${track}: ${error}`,
     noSecondTrackDetail: (languages: readonly string[]): string => `Субтитры в этом видео: ${languages.join(', ')}.`,

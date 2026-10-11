@@ -201,6 +201,23 @@ describe('NetflixAdapter message hygiene', () => {
   });
 });
 
+describe('subtitles Netflix has only as pictures', () => {
+  it('are named, and never listed or loaded', async () => {
+    const a = new NetflixAdapter();
+    fromPage({ source: TAG, kind: 'nf-tracks', movieId: '111', tracks: [track('en', 'English', [cdn('en')])], pictures: ['zh-Hans', 42, 'zh-Hant'] });
+    expect(a.pictureLanguages()).toEqual(['zh-Hans', 'zh-Hant']);
+    expect(await labels(a)).toEqual(['English']);
+    await expect(a.loadTrack('zh-Hans:pictures')).rejects.toThrow();
+  });
+
+  it('are kept when they are all a title has', async () => {
+    const a = new NetflixAdapter();
+    fromPage({ source: TAG, kind: 'nf-tracks', movieId: '111', tracks: [], pictures: ['zh-Hans'] });
+    expect(a.pictureLanguages()).toEqual(['zh-Hans']);
+    expect(await a.listTracks()).toEqual([]);
+  });
+});
+
 describe('NetflixAdapter.loadTrack', () => {
   it('tries every URL until one yields cues', async () => {
     const a = new NetflixAdapter();

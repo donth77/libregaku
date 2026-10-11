@@ -25,12 +25,22 @@ export const nl: HelpTranslation = {
           body: [
             [
               'Kies in {Instellingen → Talen} de taal die je leert en je eigen taal.',
-              'Volg in {Instellingen → Anki} de stappen om Anki te koppelen, en kies dan de set voor nieuwe kaarten.',
+              'Download Anki via https://apps.ankiweb.net. Volg in {Instellingen → Anki} de stappen om Anki te koppelen, en kies dan de set voor nieuwe kaarten.',
               'Open een video op YouTube of Netflix met ondertitels in de taal die je leert, en wijs met je muis een woord aan.',
             ],
             { tip: 'Anki is optioneel. Ondertitels, opzoeken en het transcript werken ook zonder; Anki onthoudt welke woorden je kent.' },
           ],
           keywords: ['instellen', 'installeren', 'installatie', 'beginnen', 'starten', 'eerste keer', 'taal', 'setup'],
+        },
+        {
+          id: 'anki',
+          title: 'Wat is Anki?',
+          body: [
+            'Anki is een gratis flashcard-app. De app laat je elke kaart opnieuw zien, net voordat je hem zou vergeten (gespreide herhaling).',
+            'Libregaku maakt in Anki kaarten van de woorden en zinnen die je kiest. Het leest ook je Anki-kaarten om te zien welke woorden je al kent.',
+            'Je hebt Anki op je computer nodig, met de add-on AnkiConnect. Download Anki via https://apps.ankiweb.net.',
+          ],
+          keywords: ['flitskaarten', 'spaced repetition', 'srs', 'downloaden', 'installeren', 'herhalen', 'plug-in', 'overhoren'],
         },
       ],
     },

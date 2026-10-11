@@ -25,12 +25,22 @@ export const vi: HelpTranslation = {
           body: [
             [
               'Trong {Cài đặt → Ngôn ngữ}, chọn ngôn ngữ bạn đang học và ngôn ngữ của bạn.',
-              'Trong {Cài đặt → Anki}, làm theo các bước để kết nối Anki, rồi chọn bộ thẻ để thêm thẻ mới vào.',
+              'Tải Anki tại https://apps.ankiweb.net. Trong {Cài đặt → Anki}, làm theo các bước để kết nối Anki, rồi chọn bộ thẻ để thêm thẻ mới vào.',
               'Mở một video YouTube hoặc Netflix có phụ đề bằng ngôn ngữ bạn đang học, rồi đặt con trỏ lên một từ.',
             ],
             { tip: 'Anki không bắt buộc. Phụ đề, tra từ và bản chép lời đều dùng được khi không có Anki; Anki là nơi ghi nhớ những từ bạn đã biết.' },
           ],
           keywords: ['thiết lập', 'cài đặt', 'bắt đầu', 'lần đầu', 'ngôn ngữ', 'hướng dẫn', 'setup', 'install'],
+        },
+        {
+          id: 'anki',
+          title: 'Anki là gì?',
+          body: [
+            'Anki là ứng dụng thẻ ghi nhớ miễn phí. Ứng dụng cho bạn xem lại từng thẻ đúng lúc bạn sắp quên (lặp lại ngắt quãng).',
+            'Libregaku thêm thẻ vào Anki từ những từ và câu bạn chọn. Libregaku cũng đọc các thẻ Anki của bạn để xác định những từ bạn đã biết.',
+            'Bạn cần có Anki trên máy tính, cùng tiện ích AnkiConnect. Tải Anki tại https://apps.ankiweb.net.',
+          ],
+          keywords: ['flashcard', 'tải về', 'cài đặt', 'ôn tập', 'add-on', 'srs', 'spaced repetition', 'download'],
         },
       ],
     },

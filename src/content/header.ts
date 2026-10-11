@@ -54,6 +54,8 @@ const STYLE = `
 /* Off means off: the host's own important rule beats an inline display, so
    the switch has to be a rule in here, where specificity can settle it. */
 :host(.off) { display: none !important; }
+/* Right to left, the panel is on the player's left: the bar starts after it. */
+:host([dir=rtl]) { left: var(--lg-inset, 0px) !important; right: 0 !important; }
 * { box-sizing: border-box; }
 
 .bar {
@@ -264,8 +266,9 @@ export class Header {
     // The language being learned: its flag, or its code, as settings say.
     const lang = TARGET_LANGUAGES.find((l) => l.code === s.target);
     const badge = document.createElement('span');
-    const flag = s.languageBadge === 'flag' && lang?.flag;
-    const flagSvg = s.languageBadge === 'flag' ? lang?.flagSvg : undefined;
+    // The learner's own flag wins over the language's; the Arab League's SVG is only the default.
+    const flag = s.languageBadge === 'flag' && (s.badgeFlag[s.target] || lang?.flag);
+    const flagSvg = s.languageBadge === 'flag' && !s.badgeFlag[s.target] ? lang?.flagSvg : undefined;
     badge.className = flag || flagSvg ? 'badge flag' : 'badge';
     // The SVG is the build's own file (src/flags/), not user input.
     if (flagSvg) badge.innerHTML = flagSvg;

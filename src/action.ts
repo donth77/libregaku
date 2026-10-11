@@ -24,7 +24,7 @@ interface PageState {
   site: string | null;
   title: string | null;
   rendering: boolean;
-  tracks: Array<{ id: string; lang: string; label: string; generated?: boolean }>;
+  tracks: Array<{ id: string; lang: string; label: string; generated?: boolean; forced?: boolean }>;
   track: string | null;
   second: string | null;
   sidebarOpen: boolean;
@@ -79,6 +79,10 @@ function fillTracks(
     sel.appendChild(o);
   }
   for (const t of state.tracks) {
+    // Netflix has a forced track for each audio language, each named "Off":
+    // only the writing on screen, nothing to study, and a long list of Offs.
+    // One stays while it is the one in use, so the menu still says what is.
+    if (t.forced && t.id !== selected) continue;
     const o = document.createElement('option');
     o.value = t.id;
     // The track's name is the site's; only the mark for a generated one is ours.

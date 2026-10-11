@@ -33,6 +33,12 @@ export interface TrackInfo {
 
 export interface SubtitleSource {
   readonly id: string;
+  /**
+   * Languages the video has subtitles in only as pictures — Netflix's
+   * image-based tracks — which have no text to read and are not listed by
+   * listTracks. Said in the notice when one is the language being learned.
+   */
+  pictureLanguages?(): string[];
   /** Where this site renders captions, for the DOM-reading fallback. */
   readonly domCaptions: { container: string; segment: string; join?: string };
   /**
@@ -75,12 +81,6 @@ export interface SubtitleSource {
    */
   seek?(seconds: number): void;
   /**
-   * Height in px of the site's bottom control bar, measured from the bottom of
-   * the player, so the transcript panel can stop above it instead of covering
-   * the player's own buttons. 0 when the adapter cannot tell.
-   */
-  controlsHeight?(): number;
-  /**
    * Where playback is on the clock cue times are on, in seconds.
    *
    * Optional: without it that is the <video>'s currentTime. Disney+'s element
@@ -88,6 +88,12 @@ export interface SubtitleSource {
    * the position has to come from its player. Null while it is not known yet.
    */
   time?(): number | null;
+  /**
+   * Height in px of the site's bottom control bar, measured from the bottom of
+   * the player, so the transcript panel can stop above it instead of covering
+   * the player's own buttons. 0 when the adapter cannot tell.
+   */
+  controlsHeight?(): number;
   /**
    * True once the site has said this video carries no subtitle tracks at all —
    * as opposed to not having said anything yet. Lets the orchestrator stop

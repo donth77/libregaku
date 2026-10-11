@@ -93,6 +93,32 @@ describe('Header', () => {
     await setSetting('languageBadge', 'flag');
   });
 
+  it('shows the flag picked for the language being learned, and no other language\'s', async () => {
+    await setSetting('languageBadge', 'flag');
+    await setSetting('badgeFlag', { es: '🇲🇽', ar: '🇪🇬' });
+    const badge = (): HTMLElement => {
+      document.body.replaceChildren();
+      return build().host.shadowRoot!.querySelector<HTMLElement>('.badge')!;
+    };
+    try {
+      await setSetting('target', 'es');
+      expect(badge().textContent).toBe('🇲🇽');
+      await setSetting('target', 'ja');
+      expect(badge().textContent).toBe('🇯🇵');
+      // Arabic's own is the Arab League's flag, a picture, shown only while none is picked for it.
+      await setSetting('target', 'ar');
+      let arabic = badge();
+      expect(arabic.textContent).toBe('🇪🇬');
+      expect(arabic.querySelector('svg')).toBeNull();
+      await setSetting('badgeFlag', { es: '🇲🇽' });
+      arabic = badge();
+      expect(arabic.querySelector('svg')).not.toBeNull();
+    } finally {
+      await setSetting('badgeFlag', {});
+      await setSetting('target', 'ja');
+    }
+  });
+
   it('keeps furigana to a language with readings, and draws which of the three it is on', async () => {
     await setSetting('ruby', 'always');
     let ruby = build().host.shadowRoot!.querySelector<HTMLElement>('button[aria-keyshortcuts="R"]')!;

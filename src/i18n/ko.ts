@@ -133,6 +133,9 @@ export const ko: Translation = {
     languageBadge: '언어 배지',
     languageBadgeFlag: '국기',
     languageBadgeCode: '코드',
+    badgeFlag: '배지 국기',
+    badgeFlagDefault: '기본값',
+    badgeFlagHint: '학습 언어에 표시할 국기입니다. 언어마다 따로 저장됩니다.',
     languageBadgeHint: '헤더에 학습 언어를 표시하는 방식입니다.',
     sidebarStats: '새 단어 세기',
     sidebarStatsHint: '줄마다 새 단어 수, 아는 단어 비율, 그리고 이를 이용한 필터를 보여 줍니다.',
@@ -614,6 +617,7 @@ export const ko: Translation = {
     lookedFor: (selector: string): string => `검색한 선택자: ${selector}`,
     noTargetTrackDetail: (languages: readonly string[]): string =>
       `이 동영상의 자막: ${languages.join(', ') || '없음'}. 설정에서 학습 언어를 바꾸거나 다른 동영상을 고르세요.`,
+    onlyPictures: '이 동영상의 자막은 텍스트가 아닌 이미지로만 되어 있어 Libregaku가 읽을 수 없습니다.',
     noHumanTrack: '이 동영상에는 사람이 작성한 자막이 없습니다.',
     secondTrackError: (track: string, error: string): string => `${track}: ${error}`,
     noSecondTrackDetail: (languages: readonly string[]): string => `이 동영상의 자막: ${languages.join(', ')}.`,

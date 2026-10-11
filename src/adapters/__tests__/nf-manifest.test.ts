@@ -104,6 +104,21 @@ describe('tracksFrom', () => {
       },
     });
     expect(got?.tracks.map((t) => t.language)).toEqual(['ja']);
+    // The bitmaps are not read, but their language is named.
+    expect(got?.pictures).toEqual(['de']);
+  });
+
+  it('answers for a title whose subtitles are all pictures, and leaves out forced ones', () => {
+    const got = tracksFrom({
+      result: {
+        textTracks: [
+          { language: 'zh-Hans', isImageBased: true, downloadables: { 'nflx-cmisc': url('https://nf.test/zh') } },
+          { language: 'zh-Hans', isImageBased: true, isForcedNarrative: true, downloadables: { 'nflx-cmisc': url('https://nf.test/zf') } },
+          { language: 'en', isImageBased: true, isForcedNarrative: true, downloadables: { 'nflx-cmisc': url('https://nf.test/ef') } },
+        ],
+      },
+    });
+    expect(got).toMatchObject({ tracks: [], pictures: ['zh-Hans'] });
   });
 
   it('ignores every other object that passes through JSON.parse', () => {

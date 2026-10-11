@@ -129,6 +129,35 @@ describe('the track pickers', () => {
     expect(shown('track')).toEqual(['Japanese', 'ja (auto)']);
     expect(shown('second')).toEqual(['None', 'Japanese', 'ja (auto)']);
   });
+
+  it("leave out Netflix's forced tracks, unless one is in use", async () => {
+    document.body.innerHTML = PAGE;
+    vi.stubGlobal('chrome', {
+      tabs: {
+        query: async () => [{ id: 5 }],
+        sendMessage: async () => ({
+          supported: true, site: 'netflix', title: 'x', rendering: true, sidebarOpen: true, track: 'zh', second: 'f-en',
+          tracks: [
+            { id: 'zh', lang: 'zh-Hans', label: 'Chinese (Simplified)' },
+            { id: 'f-zh', lang: 'zh-Hans', label: 'Off (forced)', forced: true },
+            { id: 'f-en', lang: 'en', label: 'Off (forced)', forced: true },
+            { id: 'en', lang: 'en', label: 'English' },
+          ],
+        }),
+      },
+      runtime: { openOptionsPage: () => {}, sendMessage: async () => ({ ok: false, kind: 'offline', offline: true }) },
+      storage: { local: { get: async () => ({}) } },
+    });
+    vi.resetModules();
+    await import('../action');
+    await vi.waitFor(() => {
+      if (document.getElementById('tracks')?.hidden !== false) throw new Error('not yet');
+    });
+    const shown = (id: string): Array<string | null> =>
+      Array.from(document.querySelectorAll(`#${id} option`)).map((o) => o.textContent);
+    expect(shown('track')).toEqual(['Chinese (Simplified)', 'English']);
+    expect(shown('second')).toEqual(['None', 'Chinese (Simplified)', 'Off (forced)', 'English']);
+  });
 });
 
 describe('sentence audio on a protected video', () => {

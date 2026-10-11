@@ -27,7 +27,7 @@ import {
   onSettingsChange, trackLanguageMatch,
   setSetting, settings, underlineVars,
 } from '../settings';
-import { loadUiLanguage, setTranslationLoader, setUiLanguage, ui } from '../i18n';
+import { languageList, loadUiLanguage, setTranslationLoader, setUiLanguage, ui } from '../i18n';
 import {
   cancelPopupClose, closePopup, closePopupSoon, draftFor, popupKey, popupShows, pressAdd, showPopup, type Added, type CardDraft,
 } from './popup';
@@ -59,6 +59,21 @@ import { Overlay } from './renderer';
 
 /** The language being learned, from settings. Never hardcode this again. */
 const targetLang = (): string => settings().target;
+
+/** Whether the site has the language being learned only as pictures (Netflix's image-based subtitles). */
+const targetInPictures = (adapter: SubtitleSource): boolean =>
+  Boolean(adapter.pictureLanguages?.().some((l) => l.startsWith(targetLang())));
+
+/**
+ * Under "no subtitles in the language you are learning": that the site has
+ * them only as pictures, when it does, or else the languages it has, named.
+ * Netflix's forced tracks are the "Off" setting of each audio language, not
+ * subtitles anyone could study, and are left out.
+ */
+function noTargetDetail(adapter: SubtitleSource, tracks: TrackInfo[]): string {
+  if (targetInPictures(adapter)) return ui.notices.onlyPictures;
+  return ui.notices.noTargetTrackDetail(languageList(tracks.filter((t) => !t.forced).map((t) => t.lang)));
+}
 
 /** Loud by default while the adapters are young. */
 const log = (...a: unknown[]) => console.log('%c[libregaku]', 'color:#8AA2E8', ...a);
@@ -724,6 +739,11 @@ async function run(gen: number): Promise<boolean> {
   const tracks = await adapter.listTracks();
   if (gen !== generation) return false;
   if (!tracks.length) {
+    if (targetInPictures(adapter)) {
+      log(`the "${targetLang()}" subtitles here are pictures only`);
+      showNotice(mount, 'no-target-track', ui.notices.onlyPictures);
+      return true;
+    }
     if (adapter.noSubtitles?.()) {
       log('this video has no subtitle tracks');
       showNotice(mount, 'no-subtitles');
@@ -793,7 +813,7 @@ async function run(gen: number): Promise<boolean> {
   if (!track) {
     const have = tracks.map((t) => t.lang);
     log(`no "${targetLang()}" track here — available:`, have.join(', ') || 'none');
-    showNotice(mount, 'no-target-track', ui.notices.noTargetTrackDetail(have));
+    showNotice(mount, 'no-target-track', noTargetDetail(adapter, tracks));
     return true;   // the list is known and lacks our language; retrying is pointless
   }
   activeTrack = track.id;
@@ -882,7 +902,7 @@ async function run(gen: number): Promise<boolean> {
         showNotice(mount, 'only-one-track');
       } else {
         log(`no "${want}" track for the second line — available:`, have);
-        showNotice(mount, 'no-second-track', ui.notices.noSecondTrackDetail(tracks.map((t) => t.lang)));
+        showNotice(mount, 'no-second-track', ui.notices.noSecondTrackDetail(languageList(tracks.filter((t) => !t.forced).map((t) => t.lang))));
       }
     }
   }
@@ -1030,7 +1050,7 @@ let lookupSeq = 0;
  */
 function makeOverlay(mount: HTMLElement, adapter: SubtitleSource): Overlay {
   const o = new Overlay(mount);
-  o.setRightInset(sidebar?.inset ?? 0);
+  o.setPanelInset(sidebar?.inset ?? 0);
   applyAnchor(o, mount, adapter);
   o.setSize(settings().subtitleSize);
   o.setRubyMode(settings().ruby);
@@ -1734,11 +1754,11 @@ function mountSidebar(mount: HTMLElement, video: HTMLVideoElement, adapter: Subt
   sidebar.onSavedChange(() => header?.update());
   sidebar.onLayoutChange(() => {
     const px = sidebar?.inset ?? 0;
-    overlay?.setRightInset(px);
+    overlay?.setPanelInset(px);
     playerInset?.set(px);
     header?.update();
   });
-  overlay?.setRightInset(sidebar.inset);
+  overlay?.setPanelInset(sidebar.inset);
   playerInset.set(sidebar.inset);
   void sidebar.refreshSaved();
   if (keepMode) {

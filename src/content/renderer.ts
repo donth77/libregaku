@@ -1,4 +1,5 @@
 import type { RubySegment, Token } from '../morphology/types';
+import { uiDirection } from '../i18n';
 import { markPhrase, phraseAt, plainText, selectWhole, selectedWords, textFrom, type PhrasePick } from './phrase';
 
 /**
@@ -78,6 +79,8 @@ const STYLE = `
        otherwise every unannotated line carried a blank strip above it. */
     padding-top: 0;
     user-select: text;
+    /* Its own layer, so a phrase's band (below) can sit under every word in it. */
+    isolation: isolate;
   }
   .secondary { font-size: calc(var(--size) * .66); font-weight: 500; color: #D5DCEC; user-select: text; }
   /* Square corners: a rounded box bent each underline up at its ends. */
@@ -108,12 +111,20 @@ const STYLE = `
    * A phrase: one band across its words, drawn by the words themselves
    * (markPhrase) with the browser's own highlight hidden. Each word fills its
    * own box, the same height for all, and the 2px gap after it.
+   *
+   * The band is one solid colour, drawn under every word's text. Pieces of it
+   * overlap: a space reaches 3px into the words either side of it, and each
+   * piece covers the gap after its word. A see-through colour came out
+   * darker wherever two pieces overlapped, in stripes along a Spanish or
+   * Korean phrase; a solid one just meets itself.
    */
   .primary.phrased ::selection { background: transparent; }
-  .t.inphrase, .p.inphrase { background: rgba(96, 140, 255, .48); border-radius: 0; }
-  .t.inphrase:not(.phrase-last)::after, .p.inphrase:not(.phrase-last)::after {
-    content: ''; position: absolute; top: 0; bottom: 0; left: 100%; width: 2px; background: inherit;
+  .t.inphrase, .p.inphrase { border-radius: 0; }
+  .t.inphrase::before, .p.inphrase::before {
+    content: ''; position: absolute; top: 0; bottom: 0; left: 0; right: -2px; z-index: -1;
+    background: #36508C;
   }
+  .t.inphrase.phrase-last::before, .p.inphrase.phrase-last::before { right: 0; }
   /*
    * Furigana is taken out of flow.
    *
@@ -395,10 +406,13 @@ export class Overlay {
   }
 
   /** Keep clear of the transcript panel while it is open over the player. */
-  setRightInset(px: number): void {
+  /** Keep clear of the open panel: on the right, or on the left in a right-to-left interface. */
+  setPanelInset(px: number): void {
     const wrap = this.#primary.parentElement;
     if (!wrap) return;
-    wrap.style.right = `${px}px`;
+    const left = uiDirection() === 'rtl';
+    wrap.style.right = left ? '0px' : `${px}px`;
+    wrap.style.left = left ? `${px}px` : '0px';
   }
 
   /** Text size as a percentage of the default. Readings scale with it. */

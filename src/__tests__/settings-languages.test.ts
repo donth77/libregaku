@@ -56,6 +56,23 @@ describe('the decks kept for each language', () => {
   });
 });
 
+describe('the flag picked for each language', () => {
+  // It was one flag for every language, typed in as text.
+  const before = (target: string, flag: string): Partial<Settings> =>
+    ({ target, badgeFlag: flag }) as unknown as Partial<Settings>;
+
+  it('gives a flag picked before each language had its own to the language being learned', () => {
+    expect(withDefaults(before('es', '🇲🇽')).badgeFlag).toEqual({ es: '🇲🇽' });
+    expect(withDefaults(before('es', '')).badgeFlag).toEqual({});
+    expect(withDefaults(undefined).badgeFlag).toEqual({});
+  });
+
+  it('keeps each language its own, and reads them defensively', () => {
+    const odd = { es: '🇲🇽', ja: '', fr: 3, de: null } as unknown as Settings['badgeFlag'];
+    expect(withDefaults({ target: 'ja', badgeFlag: odd }).badgeFlag).toEqual({ es: '🇲🇽' });
+  });
+});
+
 describe('what each language gets', () => {
   const tier = (code: string) => TARGET_LANGUAGES.find((l) => l.code === code)?.tier;
 

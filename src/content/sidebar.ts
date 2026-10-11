@@ -268,6 +268,16 @@ const STYLE = `
     cursor: col-resize; z-index: 2;
   }
   .grip:hover { background: rgba(242,245,252,.28); }
+  /*
+   * Right to left (Arabic): the panel on the player's left, where the
+   * interface starts, with its tab, edge and resize grip, and what floats
+   * inside it mirrored.
+   */
+  :host([dir=rtl]) { right: auto !important; left: 0 !important; }
+  :host([dir=rtl]) .tab { right: auto; left: 0; border-left: 0; border-right: 1px solid #2A3348; border-radius: 0 8px 8px 0; }
+  :host([dir=rtl]) .tab svg { transform: scaleX(-1); }
+  :host([dir=rtl]) .panel { right: auto; left: 0; border-left: 0; border-right: 1px solid #2A3348; }
+  :host([dir=rtl]) .grip { left: auto; right: -3px; }
   header {
     display: flex; align-items: center; justify-content: space-between; gap: 8px;
     padding: 12px 14px; border-bottom: 1px solid #212939;
@@ -417,7 +427,8 @@ const STYLE = `
   .tx .p { padding: 0 0 3px; }
   /* A phrase: one band across its words and the marks between, as on the subtitle. */
   .tx.phrased ::selection { background: transparent; }
-  .w.inphrase, .tx .p.inphrase { background: rgba(96, 140, 255, .48); border-radius: 0; }
+  /* Solid, as on the subtitle: a see-through colour darkens wherever two pieces meet. */
+  .w.inphrase, .tx .p.inphrase { background: #36508C; border-radius: 0; }
   .w[data-s="unknown"]  { box-shadow: inset 0 -2.5px 0 var(--lg-unknown, #E5806C); }
   .w[data-s="learning"] { box-shadow: inset 0 -1.5px 0 var(--lg-learning, #D9A64A); }
   .w[data-s="tracking"] { box-shadow: inset 0 -2px 0 var(--lg-tracking, #A78BFA); }
@@ -450,17 +461,18 @@ const STYLE = `
     font-variant-numeric: tabular-nums;
   }
   /* The row's buttons at the right of its time; the count is up in its corner. */
-  .line .meta > button:first-of-type { margin-left: auto; }
+  .line .meta > button:first-of-type { margin-inline-start: auto; }
   .line > .x {
     float: right; margin: 3px 0 4px 10px; padding: 1px 8px; border-radius: 999px;
     font: 600 11.5px/1.6 ui-monospace, monospace; font-variant-numeric: tabular-nums;
   }
   .line > .x:empty { display: none; }
+  :host([dir=rtl]) .line > .x { float: left; margin: 3px 10px 4px 0; }
   .line > .x.hot { background: rgba(229, 128, 108, .14); }
   .line > .x.one { background: rgba(217, 166, 74, .14); }
   .line .meta { clear: both; }
   /* A saved line has no count, so its remove button takes the right edge. */
-  .sv .meta .save { margin-left: auto; }
+  .sv .meta .save { margin-inline-start: auto; }
   .x { font: inherit; white-space: nowrap; }
   .x.hot { color: #E5806C; font-weight: 600; }
   .x.one { color: #D9A64A; font-weight: 600; }
@@ -506,11 +518,13 @@ const STYLE = `
     padding: 6px; box-shadow: 0 8px 28px -8px rgba(0,0,0,.75);
   }
   .filters.open { display: flex; }
+  :host([dir=rtl]) .fab, :host([dir=rtl]) .filters { right: auto; left: 16px; }
+  :host([dir=rtl]) .now { left: auto; right: 16px; padding: 0 10px 0 14px; }
   .f {
     font: 600 11px/1 ui-monospace, monospace; letter-spacing: .07em;
     text-transform: uppercase; padding: 9px 13px; border-radius: 6px;
     border: 1px solid transparent; background: none; color: #838DA8;
-    cursor: pointer; text-align: left; white-space: nowrap;
+    cursor: pointer; text-align: start; white-space: nowrap;
   }
   .f:hover { background: #1B2234; color: #E8ECF6; }
   .f[aria-pressed="true"] { background: #F2F5FC; color: #0D111C; border-color: #F2F5FC; }
@@ -523,7 +537,7 @@ const STYLE = `
   }
   .hover.on { display: block; }
   .hw { font-size: 17px; font-weight: 600; }
-  .hr { font: 500 11px ui-monospace, monospace; color: #B8C0D4; margin-left: 6px; }
+  .hr { font: 500 11px ui-monospace, monospace; color: #B8C0D4; margin-inline-start: 6px; }
   .hp { font: 11px ui-monospace, monospace; color: #6B7490; margin: 2px 0 4px; letter-spacing: .05em; }
   .hd { font-size: 13.5px; color: #C7CFE2; }
   .hg { margin-top: 6px; font-size: 12.5px; color: #A3ACC4; }
@@ -536,6 +550,8 @@ const STYLE = `
   .line:hover .save, .save.on, .save:focus-visible { opacity: 1; }
   .line:hover .addline, .addline:focus-visible, .addline.busy { opacity: 1; }
   .addline { margin-right: 0; }
+  :host([dir=rtl]) .save { margin: -4px 0 -4px -5px; }
+  :host([dir=rtl]) .addline { margin-left: 0; }
   .addline.busy svg { animation: spin 1s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   @media (prefers-reduced-motion: reduce) { .addline.busy svg { animation: none; } }
@@ -1250,7 +1266,9 @@ export class Sidebar {
     let startX = 0;
     let startW = 0;
     const move = (e: PointerEvent): void => {
-      this.#width = clampWidth(startW + (startX - e.clientX));
+      // Toward the video widens the panel: leftward here, rightward when it sits on the left.
+      const moved = uiDirection() === 'rtl' ? e.clientX - startX : startX - e.clientX;
+      this.#width = clampWidth(startW + moved);
       this.#applyWidth();
     };
     const up = (): void => {
@@ -3204,7 +3222,8 @@ export class Sidebar {
     const below = r.bottom + 8;
     const top_ = below + h > window.innerHeight - 8 ? r.top - h - 8 : below;
     this.#hover.style.top = `${Math.max(8, Math.min(top_, window.innerHeight - h - 8))}px`;
-    this.#hover.style.left = `${Math.max(8, Math.min(r.left, window.innerWidth - width - 8))}px`;
+    const from = uiDirection() === 'rtl' ? r.right - width : r.left;
+    this.#hover.style.left = `${Math.max(8, Math.min(from, window.innerWidth - width - 8))}px`;
   }
 
   /** Hide the card, and make sure no lookup still under way can bring it back. */

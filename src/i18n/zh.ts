@@ -127,6 +127,9 @@ export const zh: Translation = {
     languageBadge: '语言标识',
     languageBadgeFlag: '国旗',
     languageBadgeCode: '代码',
+    badgeFlag: '标识国旗',
+    badgeFlagDefault: '默认',
+    badgeFlagHint: '为学习语言显示的国旗。每种语言分别保存。',
     languageBadgeHint: '顶栏如何显示学习语言。',
     sidebarStats: '统计生词',
     sidebarStatsHint: '显示每句的生词数、已掌握单词的比例，以及依赖这些数据的筛选。',
@@ -596,6 +599,7 @@ export const zh: Translation = {
     lookedFor: (selector: string): string => `已查找：${selector}`,
     noTargetTrackDetail: (languages: readonly string[]): string =>
       `此视频的字幕语言：${languages.join('、') || '无'}。请在设置中更改学习语言，或换一个视频。`,
+    onlyPictures: '此视频的字幕只有图片形式，不是文字，Libregaku 无法读取。',
     noHumanTrack: '此视频没有人工制作的字幕。',
     secondTrackError: (track: string, error: string): string => `${track}：${error}`,
     noSecondTrackDetail: (languages: readonly string[]): string => `此视频的字幕语言：${languages.join('、')}。`,

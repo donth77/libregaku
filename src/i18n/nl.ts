@@ -149,6 +149,9 @@ export const nl: Translation = {
     languageBadge: 'Taalaanduiding',
     languageBadgeFlag: 'Vlag',
     languageBadgeCode: 'Code',
+    badgeFlag: 'Vlag-emoji',
+    badgeFlagDefault: 'Standaard',
+    badgeFlagHint: 'De vlag voor de taal die je leert. Je keuze wordt per taal bewaard.',
     languageBadgeHint: 'Hoe de bovenbalk de taal toont die je leert.',
     sidebarStats: 'Nieuwe woorden tellen',
     sidebarStatsHint:
@@ -665,6 +668,7 @@ export const nl: Translation = {
     noTargetTrackDetail: (languages: readonly string[]): string =>
       `Deze video heeft: ${languages.join(', ') || 'geen'}. ` +
       'Wijzig in de instellingen wat je leert, of kies een andere video.',
+    onlyPictures: 'Deze video heeft ze alleen als afbeeldingen, niet als tekst, dus Libregaku kan ze niet lezen.',
     noHumanTrack: 'Er was voor deze video geen spoor dat door mensen is geschreven.',
     secondTrackError: (track: string, error: string): string => `${track}: ${error}`,
     noSecondTrackDetail: (languages: readonly string[]): string => `Deze video heeft: ${languages.join(', ')}.`,

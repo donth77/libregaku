@@ -25,12 +25,22 @@ export const zhHant: HelpTranslation = {
           body: [
             [
               '在{設定 → 語言}中，選擇學習語言和母語。',
-              '在{設定 → Anki} 中，依照步驟連接 Anki，然後選擇新卡片要加入的牌組。',
+              '從 https://apps.ankiweb.net 下載 Anki。在{設定 → Anki} 中，依照步驟連接 Anki，然後選擇新卡片要加入的牌組。',
               '開啟有學習語言字幕的 YouTube 或 Netflix 影片，將游標停在任一單字上。',
             ],
             { tip: 'Anki 不是必要的。沒有 Anki，字幕、查詢和轉錄稿也都能使用；Anki 的作用是記住你已經會哪些單字。' },
           ],
           keywords: ['安裝', '入門', '新手', '初次使用', '第一次', 'setup', 'install'],
+        },
+        {
+          id: 'anki',
+          title: 'Anki 是什麼？',
+          body: [
+            'Anki 是免費的閃卡應用程式。它會在你快要忘記時，再次讓你看到每張卡片（間隔重複）。',
+            'Libregaku 會用你選取的單字和句子，在 Anki 中新增卡片。它也會讀取你的 Anki 卡片，以得知你已經會哪些單字。',
+            '你需要在電腦上安裝 Anki 和 AnkiConnect 附加元件。Anki 可從 https://apps.ankiweb.net 下載。',
+          ],
+          keywords: ['字卡', '記憶卡', '複習', '外掛', 'srs', 'spaced repetition', 'flashcard', 'download'],
         },
       ],
     },

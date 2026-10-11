@@ -143,6 +143,9 @@ export const sv: Translation = {
     languageBadge: 'Språkmärke',
     languageBadgeFlag: 'Flagga',
     languageBadgeCode: 'Kod',
+    badgeFlag: 'Flagga i märket',
+    badgeFlagDefault: 'Standard',
+    badgeFlagHint: 'Flaggan som visas för språket du lär dig. Varje språk behåller sin egen.',
     languageBadgeHint: 'Hur toppfältet visar språket du lär dig.',
     sidebarStats: 'Räkna nya ord',
     sidebarStatsHint: 'Visar antalet nya ord på varje rad, din andel kända ord och filtren som använder dem.',
@@ -646,6 +649,7 @@ export const sv: Translation = {
     noTargetTrackDetail: (languages: readonly string[]): string =>
       `Undertexter i videon: ${languages.join(', ') || 'inga'}. ` +
       'Byt språket du lär dig i inställningarna, eller välj en annan video.',
+    onlyPictures: 'Videon har dem bara som bilder, inte som text, så Libregaku kan inte läsa dem.',
     noHumanTrack: 'Den här videon hade inget spår skrivet av en människa.',
     secondTrackError: (track: string, error: string): string => `${track}: ${error}`,
     noSecondTrackDetail: (languages: readonly string[]): string => `Undertexter i videon: ${languages.join(', ')}.`,

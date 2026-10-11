@@ -133,6 +133,9 @@ export const th: Translation = {
     languageBadge: 'ป้ายภาษา',
     languageBadgeFlag: 'ธง',
     languageBadgeCode: 'รหัส',
+    badgeFlag: 'ธงบนป้าย',
+    badgeFlagDefault: 'ค่าเริ่มต้น',
+    badgeFlagHint: 'ธงที่แสดงสำหรับภาษาที่เรียน แต่ละภาษาเก็บธงของตัวเองไว้',
     languageBadgeHint: 'วิธีที่ส่วนหัวแสดงภาษาที่คุณเรียน',
     sidebarStats: 'นับคำใหม่',
     sidebarStatsHint: 'แสดงจำนวนคำใหม่ในแต่ละบรรทัด เปอร์เซ็นต์คำที่คุณรู้แล้ว และตัวกรองที่ใช้ตัวเลขเหล่านี้',
@@ -624,6 +627,7 @@ export const th: Translation = {
     lookedFor: (selector: string): string => `ค้นหา ${selector} แล้ว`,
     noTargetTrackDetail: (languages: readonly string[]): string =>
       `วิดีโอนี้มี: ${languages.join(', ') || 'ไม่มี'} เปลี่ยนภาษาที่เรียนในการตั้งค่า หรือเลือกวิดีโออื่น`,
+    onlyPictures: 'วิดีโอนี้มีคำบรรยายเป็นรูปภาพเท่านั้น ไม่ใช่ข้อความ Libregaku จึงอ่านไม่ได้',
     noHumanTrack: 'วิดีโอนี้ไม่มีแทร็กที่คนเขียน',
     secondTrackError: (track: string, error: string): string => `${track}: ${error}`,
     noSecondTrackDetail: (languages: readonly string[]): string => `วิดีโอนี้มี: ${languages.join(', ')}`,

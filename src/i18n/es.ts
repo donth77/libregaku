@@ -141,6 +141,9 @@ export const es: Translation = {
     languageBadge: 'Indicador de idioma',
     languageBadgeFlag: 'Bandera',
     languageBadgeCode: 'Código',
+    badgeFlag: 'Bandera del indicador',
+    badgeFlagDefault: 'Predeterminada',
+    badgeFlagHint: 'La bandera que se muestra para el idioma que aprendes. Cada idioma guarda la suya.',
     languageBadgeHint: 'Cómo muestra el encabezado el idioma que aprendes.',
     sidebarStats: 'Contar palabras nuevas',
     sidebarStatsHint:
@@ -654,6 +657,7 @@ export const es: Translation = {
     noTargetTrackDetail: (languages: readonly string[]): string =>
       `Subtítulos de este video: ${languages.join(', ') || 'ninguno'}. ` +
       'Cambia el idioma que aprendes en la configuración o elige otro video.',
+    onlyPictures: 'Este video solo los tiene como imágenes, no como texto, así que Libregaku no puede leerlos.',
     noHumanTrack: 'Este video no tiene ninguna pista escrita por una persona.',
     secondTrackError: (track: string, error: string): string => `${track}: ${error}`,
     noSecondTrackDetail: (languages: readonly string[]): string => `Subtítulos de este video: ${languages.join(', ')}.`,

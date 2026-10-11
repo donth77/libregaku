@@ -96,12 +96,22 @@ const en: HelpContent = {
           body: [
             [
               'In {Settings → Languages}, choose the language you are learning and your own language.',
-              'In {Settings → Anki}, follow the steps to connect Anki, then choose the deck new cards go to.',
+              'Get Anki from https://apps.ankiweb.net. In {Settings → Anki}, follow the steps to connect it, then choose the deck new cards go to.',
               'Open a YouTube or Netflix video with subtitles in the language you are learning, and rest the pointer on a word.',
             ],
             { tip: 'Anki is optional. Subtitles, lookups and the transcript all work without it; it is what remembers which words you know.' },
           ],
           keywords: ['setup', 'install', 'begin', 'first', 'language'],
+        },
+        {
+          id: 'anki',
+          title: 'What is Anki?',
+          body: [
+            'Anki is a free flashcard app. It shows each card again just before you would forget it (spaced repetition).',
+            'Libregaku adds cards to Anki from the words and sentences you pick. It also reads your Anki cards to see which words you already know.',
+            'You need Anki on your computer, with the AnkiConnect add-on. Get Anki from https://apps.ankiweb.net.',
+          ],
+          keywords: ['flashcards', 'srs', 'download', 'install', 'addon', 'plugin', 'review', 'desktop'],
         },
       ],
     },

@@ -133,6 +133,9 @@ export const vi: Translation = {
     languageBadge: 'Huy hiệu ngôn ngữ',
     languageBadgeFlag: 'Cờ',
     languageBadgeCode: 'Mã',
+    badgeFlag: 'Cờ trên huy hiệu',
+    badgeFlagDefault: 'Mặc định',
+    badgeFlagHint: 'Lá cờ hiển thị cho ngôn ngữ bạn đang học. Mỗi ngôn ngữ giữ lá cờ riêng.',
     languageBadgeHint: 'Cách thanh tiêu đề hiện ngôn ngữ bạn đang học.',
     sidebarStats: 'Đếm từ mới',
     sidebarStatsHint: 'Hiện số từ mới trên mỗi dòng, tỷ lệ từ bạn đã biết và các bộ lọc dùng những số này.',
@@ -630,6 +633,7 @@ export const vi: Translation = {
     lookedFor: (selector: string): string => `Đã tìm ${selector}`,
     noTargetTrackDetail: (languages: readonly string[]): string =>
       `Video này có: ${languages.join(', ') || 'không có'}. Hãy đổi ngôn ngữ đang học trong cài đặt, hoặc chọn video khác.`,
+    onlyPictures: 'Video này chỉ có phụ đề dạng hình ảnh, không phải văn bản, nên Libregaku không đọc được.',
     noHumanTrack: 'Video này không có bản phụ đề do người viết.',
     secondTrackError: (track: string, error: string): string => `${track}: ${error}`,
     noSecondTrackDetail: (languages: readonly string[]): string => `Video này có: ${languages.join(', ')}.`,

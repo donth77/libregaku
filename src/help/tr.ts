@@ -25,12 +25,22 @@ export const tr: HelpTranslation = {
           body: [
             [
               '{Ayarlar → Diller} bölümünde öğrendiğiniz dili ve kendi dilinizi seçin.',
-              "{Ayarlar → Anki} bölümünde Anki'yi bağlamak için adımları izleyin, ardından yeni kartların gideceği desteyi seçin.",
+              "Anki'yi https://apps.ankiweb.net adresinden indirin. {Ayarlar → Anki} bölümünde Anki'yi bağlamak için adımları izleyin, ardından yeni kartların gideceği desteyi seçin.",
               'Öğrendiğiniz dilde altyazısı olan bir YouTube veya Netflix videosu açın ve imleci bir kelimenin üzerinde tutun.',
             ],
             { tip: 'Anki isteğe bağlıdır. Altyazılar, aramalar ve transkript onsuz da çalışır; hangi kelimeleri bildiğinizi hatırlayan odur.' },
           ],
           keywords: ['kurulum', 'yükleme', 'kurma', 'başlangıç', 'ilk kez', 'dil seçimi', 'setup', 'install'],
+        },
+        {
+          id: 'anki',
+          title: 'Anki nedir?',
+          body: [
+            'Anki, ücretsiz bir bilgi kartı uygulamasıdır. Her kartı, tam unutmak üzereyken size yeniden gösterir (aralıklı tekrar).',
+            "Libregaku, seçtiğiniz kelime ve cümlelerden Anki'ye kart ekler. Hangi kelimeleri zaten bildiğinizi görmek için Anki kartlarınızı da okur.",
+            "Bilgisayarınızda Anki'nin ve AnkiConnect eklentisinin kurulu olması gerekir. Anki'yi https://apps.ankiweb.net adresinden indirin.",
+          ],
+          keywords: ['flashcard', 'kelime kartı', 'indirme', 'yükleme', 'kurulum', 'srs', 'spaced repetition', 'download'],
         },
       ],
     },

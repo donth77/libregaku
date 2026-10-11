@@ -138,6 +138,9 @@ export const hi: Translation = {
     languageBadge: 'भाषा बैज',
     languageBadgeFlag: 'झंडा',
     languageBadgeCode: 'कोड',
+    badgeFlag: 'बैज का झंडा',
+    badgeFlagDefault: 'डिफ़ॉल्ट',
+    badgeFlagHint: 'आप जो भाषा सीख रहे हैं, उसके लिए दिखने वाला झंडा। हर भाषा का अपना झंडा रहता है।',
     languageBadgeHint: 'आप जो भाषा सीख रहे हैं, हेडर उसे कैसे दिखाए।',
     sidebarStats: 'नए शब्द गिनें',
     sidebarStatsHint: 'हर लाइन पर नए शब्दों की गिनती, ज्ञात शब्दों का आपका प्रतिशत, और इन पर चलने वाले फ़िल्टर दिखाता है।',
@@ -644,6 +647,7 @@ export const hi: Translation = {
     lookedFor: (selector: string): string => `${selector} ढूंढा गया`,
     noTargetTrackDetail: (languages: readonly string[]): string =>
       `इस वीडियो में हैं: ${languages.join(', ') || 'कोई नहीं'}। सेटिंग में सीखने की भाषा बदलें, या कोई दूसरा वीडियो चुनें।`,
+    onlyPictures: 'इस वीडियो में ये सबटाइटल सिर्फ़ तस्वीरों के रूप में हैं, टेक्स्ट नहीं, इसलिए Libregaku इन्हें पढ़ नहीं सकता।',
     noHumanTrack: 'इस वीडियो के लिए किसी इंसान का लिखा ट्रैक उपलब्ध नहीं था।',
     secondTrackError: (track: string, error: string): string => `${track}: ${error}`,
     noSecondTrackDetail: (languages: readonly string[]): string => `इस वीडियो में हैं: ${languages.join(', ')}।`,

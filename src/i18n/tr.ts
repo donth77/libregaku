@@ -143,6 +143,9 @@ export const tr: Translation = {
     languageBadge: 'Dil rozeti',
     languageBadgeFlag: 'Bayrak',
     languageBadgeCode: 'Kod',
+    badgeFlag: 'Rozet bayrağı',
+    badgeFlagDefault: 'Varsayılan',
+    badgeFlagHint: 'Öğrendiğiniz dil için gösterilecek bayrak. Her dil kendi bayrağını saklar.',
     languageBadgeHint: 'Üst çubuğun, öğrendiğiniz dili nasıl göstereceği.',
     sidebarStats: 'Yeni kelimeleri say',
     sidebarStatsHint: 'Her satırdaki yeni kelime sayısını, bilinen kelime yüzdenizi ve bunları kullanan filtreleri gösterir.',
@@ -640,6 +643,7 @@ export const tr: Translation = {
     lookedFor: (selector: string): string => `Aranan: ${selector}`,
     noTargetTrackDetail: (languages: readonly string[]): string =>
       `Bu videodaki altyazılar: ${languages.join(', ') || 'yok'}. Ayarlarda öğrendiğiniz dili değiştirin ya da başka bir video seçin.`,
+    onlyPictures: 'Bu videoda altyazılar yalnızca resim olarak var, metin olarak değil; bu yüzden Libregaku onları okuyamaz.',
     noHumanTrack: 'Bu video için insan tarafından yazılmış altyazı yok.',
     secondTrackError: (track: string, error: string): string => `${track}: ${error}`,
     noSecondTrackDetail: (languages: readonly string[]): string => `Bu videodaki altyazılar: ${languages.join(', ')}.`,

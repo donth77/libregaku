@@ -25,12 +25,22 @@ export const pt: HelpTranslation = {
           body: [
             [
               'Em {Configurações → Idiomas}, escolha o idioma que você está aprendendo e o seu idioma.',
-              'Em {Configurações → Anki}, siga os passos para conectar o Anki e escolha o baralho para onde vão os novos cartões.',
+              'Baixe o Anki em https://apps.ankiweb.net. Em {Configurações → Anki}, siga os passos para conectar o Anki e escolha o baralho para onde vão os novos cartões.',
               'Abra um vídeo do YouTube ou da Netflix com legendas no idioma que você está aprendendo e deixe o cursor sobre uma palavra.',
             ],
             { tip: 'O Anki é opcional. Legendas, consultas e a transcrição funcionam sem ele; é ele que lembra quais palavras você conhece.' },
           ],
           keywords: ['configuração', 'instalar', 'instalação', 'começar', 'início', 'primeira vez', 'idioma', 'setup'],
+        },
+        {
+          id: 'anki',
+          title: 'O que é o Anki?',
+          body: [
+            'O Anki é um app gratuito de flashcards. Ele mostra cada cartão de novo pouco antes de você esquecê-lo (repetição espaçada).',
+            'O Libregaku adiciona cartões ao Anki a partir das palavras e frases que você escolhe. Ele também lê seus cartões do Anki para saber quais palavras você já conhece.',
+            'Você precisa do Anki no seu computador, com o complemento AnkiConnect. Baixe o Anki em https://apps.ankiweb.net.',
+          ],
+          keywords: ['cartões de memória', 'srs', 'baixar', 'download', 'instalar', 'revisão', 'revisar', 'add-on'],
         },
       ],
     },

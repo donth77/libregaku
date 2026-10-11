@@ -3,6 +3,7 @@ import { browseMarks, browseOurCards, createDeck, probe, type AnkiState } from '
 import { ADDON_CODE, ADDON_URL, ANKI_PORT, ANKI_URL, extensionOrigin } from '../anki/endpoint';
 import { defaultDeck } from '../anki/model';
 import { cardAudio } from '../audio/card-audio';
+import { flagChoices } from '../flags';
 import { fill, languageLabel, languageName, ownName, ui, uiLocale } from '../i18n';
 import { copyText } from './share';
 import {
@@ -268,6 +269,11 @@ export function syncSettingsControls(root: ParentNode): void {
     if (el.type === 'color') swatch(el as HTMLInputElement);
   }
   showFor(root, cur.target);
+  // The flag menu is the language's own, and only means something while the
+  // badge is a flag; a change made in another tab arrives here.
+  redrawFlags(root);
+  const flagRow = root.querySelector('select[name=badgeFlag]')?.closest<HTMLElement>('.set');
+  if (flagRow) flagRow.hidden = cur.languageBadge !== 'flag';
 }
 
 /**
@@ -285,6 +291,47 @@ function redrawDecks(root: ParentNode): void {
 /** Underline a colour row's name in the colour its picker holds. */
 function swatch(input: HTMLInputElement): void {
   input.closest<HTMLElement>('.set')?.style.setProperty('--c', input.value);
+}
+
+/** What each flag menu was last drawn for: the language, the interface's language and the flag picked. */
+const flagsDrawn = new WeakMap<HTMLSelectElement, string>();
+
+function redrawFlags(root: ParentNode): void {
+  const list = root.querySelector<HTMLSelectElement>('select[name=badgeFlag]');
+  if (list) fillFlags(list);
+}
+
+/**
+ * The badge's flags for the language being learned: its own first, then the
+ * countries where it is spoken, then every other country by name, each as
+ * its flag and the country's name. Drawn again only when the language, the
+ * interface's language or the flag picked has changed.
+ */
+function fillFlags(sel: HTMLSelectElement): void {
+  const { target, badgeFlag } = settings();
+  const picked = badgeFlag[target] ?? '';
+  const drawn = [target, uiLocale(), picked].join('\n');
+  if (flagsDrawn.get(sel) === drawn) return;
+  flagsDrawn.set(sel, drawn);
+  sel.replaceChildren();
+  const add = (value: string, text: string): HTMLOptionElement => {
+    const o = document.createElement('option');
+    o.value = value;
+    o.textContent = text;
+    sel.appendChild(o);
+    return o;
+  };
+  // A language whose own flag is a picture (flagSvg) gets the word alone: a menu shows only text.
+  const own = TARGET_LANGUAGES.find((l) => l.code === target)?.flag;
+  add('', own ? `${own} ${ui.settings.badgeFlagDefault}` : ui.settings.badgeFlagDefault);
+  const { spoken, others } = flagChoices(target, uiLocale());
+  // A flag typed in before there was a menu, and not one on it, stays offered, so it is never silently changed.
+  if (picked && ![...spoken, ...others].some((c) => c.flag === picked)) add(picked, picked);
+  for (const c of spoken) add(c.flag, `${c.flag} ${c.name}`);
+  // A rule between the two groups, which cannot be picked.
+  add('-', '──────────').disabled = true;
+  for (const c of others) add(c.flag, `${c.flag} ${c.name}`);
+  sel.value = picked;
 }
 
 /** A setting only some languages have a use for, such as Furigana. */
@@ -345,6 +392,8 @@ export function buildSettings(onChange: Rerender, opts: SettingsPanelOptions = {
     if (which === 'target') showFor(root, (e.target as HTMLSelectElement).value);
     // The language's own decks, in place of those of the one just left.
     if (which === 'target') redrawDecks(root);
+    // Its own flags too, and the one picked for it.
+    if (which === 'target') redrawFlags(root);
     if (which === 'native') showFor(root, settings().target, (e.target as HTMLSelectElement).value);
   });
 
@@ -558,8 +607,26 @@ export function buildSettings(onChange: Rerender, opts: SettingsPanelOptions = {
   check('sidebarOpen', t.sidebarOpen, t.sidebarOpenHint);
   check('sidebarFollow', t.sidebarFollow, t.sidebarFollowHint);
   check('headerBar', t.headerBar, t.headerBarHint);
-  select('languageBadge', t.languageBadge, [['flag', t.languageBadgeFlag], ['code', t.languageBadgeCode]],
+  const badge = select('languageBadge', t.languageBadge, [['flag', t.languageBadgeFlag], ['code', t.languageBadgeCode]],
     t.languageBadgeHint);
+  // Only meaningful while the badge is a flag, so it is shown only then. No
+  // data-setting: the setting holds a flag for each language, not one value for
+  // syncSettingsControls to write back, so fillFlags keeps the menu in step.
+  const flags = document.createElement('select');
+  flags.name = 'badgeFlag';
+  fillFlags(flags);
+  flags.addEventListener('change', () => {
+    const { target, badgeFlag } = settings();
+    const next = { ...badgeFlag };
+    // The default keeps nothing, so the language's own flag shows.
+    if (flags.value) next[target] = flags.value;
+    else delete next[target];
+    void setSetting('badgeFlag', next);
+    onChange();
+  });
+  const flagSet = row(t.badgeFlag, flags, t.badgeFlagHint);
+  flagSet.hidden = settings().languageBadge !== 'flag';
+  badge.addEventListener('change', () => { flagSet.hidden = badge.value !== 'flag'; });
   check('sidebarStats', t.sidebarStats, t.sidebarStatsHint);
 
   group('anki', t.ankiHeading, t.ankiAbout);

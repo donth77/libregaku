@@ -152,6 +152,9 @@ export const de: Translation = {
     languageBadge: 'Sprachanzeige',
     languageBadgeFlag: 'Flagge',
     languageBadgeCode: 'Kürzel',
+    badgeFlag: 'Flaggen-Emoji',
+    badgeFlagDefault: 'Standard',
+    badgeFlagHint: 'Die Flagge für die Sprache, die du lernst. Jede Sprache behält ihre eigene.',
     languageBadgeHint: 'Wie die Kopfleiste die Sprache zeigt, die du lernst.',
     sidebarStats: 'Neue Wörter zählen',
     sidebarStatsHint:
@@ -671,6 +674,7 @@ export const de: Translation = {
     noTargetTrackDetail: (languages: readonly string[]): string =>
       `Dieses Video hat: ${languages.join(', ') || 'keine'}. ` +
       'Ändere in den Einstellungen, was du lernst, oder wähle ein anderes Video.',
+    onlyPictures: 'Dieses Video hat sie nur als Bilder, nicht als Text, deshalb kann Libregaku sie nicht lesen.',
     noHumanTrack: 'Für dieses Video gab es keine von Menschen geschriebene Spur.',
     secondTrackError: (track: string, error: string): string => `${track}: ${error}`,
     noSecondTrackDetail: (languages: readonly string[]): string => `Dieses Video hat: ${languages.join(', ')}.`,

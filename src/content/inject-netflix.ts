@@ -35,6 +35,7 @@ const REMEMBER = 8;
 interface Found {
   tracks: NfPublished[];
   movieId: string | null;
+  pictures: string[];
 }
 
 /** The slice of Netflix's player API this script touches. Every link may be missing. */
@@ -71,7 +72,7 @@ function install(): void {
 
   const publish = (found: Found): void => {
     window.postMessage(
-      { source: TAG, kind: 'nf-tracks', tracks: found.tracks, movieId: found.movieId },
+      { source: TAG, kind: 'nf-tracks', tracks: found.tracks, movieId: found.movieId, pictures: found.pictures },
       '*',
     );
   };

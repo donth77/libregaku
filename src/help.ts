@@ -83,11 +83,15 @@ function marked(text: string, words: readonly string[]): Node[] {
 
 /**
  * A line of help text as nodes: `keys` drawn as keys, {Settings → Anki →
- * Picture} as the path to a setting, and the words searched for marked.
+ * Picture} as the path to a setting, a web address as a link to it, and the
+ * words searched for marked.
+ *
+ * A web address ends at its last letter, digit or slash, so a full stop after
+ * it, or the words of a language written without spaces, stay text.
  */
 export function inline(text: string, words: readonly string[], then = 'then'): Node[] {
   const out: Node[] = [];
-  for (const piece of text.split(/(`[^`]+`|\{[^}]+\})/)) {
+  for (const piece of text.split(/(`[^`]+`|\{[^}]+\}|https:\/\/[\w.~/?#%&=+:-]*[\w/])/)) {
     if (!piece) continue;
     if (/^`[^`]+`$/.test(piece)) {
       const k = document.createElement('kbd');
@@ -109,6 +113,14 @@ export function inline(text: string, words: readonly string[], then = 'then'): N
         path.appendChild(s);
       });
       out.push(path);
+    } else if (/^https:\/\/[\w.~/?#%&=+:-]*[\w/]$/.test(piece)) {
+      // Opened in a new tab, and shown as people say it: apps.ankiweb.net.
+      const a = document.createElement('a');
+      a.href = piece;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.append(...marked(piece.replace(/^https:\/\//, '').replace(/\/$/, ''), words));
+      out.push(a);
     } else {
       out.push(...marked(piece, words));
     }

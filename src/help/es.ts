@@ -25,12 +25,22 @@ export const es: HelpTranslation = {
           body: [
             [
               'En {Configuración → Idiomas}, elige el idioma que aprendes y tu propio idioma.',
-              'En {Configuración → Anki}, sigue los pasos para conectar Anki y elige el mazo al que irán las tarjetas nuevas.',
+              'Descarga Anki desde https://apps.ankiweb.net. En {Configuración → Anki}, sigue los pasos para conectar Anki y elige el mazo al que irán las tarjetas nuevas.',
               'Abre un video de YouTube o Netflix con subtítulos en el idioma que aprendes y deja el cursor sobre una palabra.',
             ],
             { tip: 'Anki es opcional. Los subtítulos, las búsquedas y la transcripción funcionan sin él; Anki es lo que recuerda qué palabras conoces.' },
           ],
           keywords: ['instalar', 'instalación', 'empezar', 'comenzar', 'inicio', 'primera vez', 'ajustes', 'configuracion', 'setup'],
+        },
+        {
+          id: 'anki',
+          title: '¿Qué es Anki?',
+          body: [
+            'Anki es una aplicación gratuita de tarjetas de memoria. Te vuelve a mostrar cada tarjeta justo antes de que la olvides (repetición espaciada).',
+            'Libregaku añade tarjetas a Anki a partir de las palabras y oraciones que eliges. También lee tus tarjetas de Anki para saber qué palabras ya conoces.',
+            'Necesitas Anki en tu equipo, con el complemento AnkiConnect. Descarga Anki desde https://apps.ankiweb.net.',
+          ],
+          keywords: ['flashcards', 'fichas', 'srs', 'descargar', 'instalar', 'repaso', 'repasar', 'add-on'],
         },
       ],
     },
