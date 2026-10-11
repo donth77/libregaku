@@ -26,7 +26,7 @@ export const ko: HelpTranslation = {
             [
               '{설정 → 언어}에서 학습 언어와 내 언어를 고르세요.',
               'Anki를 https://apps.ankiweb.net에서 다운로드하세요. {설정 → Anki}에서 안내에 따라 Anki를 연결한 다음, 새 카드를 추가할 덱을 고르세요.',
-              '학습 언어 자막이 있는 YouTube나 Netflix 동영상을 열고, 단어에 마우스를 올려 보세요.',
+              'YouTube, Netflix 또는 다른 지원 사이트에서 학습 언어 자막이 있는 동영상을 열고, 단어에 마우스를 올려 보세요.',
             ],
             { tip: 'Anki는 없어도 됩니다. 자막, 단어 찾기, 스크립트는 모두 Anki 없이 작동합니다. Anki는 어떤 단어를 아는지 기억하는 역할을 합니다.' },
           ],
@@ -205,7 +205,7 @@ export const ko: HelpTranslation = {
             },
             '탭에서 소리를 녹음하는 방법은 보호된 사이트 장에 나와 있습니다. 배우는 언어의 자막이 없는 영상은 보여 줄 것이 없으며, Libregaku가 그렇게 알려 줍니다.',
           ],
-          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', '사이트', '지원', '스트리밍'],
+          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'hbo', '사이트', '지원', '스트리밍'],
         },
       ],
     },

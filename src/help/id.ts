@@ -26,7 +26,7 @@ export const id: HelpTranslation = {
             [
               'Di {Setelan → Bahasa}, pilih bahasa yang Anda pelajari dan bahasa Anda sendiri.',
               'Unduh Anki dari https://apps.ankiweb.net. Di {Setelan → Anki}, ikuti langkah-langkah untuk menghubungkan Anki, lalu pilih dek tujuan kartu baru.',
-              'Buka video YouTube atau Netflix dengan subtitel dalam bahasa yang Anda pelajari, lalu arahkan kursor ke sebuah kata.',
+              'Di YouTube, Netflix, atau situs lain yang didukung, buka video dengan subtitel dalam bahasa yang Anda pelajari, lalu arahkan kursor ke sebuah kata.',
             ],
             { tip: 'Anki bersifat opsional. Subtitel, pencarian kata, dan transkrip tetap berfungsi tanpanya; Anki-lah yang mengingat kata mana yang Anda kenal.' },
           ],
@@ -192,27 +192,27 @@ export const id: HelpTranslation = {
           id: 'supported-sites-list',
           title: 'Situs mana yang didukung?',
           body: [
-            'Libregaku menampilkan subtitle interaktif di atas video pada situs-situs ini. Ia memakai subtitle yang disediakan situs itu sendiri, dalam bahasa yang kamu pelajari.',
+            'Libregaku menampilkan subtitel interaktif di atas video pada situs-situs ini. Ia memakai subtitel yang disediakan situs itu sendiri, dalam bahasa yang Anda pelajari.',
             {
-              head: ['Situs', 'Audio kalimat dan tangkapan layar'],
+              head: ['Situs', 'Audio kalimat dan screenshot'],
               rows: [
                 ['YouTube', 'Diambil dari video.'],
-                ['Netflix', 'Direkam dari tab; tanpa tangkapan layar.'],
-                ['Disney+', 'Direkam dari tab; tanpa tangkapan layar.'],
-                ['Prime Video', 'Direkam dari tab; tanpa tangkapan layar.'],
-                ['Max', 'Direkam dari tab; tanpa tangkapan layar.'],
+                ['Netflix', 'Direkam dari tab; tanpa screenshot.'],
+                ['Disney+', 'Direkam dari tab; tanpa screenshot.'],
+                ['Prime Video', 'Direkam dari tab; tanpa screenshot.'],
+                ['Max', 'Direkam dari tab; tanpa screenshot.'],
               ],
             },
-            'Bab situs terlindungi menjelaskan cara merekam suara dari tab. Video tanpa subtitle dalam bahasa yang kamu pelajari tidak punya apa-apa untuk ditampilkan, dan Libregaku memberi tahu hal itu.',
+            'Bab Situs terproteksi menjelaskan cara merekam suara dari tab. Video tanpa subtitel dalam bahasa yang Anda pelajari tidak punya apa-apa untuk ditampilkan, dan Libregaku memberi tahu hal itu.',
           ],
-          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'situs', 'didukung', 'streaming'],
+          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'hbo', 'situs', 'didukung', 'streaming'],
         },
       ],
     },
     {
       id: 'protected-sites',
       title: 'Situs terproteksi',
-      about: 'Situs yang mengenkripsi videonya: Netflix, Disney+, Prime Video dan Max. Apa yang berubah karenanya.',
+      about: 'Situs yang mengenkripsi videonya: Netflix, Disney+, Prime Video, dan Max. Apa yang berubah karenanya.',
       topics: [
         {
           id: 'protected-sites-audio',

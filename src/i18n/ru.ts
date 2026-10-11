@@ -336,7 +336,7 @@ export const ru: Translation = {
     settingsTip: 'Все настройки',
     checkingPage: 'Проверка страницы…',
     notActive:
-      'На этой странице не работает. Откройте видео на YouTube, Netflix, Disney+, Prime Video или Max. Если вы только что установили ' +
+      'На этой странице не работает. Откройте видео на YouTube, Netflix или другом поддерживаемом сайте. Если вы только что установили ' +
       'или перезагрузили Libregaku, обновите вкладку.',
     unsupported: 'Libregaku работает на YouTube, Netflix, Disney+, Prime Video и Max.',
     waitingForSubtitles: (site: string): string => `Ждём субтитры на ${site}. Убедитесь, что они включены.`,

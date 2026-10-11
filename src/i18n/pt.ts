@@ -318,7 +318,7 @@ export const pt: Translation = {
     settingsTip: 'Todas as configurações',
     checkingPage: 'Verificando esta página…',
     notActive:
-      'Não está ativo nesta página. Abra um vídeo do YouTube, da Netflix, do Disney+, do Prime Video ou do Max. Se você acabou de instalar ou recarregar ' +
+      'Não está ativo nesta página. Abra um vídeo no YouTube, na Netflix ou em outro site compatível. Se você acabou de instalar ou recarregar ' +
       'o Libregaku, recarregue a guia.',
     unsupported: 'O Libregaku funciona no YouTube, na Netflix, no Disney+, no Prime Video e no Max.',
     waitingForSubtitles: (site: string): string => `${site}: aguardando as legendas. Verifique se estão ativadas.`,

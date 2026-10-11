@@ -26,7 +26,7 @@ export const fr: HelpTranslation = {
             [
               'Dans {Paramètres → Langues}, choisissez la langue que vous apprenez et votre propre langue.',
               'Téléchargez Anki sur https://apps.ankiweb.net. Dans {Paramètres → Anki}, suivez les étapes pour connecter Anki, puis choisissez le paquet des nouvelles cartes.',
-              'Ouvrez une vidéo YouTube ou Netflix avec des sous-titres dans la langue que vous apprenez, et posez le pointeur sur un mot.',
+              'Sur YouTube, Netflix ou un autre site pris en charge, ouvrez une vidéo avec des sous-titres dans la langue que vous apprenez, et posez le pointeur sur un mot.',
             ],
             { tip: 'Anki est facultatif. Les sous-titres, les recherches et la transcription fonctionnent sans lui ; c’est lui qui retient les mots que vous connaissez.' },
           ],
@@ -190,22 +190,22 @@ export const fr: HelpTranslation = {
       topics: [
         {
           id: 'supported-sites-list',
-          title: 'Sur quels sites ça marche ?',
+          title: 'Sur quels sites ça marche ?',
           body: [
-            'Libregaku affiche des sous-titres interactifs sur la vidéo sur ces sites. Il utilise les sous-titres que le site propose lui-même, dans la langue que tu apprends.',
+            'Libregaku affiche des sous-titres interactifs sur la vidéo sur ces sites. Il utilise les sous-titres que le site propose lui-même, dans la langue que vous apprenez.',
             {
               head: ['Site', 'Audio de la phrase et capture d’écran'],
               rows: [
                 ['YouTube', 'Pris dans la vidéo.'],
-                ['Netflix', 'Enregistré depuis l’onglet ; pas de capture d’écran.'],
-                ['Disney+', 'Enregistré depuis l’onglet ; pas de capture d’écran.'],
-                ['Prime Video', 'Enregistré depuis l’onglet ; pas de capture d’écran.'],
-                ['Max', 'Enregistré depuis l’onglet ; pas de capture d’écran.'],
+                ['Netflix', 'Enregistré depuis l’onglet ; pas de capture d’écran.'],
+                ['Disney+', 'Enregistré depuis l’onglet ; pas de capture d’écran.'],
+                ['Prime Video', 'Enregistré depuis l’onglet ; pas de capture d’écran.'],
+                ['Max', 'Enregistré depuis l’onglet ; pas de capture d’écran.'],
               ],
             },
-            'Le chapitre sur les sites protégés explique comment le son est enregistré depuis l’onglet. Une vidéo sans sous-titres dans la langue que tu apprends n’a rien à afficher, et Libregaku le dit.',
+            'Le chapitre sur les sites protégés explique comment le son est enregistré depuis l’onglet. Une vidéo sans sous-titres dans la langue que vous apprenez n’a rien à afficher, et Libregaku le dit.',
           ],
-          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'sites', 'compatibles', 'streaming'],
+          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'hbo', 'sites', 'compatibles', 'streaming'],
         },
       ],
     },
@@ -222,7 +222,7 @@ export const fr: HelpTranslation = {
               'Ouvrez {Paramètres → Cartes Anki → Audio de la phrase sur les sites protégés} et appuyez sur Autoriser.',
               'Dans l’onglet où la vidéo est lue, cliquez sur l’icône Libregaku dans la barre d’outils, puis sur Enregistrer l’audio de la phrase ici. À faire une fois par onglet.',
             ],
-            'Les sites protégés chiffrent leur vidéo : Libregaku ne peut donc pas en enregistrer le son comme sur YouTube. Il enregistre l’onglet à la place, ce que Chrome n’autorise que de cette façon. Pour la même raison, les cartes créées là-bas n’ont pas de capture d’écran.',
+            'Les sites protégés chiffrent leur vidéo : Libregaku ne peut donc pas en enregistrer le son comme sur YouTube. Il enregistre l’onglet à la place, ce que Chrome n’autorise que de cette façon. Pour la même raison, les cartes créées sur ces sites n’ont pas de capture d’écran.',
           ],
           keywords: ['netflix', 'disney', 'prime video', 'max', 'hbo', 'son', 'autorisation', 'permission', 'chiffrement', 'drm', 'capture d’onglet', 'tab capture'],
         },
@@ -296,7 +296,7 @@ export const fr: HelpTranslation = {
           id: 'q-picture',
           title: 'Qu’est-ce que la capture d’écran d’une carte ?',
           body: [
-            'Une image fixe de la scène, au verso de la carte, pour voir d’où vient le mot. Sur YouTube, elle est prise dans la vidéo ; les sites protégés masquent leur vidéo aux extensions, donc les cartes créées là-bas n’en ont pas. {Paramètres → Cartes Anki → Capture d’écran} la désactive.',
+            'Une image fixe de la scène, au verso de la carte, pour voir d’où vient le mot. Sur YouTube, elle est prise dans la vidéo ; les sites protégés masquent leur vidéo aux extensions, donc les cartes créées sur ces sites n’en ont pas. {Paramètres → Cartes Anki → Capture d’écran} la désactive.',
           ],
           keywords: ['image', 'photo', 'verso', 'screenshot'],
         },

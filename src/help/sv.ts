@@ -26,7 +26,7 @@ export const sv: HelpTranslation = {
             [
               'Välj språket du lär dig och ditt eget språk i {Inställningar → Språk}.',
               'Hämta Anki från https://apps.ankiweb.net. Följ stegen i {Inställningar → Anki} för att ansluta Anki, och välj sedan kortleken som nya kort hamnar i.',
-              'Öppna en video på YouTube eller Netflix med undertexter på språket du lär dig, och håll pekaren över ett ord.',
+              'Öppna en video på YouTube, Netflix eller en annan webbplats som stöds, med undertexter på språket du lär dig, och håll pekaren över ett ord.',
             ],
             { tip: 'Anki är valfritt. Undertexter, uppslag och transkriptionen fungerar utan det; det är Anki som minns vilka ord du kan.' },
           ],
@@ -205,7 +205,7 @@ export const sv: HelpTranslation = {
             },
             'Kapitlet om skyddade webbplatser förklarar hur ljudet spelas in från fliken. En video utan undertexter på språket du lär dig har inget att visa, och Libregaku säger det.',
           ],
-          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'webbplatser', 'sidor', 'stöds', 'streaming'],
+          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'hbo', 'webbplatser', 'sidor', 'stöds', 'streaming'],
         },
       ],
     },

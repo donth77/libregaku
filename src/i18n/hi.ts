@@ -314,7 +314,7 @@ export const hi: Translation = {
     settingsTip: 'सभी सेटिंग',
     checkingPage: 'यह पेज जांचा जा रहा है…',
     notActive:
-      'इस पेज पर चालू नहीं है। YouTube, Netflix, Disney+, Prime Video या Max का कोई वीडियो खोलें। अगर आपने अभी Libregaku इंस्टॉल या ' +
+      'इस पेज पर चालू नहीं है। YouTube, Netflix या किसी और समर्थित साइट पर कोई वीडियो खोलें। अगर आपने अभी Libregaku इंस्टॉल या ' +
       'रीलोड किया है, तो टैब रीलोड करें।',
     unsupported: 'Libregaku, YouTube, Netflix, Disney+, Prime Video और Max पर काम करता है।',
     waitingForSubtitles: (site: string): string => `${site} पर सबटाइटल का इंतज़ार है। देख लें कि वे चालू हैं।`,

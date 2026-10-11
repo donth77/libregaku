@@ -259,7 +259,7 @@ export const de: Translation = {
     captureAllowed:
       'Zugelassen. Klicke in jedem Tab einer geschützten Website auf das Libregaku-Symbol und wähle „Satz-Audio hier aufnehmen“.',
     captureNeeded:
-      'Geschützte Websites verschlüsseln ihr Video, deshalb wird Satz-Audio aus dem Tab aufgenommen. Dafür ist deine Berechtigung nötig.',
+      'Geschützte Websites verschlüsseln ihre Videos, deshalb wird Satz-Audio aus dem Tab aufgenommen. Dafür ist deine Berechtigung nötig.',
 
     // Daten und Lizenzen
     creditsHeading: 'Daten und Lizenzen',
@@ -335,7 +335,7 @@ export const de: Translation = {
     settingsTip: 'Alle Einstellungen',
     checkingPage: 'Seite wird geprüft…',
     notActive:
-      'Auf dieser Seite nicht aktiv. Öffne ein Video auf YouTube, Netflix, Disney+, Prime Video oder Max. Wenn du Libregaku gerade installiert ' +
+      'Auf dieser Seite nicht aktiv. Öffne ein Video auf YouTube, Netflix oder einer anderen unterstützten Website. Wenn du Libregaku gerade installiert ' +
       'oder neu geladen hast, lade den Tab neu.',
     unsupported: 'Libregaku funktioniert auf YouTube, Netflix, Disney+, Prime Video und Max.',
     waitingForSubtitles: (site: string): string =>

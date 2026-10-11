@@ -293,7 +293,7 @@ export const zhHant: Translation = {
 
     // What the extension is doing on this page
     checkingPage: '正在檢查這個網頁…',
-    notActive: '未在這個網頁上啟用。請開啟 YouTube、Netflix、Disney+、Prime Video 或 Max 影片。如果剛安裝或重新載入 Libregaku，請重新載入分頁。',
+    notActive: '未在這個網頁上啟用。請在 YouTube、Netflix 或其他支援的網站上開啟影片。如果剛安裝或重新載入 Libregaku，請重新載入分頁。',
     unsupported: 'Libregaku 適用於 YouTube、Netflix、Disney+、Prime Video 和 Max。',
     waitingForSubtitles: (site: string): string => `正在等待 ${site} 的字幕。請確認字幕已開啟。`,
     activeOn: (title: string): string => `已啟用：${title}`,
@@ -305,7 +305,7 @@ export const zhHant: Translation = {
     noTranslation: '無',
     generatedTrack: (track: string): string => `${track}（自動產生）`,
 
-    // Sentence audio on Netflix
+    // Sentence audio on protected sites
     captureNeedsPermission: '要在這裡錄製句子音訊，需要擷取這個分頁聲音的權限。',
     captureAllowInSettings: '在設定中允許',
     captureReady: '必須先為這個分頁開啟錄製，才能錄下受保護的網站上的聲音。',

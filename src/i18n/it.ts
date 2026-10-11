@@ -349,7 +349,7 @@ export const it: Translation = {
     settingsTip: 'Tutte le impostazioni',
     checkingPage: 'Verifica della pagina…',
     notActive:
-      'Non attivo in questa pagina. Apri un video di YouTube, Netflix, Disney+, Prime Video o Max. Se hai appena installato o ricaricato ' +
+      'Non attivo in questa pagina. Apri un video su YouTube, Netflix o un altro sito supportato. Se hai appena installato o ricaricato ' +
       'Libregaku, ricarica la scheda.',
     unsupported: 'Libregaku funziona su YouTube, Netflix, Disney+, Prime Video e Max.',
     waitingForSubtitles: (site: string): string =>

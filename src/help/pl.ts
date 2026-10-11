@@ -26,7 +26,7 @@ export const pl: HelpTranslation = {
             [
               'Otwórz {Ustawienia → Języki} i wybierz język, którego się uczysz, oraz swój własny.',
               'Pobierz Anki ze strony https://apps.ankiweb.net. Otwórz {Ustawienia → Anki}, wykonaj kroki łączenia z Anki, a potem wybierz talię na nowe karty.',
-              'Otwórz film na YouTube lub Netflixie z napisami w języku, którego się uczysz, i najedź kursorem na słowo.',
+              'Na YouTube, Netflixie lub w innym obsługiwanym serwisie otwórz film z napisami w języku, którego się uczysz, i najedź kursorem na słowo.',
             ],
             { tip: 'Anki jest opcjonalne. Napisy, sprawdzanie słów i transkrypcja działają bez niego; to Anki pamięta, które słowa znasz.' },
           ],
@@ -194,18 +194,18 @@ export const pl: HelpTranslation = {
           body: [
             'Libregaku rysuje interaktywne napisy na wideo w tych serwisach. Używa napisów, które oferuje sam serwis, w języku, którego się uczysz.',
             {
-              head: ['Serwis', 'Dźwięk zdania i zrzut ekranu'],
+              head: ['Serwis', 'Audio zdania i zrzut ekranu'],
               rows: [
                 ['YouTube', 'Pobierane z wideo.'],
-                ['Netflix', 'Nagrywany z karty; bez zrzutu ekranu.'],
-                ['Disney+', 'Nagrywany z karty; bez zrzutu ekranu.'],
-                ['Prime Video', 'Nagrywany z karty; bez zrzutu ekranu.'],
-                ['Max', 'Nagrywany z karty; bez zrzutu ekranu.'],
+                ['Netflix', 'Nagrywane z karty przeglądarki; bez zrzutu ekranu.'],
+                ['Disney+', 'Nagrywane z karty przeglądarki; bez zrzutu ekranu.'],
+                ['Prime Video', 'Nagrywane z karty przeglądarki; bez zrzutu ekranu.'],
+                ['Max', 'Nagrywane z karty przeglądarki; bez zrzutu ekranu.'],
               ],
             },
             'Rozdział o chronionych serwisach wyjaśnia, jak nagrywa się dźwięk z karty. Wideo bez napisów w języku, którego się uczysz, nie ma czego pokazać, a Libregaku o tym mówi.',
           ],
-          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'serwisy', 'strony', 'obsługiwane', 'streaming'],
+          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'hbo', 'serwisy', 'strony', 'obsługiwane', 'streaming'],
         },
       ],
     },

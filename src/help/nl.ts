@@ -26,7 +26,7 @@ export const nl: HelpTranslation = {
             [
               'Kies in {Instellingen → Talen} de taal die je leert en je eigen taal.',
               'Download Anki via https://apps.ankiweb.net. Volg in {Instellingen → Anki} de stappen om Anki te koppelen, en kies dan de set voor nieuwe kaarten.',
-              'Open een video op YouTube of Netflix met ondertitels in de taal die je leert, en wijs met je muis een woord aan.',
+              'Open op YouTube, Netflix of een andere ondersteunde site een video met ondertitels in de taal die je leert, en wijs met je muis een woord aan.',
             ],
             { tip: 'Anki is optioneel. Ondertitels, opzoeken en het transcript werken ook zonder; Anki onthoudt welke woorden je kent.' },
           ],
@@ -194,18 +194,18 @@ export const nl: HelpTranslation = {
           body: [
             'Libregaku tekent interactieve ondertitels over de video op deze sites. Het gebruikt de ondertitels die de site zelf aanbiedt, in de taal die je leert.',
             {
-              head: ['Site', 'Zinsaudio en schermafbeelding'],
+              head: ['Site', 'Zinsaudio en screenshot'],
               rows: [
                 ['YouTube', 'Uit de video gehaald.'],
-                ['Netflix', 'Opgenomen vanaf het tabblad; geen schermafbeelding.'],
-                ['Disney+', 'Opgenomen vanaf het tabblad; geen schermafbeelding.'],
-                ['Prime Video', 'Opgenomen vanaf het tabblad; geen schermafbeelding.'],
-                ['Max', 'Opgenomen vanaf het tabblad; geen schermafbeelding.'],
+                ['Netflix', 'Opgenomen vanaf het tabblad; geen screenshot.'],
+                ['Disney+', 'Opgenomen vanaf het tabblad; geen screenshot.'],
+                ['Prime Video', 'Opgenomen vanaf het tabblad; geen screenshot.'],
+                ['Max', 'Opgenomen vanaf het tabblad; geen screenshot.'],
               ],
             },
             'Het hoofdstuk over beschermde sites legt uit hoe het geluid vanaf het tabblad wordt opgenomen. Een video zonder ondertitels in de taal die je leert heeft niets te tonen, en Libregaku zegt dat.',
           ],
-          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'sites', 'ondersteund', 'streaming'],
+          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'hbo', 'sites', 'ondersteund', 'streaming'],
         },
       ],
     },

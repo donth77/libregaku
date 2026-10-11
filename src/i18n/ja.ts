@@ -308,7 +308,7 @@ export const ja: Translation = {
     settingsTip: 'すべての設定',
     checkingPage: 'このページを確認中…',
     notActive:
-      'このページでは動作していません。YouTube、Netflix、Disney+、Prime Video、Maxの動画を開いてください。' +
+      'このページでは動作していません。YouTubeやNetflixなどの対応サイトで動画を開いてください。' +
       'Libregakuをインストールまたは再読み込みした直後なら、タブを再読み込みしてください。',
     unsupported: 'LibregakuはYouTube、Netflix、Disney+、Prime Video、Maxで使えます。',
     waitingForSubtitles: (site: string): string => `${site}の字幕を待っています。字幕がオンになっているか確認してください。`,

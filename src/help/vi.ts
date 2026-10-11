@@ -26,7 +26,7 @@ export const vi: HelpTranslation = {
             [
               'Trong {Cài đặt → Ngôn ngữ}, chọn ngôn ngữ bạn đang học và ngôn ngữ của bạn.',
               'Tải Anki tại https://apps.ankiweb.net. Trong {Cài đặt → Anki}, làm theo các bước để kết nối Anki, rồi chọn bộ thẻ để thêm thẻ mới vào.',
-              'Mở một video YouTube hoặc Netflix có phụ đề bằng ngôn ngữ bạn đang học, rồi đặt con trỏ lên một từ.',
+              'Trên YouTube, Netflix hoặc một trang web được hỗ trợ khác, hãy mở một video có phụ đề bằng ngôn ngữ bạn đang học, rồi đặt con trỏ lên một từ.',
             ],
             { tip: 'Anki không bắt buộc. Phụ đề, tra từ và bản chép lời đều dùng được khi không có Anki; Anki là nơi ghi nhớ những từ bạn đã biết.' },
           ],
@@ -185,16 +185,16 @@ export const vi: HelpTranslation = {
     },
     {
       id: 'supported-sites',
-      title: 'Trang được hỗ trợ',
-      about: 'Các trang Libregaku hoạt động và điểm khác nhau giữa chúng.',
+      title: 'Trang web được hỗ trợ',
+      about: 'Các trang web Libregaku hoạt động và điểm khác nhau giữa chúng.',
       topics: [
         {
           id: 'supported-sites-list',
-          title: 'Hoạt động trên những trang nào?',
+          title: 'Hoạt động trên những trang web nào?',
           body: [
-            'Libregaku vẽ phụ đề tương tác lên video trên các trang này. Nó dùng phụ đề do chính trang cung cấp, bằng ngôn ngữ bạn đang học.',
+            'Libregaku vẽ phụ đề tương tác lên video trên các trang web này. Nó dùng phụ đề do chính trang web cung cấp, bằng ngôn ngữ bạn đang học.',
             {
-              head: ['Trang', 'Âm thanh câu và ảnh chụp màn hình'],
+              head: ['Trang web', 'Âm thanh của câu và ảnh chụp màn hình'],
               rows: [
                 ['YouTube', 'Lấy từ video.'],
                 ['Netflix', 'Ghi từ tab; không có ảnh chụp màn hình.'],
@@ -203,9 +203,9 @@ export const vi: HelpTranslation = {
                 ['Max', 'Ghi từ tab; không có ảnh chụp màn hình.'],
               ],
             },
-            'Chương về các trang được bảo vệ giải thích cách ghi âm thanh từ tab. Video không có phụ đề bằng ngôn ngữ bạn đang học thì không có gì để hiển thị, và Libregaku sẽ báo như vậy.',
+            'Chương “Trang web được bảo vệ” giải thích cách ghi âm thanh từ tab. Video không có phụ đề bằng ngôn ngữ bạn đang học thì không có gì để hiển thị, và Libregaku sẽ báo như vậy.',
           ],
-          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'trang', 'được hỗ trợ', 'streaming'],
+          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'hbo', 'trang', 'được hỗ trợ', 'streaming'],
         },
       ],
     },

@@ -26,7 +26,7 @@ export const tr: HelpTranslation = {
             [
               '{Ayarlar → Diller} bölümünde öğrendiğiniz dili ve kendi dilinizi seçin.',
               "Anki'yi https://apps.ankiweb.net adresinden indirin. {Ayarlar → Anki} bölümünde Anki'yi bağlamak için adımları izleyin, ardından yeni kartların gideceği desteyi seçin.",
-              'Öğrendiğiniz dilde altyazısı olan bir YouTube veya Netflix videosu açın ve imleci bir kelimenin üzerinde tutun.',
+              'YouTube, Netflix veya desteklenen başka bir sitede, öğrendiğiniz dilde altyazısı olan bir video açın ve imleci bir kelimenin üzerinde tutun.',
             ],
             { tip: 'Anki isteğe bağlıdır. Altyazılar, aramalar ve transkript onsuz da çalışır; hangi kelimeleri bildiğinizi hatırlayan odur.' },
           ],
@@ -192,7 +192,7 @@ export const tr: HelpTranslation = {
           id: 'supported-sites-list',
           title: 'Hangi sitelerde çalışır?',
           body: [
-            'Libregaku bu sitelerde videonun üzerine etkileşimli altyazılar çizer. Sitenin kendi sunduğu altyazıları, öğrendiğin dilde kullanır.',
+            'Libregaku bu sitelerde videonun üzerine etkileşimli altyazılar çizer. Sitenin kendi sunduğu altyazıları, öğrendiğiniz dilde kullanır.',
             {
               head: ['Site', 'Cümle sesi ve ekran görüntüsü'],
               rows: [
@@ -203,9 +203,9 @@ export const tr: HelpTranslation = {
                 ['Max', 'Sekmeden kaydedilir; ekran görüntüsü yok.'],
               ],
             },
-            'Sesin sekmeden nasıl kaydedildiğini korumalı siteler bölümü anlatır. Öğrendiğin dilde altyazısı olmayan bir videoda gösterilecek bir şey yoktur ve Libregaku bunu söyler.',
+            'Sesin sekmeden nasıl kaydedildiğini korumalı siteler bölümü anlatır. Öğrendiğiniz dilde altyazısı olmayan bir videoda gösterilecek bir şey yoktur ve Libregaku bunu söyler.',
           ],
-          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'siteler', 'desteklenen', 'akış'],
+          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'hbo', 'siteler', 'desteklenen', 'akış'],
         },
       ],
     },

@@ -332,7 +332,7 @@ export const nl: Translation = {
     settingsTip: 'Alle instellingen',
     checkingPage: 'Pagina controleren…',
     notActive:
-      'Niet actief op deze pagina. Open een video op YouTube, Netflix, Disney+, Prime Video of Max. Heb je Libregaku net geïnstalleerd of ' +
+      'Niet actief op deze pagina. Open een video op YouTube, Netflix of een andere ondersteunde site. Heb je Libregaku net geïnstalleerd of ' +
       'opnieuw geladen, laad het tabblad dan opnieuw.',
     unsupported: 'Libregaku werkt op YouTube, Netflix, Disney+, Prime Video en Max.',
     waitingForSubtitles: (site: string): string => `Wachten op ondertitels van ${site}. Controleer of ze aanstaan.`,

@@ -304,7 +304,7 @@ export const ko: Translation = {
     settingsTip: '모든 설정',
     checkingPage: '이 페이지 확인 중…',
     notActive:
-      '이 페이지에서는 작동하지 않습니다. YouTube, Netflix, Disney+, Prime Video 또는 Max의 동영상을 여세요. ' +
+      '이 페이지에서는 작동하지 않습니다. YouTube, Netflix 또는 다른 지원 사이트의 동영상을 여세요. ' +
       'Libregaku를 방금 설치했거나 새로고침했다면 탭을 새로고침하세요.',
     unsupported: 'Libregaku는 YouTube, Netflix, Disney+, Prime Video, Max에서 작동합니다.',
     waitingForSubtitles: (site: string): string => `${site} 자막을 기다리는 중입니다. 자막이 켜져 있는지 확인하세요.`,

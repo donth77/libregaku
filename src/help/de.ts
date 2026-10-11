@@ -26,7 +26,7 @@ export const de: HelpTranslation = {
             [
               'Wähle unter {Einstellungen → Sprachen} die Sprache, die du lernst, und deine eigene Sprache.',
               'Lade Anki von https://apps.ankiweb.net herunter. Folge unter {Einstellungen → Anki} den Schritten, um Anki zu verbinden, und wähle dann den Stapel für neue Karten.',
-              'Öffne ein Video auf YouTube oder Netflix mit Untertiteln in der Sprache, die du lernst, und zeige mit der Maus auf ein Wort.',
+              'Öffne auf YouTube, Netflix oder einer anderen unterstützten Website ein Video mit Untertiteln in der Sprache, die du lernst, und zeige mit der Maus auf ein Wort.',
             ],
             { tip: 'Anki ist optional. Untertitel, Nachschlagen und das Transkript funktionieren auch ohne; Anki merkt sich, welche Wörter du kennst.' },
           ],
@@ -185,16 +185,16 @@ export const de: HelpTranslation = {
     },
     {
       id: 'supported-sites',
-      title: 'Unterstützte Seiten',
-      about: 'Die Seiten, auf denen Libregaku funktioniert, und wie sie sich unterscheiden.',
+      title: 'Unterstützte Websites',
+      about: 'Die Websites, auf denen Libregaku funktioniert, und wie sie sich unterscheiden.',
       topics: [
         {
           id: 'supported-sites-list',
-          title: 'Auf welchen Seiten funktioniert es?',
+          title: 'Auf welchen Websites funktioniert es?',
           body: [
-            'Libregaku zeigt auf diesen Seiten interaktive Untertitel über dem Video. Es nutzt die Untertitel, die die Seite selbst anbietet, in der Sprache, die du lernst.',
+            'Libregaku zeigt auf diesen Websites interaktive Untertitel über dem Video. Es nutzt die Untertitel, die die Website selbst anbietet, in der Sprache, die du lernst.',
             {
-              head: ['Seite', 'Satzaudio und Screenshot'],
+              head: ['Website', 'Satz-Audio und Screenshot'],
               rows: [
                 ['YouTube', 'Wird aus dem Video genommen.'],
                 ['Netflix', 'Wird vom Tab aufgenommen; kein Screenshot.'],
@@ -203,16 +203,16 @@ export const de: HelpTranslation = {
                 ['Max', 'Wird vom Tab aufgenommen; kein Screenshot.'],
               ],
             },
-            'Wie der Ton vom Tab aufgenommen wird, erklärt das Kapitel zu geschützten Seiten. Ein Video ohne Untertitel in der Sprache, die du lernst, hat nichts zu zeigen, und Libregaku sagt das.',
+            'Wie der Ton vom Tab aufgenommen wird, erklärt das Kapitel zu geschützten Websites. Ein Video ohne Untertitel in der Sprache, die du lernst, hat nichts zu zeigen, und Libregaku sagt das.',
           ],
-          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'seiten', 'websites', 'unterstützt', 'streaming'],
+          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'hbo', 'seiten', 'websites', 'unterstützt', 'streaming'],
         },
       ],
     },
     {
       id: 'protected-sites',
       title: 'Geschützte Websites',
-      about: 'Die Websites, die ihr Video verschlüsseln: Netflix, Disney+, Prime Video und Max. Was dieser Kopierschutz ändert.',
+      about: 'Die Websites, die ihre Videos verschlüsseln: Netflix, Disney+, Prime Video und Max. Was dieser Kopierschutz ändert.',
       topics: [
         {
           id: 'protected-sites-audio',
@@ -222,7 +222,7 @@ export const de: HelpTranslation = {
               'Öffne {Einstellungen → Anki-Karten → Satz-Audio auf geschützten Websites} und drücke „Zulassen“.',
               'Klicke in dem Tab, in dem das Video läuft, in der Symbolleiste auf das Libregaku-Symbol und drücke „Satz-Audio hier aufnehmen“. Das machst du einmal pro Tab.',
             ],
-            'Geschützte Websites verschlüsseln ihr Video, deshalb kann Libregaku den Ton nicht wie auf YouTube aus dem Video aufnehmen. Stattdessen nimmt es den Tab auf, was Chrome nur auf diesem Weg erlaubt. Aus demselben Grund haben Karten von dort keinen Screenshot.',
+            'Geschützte Websites verschlüsseln ihre Videos, deshalb kann Libregaku den Ton nicht wie auf YouTube aus dem Video aufnehmen. Stattdessen nimmt es den Tab auf, was Chrome nur auf diesem Weg erlaubt. Aus demselben Grund haben dort erstellte Karten keinen Screenshot.',
           ],
           keywords: ['netflix', 'disney', 'prime video', 'max', 'hbo', 'audio', 'ton', 'berechtigung', 'verschlüsselung', 'kopierschutz', 'drm', 'tab-aufnahme', 'tab capture'],
         },
@@ -296,7 +296,7 @@ export const de: HelpTranslation = {
           id: 'q-picture',
           title: 'Was ist der Screenshot auf einer Karte?',
           body: [
-            'Ein Standbild der Szene auf der Rückseite der Karte, damit du siehst, woher das Wort kommt. Auf YouTube wird es aus dem Video genommen; geschützte Websites zeigen Erweiterungen ihr Video nur leer, daher haben Karten von dort keins. {Einstellungen → Anki-Karten → Screenshot} schaltet es aus.',
+            'Ein Standbild der Szene auf der Rückseite der Karte, damit du siehst, woher das Wort kommt. Auf YouTube wird es aus dem Video genommen; geschützte Websites zeigen Erweiterungen nur ein leeres Bild, daher haben dort erstellte Karten keins. {Einstellungen → Anki-Karten → Screenshot} schaltet es aus.',
           ],
           keywords: ['bild', 'foto', 'standbild', 'bildschirmfoto', 'screenshot'],
         },

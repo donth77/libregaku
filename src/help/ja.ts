@@ -26,7 +26,7 @@ export const ja: HelpTranslation = {
             [
               '{設定 → 言語}で、学習言語と母語を選びます。',
               'Ankiをhttps://apps.ankiweb.netから入手します。{設定 → Anki}で、手順に従ってAnkiに接続し、新しいカードの追加先デッキを選びます。',
-              '学習言語の字幕があるYouTubeかNetflixの動画を開き、単語にカーソルを合わせます。',
+              'YouTubeやNetflixなどの対応サイトで、学習言語の字幕がある動画を開き、単語にカーソルを合わせます。',
             ],
             { tip: 'Ankiはなくても使えます。字幕も、単語を調べる機能も、文字起こしも、Ankiなしで動きます。Ankiは、あなたが知っている単語を覚えておく役割です。' },
           ],
@@ -205,7 +205,7 @@ export const ja: HelpTranslation = {
             },
             'タブから音声を録音する方法は、保護されたサイトの章に書かれています。学んでいる言語の字幕がない動画には表示するものがなく、Libregakuはその旨を伝えます。',
           ],
-          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'サイト', '対応', 'ストリーミング'],
+          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'hbo', 'サイト', '対応', 'ストリーミング'],
         },
       ],
     },

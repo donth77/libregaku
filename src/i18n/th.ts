@@ -227,7 +227,7 @@ export const th: Translation = {
     cardSentenceAudio: 'เสียงประโยค',
     cardSentenceAudioHint: 'บันทึกเสียงประโยคโดยเล่นซ้ำอีกครั้ง บนเว็บไซต์ที่มีการป้องกัน ต้องได้รับอนุญาตด้านล่างก่อน',
     cardScreenshot: 'ภาพหน้าจอ',
-    cardScreenshotHint: 'ภาพนิ่งของฉากนั้น ใช้กับเว็บไซต์ที่มีการป้องกันไม่ได้ เพราะเว็บไซต์เหล่านั้นบล็อกไว้',
+    cardScreenshotHint: 'ภาพนิ่งของฉากนั้น ใช้ไม่ได้บนเว็บไซต์ที่มีการป้องกัน เพราะเว็บไซต์เหล่านั้นบล็อกไว้',
     capture: 'เสียงประโยคบนเว็บไซต์ที่มีการป้องกัน',
     captureAllow: 'อนุญาต',
     captureAllowInSettings: 'อนุญาตในการตั้งค่า',
@@ -305,7 +305,7 @@ export const th: Translation = {
     settingsTip: 'การตั้งค่าทั้งหมด',
     checkingPage: 'กำลังตรวจสอบหน้านี้…',
     notActive:
-      'ไม่ได้ทำงานในหน้านี้ เปิดวิดีโอ YouTube, Netflix, Disney+, Prime Video หรือ Max ' +
+      'ไม่ได้ทำงานในหน้านี้ เปิดวิดีโอบน YouTube, Netflix หรือเว็บไซต์อื่นที่รองรับ ' +
       'หากเพิ่งติดตั้งหรือโหลด Libregaku ใหม่ ให้โหลดแท็บซ้ำ',
     unsupported: 'Libregaku ใช้ได้บน YouTube, Netflix, Disney+, Prime Video และ Max',
     waitingForSubtitles: (site: string): string => `กำลังรอคำบรรยายบน ${site} ตรวจสอบว่าเปิดคำบรรยายอยู่`,

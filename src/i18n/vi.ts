@@ -310,7 +310,7 @@ export const vi: Translation = {
     settingsTip: 'Tất cả cài đặt',
     checkingPage: 'Đang kiểm tra trang này…',
     notActive:
-      'Không hoạt động trên trang này. Hãy mở một video YouTube, Netflix, Disney+, Prime Video hoặc Max. Nếu bạn vừa cài hoặc tải lại Libregaku, ' +
+      'Không hoạt động trên trang này. Hãy mở một video trên YouTube, Netflix hoặc một trang web được hỗ trợ khác. Nếu bạn vừa cài hoặc tải lại Libregaku, ' +
       'hãy tải lại tab.',
     unsupported: 'Libregaku hoạt động trên YouTube, Netflix, Disney+, Prime Video và Max.',
     waitingForSubtitles: (site: string): string => `Đang chờ phụ đề trên ${site}. Hãy kiểm tra xem phụ đề đã bật chưa.`,

@@ -309,9 +309,9 @@ export const id: Translation = {
     settingsTip: 'Semua setelan',
     checkingPage: 'Memeriksa halaman ini…',
     notActive:
-      'Tidak aktif di halaman ini. Buka video YouTube, Netflix, Disney+, Prime Video atau Max. Jika Anda baru saja menginstal atau memuat ulang ' +
+      'Tidak aktif di halaman ini. Buka video di YouTube, Netflix, atau situs lain yang didukung. Jika Anda baru saja menginstal atau memuat ulang ' +
       'Libregaku, muat ulang tab.',
-    unsupported: 'Libregaku berfungsi di YouTube, Netflix, Disney+, Prime Video dan Max.',
+    unsupported: 'Libregaku berfungsi di YouTube, Netflix, Disney+, Prime Video, dan Max.',
     waitingForSubtitles: (site: string): string => `Menunggu subtitel di ${site}. Pastikan subtitel aktif.`,
     activeOn: (title: string): string => `Aktif — ${title}`,
     active: 'Aktif di video ini.',

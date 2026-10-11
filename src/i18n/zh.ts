@@ -289,7 +289,7 @@ export const zh: Translation = {
     settings: '设置',
     settingsTip: '所有设置',
     checkingPage: '正在检查此页面…',
-    notActive: '未在此页面上启用。请打开 YouTube、Netflix、Disney+、Prime Video 或 Max 视频。如果刚安装或重新加载了 Libregaku，请刷新此标签页。',
+    notActive: '未在此页面上启用。请在 YouTube、Netflix 或其他支持的网站上打开视频。如果刚安装或重新加载了 Libregaku，请刷新此标签页。',
     unsupported: 'Libregaku 支持 YouTube、Netflix、Disney+、Prime Video 和 Max。',
     waitingForSubtitles: (site: string): string => `正在等待 ${site} 的字幕。请确认字幕已打开。`,
     activeOn: (title: string): string => `已启用——${title}`,

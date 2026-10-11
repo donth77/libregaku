@@ -26,7 +26,7 @@ export const zh: HelpTranslation = {
             [
               '在 {设置 → 语言} 中选择学习语言和母语。',
               '从 https://apps.ankiweb.net 下载 Anki。在 {设置 → Anki} 中按步骤连接 Anki，然后选择新卡片要添加到的牌组。',
-              '打开一个带有学习语言字幕的 YouTube 或 Netflix 视频，将指针停在某个单词上。',
+              '在 YouTube、Netflix 或其他支持的网站上打开一个带有学习语言字幕的视频，将指针停在某个单词上。',
             ],
             { tip: 'Anki 不是必需的。没有它，字幕、查词和侧边栏都能正常使用；它的作用是记住你已掌握哪些单词。' },
           ],
@@ -205,7 +205,7 @@ export const zh: HelpTranslation = {
             },
             '从标签页录音的方法见“受保护的网站”一章。没有你所学语言字幕的视频没有内容可显示，Libregaku 会如此告知。',
           ],
-          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', '网站', '支持', '流媒体'],
+          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'hbo', '网站', '支持', '流媒体'],
         },
       ],
     },

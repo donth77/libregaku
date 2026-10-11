@@ -26,7 +26,7 @@ export const es: HelpTranslation = {
             [
               'En {Configuración → Idiomas}, elige el idioma que aprendes y tu propio idioma.',
               'Descarga Anki desde https://apps.ankiweb.net. En {Configuración → Anki}, sigue los pasos para conectar Anki y elige el mazo al que irán las tarjetas nuevas.',
-              'Abre un video de YouTube o Netflix con subtítulos en el idioma que aprendes y deja el cursor sobre una palabra.',
+              'En YouTube, Netflix u otro sitio compatible, abre un video con subtítulos en el idioma que aprendes y deja el cursor sobre una palabra.',
             ],
             { tip: 'Anki es opcional. Los subtítulos, las búsquedas y la transcripción funcionan sin él; Anki es lo que recuerda qué palabras conoces.' },
           ],
@@ -205,7 +205,7 @@ export const es: HelpTranslation = {
             },
             'El capítulo de sitios protegidos explica cómo se graba el sonido desde la pestaña. Un video sin subtítulos en el idioma que aprendes no tiene nada que mostrar, y Libregaku lo dice.',
           ],
-          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'sitios', 'webs', 'compatibles', 'streaming'],
+          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'hbo', 'sitios', 'webs', 'compatibles', 'streaming'],
         },
       ],
     },
