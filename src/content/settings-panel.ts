@@ -260,11 +260,19 @@ function swatch(input: HTMLInputElement): void {
 type Feature = 'readings' | 'characters' | 'definitions';
 
 /** Rows that need what the target language lacks are hidden, and come back with it. */
-function showFor(root: ParentNode, target: string): void {
+function showFor(root: ParentNode, target: string, native = settings().native): void {
   const has = featuresOf(target);
   for (const row of Array.from(root.querySelectorAll<HTMLElement>('[data-needs]'))) {
     row.hidden = !has[row.dataset.needs as Feature];
   }
+  // Definitions follow your language; a language of their own only where the dictionary has none in it.
+  const defs = root.querySelector('select[name=definitions]')?.closest<HTMLElement>('.set');
+  if (!defs) return;
+  const own = DEFINITION_LANGUAGES.some((l) => l.code === native);
+  defs.hidden = !has.definitions || own;
+  const hint = defs.querySelector('.hint');
+  const name = TRANSLATION_LANGUAGES.find((l) => l.code === native)?.label ?? native;
+  if (hint) hint.textContent = `The dictionary has no definitions in ${name}, so they're shown in this language.`;
 }
 
 /*
@@ -291,9 +299,9 @@ export function buildSettings(onChange: Rerender, opts: SettingsPanelOptions = {
   root.className = 'settings';
   // Rows a language has no use for go as the target changes, here or elsewhere.
   root.addEventListener('change', (e) => {
-    if ((e.target as HTMLElement | null)?.dataset?.setting === 'target') {
-      showFor(root, (e.target as HTMLSelectElement).value);
-    }
+    const which = (e.target as HTMLElement | null)?.dataset?.setting;
+    if (which === 'target') showFor(root, (e.target as HTMLSelectElement).value);
+    if (which === 'native') showFor(root, settings().target, (e.target as HTMLSelectElement).value);
   });
 
   /*
@@ -423,7 +431,7 @@ export function buildSettings(onChange: Rerender, opts: SettingsPanelOptions = {
     return input;
   };
 
-  group('Languages', "Choose the language you're learning and the languages used to explain it.");
+  group('Languages', "Choose the language you're learning and your own language.");
   const target = select('target', "I'm learning",
     TARGET_LANGUAGES.map((l) => [l.code, l.tier === 2 ? l.label : `${l.label} — limited`]),
     tierNote(settings().target));
@@ -437,10 +445,11 @@ export function buildSettings(onChange: Rerender, opts: SettingsPanelOptions = {
   if (!translations.some(([code]) => code === was)) {
     translations.push([was, DEFINITION_LANGUAGES.find((l) => l.code === was)?.label ?? was]);
   }
-  select('native', 'Translation language', translations,
-    "Shown under the subtitles you're learning, when the video has subtitles in this language.");
-  needs(select('definitions', 'Definition language', DEFINITION_LANGUAGES.map((l) => [l.code, l.label]),
-    'The language word definitions are written in. Only these are available.'), 'definitions');
+  select('native', 'Your language', translations,
+    'Translations and definitions are shown in this language, where the video and the dictionary have it.');
+  // Shown only where the dictionary has no definitions in your language; showFor words its hint.
+  select('definitions', 'Definitions in', DEFINITION_LANGUAGES.map((l) => [l.code, l.label]),
+    'The dictionary has no definitions in your language, so they are shown in this one.');
 
   group('Looking words up', 'Choose how and when word lookups appear.');
   select('interaction', 'Look words up on',
@@ -509,9 +518,9 @@ export function buildSettings(onChange: Rerender, opts: SettingsPanelOptions = {
   check('sidebarOpen', 'Show the transcript panel', 'Press S to show or hide it while watching.');
   check('sidebarFollow', 'Scroll with the video',
     'Keeps the current line in view. Scrolling yourself pauses this; a button resumes it.');
-  check('headerBar', 'Show the player bar', 'Appears along the top of the video when your pointer is near it.');
+  check('headerBar', 'Show the header', 'Appears along the top of the video when your pointer is near it.');
   select('languageBadge', 'Language badge', [['flag', 'Flag'], ['code', 'Code']],
-    "How the player bar shows the language you're learning.");
+    "How the header shows the language you're learning.");
   check('sidebarStats', 'Count new words',
     'Shows new-word counts on each line, your known-word percentage, and the filters that use them.');
 
@@ -550,6 +559,7 @@ export function buildSettings(onChange: Rerender, opts: SettingsPanelOptions = {
   group('Data and licences');
   add(credits());
 
+  showFor(root, settings().target);
   return root;
 }
 

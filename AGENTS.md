@@ -20,6 +20,7 @@ pnpm test            # vitest, hermetic
 pnpm test:contract   # vitest against the live sites
 
 node scripts/check-captions.mjs --lang ja <url-or-id>   # screen a test video
+node scripts/compare-words.mjs                          # IPADIC with and without JMdict's added words
 ```
 
 ### Tests
@@ -45,6 +46,13 @@ watch-page canaries report "inconclusive" there rather than failing.
 **Add an assumption to that registry whenever you rely on a new selector, field
 or endpoint.** An unregistered assumption is one that will fail silently.
 
+`compare-words` runs the parser fixtures, 20,000 Tatoeba sentences and any
+subtitle files you give it through the extension's segmenting steps twice —
+IPADIC alone, and with the words `src/morphology/extra-words.ts` adds from
+JMdict — and writes out every line that changes. Run it before changing what
+goes into that list or how it is scored, and when JMdict or IPADIC is bumped:
+every change it reports should be a misreading put right.
+
 `check-captions` lists a YouTube video's subtitle tracks and marks each human or
 auto-generated (`kind="asr"`). Use it before testing segmentation against a video —
 ASR output has no punctuation and invents words, so it tells you nothing about
@@ -63,7 +71,8 @@ src/offscreen.{html,ts} WASM host — the only place the tokenizer runs. The lin
                         dictionary lives in OPFS; JMdict in IndexedDB
 src/adapters/           one module per subtitle source (youtube, netflix), their
                         parsers (ttml, json3), the DOM-reading fallback
-src/morphology/         Segmenter implementations, merge rules, furigana alignment
+src/morphology/         Segmenter implementations, merge rules, furigana alignment, and the
+                        words from JMdict that IPADIC misreads, added to the analyser
 src/dict/               JMdict and KANJIDIC2 download, storage and lookup; remote fallbacks
 src/anki/               AnkiConnect client, note type, word status, hand marks, cards
                         waiting for Anki
@@ -91,7 +100,7 @@ src/icons/              extension icons, 16/32/48/128 PNG, exported from brand/
 src/logo.ts             the logo in the popup, options page and player bar, imported
                         from brand/ as markup (the build loads .svg as text)
 brand/                  logo masters (SVG), PNG exports, and how to use them
-scripts/                check-captions.mjs, diagnose.js
+scripts/                check-captions.mjs, diagnose.js, compare-words.mjs
 tests/contract/         the canaries
 ```
 

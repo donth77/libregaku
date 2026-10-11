@@ -190,7 +190,7 @@ export class Header {
       this.#deps.onToggleSidebar();
       this.update();
     });
-    add('pin', 'unlock', 'Pin bar', () => {
+    add('pin', 'unlock', 'Pin header', () => {
       const pinned = !settings().headerPinned;
       void setSetting('headerPinned', pinned).then(() => {
         this.#reveal(pinned || this.#shown);
@@ -204,8 +204,8 @@ export class Header {
     this.#tab = document.createElement('button');
     this.#tab.className = 'tab';
     this.#tab.replaceChildren(icon('chevronsUp', 16));
-    this.#tab.dataset.tip = 'Show bar';
-    this.#tab.setAttribute('aria-label', 'Show the Libregaku bar');
+    this.#tab.dataset.tip = 'Show header';
+    this.#tab.setAttribute('aria-label', 'Show the header');
     this.#tab.addEventListener('click', () => this.#reveal(!this.#shown));
 
     this.#root.append(style, this.#bar, this.#tab);
@@ -307,7 +307,7 @@ export class Header {
     const pin = this.#buttons.get('pin');
     if (pin) {
       pin.replaceChildren(icon(s.headerPinned ? 'lock' : 'unlock', 20));
-      setOn('pin', s.headerPinned, s.headerPinned ? 'Unpin bar' : 'Pin bar');
+      setOn('pin', s.headerPinned, s.headerPinned ? 'Unpin header' : 'Pin header');
     }
 
   }

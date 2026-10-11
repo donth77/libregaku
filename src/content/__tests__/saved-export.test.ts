@@ -15,7 +15,7 @@ vi.stubGlobal('chrome', {
   runtime: { getURL: (p: string) => `chrome-extension://testid/${p}`, sendMessage: async () => ({}) },
 });
 
-import { savedTsv } from '../sidebar';
+import { savedTsv, wordsTsv } from '../sidebar';
 import type { Bookmark } from '../bookmarks';
 
 const line = (over: Partial<Bookmark> = {}): Bookmark => ({
@@ -62,5 +62,18 @@ describe('savedTsv', () => {
   it('leaves a missing translation as an empty column', () => {
     const [row] = savedTsv([line({ secondary: undefined })]).split('\n').slice(3);
     expect(row!.split('\t')[1]).toBe('');
+  });
+});
+
+describe('wordsTsv', () => {
+  it('writes a marked list as word, reading and meaning, with the header Anki reads', () => {
+    const out = wordsTsv([{ word: '保つ', reading: 'たもつ', meaning: 'to keep; to preserve' }]).split('\n');
+    expect(out[2]).toBe('#columns:Word\tReading\tMeaning');
+    expect(out[3]!.split('\t')).toEqual(['保つ', 'たもつ', 'to keep; to preserve']);
+  });
+
+  it('never lets a meaning break the columns', () => {
+    const [row] = wordsTsv([{ word: '猫', reading: 'ねこ', meaning: 'cat\tfeline\nanimal' }]).split('\n').slice(3);
+    expect(row!.split('\t')).toHaveLength(3);
   });
 });

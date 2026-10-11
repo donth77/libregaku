@@ -5,12 +5,18 @@
  * is one more entry in HELP with the same shape. Text is plain, with two
  * marks: a word in `backticks` is drawn as a key, and {Settings → Anki →
  * Screenshot} as the path to a setting. A paragraph that is a list is numbered
- * steps; one that is { tip } is set apart. Keywords are what someone might
- * search for that the text itself does not say.
+ * steps; one that is { tip } is set apart; { head, rows } is a table. Keywords
+ * are what someone might search for that the text itself does not say.
  */
 
-/** A paragraph; numbered steps; or a tip, set apart. */
-export type HelpBlock = string | string[] | { tip: string };
+/** A table: a header row, then rows of the same length. Cells take the same marks as text. */
+export interface HelpTable {
+  head: string[];
+  rows: string[][];
+}
+
+/** A paragraph; numbered steps; a tip, set apart; or a table. */
+export type HelpBlock = string | string[] | { tip: string } | HelpTable;
 
 export interface HelpTopic {
   /** Stable, for links: help.html#add-card. */
@@ -34,24 +40,30 @@ export interface HelpContent {
   /** The page's title, and the line under it. */
   title: string;
   intro: string;
+  /** The search box's placeholder, and what a screen reader calls it. */
   search: string;
+  searchLabel: string;
   /** Said when the search finds nothing; {q} is what was searched for. */
   none: string;
   settings: string;
   /** "Popular" before the topics it links to, and those topics' ids. */
   popular: { label: string; ids: string[] };
   contents: string;
+  /** What leads a tip: "Tip:". */
+  tipLabel: string;
   chapters: HelpChapter[];
 }
 
 const en: HelpContent = {
   title: 'Help',
   intro: 'How Libregaku works, and answers to what people ask. Search, or pick a chapter.',
-  search: 'Search the help',
+  search: 'Search…',
+  searchLabel: 'Search the help',
   none: 'Nothing here mentions “{q}”.',
   settings: 'Settings',
   contents: 'Chapters',
-  popular: { label: 'Popular', ids: ['add-card', 'marks', 'tracked', 'keys', 'netflix-audio', 'update'] },
+  tipLabel: 'Tip:',
+  popular: { label: 'Popular:', ids: ['add-card', 'sentence-audio', 'marks', 'tracked', 'keys', 'netflix-audio', 'update'] },
   chapters: [
     {
       id: 'start',
@@ -63,7 +75,7 @@ const en: HelpContent = {
           title: 'Set it up',
           body: [
             [
-              'In {Settings → Languages}, choose the language you are learning, the translation you want under the subtitle, and the language for definitions.',
+              'In {Settings → Languages}, choose the language you are learning and your own language.',
               'In {Settings → Anki}, follow the steps to connect Anki, then choose the deck new cards go to.',
               'Open a YouTube or Netflix video with subtitles in the language you are learning, and rest the pointer on a word.',
             ],
@@ -111,9 +123,23 @@ const en: HelpContent = {
           id: 'keys',
           title: 'Keyboard shortcuts',
           body: [
-            '`←` `→` previous or next line · `↓` replay the line · `↑` show or hide the translation',
-            '`A` add the word to Anki · `K` mark it known · `B` save the line · `S` show or hide the transcript panel · `H` blur or unblur subtitles · `Esc` close the popup',
-            'For Japanese, `R` steps furigana through off, new words and all. The keyboard button in the transcript panel lists the shortcuts while you watch.',
+            {
+              head: ['Key', 'What it does'],
+              rows: [
+                ['`←` `→`', 'Previous or next line'],
+                ['`↓`', 'Replay the line'],
+                ['`↑`', 'Show or hide the translation'],
+                ['`A`', 'Add the word in the popup to Anki'],
+                ['`K`', 'Mark the word in the popup as known'],
+                ['`B`', 'Save the current line'],
+                ['`S`', 'Show or hide the transcript panel'],
+                ['`H`', 'Blur or unblur subtitles'],
+                ['`R`', 'Switch furigana: off, new words, all (Japanese)'],
+                ['`Shift`', 'Hold to look up the word under the pointer, when {Settings → Looking words up → Look words up on} is set to Hover with Shift held'],
+                ['`Esc`', 'Close the popup'],
+              ],
+            },
+            'The keyboard button in the transcript panel lists them while you watch.',
           ],
           keywords: ['shortcut', 'keyboard', 'hotkey'],
         },
@@ -141,6 +167,16 @@ const en: HelpContent = {
             'In a word’s popup, the speech bubble with a + makes a card of the whole sentence instead, with its sound and a screenshot. Each line of the transcript has the same button when you point at it.',
           ],
           keywords: ['sentence', 'line', 'sentence card', 'whole line'],
+        },
+        {
+          id: 'sentence-audio',
+          title: 'Sentence audio',
+          body: [
+            'When you add a card from the subtitle or the transcript, for a word, a phrase or the whole sentence, Libregaku records that line from the video and puts the recording on the card. When you review, you hear the sentence as it was spoken.',
+            'Chrome can only record while the video plays, so the line plays once more, and then the video goes back to where you were.',
+            { tip: 'Saving a line records nothing, and nor does adding a card from the Saved or Words lists. {Settings → Anki cards → Sentence audio} turns recording off.' },
+          ],
+          keywords: ['audio', 'sound', 'recording', 'replay', 'voice', 'listen'],
         },
         {
           id: 'decks',
@@ -178,6 +214,7 @@ const en: HelpContent = {
           title: 'See and change your marked words',
           body: [
             'In the transcript panel, the Words tab lists the words you track, mark known or ignore, one list each. Every word has a button to take its mark off — Stop ignoring, for an ignored one — and a tracked word can become a card from there.',
+            'Each list has a search box, and Copy and Export file buttons that give you the list as a file Anki and spreadsheets open.',
           ],
           keywords: ['track', 'watchlist', 'list', 'ignored', 'known', 'unignore', 'remove mark', 'words'],
         },
@@ -190,13 +227,13 @@ const en: HelpContent = {
       topics: [
         {
           id: 'netflix-audio',
-          title: 'Record a line’s sound',
+          title: 'Sentence audio on Netflix',
           body: [
             [
               'Open {Settings → Anki cards → Sentence audio on Netflix} and press Allow.',
-              'On the Netflix tab, click the Libregaku icon in the toolbar once.',
+              'On the Netflix tab, click the Libregaku icon in the toolbar and press Record sentence audio here. Do this once per tab.',
             ],
-            'Netflix protects its video, so the sound is taken from the tab, which the browser asks you to allow. For the same reason, Netflix cards have no still.',
+            'Netflix encrypts its video, so Libregaku cannot record the sound from the video as it does on YouTube. It records the tab instead, which Chrome only allows this way. For the same reason, Netflix cards have no screenshot.',
           ],
           keywords: ['netflix', 'audio', 'sound', 'permission', 'tab capture'],
         },
@@ -287,7 +324,7 @@ const en: HelpContent = {
           id: 'q-translation',
           title: 'Why is there no translation under the subtitle?',
           body: [
-            'The translation is the site’s own subtitles in the language under {Settings → Languages → Translation language}. If the video has none in that language there is nothing to show, and Libregaku says so. It does not machine-translate.',
+            'The translation is the site’s own subtitles in the language under {Settings → Languages → Your language}. If the video has none in that language there is nothing to show, and Libregaku says so. It does not machine-translate.',
           ],
           keywords: ['translation', 'second line', 'dual', 'english'],
         },
@@ -295,7 +332,7 @@ const en: HelpContent = {
           id: 'q-definitions',
           title: 'Why can definitions only be in some languages?',
           body: [
-            'They come from JMdict, which is written in these languages only. The translation under the subtitle is separate, and can be in any language the site has.',
+            'They come from JMdict, which has definitions in nine languages. If yours is not one of them, {Settings → Languages} shows a second row, Definitions in, for the language to use instead.',
           ],
           keywords: ['definitions', 'languages', 'jmdict', 'hungarian', 'slovenian'],
         },

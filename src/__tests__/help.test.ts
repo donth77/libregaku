@@ -96,4 +96,16 @@ describe('the help', () => {
     expect(main.querySelectorAll('#get-started .steps li')).toHaveLength(3);
     expect(matches(allTopics.find((t) => t.id === 'keys')!, terms('ESC'))).toBe(true);
   });
+
+  it('lays the keyboard shortcuts out as a table, a key and what it does on each row', () => {
+    const { main } = page();
+    const table = main.querySelector<HTMLTableElement>('#keys table')!;
+    expect(Array.from(table.querySelectorAll('thead th')).map((c) => c.textContent)).toEqual(['Key', 'What it does']);
+    const rows = Array.from(table.querySelectorAll<HTMLTableRowElement>('tbody tr'));
+    const cells = (r: HTMLTableRowElement): HTMLElement[] => Array.from(r.querySelectorAll('td'));
+    expect(cells(rows[0]!)[0]!.querySelectorAll('kbd')).toHaveLength(2);   // ← →
+    expect(rows.map(cells).find((c) => c[0]!.textContent === 'Esc')?.[1]?.textContent).toBe('Close the popup');
+    // Searching reaches into the table.
+    expect(matches(allTopics.find((t) => t.id === 'keys')!, terms('furigana'))).toBe(true);
+  });
 });

@@ -296,6 +296,8 @@ describe('kanji compounds the analyser split', () => {
     expect(only('石灯籠')).toMatchObject({ lemma: '石灯籠', reading: 'イシドウロウ' });
     expect(tokens('灯籠流し').map((t) => t.lemma)).toEqual(['灯籠', '流す']);
     expect(only('犬猫').lemma).toBe('犬猫');
+    // Split into one-kanji verb stems, 盗(る) + 撮(る), each read と.
+    expect(tokens('盗撮行為').map((t) => [t.surface, t.reading])).toEqual([['盗撮', 'トウサツ'], ['行為', 'コウイ']]);
   });
 
   it('stay as the analyser split them without the dictionary', () => {
@@ -306,5 +308,71 @@ describe('kanji compounds the analyser split', () => {
     expect(lexiconQueries(LINES['灯籠']!.morphemes)).toEqual(['灯籠']);
     expect(lexiconQueries(LINES['石灯籠']!.morphemes)).toEqual(['石灯', '石灯籠', '灯籠']);
     expect(lexiconQueries(LINES['視聴者']!.morphemes)).not.toContain('視聴');
+  });
+});
+
+describe('a kanji and a suffix the dictionary has no word for', () => {
+  it('stay two words, rather than one looked up as the first', () => {
+    // 示談, typed 事談 in the subtitle: not 事 (こと, "thing") under the whole of it.
+    const t = tokens('被害者との事談が成立し');
+    expect(t.map((x) => x.surface)).toEqual(['被害者', 'と', 'の', '事', '談', 'が', '成立し']);
+    expect(t.find((x) => x.surface === '事')?.lemma).toBe('事');
+  });
+
+  it('leave a longer noun its suffix', () => {
+    expect(only('学生達').lemma).toBe('学生');
+  });
+});
+
+describe('compound verbs the analyser split', () => {
+  it('are one word where the dictionary has the compound', () => {
+    // IPADIC: 入れ + 込む, a stem and a helper verb.
+    expect(only('入れ込む')).toMatchObject({ surface: '入れ込む', lemma: '入れ込む' });
+    const te = only('入れ込んで');
+    expect(te).toMatchObject({ lemma: '入れ込む', lemmaReading: 'イレコム' });
+    expect(te.inflections).toEqual(['te-form']);
+    // JMdict lists 食べ始める too, so it is one word as well.
+    expect(only('食べ始める').lemma).toBe('食べ始める');
+  });
+
+  it("leave the helpers that are grammar, and a noun's する, as they were", () => {
+    // 来てる is 来る, ongoing — not a verb 来てる.
+    expect(tokens('電車来てるよ！').find((t) => t.surface === '来てる')?.lemma).toBe('来る');
+    // 賞賛し合う is 賞賛する + 合う: the し stays with its noun.
+    expect(tokens('彼らは互いに賞賛し合っている。').map((t) => t.lemma)).toContain('賞賛する');
+  });
+});
+
+describe('every verb form has a name', () => {
+  // The verb's grammar, as its card shows it under the dictionary form.
+  const named = (text: string): string => (tokens(text).find((t) => t.inflections?.length)?.inflections ?? []).join(' · ');
+
+  it('names conjugations and endings', () => {
+    expect(named('待てなかった')).toBe('potential · negative · past');
+    expect(named('待ちながら')).toBe('while');
+    expect(named('待ったり')).toBe('listing');
+    expect(named('待ちなさい')).toBe('polite command');
+    expect(named('待ちやすい')).toBe('easy to');
+    expect(named('待ちすぎた')).toBe('too much · past');
+    expect(named('待たずに')).toBe('without');
+    expect(named('待ってください')).toBe('te-form · please');
+    expect(named('食べさせられた')).toBe('causative · passive · past');
+  });
+
+  it('reads だ as "is" after そう or べき, and as the past only after a verb', () => {
+    expect(named('待ちそうだ')).toBe('seems');
+    expect(named('待つそうだ')).toBe('hearsay');
+    expect(named('待つべきだ')).toBe('ought to');
+    expect(named('読んだ')).toBe('past');
+    expect(named('待つだろう')).toBe('probably');
+    expect(named('待つでしょう')).toBe('probably');
+  });
+
+  it('names forms said in more than one word on the verb, and leaves the words apart', () => {
+    expect(named('待たなければならない')).toBe('must');
+    expect(tokens('待たなければならない').map((t) => t.surface)).toEqual(['待たなければ', 'ならない']);
+    expect(named('待ってもいい')).toBe('may');
+    expect(named('待たなくてもいい')).toBe("don't have to");
+    expect(named('待ってはいけない')).toBe('must not');
   });
 });

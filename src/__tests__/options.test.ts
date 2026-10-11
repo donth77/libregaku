@@ -173,13 +173,16 @@ describe('the deck step', () => {
   });
 });
 
-describe('settings kept from before definitions had a setting of their own', () => {
-  it('takes the definitions language from the translation one, where the dictionary has it', async () => {
-    const { withDefaults } = await import('../settings');
-    expect(withDefaults({ native: 'fr' }).definitions).toBe('fr');
-    expect(withDefaults({ native: 'ja' }).definitions).toBe('en');
-    expect(withDefaults({ native: 'fr', definitions: 'de' }).definitions).toBe('de');
-    expect(withDefaults(undefined).definitions).toBe('en');
+describe('the language definitions are written in', () => {
+  it('is your own language where the dictionary has it, and the one chosen for them where not', async () => {
+    const { definitionLanguage, withDefaults } = await import('../settings');
+    const of = (stored: Parameters<typeof withDefaults>[0]): string => definitionLanguage(withDefaults(stored));
+    expect(of(undefined)).toBe('en');
+    expect(of({ native: 'fr' })).toBe('fr');
+    expect(of({ native: 'fr', definitions: 'de' })).toBe('fr');
+    expect(of({ native: 'ko' })).toBe('en');
+    expect(of({ native: 'ko', definitions: 'de' })).toBe('de');
+    expect(of({ native: 'ko', definitions: 'xx' })).toBe('en');
   });
 
   it('keeps a chosen underline colour, and drops one that is not a colour', async () => {

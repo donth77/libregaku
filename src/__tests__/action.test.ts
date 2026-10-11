@@ -130,6 +130,8 @@ describe('sentence audio on a protected video', () => {
     vi.resetModules();
     await import('../action');
     await vi.waitFor(() => {
+      if (document.getElementById('quick')?.hidden !== false) throw new Error('not yet');
+      if (capturing) return;
       if (document.getElementById('capture')?.hidden !== false) throw new Error('not yet');
       if (!document.getElementById('captureText')?.textContent) throw new Error('not yet');
     });
@@ -148,14 +150,14 @@ describe('sentence audio on a protected video', () => {
     const { text, go, sent } = await onProtectedTab(true);
     expect(go.textContent).toBe('Record sentence audio here');
     go.click();
-    await vi.waitFor(() => expect(text()).toBe('Recording sentence audio on this tab.'));
+    // Once it records, there is nothing left to ask.
+    await vi.waitFor(() => expect(document.getElementById('capture')!.hidden).toBe(true));
     expect(sent).toContainEqual({ type: 'tab-capture-start', tabId: 5 });
-    expect(go.hidden).toBe(true);
+    expect(text()).not.toMatch(/Recording/);
   });
 
-  it('says so when it already is', async () => {
-    const { text, go } = await onProtectedTab(true, true);
-    expect(text()).toBe('Recording sentence audio on this tab.');
-    expect(go.hidden).toBe(true);
+  it('shows nothing when the tab is already recording', async () => {
+    await onProtectedTab(true, true);
+    expect(document.getElementById('capture')!.hidden).toBe(true);
   });
 });

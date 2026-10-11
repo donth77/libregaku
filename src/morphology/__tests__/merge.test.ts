@@ -289,7 +289,8 @@ describe('grammar coverage', () => {
       m('られ', '助動詞', '*', 'られる', 'ラレ'),
       m('た', '助動詞', '*', 'た', 'タ'),
     ]);
-    expect(out[0]?.inflections).toEqual(['causative', 'passive or potential', 'past']);
+    // After a causative, られる is the passive: made to eat.
+    expect(out[0]?.inflections).toEqual(['causative', 'passive', 'past']);
   });
 
   it('labels spoken contractions, which subtitles are full of', () => {

@@ -1,4 +1,4 @@
-import init, { TokenizerBuilder, loadDictionaryFromBytes, type Tokenizer } from 'lindera-wasm';
+import init, { TokenizerBuilder, loadDictionaryFromBytes, loadUserDictionaryFromBytes, type Tokenizer } from 'lindera-wasm';
 import { downloadDictionary, hasDictionary, loadDictionaryFiles, removeDictionary } from 'lindera-wasm/opfs';
 import type { RankHint } from './dict/jmdict';
 import { jishoLookup } from './dict/jisho';
@@ -7,8 +7,10 @@ import { remoteLookup } from './dict/remote';
 import { closeCapture, isCapturing, openCapture, startRecording, stopRecording } from './audio/tab-capture';
 import { forLanguage } from './dict/kanji';
 import {
-  build as buildDict, buildKanji, hasKanji, hasStale, isPopulated, kanjiFor, lexicon, lookup,
+  build as buildDict, buildKanji, dataMark, eachEntry, hasKanji, hasStale, isPopulated, kanjiFor, lexicon, lookup,
+  storedWords, storeWords,
 } from './dict/store';
+import { EXTRA_COST, EXTRA_FORMAT, extraCollector, extraRows, misreads, type ExtraWord } from './morphology/extra-words';
 import { LINDERA_DICTS as DICTS } from './morphology/dictionaries';
 import { lexiconQueries, type Morpheme } from './morphology/merge';
 
@@ -110,14 +112,21 @@ function checkLayout(name: string, metadata: Uint8Array, l: Layout): void {
 
 async function tokenizerFor(name: string, l: Layout): Promise<Tokenizer> {
   state.phase = 'loading';
+  return buildTokenizer(name, l);
+}
+
+/** The analyser from its stored files, with `words` added when given (Lindera's user dictionary, as CSV). */
+async function buildTokenizer(name: string, l: Layout, words?: string): Promise<Tokenizer> {
   const f = await loadDictionaryFiles(name);
   checkLayout(name, f.metadata, l);
   const dict = loadDictionaryFromBytes(
     f.metadata, f.dictTrie, f.dictValsIdx, f.dictVals,
     f.dictWordsIdx, f.dictWords, f.matrixMtx, f.charDef, f.unk,
   );
+  const user = words ? loadUserDictionaryFromBytes(new TextEncoder().encode(words), dict.metadata) : null;
   const builder = new TokenizerBuilder();
   builder.setDictionaryInstance(dict);
+  if (user) builder.setUserDictionaryInstance(user);
   builder.setMode('normal');
   return builder.build();
 }
@@ -280,6 +289,67 @@ function ensureDict(edition: string): Promise<void> {
   return dictLoading;
 }
 
+/* ── Words IPADIC misreads, from JMdict (src/morphology/extra-words.ts) ── */
+
+const extras = { state: 'none' as 'none' | 'building' | 'ready' | 'failed', count: 0 };
+let extrasLoading: Promise<void> | null = null;
+
+/**
+ * Once the analyser and JMdict are both in, the words IPADIC misreads are
+ * handed to it. The list is built once, from the JMdict already stored, and
+ * kept beside it; later starts load it in a fraction of a second. Japanese
+ * only, as both dictionaries are. Anything going wrong leaves the analyser
+ * exactly as it was.
+ */
+function ensureExtras(): Promise<void> {
+  if (!tokenizer || !layout || state.dict !== 'ipadic' || !dict.ready || dict.stale) return Promise.resolve();
+  if (extras.state === 'ready' || extras.state === 'failed') return Promise.resolve();
+  extrasLoading ??= loadExtras().finally(() => {
+    extrasLoading = null;
+  });
+  return extrasLoading;
+}
+
+async function loadExtras(): Promise<void> {
+  const name = state.dict;
+  const l = layout;
+  const plain = tokenizer;
+  if (!name || !l || !plain) return;
+  extras.state = 'building';
+  try {
+    const data = await dataMark();
+    if (!data) throw new Error('the dictionary is not complete');
+    const mark = `${data}|${DICTS[name] ?? name}|${EXTRA_FORMAT}|${EXTRA_COST}`;
+    let csv = await storedWords(mark);
+    if (csv === null) {
+      const collect = extraCollector();
+      await eachEntry((e) => collect.add(e));
+      const words: ExtraWord[] = [];
+      for (const w of collect.words()) {
+        const pieces = (plain.tokenize(w.surface) as RawToken[]).map((t) => {
+          const r = t.details?.[l.reading];
+          return { surface: t.surface, reading: r && r !== '*' ? r : undefined };
+        });
+        if (misreads(w, pieces)) words.push(w);
+      }
+      csv = extraRows(words);
+      await storeWords(mark, csv);
+    }
+    const count = csv ? csv.split('\n').length : 0;
+    if (count) {
+      const t = await buildTokenizer(name, l, csv);
+      // The language may have changed while this was built.
+      if (state.dict === name) tokenizer = t;
+    }
+    extras.state = 'ready';
+    extras.count = count;
+    console.log(`[libregaku] ${count} words from JMdict added to the analyser`);
+  } catch (e) {
+    extras.state = 'failed';
+    console.warn('[libregaku] words from JMdict not added; the analyser reads as before:', e);
+  }
+}
+
 /* ── KANJIDIC2 ─────────────────────────────────────────────────── */
 
 const kanji = { ready: false, error: null as string | null };
@@ -364,7 +434,8 @@ chrome.runtime.onMessage.addListener((msg: Message, _s, respond) => {
       return true;
 
     case 'load':
-      void load(msg.dict ?? 'ipadic').then(() => respond({ ok: state.ready && !state.error, ...state }));
+      // With JMdict already in, the analyser answers once its added words are too.
+      void load(msg.dict ?? 'ipadic').then(ensureExtras).then(() => respond({ ok: state.ready && !state.error, ...state }));
       return true;
 
     case 'tokenize': {
@@ -401,7 +472,9 @@ chrome.runtime.onMessage.addListener((msg: Message, _s, respond) => {
     }
 
     case 'dict-load':
-      void ensureDict(msg.edition ?? 'eng').then(() => {
+      // Answered once the analyser has JMdict's words too, if it is loaded:
+      // the page re-reads its lines on this answer.
+      void ensureDict(msg.edition ?? 'eng').then(ensureExtras).then(() => {
         respond({ ok: !dict.error, ...dict });
         if (dict.ready) void ensureKanji();
       });

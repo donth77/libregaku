@@ -38,16 +38,26 @@ function runs(surface: string): Array<{ kanji: boolean; text: string }> {
 const STRETCH = new Set(['〜', '～', '~', '〰']);
 
 /**
+ * A っ put between two kanji for stress — 全っ然, 本っ当 — when the reading
+ * has none: written, but not read. 真っ赤 reads its っ, マッカ, and keeps it.
+ */
+function stressAt(surface: string, reading: string, i: number): boolean {
+  const c = surface[i];
+  return (c === 'っ' || c === 'ッ') && KANJI.test(surface[i - 1] ?? '') && KANJI.test(surface[i + 1] ?? '')
+    && !/[っッ]/.test(reading);
+}
+
+/**
  * Segments aligned without the stretch marks, given them back where they
  * stood: as text of their own between segments, inside the one they
  * interrupt otherwise.
  */
-function withMarks(surface: string, segs: RubySegment[]): RubySegment[] {
+function withMarks(surface: string, segs: RubySegment[], isMark: (i: number) => boolean): RubySegment[] {
   const out: RubySegment[] = [];
   let i = 0;
   const marks = (): void => {
     let m = '';
-    while (i < surface.length && STRETCH.has(surface[i]!)) m += surface[i++];
+    while (i < surface.length && isMark(i)) m += surface[i++];
     if (m) out.push({ text: m });
   };
   for (const seg of segs) {
@@ -55,7 +65,7 @@ function withMarks(surface: string, segs: RubySegment[]): RubySegment[] {
     let text = '';
     for (let k = 0; k < seg.text.length && i < surface.length; i++) {
       text += surface[i];
-      if (!STRETCH.has(surface[i]!)) k++;
+      if (!isMark(i)) k++;
     }
     out.push(seg.ruby ? { text, ruby: seg.ruby } : { text });
   }
@@ -65,11 +75,12 @@ function withMarks(surface: string, segs: RubySegment[]): RubySegment[] {
 
 export function furigana(surface: string, reading?: string): RubySegment[] {
   if (!reading) return [{ text: surface }];
-  // A stretched word reads as the word: 凄〜い is 凄[すご]い with a mark in it.
-  if ([...surface].some((c) => STRETCH.has(c))) {
-    const plain = [...surface].filter((c) => !STRETCH.has(c)).join('');
-    if (plain && plain !== surface) return withMarks(surface, furigana(plain, reading));
-  }
+  // A stretched word reads as the word: 凄〜い is 凄[すご]い with a mark in it,
+  // and 全っ然 is 全然 with a っ in it.
+  const isMark = (i: number): boolean => STRETCH.has(surface[i]!) || stressAt(surface, reading, i);
+  let plain = '';
+  for (let i = 0; i < surface.length; i++) if (!isMark(i)) plain += surface[i];
+  if (plain && plain !== surface) return withMarks(surface, furigana(plain, reading), isMark);
 
   const parts = runs(surface);
   if (!parts.some((p) => p.kanji)) return [{ text: surface }];

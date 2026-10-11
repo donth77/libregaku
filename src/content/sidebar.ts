@@ -6,12 +6,12 @@ import { icon } from './icons';
 import { TIP_STYLE, tooltips } from './tooltip';
 import * as bookmarks from './bookmarks';
 import type { Bookmark } from './bookmarks';
-import { copyText, downloadText, tsvCell } from './share';
+import { copyText, copyWhenReady, downloadText, tsvCell } from './share';
 import { readablePos } from '../dict/pos';
 import type { Segmenter, Token } from '../morphology/types';
 import type { OverrideStatus } from '../anki/status';
 import { applyVars, onSettingsChange, setSetting, settings, underlineVars, type Settings } from '../settings';
-import { selectedWords, textFrom } from './phrase';
+import { markPhrase, phraseAt, phraseToken, selectWhole, selectedWords, textFrom } from './phrase';
 import { furigana } from '../morphology/furigana';
 import { PANEL_STYLE, buildSettings, keysView, syncSettingsControls } from './settings-panel';
 import { popupIsOpen } from './popup';
@@ -84,6 +84,15 @@ const WORD_LISTS: Array<[WordMark, string]> = [['tracking', 'Tracked'], ['known'
 
 const wordCount = (n: number): string => `${n} word${n === 1 ? '' : 's'}`;
 
+/** A marked word's reading and first meaning, from the dictionary. */
+interface WordInfo {
+  reading: string;
+  meaning: string;
+}
+
+/** Each list's name in a file saved from it. */
+const WORD_FILE: Record<WordMark, string> = { tracking: 'tracked', known: 'known', ignored: 'ignored' };
+
 const isListed = (status: OverrideStatus): status is WordMark =>
   status === 'tracking' || status === 'known' || status === 'ignored';
 
@@ -92,12 +101,12 @@ const WORD_LIST: Record<WordMark, { empty: string; intro: (n: number) => string;
   tracking: {
     empty: 'Nothing tracked yet. Track underlines a word so you notice it, without making a card. ' +
       'Turn its button on in Settings, under Word popup.',
-    intro: (n) => `${wordCount(n)} you're tracking, underlined wherever they come up.`,
+    intro: (n) => `${wordCount(n)} you're tracking, underlined wherever ${n === 1 ? 'it comes' : 'they come'} up.`,
     unmark: 'Stop tracking',
   },
   known: {
     empty: "No words marked known. Mark one known from its popup, or press K, when you know it and don't want a card.",
-    intro: (n) => `${wordCount(n)} marked known. Unmark one and it goes back to what your Anki cards say.`,
+    intro: (n) => `${wordCount(n)} marked known. Unmark a word and it goes back to what your Anki cards say.`,
     unmark: 'Unmark known',
   },
   ignored: {
@@ -360,9 +369,16 @@ const STYLE = `
   .wait[hidden] { display: none; }
   .summary .pending { color: #838DA8; }
 
+  /*
+   * Selectable, as the overlay's line is: dragging across words, or
+   * shift-clicking a second one, is how a phrase is picked. The panel sits
+   * inside the player, and YouTube's player turns selection off for
+   * everything in it — this panel included, until it said otherwise.
+   */
   .tx {
     display: block; font-size: 21px; line-height: 1.7;
     color: #E8ECF6; word-break: normal; overflow-wrap: anywhere;
+    user-select: text; -webkit-user-select: text;
   }
   /* Space for the readings is reserved by line-height, not per token, so
      annotated and bare words sit on the same baseline. */
@@ -377,8 +393,13 @@ const STYLE = `
     white-space: nowrap; user-select: none; pointer-events: none;
   }
 
-  .w { cursor: pointer; border-radius: 2px; padding: 0 1px 3px; }
+  /* Square corners: a rounded box bent each underline up at its ends. */
+  .w { cursor: pointer; padding: 0 1px 3px; }
   .w:hover { background: #262F45; }
+  .tx .p { padding: 0 0 3px; }
+  /* A phrase: one band across its words and the marks between, as on the subtitle. */
+  .tx.phrased ::selection { background: transparent; }
+  .w.inphrase, .tx .p.inphrase { background: rgba(96, 140, 255, .48); border-radius: 0; }
   .w[data-s="unknown"]  { box-shadow: inset 0 -2.5px 0 var(--lg-unknown, #E5806C); }
   .w[data-s="learning"] { box-shadow: inset 0 -1.5px 0 var(--lg-learning, #D9A64A); }
   .w[data-s="tracking"] { box-shadow: inset 0 -2px 0 var(--lg-tracking, #A78BFA); }
@@ -487,6 +508,7 @@ const STYLE = `
   .hr { font: 500 11px ui-monospace, monospace; color: #B8C0D4; margin-left: 6px; }
   .hp { font: 11px ui-monospace, monospace; color: #6B7490; margin: 2px 0 4px; letter-spacing: .05em; }
   .hd { font-size: 13.5px; color: #C7CFE2; }
+  .hg { margin-top: 6px; font-size: 12.5px; color: #A3ACC4; }
   .save, .addline {
     display: inline-flex; align-items: center; justify-content: center;
     width: 24px; height: 24px; padding: 0; margin: -4px -5px -4px 0;
@@ -509,7 +531,7 @@ const STYLE = `
    * never trapped in this panel.
    */
   .savedbar { padding: 11px 14px 12px; border-bottom: 1px solid #212939; }
-  .savedbar .btnrow { padding: 0; }
+  .savedbar .btnrow { padding: 0; border-top: 0; }
   .said { margin-top: 9px; font-size: 12px; line-height: 1.5; color: #8A94AF; }
   .said:empty { display: none; }
   .savedview .empty { margin: 16px 16px 0; font-size: 14px; line-height: 1.55; color: #8992AD; }
@@ -538,9 +560,15 @@ const STYLE = `
   .wchip[aria-pressed="true"] { background: #E8ECF6; border-color: #E8ECF6; color: #0D111C; }
   .wchip .n { font-variant-numeric: tabular-nums; opacity: .7; }
   .wchip .n:empty { display: none; }
+  .wbar { display: flex; align-items: center; gap: 8px; padding: 10px 16px 0; }
+  .wbar .wfind { flex: 1; min-width: 0; }
+  .wbar .btnrow { padding: 0; border-top: 0; flex: none; flex-wrap: nowrap; }
+  .wsaid { margin: 8px 16px 0; }
   .tr { font: 500 12px/1.4 ui-monospace, monospace; color: #B8C0D4; }
-  .tm { margin: 4px 0 8px; font-size: 13.5px; line-height: 1.45; color: #C7CFE2; }
-  .trow .btnrow { padding: 0; }
+  .tm { margin: 4px 0 0; font-size: 13.5px; line-height: 1.45; color: #C7CFE2; }
+  .tm:empty { display: none; }
+  /* The settings' button row carries a rule above it; in a list row it split the word from its buttons. */
+  .trow .btnrow { padding: 0; margin-top: 10px; border-top: 0; }
   .trow .said { margin-top: 6px; font-size: 12.5px; color: #A3ACC4; }
   .trow .said:empty { display: none; }
   .gh {
@@ -639,6 +667,12 @@ export class Sidebar {
   #wordsShow: WordMark = 'tracking';
   /** Fills in the rows of the Words view as they come near the view. */
   #wordsSeen: IntersectionObserver | null = null;
+  /** What the Words view's search is narrowing its list to. */
+  #wordsQuery = '';
+  /** The Words view's rows, rebuilt as the search changes; the search box stays. */
+  #wordsRows: HTMLElement | null = null;
+  /** Readings and meanings of marked words, looked up once, for the rows, the search and the export. */
+  #wordInfo = new Map<string, WordInfo | null>();
   #settingsEl: HTMLElement | null = null;
   #fab!: HTMLButtonElement;
   #now!: HTMLButtonElement;
@@ -918,7 +952,7 @@ export class Sidebar {
     this.#tab.dataset.tip = 'Transcript';
     this.#tab.dataset.key = 'S';
     this.#tab.setAttribute('aria-label', 'Show the transcript');
-    this.#tab.addEventListener('click', () => this.toggle(true));
+    this.#tab.addEventListener('click', () => this.toggleTranscript());
 
     this.#search = search;
     this.#panel.append(grip, head, title, search, summary, this.#note, this.#wait, this.#list, filters, fab, now);
@@ -943,6 +977,27 @@ export class Sidebar {
     this.#countTimer = window.setTimeout(() => this.#countAll(), 0);
   }
 
+  /** The row a phrase is marked on, to clear once the selection leaves it. */
+  #phraseRow: HTMLElement | null = null;
+  #selFrame = 0;
+
+  /** Redraw the phrase band as the selection moves, once a frame, on the row it is in. */
+  #onSelection(): void {
+    if (this.#selFrame) return;
+    this.#selFrame = requestAnimationFrame(() => {
+      this.#selFrame = 0;
+      const sel = (this.#root as ShadowRoot & { getSelection?: () => Selection | null }).getSelection?.();
+      const at = sel?.rangeCount ? sel.getRangeAt(0).startContainer : null;
+      const row = (at instanceof Element ? at : at?.parentElement)?.closest<HTMLElement>('.tx') ?? null;
+      if (this.#phraseRow && this.#phraseRow !== row) {
+        markPhrase(this.#root, this.#phraseRow, '.w');   // the selection is elsewhere: this clears it
+        this.#phraseRow.classList.remove('phrased');
+      }
+      this.#phraseRow = row && this.#list.contains(row) ? row : null;
+      this.#phraseRow?.classList.toggle('phrased', markPhrase(this.#root, this.#phraseRow, '.w'));
+    });
+  }
+
   /**
    * One listener for every row: a bookmark saves, a word looks up, anywhere
    * else on a card seeks. A listener per row was thousands of them.
@@ -958,6 +1013,10 @@ export class Sidebar {
       const text = textFrom(picked[0]!, last);
       if (text === null) return;
       selected = true;
+      // After the browser's own handling of the release, which collapses a
+      // selection clicked inside: the phrase stays marked, to point at again.
+      const first = picked[0]!;
+      setTimeout(() => selectWhole(this.#root, first, last), 0);
       this.#hideHover();
       this.#deps.onPhrase(
         picked.map((w) => JSON.parse(w.dataset.tok ?? '{}') as Token),
@@ -1111,6 +1170,7 @@ export class Sidebar {
     // Navigating away before storage answered must not leave page listeners
     // behind for a panel that no longer exists.
     if (this.#destroyed) return;
+    document.addEventListener('selectionchange', () => this.#onSelection(), { signal: this.#abort.signal });
     // Open unless the learner has closed it before. The transcript is the
     // reason the panel exists; hiding it until a keypress is discovered means
     // most people never see it.
@@ -1466,16 +1526,21 @@ export class Sidebar {
    * lines from elsewhere open that video at the right second, which is the
    * whole reason the url is stored alongside the text.
    */
+  /** The marked words of one list, newest first. */
+  #listed(show: WordMark): string[] {
+    return (this.#deps.marked?.() ?? []).filter((m) => m.status === show).map((m) => m.word);
+  }
+
   /**
    * The words marked by hand — tracked, known, ignored — read from the marks,
    * so the lists are the same on every device. A mark comes off here as it
    * does on the word's card, and a tracked word can become a card, which
-   * takes it off the list: a card speaks for it now.
+   * takes it off the list: a card speaks for it now. A list can be searched,
+   * and copied or saved as a file, as saved lines can.
    */
   #renderWords(): void {
     const host = this.#settingsEl;
     if (!host) return;
-    this.#wordsSeen?.disconnect();
     const all = (this.#deps.marked?.() ?? []).filter((m) => isListed(m.status));
     host.replaceChildren();
 
@@ -1501,22 +1566,75 @@ export class Sidebar {
       });
       chips.appendChild(b);
     }
-    host.appendChild(chips);
 
+    const bar = document.createElement('div');
+    bar.className = 'wbar';
+    const find = document.createElement('input');
+    find.type = 'search';
+    find.className = 'wfind';
+    find.placeholder = 'Find a word';
+    find.setAttribute('aria-label', 'Find a word in this list');
+    find.value = this.#wordsQuery;
+    find.addEventListener('input', () => {
+      this.#wordsQuery = find.value;
+      this.#renderWordRows();
+    });
+    const actions = document.createElement('div');
+    actions.className = 'btnrow';
+    const said = document.createElement('div');
+    said.className = 'said wsaid';
+    said.setAttribute('role', 'status');
+    const button = (label: string, title: string, run: (b: HTMLButtonElement) => void): void => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = label;
+      b.setAttribute('aria-description', title);
+      b.addEventListener('click', () => run(b));
+      actions.appendChild(b);
+    };
+    button('Copy', 'Copy this list as tab-separated text', (b) => void this.#exportWords('copy', said, b));
+    button('Export file', 'Save this list as a tab-separated file Anki can import', (b) => void this.#exportWords('file', said, b));
+    bar.append(find, actions);
+
+    const rows = document.createElement('div');
+    rows.className = 'wrows';
+    host.append(chips, bar, said, rows);
+    this.#wordsRows = rows;
+    this.#renderWordRows();
+  }
+
+  /** The open list's rows, narrowed to what the search matches. */
+  #renderWordRows(): void {
+    const rows = this.#wordsRows;
+    if (!rows?.isConnected) return;
+    this.#wordsSeen?.disconnect();
+    rows.replaceChildren();
     const show = this.#wordsShow;
     const list = WORD_LIST[show];
-    const words = all.filter((m) => m.status === show).map((m) => m.word);
+    const words = this.#listed(show);
+    const say = (cls: string, text: string): void => {
+      const p = document.createElement('p');
+      p.className = cls;
+      p.textContent = text;
+      rows.appendChild(p);
+    };
     if (!words.length) {
-      const empty = document.createElement('p');
-      empty.className = 'empty';
-      empty.textContent = list.empty;
-      host.appendChild(empty);
+      say('empty', list.empty);
       return;
     }
-    const intro = document.createElement('p');
-    intro.className = 'tintro';
-    intro.textContent = list.intro(words.length);
-    host.appendChild(intro);
+    const query = this.#wordsQuery.trim();
+    const shown = this.#matching(words);
+    if (query) {
+      // The search reaches readings and meanings not looked up yet: fetch them, then look again.
+      void this.#lookUpAll(words).then((more) => {
+        if (more && this.#wordsQuery.trim() === query) this.#renderWordRows();
+      });
+    }
+    if (!shown.length) {
+      say('empty', `No word in this list matches “${query}”.`);
+      return;
+    }
+    say('tintro', query ? `${shown.length} of ${wordCount(words.length)}.` : list.intro(words.length));
 
     // Readings and meanings only for rows coming into view: a list of known
     // words can run to thousands, and each is a dictionary lookup.
@@ -1533,7 +1651,7 @@ export class Sidebar {
       : null;
     this.#wordsSeen = seen;
 
-    for (const word of words) {
+    for (const word of shown) {
       const row = document.createElement('div');
       row.className = 'trow';
       const head = document.createElement('div');
@@ -1574,22 +1692,88 @@ export class Sidebar {
       if (show === 'tracking' && this.#deps.addWord) button('Add to Anki', () => this.#deps.addWord!(word));
       if (this.#deps.unmark) button(list.unmark, () => this.#deps.unmark!(word));
       row.append(head, meaning, actions, said);
-      host.appendChild(row);
+      rows.appendChild(row);
       // Its reading and first meaning, from the same lookup the cards use.
-      const fill = (): void => void (this.#deps.lookup ?? lookupToken)({
-        surface: word, lemma: word, start: 0, end: word.length, content: true,
-      }).then((result) => {
-        const top = result.state === 'ok' ? result.entries[0] : undefined;
-        if (!top || !row.isConnected) return;
-        r.textContent = top.reading && top.reading !== word ? top.reading : '';
-        meaning.textContent = top.senses[0]?.glosses.slice(0, 3).join('; ') ?? '';
-      }, () => {});
+      const fill = (): void => void this.#infoFor(word).then((info) => {
+        if (!info || !row.isConnected) return;
+        r.textContent = info.reading !== word ? info.reading : '';
+        meaning.textContent = info.meaning;
+      });
       if (seen) {
         fills.set(row, fill);
         seen.observe(row);
       } else {
         fill();
       }
+    }
+  }
+
+  /** The words a search matches: by the word, its reading or its meaning, as far as they are known. */
+  #matching(words: string[]): string[] {
+    const fold = (t: string): string => t.normalize('NFKC').toLocaleLowerCase();
+    const q = fold(this.#wordsQuery.trim());
+    if (!q) return words;
+    return words.filter((w) => {
+      const info = this.#wordInfo.get(w);
+      return fold(w).includes(q) || Boolean(info && (fold(info.reading).includes(q) || fold(info.meaning).includes(q)));
+    });
+  }
+
+  /** A word's reading and first meaning, looked up once. Null when the dictionary has nothing. */
+  #infoFor(word: string): Promise<WordInfo | null> {
+    const known = this.#wordInfo.get(word);
+    if (known !== undefined) return Promise.resolve(known);
+    return (this.#deps.lookup ?? lookupToken)({ surface: word, lemma: word, start: 0, end: word.length, content: true })
+      .then((result) => {
+        const top = result.state === 'ok' ? result.entries[0] : undefined;
+        const info = top ? { reading: top.reading ?? '', meaning: top.senses[0]?.glosses.slice(0, 3).join('; ') ?? '' } : null;
+        // Only answers are kept: a lookup made while the dictionary loads says nothing yet.
+        if (result.state === 'ok' || result.state === 'empty') this.#wordInfo.set(word, info);
+        return info;
+      }, () => null);
+  }
+
+  /** Look up every word not looked up yet, a few at a time. True when anything new was learned. */
+  async #lookUpAll(words: string[]): Promise<boolean> {
+    const before = this.#wordInfo.size;
+    const missing = words.filter((w) => !this.#wordInfo.has(w));
+    for (let i = 0; i < missing.length && !this.#destroyed; i += 8) {
+      await Promise.all(missing.slice(i, i + 8).map((w) => this.#infoFor(w)));
+    }
+    return this.#wordInfo.size > before;
+  }
+
+  /**
+   * The open list, as far as the search narrows it, as tab-separated text:
+   * copied, or saved as a file Anki imports. Readings and meanings not looked
+   * up yet are fetched first; the copy keeps the click that asked for it
+   * while they come.
+   */
+  async #exportWords(how: 'copy' | 'file', said: HTMLElement, b: HTMLButtonElement): Promise<void> {
+    const show = this.#wordsShow;
+    const words = this.#matching(this.#listed(show));
+    if (!words.length) {
+      said.textContent = 'There are no words in this list to export.';
+      return;
+    }
+    b.disabled = true;
+    if (words.some((w) => !this.#wordInfo.has(w))) said.textContent = 'Looking up readings and meanings…';
+    const text = this.#lookUpAll(words).then(() => wordsTsv(words.map((word) => ({
+      word, reading: this.#wordInfo.get(word)?.reading ?? '', meaning: this.#wordInfo.get(word)?.meaning ?? '',
+    }))));
+    try {
+      if (how === 'copy') {
+        const ok = await copyWhenReady(text);
+        said.textContent = ok ? `${wordCount(words.length)} copied.` : 'Could not reach the clipboard.';
+      } else {
+        const name = `libregaku-${WORD_FILE[show]}-${fileStamp()}.tsv`;
+        const ok = downloadText(name, await text, 'text/tab-separated-values');
+        said.textContent = ok
+          ? 'Saved to your downloads. In Anki: File → Import.'
+          : 'This page blocked the download — use Copy instead.';
+      }
+    } finally {
+      b.disabled = false;
     }
   }
 
@@ -1707,11 +1891,11 @@ export class Sidebar {
       this.#settingsEl = buildSettings(() => this.render(), {
         onAnkiConnected: () => this.#deps.onAnkiConnected?.(),
       });
-      this.#settingsEl.prepend(helpLink('How-tos and questions'));
+      this.#settingsEl.prepend(helpLink('Help'));
       this.#panel.appendChild(this.#settingsEl);
     } else if (mode === 'keys') {
       this.#settingsEl = keysView();
-      this.#settingsEl.append(helpLink('More in the help', 'keys'));
+      this.#settingsEl.append(helpLink('Help', 'keys'));
       this.#panel.appendChild(this.#settingsEl);
     } else if (mode === 'saved') {
       this.#settingsEl = document.createElement('div');
@@ -1726,6 +1910,22 @@ export class Sidebar {
     } else {
       this.render();
     }
+  }
+
+  /**
+   * What every Transcript control means — the bar's button, the S key, the
+   * panel's own tab, the toolbar popup's button: the transcript, open.
+   * Pressed while the transcript is showing, the panel closes. They used to
+   * reopen the panel on whatever view it was closed on — Saved, Words,
+   * Settings — under a button that says Transcript.
+   */
+  toggleTranscript(): void {
+    if (this.#open && this.#mode === 'transcript') {
+      this.toggle(false);
+      return;
+    }
+    if (this.#mode !== 'transcript') this.setMode('transcript');
+    if (!this.#open) this.toggle(true);
   }
 
   toggle(open?: boolean): void {
@@ -2732,7 +2932,11 @@ export class Sidebar {
     let fresh = false;
     for (const tok of tokens) {
       if (tok.punct) {
-        frag.appendChild(document.createTextNode(tok.surface));
+        // In a span, so a phrase across it can mark it too.
+        const p = document.createElement('span');
+        p.className = 'p';
+        p.textContent = tok.surface;
+        frag.appendChild(p);
         continue;
       }
 
@@ -2795,7 +2999,9 @@ export class Sidebar {
   #installHover(): void {
     this.#list.addEventListener('mouseover', (e) => {
       if (!settings().sidebarHover) return;
-      const w = (e.target as HTMLElement).closest('.w') as HTMLElement | null;
+      const hit = (e.target as HTMLElement).closest('.w') as HTMLElement | null;
+      // A word in a marked phrase is the phrase, hovered as one: its last word stands for it.
+      const w = hit ? (phraseAt(hit, '.w')?.last ?? hit) : null;
       // Moving onto a reading inside the same word is not a new hover.
       if (!w || w === this.#hoverFor) return;
       this.#hideHover();
@@ -2809,6 +3015,8 @@ export class Sidebar {
       // as leaving, the card blinked out and back on every kanji boundary.
       const to = (e as MouseEvent).relatedTarget as Node | null;
       if (to && w.contains(to)) return;
+      // Nor is moving along a marked phrase leaving it.
+      if (w.classList.contains('inphrase') && (to as Element | null)?.closest?.('.inphrase')?.parentElement === w.parentElement) return;
       this.#hideHover();
     });
   }
@@ -2825,7 +3033,8 @@ export class Sidebar {
   }
 
   async #showHover(w: HTMLElement): Promise<void> {
-    const tok = w.dataset.tok ? (JSON.parse(w.dataset.tok) as Token) : null;
+    const pick = phraseAt(w, '.w');
+    const tok = pick ? phraseToken(pick.words, pick.text) : w.dataset.tok ? (JSON.parse(w.dataset.tok) as Token) : null;
     // Preview only, and never on top of a card the learner opened on purpose.
     if (!tok || popupIsOpen()) return;
 
@@ -2861,6 +3070,13 @@ export class Sidebar {
       // Preview only: one gloss, no buttons. Acting on a word means clicking.
       hd.textContent = top.senses[0]?.glosses.slice(0, 2).join('; ') ?? '';
       this.#hover.append(hp, hd);
+      // What the form is, as the word's own card says: 待てなかった, potential · negative · past.
+      if (tok.inflections?.length) {
+        const hg = document.createElement('div');
+        hg.className = 'hg';
+        hg.textContent = tok.inflections.join(' · ');
+        this.#hover.appendChild(hg);
+      }
     } else {
       const hd = document.createElement('div');
       hd.className = 'hd';
@@ -2954,6 +3170,13 @@ export function savedTsv(lines: Bookmark[]): string {
       tsvCell(b.url),
     ].join('\t'),
   );
+  return [...head, ...rows].join('\n');
+}
+
+/** A list of marked words as a file Anki imports, the way saved lines are. */
+export function wordsTsv(words: Array<{ word: string; reading: string; meaning: string }>): string {
+  const head = ['#separator:tab', '#html:false', '#columns:Word\tReading\tMeaning'];
+  const rows = words.map((w) => [tsvCell(w.word), tsvCell(w.reading), tsvCell(w.meaning)].join('\t'));
   return [...head, ...rows].join('\n');
 }
 

@@ -30,6 +30,25 @@ export async function copyText(text: string): Promise<boolean> {
 }
 
 /**
+ * Copy text still being put together. The clipboard wants the click that
+ * asked for it, and a click is spent by the time a slow answer comes; a
+ * clipboard item made from a promise keeps it. Without one, the text is
+ * awaited and copied the old way.
+ */
+export async function copyWhenReady(text: Promise<string>): Promise<boolean> {
+  try {
+    if (typeof ClipboardItem === 'function' && navigator.clipboard?.write) {
+      const blob = text.then((t) => new Blob([t], { type: 'text/plain' }));
+      await navigator.clipboard.write([new ClipboardItem({ 'text/plain': blob })]);
+      return true;
+    }
+  } catch {
+    /* refused, or no focus — the old way may still work */
+  }
+  return copyText(await text);
+}
+
+/**
  * Save text as a file.
  *
  * The anchor has to be in the page's own document — a click on a node inside

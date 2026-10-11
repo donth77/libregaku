@@ -134,9 +134,15 @@ export const TRANSLATION_LANGUAGES: Array<{ code: string; label: string }> = [
 export interface Settings {
   /** BCP-47 of the language being learned. */
   target: string;
-  /** BCP-47 of the language to show translations in: the second subtitle line. */
+  /**
+   * BCP-47 of the learner's own language: the translation under the subtitle,
+   * and the definitions too wherever the dictionary is written in it.
+   */
   native: string;
-  /** The language the dictionary explains words in (DEFINITION_LANGUAGES). */
+  /**
+   * The language definitions are written in when the dictionary has none in
+   * `native` (DEFINITION_LANGUAGES). Read it through definitionLanguage().
+   */
   definitions: string;
   /** False until the user has been through setup once. */
   configured: boolean;
@@ -357,11 +363,18 @@ export function onSettingsChange(fn: Listener): void {
  * Stored settings over the defaults. Definitions used to follow the
  * translation language, so one chosen before they were apart is kept.
  */
+/**
+ * The language definitions are written in: the learner's own, where the
+ * dictionary has definitions in it, and otherwise the one chosen for them.
+ * One setting for most people, and a second only where it is needed.
+ */
+export function definitionLanguage(s: Pick<Settings, 'native' | 'definitions'>): string {
+  if (DEFINITION_LANGUAGES.some((l) => l.code === s.native)) return s.native;
+  return DEFINITION_LANGUAGES.some((l) => l.code === s.definitions) ? s.definitions : 'en';
+}
+
 export function withDefaults(stored: Partial<Settings> | undefined): Settings {
   const out = { ...DEFAULTS, ...stored };
-  if (!stored?.definitions && stored?.native && DEFINITION_LANGUAGES.some((l) => l.code === stored.native)) {
-    out.definitions = stored.native;
-  }
   // A colour that is not one would paint no underline at all.
   for (const key of UNDERLINE_KEYS) {
     if (!/^#[0-9a-f]{6}$/i.test(out[key])) out[key] = DEFAULTS[key];

@@ -19,7 +19,10 @@ export function terms(query: string): string[] {
 }
 
 const textOf = (block: HelpBlock): string[] =>
-  typeof block === 'string' ? [block] : Array.isArray(block) ? block : [block.tip];
+  typeof block === 'string' ? [block]
+    : Array.isArray(block) ? block
+      : 'tip' in block ? [block.tip]
+        : [...block.head, ...block.rows.flat()];
 
 /** A topic holds every word searched for, in its title, text or keywords. */
 export function matches(topic: HelpTopic, words: readonly string[]): boolean {
@@ -75,7 +78,7 @@ export function inline(text: string, words: readonly string[]): Node[] {
   return out;
 }
 
-function fill(el: HTMLElement, topic: HelpTopic, words: readonly string[]): void {
+function fill(el: HTMLElement, topic: HelpTopic, words: readonly string[], tipLabel: string): void {
   el.replaceChildren();
   for (const block of topic.body) {
     if (typeof block === 'string') {
@@ -91,11 +94,29 @@ function fill(el: HTMLElement, topic: HelpTopic, words: readonly string[]): void
         ol.appendChild(li);
       }
       el.appendChild(ol);
-    } else {
+    } else if ('tip' in block) {
       const tip = document.createElement('p');
       tip.className = 'tip';
-      tip.append(...inline(block.tip, words));
+      const label = document.createElement('strong');
+      label.textContent = tipLabel;
+      tip.append(label, ' ', ...inline(block.tip, words));
       el.appendChild(tip);
+    } else {
+      const table = document.createElement('table');
+      table.className = 'grid';
+      const head = table.createTHead().insertRow();
+      for (const cell of block.head) {
+        const th = document.createElement('th');
+        th.scope = 'col';
+        th.append(...inline(cell, words));
+        head.appendChild(th);
+      }
+      const body = table.createTBody();
+      for (const row of block.rows) {
+        const tr = body.insertRow();
+        for (const cell of row) tr.insertCell().append(...inline(cell, words));
+      }
+      el.appendChild(table);
     }
   }
 }
@@ -177,7 +198,7 @@ export function renderHelp(
       s.el.hidden = !hit;
       any ||= hit;
       s.title.replaceChildren(...inline(s.topic.title, words));
-      fill(s.body, s.topic, words);
+      fill(s.body, s.topic, words, help.tipLabel);
       if (s.question) (s.el as HTMLDetailsElement).open = words.length > 0 && hit;
     }
     for (const c of chapters) {
@@ -251,7 +272,7 @@ function main(): void {
   const pop = document.getElementById('popular');
   if (!input || !out || !none) return;
   input.placeholder = help.search;
-  input.setAttribute('aria-label', help.search);
+  input.setAttribute('aria-label', help.searchLabel);
   if (pop) popular(pop, help);
   renderHelp(out, document.querySelector<HTMLElement>('.toc'), input, none, help);
   if (!location.hash) input.focus();

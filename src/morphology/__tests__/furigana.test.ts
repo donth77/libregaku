@@ -71,3 +71,14 @@ describe('stretched words', () => {
     expect(furigana('は〜い', 'ハイ')).toEqual([{ text: 'は〜い' }]);
   });
 });
+
+describe('a っ put in for stress', () => {
+  it('sits in the word, unread', () => {
+    expect(furigana('全っ然', 'ゼンゼン')).toEqual([{ text: '全っ然', ruby: 'ぜんぜん' }]);
+  });
+
+  it('is read where the word is spelled with it', () => {
+    expect(furigana('真っ赤', 'マッカ').map((x) => x.text).join('')).toBe('真っ赤');
+    expect(furigana('真っ赤', 'マッカ').some((x) => x.ruby === 'ま')).toBe(true);
+  });
+});

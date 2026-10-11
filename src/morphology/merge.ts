@@ -83,8 +83,9 @@ const GRAMMAR: Record<string, string> = {
   // conditionals
   ば: 'conditional', たら: 'conditional', なら: 'conditional',
   と: 'whenever',
-  // voice
-  れる: 'passive or potential', られる: 'passive or potential',
+  // voice: れる follows a godan or する stem, whose potential is a verb of its
+  // own (待てる), so it is passive; られる is either
+  れる: 'passive', られる: 'passive or potential',
   せる: 'causative', させる: 'causative',
   // desire and inclination
   たい: 'want to', たがる: 'seems to want to',
@@ -109,7 +110,18 @@ const GRAMMAR: Record<string, string> = {
   ちまう: 'completely, or regrettably', じまう: 'completely, or regrettably',
   く: 'going forward',
   なきゃ: 'must', なくちゃ: 'must', ちゃ: 'must not',
+  // after the stem: 待ち + すぎる, 待ち + やすい, 待ち + なさい
+  すぎる: 'too much', 過ぎる: 'too much', やすい: 'easy to', にくい: 'hard to', づらい: 'hard to', がたい: 'hard to',
+  始める: 'start to', 出す: 'start to', 続ける: 'keep on', 終わる: 'finish', 終える: 'finish',
+  直す: 'again', 合う: 'each other', 切る: 'completely', 込む: 'thoroughly', 回る: 'around', まくる: 'non-stop',
+  かける: 'start to', なさる: 'polite command', くださる: 'please', ほしい: 'want someone to',
 };
+
+/** Helper verbs and adjectives that follow a verb's stem as part of its form: 待ち + すぎる, 待ち + やすい. */
+const STEM_HELPERS = new Set([
+  'すぎる', '過ぎる', '始める', '出す', '続ける', '終わる', '終える', '直す', '合う', '切る', '込む', '回る',
+  'まくる', 'かける', 'なさる', 'やすい', 'にくい', 'づらい', 'がたい',
+]);
 
 /**
  * Endings whose surface says more than their dictionary form.
@@ -139,6 +151,41 @@ function fromConjugation(m: Morpheme): string | null {
   return null;
 }
 
+/** What one ending contributes, given what comes before and after it, or null for nothing. */
+function labelAt(morphemes: Morpheme[], i: number, out: string[]): string | null {
+  const m = morphemes[i]!;
+  const prev = morphemes[i - 1];
+  const next = morphemes[i + 1];
+  const lemma = m.lemma ?? m.surface;
+  // だろう, でしょう: a guess, not a past or a politeness alone.
+  if ((lemma === 'だ' || lemma === 'です') && next?.lemma === 'う' && next.pos === '助動詞') return 'probably';
+  // The う of だろう and ましょう: already said, by the form before it.
+  if (lemma === 'う' && m.pos === '助動詞') return null;
+  if (lemma === 'だ' && !SURFACE_GRAMMAR[m.surface]) {
+    // 読ん + だ is the past; そう + だ, べき + だ is "is".
+    return prev?.pos === '動詞' ? 'past' : null;
+  }
+  // 待たさ + れる after a causative is the causative-passive: made to wait.
+  if ((lemma === 'れる' || lemma === 'られる') && out.includes('causative')) return 'passive';
+  // 来ら + れる is 来られる, which is as often "can come".
+  if (lemma === 'れる' && prev?.lemma === '来る') return 'passive or potential';
+  // 待つ + そう + だ is hearsay, "I hear"; 待ち + そう is "looks like".
+  if (m.surface === 'そう' && m.pos1 === '特殊') return 'hearsay';
+  // 食べなくちゃ: なく + ちゃ is an obligation, not a negative and a ban.
+  if ((m.surface === 'ちゃ' || m.surface === 'じゃ') && prev?.surface === 'なく') {
+    const neg = out.lastIndexOf('negative');
+    if (neg >= 0) out.splice(neg, 1);
+    return 'must';
+  }
+  // 待たず + に: without doing it.
+  if (m.surface === 'に' && prev?.surface === 'ず') {
+    const neg = out.lastIndexOf('negative');
+    if (neg >= 0) out.splice(neg, 1);
+    return 'without';
+  }
+  return SURFACE_GRAMMAR[m.surface] ?? GRAMMAR[lemma] ?? GRAMMAR[m.surface] ?? null;
+}
+
 function grammarOf(morphemes: Morpheme[]): string[] {
   const out: string[] = [];
 
@@ -146,15 +193,11 @@ function grammarOf(morphemes: Morpheme[]): string[] {
     // The head is the word itself, not an ending — but its own conjugation
     // still carries meaning when nothing follows it.
     if (i > 0) {
-      let label = SURFACE_GRAMMAR[m.surface] ?? GRAMMAR[m.lemma ?? m.surface] ?? GRAMMAR[m.surface];
-      // 食べなくちゃ: なく + ちゃ is an obligation, not a negative and a ban.
-      if ((m.surface === 'ちゃ' || m.surface === 'じゃ') && morphemes[i - 1]?.surface === 'なく') {
-        const neg = out.lastIndexOf('negative');
-        if (neg >= 0) out.splice(neg, 1);
-        label = 'must';
-      }
+      const label = labelAt(morphemes, i, out);
       if (label && !out.includes(label)) out.push(label);
     }
+    // なさい and ください are their own requests, not a bare imperative.
+    if (m.lemma === 'なさる' || m.lemma === 'くださる') continue;
     const conj = fromConjugation(m);
     if (conj && !out.includes(conj)) out.push(conj);
   }
@@ -180,7 +223,7 @@ const CONTRACTIONS = new Set(['てる', 'でる', 'ちゃう', 'じゃう', 'ち
  * ので, のに, けれど, し. Attaching those would swallow the remainder of the
  * sentence into one token, so the list is a whitelist rather than a category.
  */
-const CONJUGATIONAL_PARTICLES = new Set(['て', 'で', 'ば', 'たり', 'だり', 'ちゃ', 'じゃ']);
+const CONJUGATIONAL_PARTICLES = new Set(['て', 'で', 'ば', 'たり', 'だり', 'ちゃ', 'じゃ', 'ながら', 'つつ']);
 const FUNCTION_POS = new Set(['助詞', '助動詞', '記号', 'フィラー']);
 
 /*
@@ -233,15 +276,34 @@ function attaches(group: Morpheme[], cur: Morpheme): boolean {
    */
   if (cur.pos === '動詞' && cur.lemma === 'する' && prev.pos === '名詞' && prev.pos1 === 'サ変接続') return true;
 
-  // し+て+いる, うまくいけ+ば, 行っ+たり — endings, not words.
+  // し+て+いる, うまくいけ+ば, 行っ+たり, 待ち+ながら — endings, not words.
+  // たり is a 並立助詞 to IPADIC, the rest 接続助詞.
   if (
     cur.pos === '助詞' &&
-    cur.pos1 === '接続助詞' &&
+    (cur.pos1 === '接続助詞' || cur.pos1 === '並立助詞') &&
     CONJUGATIONAL_PARTICLES.has(cur.surface) &&
     isVerbal(group)
   ) {
     return true;
   }
+
+  // 待ち + すぎる, 待ち + やすい, 待ち + なさい: a helper on the stem, where the
+  // dictionary has no compound for the two (joinCompoundVerbs).
+  if (
+    (cur.pos === '動詞' || cur.pos === '形容詞') && cur.pos1 === '非自立' && STEM_HELPERS.has(cur.lemma ?? '') &&
+    prev.pos === '動詞' && prev.conjForm === '連用形'
+  ) {
+    return true;
+  }
+
+  // 待って + ほしい: wanting someone to do it.
+  if (cur.pos === '形容詞' && cur.lemma === 'ほしい' && (prev.surface === 'て' || prev.surface === 'で')) return true;
+
+  // 待つ + そう + だ: hearsay, after a verb as it ends a sentence.
+  if (cur.surface === 'そう' && cur.pos1 === '特殊' && isVerbal(group)) return true;
+
+  // 待たず + に: "without", part of the negative.
+  if (cur.surface === 'に' && cur.pos === '助詞' && prev.surface === 'ず' && isVerbal(group)) return true;
 
   /*
    * 補助動詞 — helper verbs — only ever follow the て-form: 持って+いく,
@@ -489,8 +551,8 @@ function confirmed(p: Potential, lemma: string, lexicon: Lexicon | undefined): b
 }
 
 /*
- * Kanji nouns the analyser split but the dictionary has whole. IPADIC knows
- * 灯篭 and not 灯籠, so 灯籠 comes back as 灯 + 籠, read あかり and かご;
+ * Kanji compounds the analyser split but the dictionary has whole. IPADIC
+ * knows 灯篭 and not 灯籠, so 灯籠 comes back as 灯 + 籠, read あかり and かご;
  * JMdict has it, read とうろう. A run of kanji nouns with a lone kanji among
  * them is asked about whole, and joined where the dictionary has the word —
  * with the dictionary's reading, since the parts' readings are what went
@@ -502,7 +564,11 @@ const COMPOUND_POS1 = new Set(['一般', '接尾', 'サ変接続', '形容動詞
 const COMPOUND_MAX = 4;
 
 function compoundable(m: Morpheme): boolean {
-  return m.pos === '名詞' && COMPOUND_POS1.has(m.pos1 ?? '') && KANJI_ONLY.test(m.surface);
+  if (!KANJI_ONLY.test(m.surface)) return false;
+  if (m.pos === '名詞') return COMPOUND_POS1.has(m.pos1 ?? '');
+  // IPADIC also splits a compound it does not know into one-kanji verb stems
+  // in this form: 盗撮 comes back as 盗(る) + 撮(る), each read と.
+  return m.pos === '動詞' && m.surface.length === 1 && (m.conjForm ?? '').startsWith('体言接続特殊');
 }
 
 /** The run i..j, written out, if it could be a compound split apart: else undefined. */
@@ -550,6 +616,54 @@ function joinCompounds(morphemes: Morpheme[], lexicon: Lexicon | undefined): Mor
   return out;
 }
 
+/*
+ * Compound verbs the analyser split. IPADIC knows most as words — 書き込む,
+ * 振り返る, 落ち込む — but splits a few into a stem and one of its helper
+ * verbs: 入れ込む came back as 入れ + 込む, two words looked up apart. Where
+ * JMdict has the compound as a verb, the two are one word again; where it
+ * does not — 食べ始める, 読み終わる — they stay as they are.
+ */
+
+/**
+ * The compound a verb stem and the helper verb after it would make: 入れ + 込ん
+ * → 入れ込む. Not the helpers that are grammar — 来てる is 来る ongoing, not a
+ * verb 来てる — and not a stem of する: 賞賛し合う is 賞賛する + 合う, and
+ * joining し + 合う took the する from 賞賛.
+ */
+function compoundVerbAt(morphemes: Morpheme[], i: number): string | undefined {
+  const stem = morphemes[i];
+  const helper = morphemes[i + 1];
+  if (!stem || !helper || stem.pos !== '動詞' || stem.pos1 !== '自立' || stem.conjForm !== '連用形') return undefined;
+  if (stem.lemma === 'する') return undefined;
+  if (helper.pos !== '動詞' || helper.pos1 !== '非自立' || !helper.lemma) return undefined;
+  if (AUX_VERBS.has(helper.lemma) || CONTRACTIONS.has(helper.lemma)) return undefined;
+  return stem.surface + helper.lemma;
+}
+
+const VERB_CODE = /^v(1|5|k|s-i|z)/;
+
+function joinCompoundVerbs(morphemes: Morpheme[], lexicon: Lexicon | undefined): Morpheme[] {
+  if (!lexicon) return morphemes;
+  const out: Morpheme[] = [];
+  for (let i = 0; i < morphemes.length; i++) {
+    const form = compoundVerbAt(morphemes, i);
+    const stem = morphemes[i]!;
+    const helper = morphemes[i + 1];
+    if (form && helper && lexicon(form)?.some((e) => e.pos?.some((p) => VERB_CODE.test(p)))) {
+      out.push({
+        surface: stem.surface + helper.surface,
+        lemma: form,
+        reading: stem.reading && helper.reading ? stem.reading + helper.reading : undefined,
+        pos: '動詞', pos1: '自立', conjForm: helper.conjForm,
+      });
+      i++;
+      continue;
+    }
+    out.push(stem);
+  }
+  return out;
+}
+
 /**
  * A verb stem made a noun by a noun suffix: 食べ + 放題, 使い + 方. Not the
  * voice endings — させる, られる are suffixes too in IPADIC, but verbs.
@@ -567,6 +681,10 @@ function nounSuffixed(group: Morpheme[]): boolean {
  */
 export function lexiconQueries(morphemes: Morpheme[]): string[] {
   const out = new Set<string>(compoundQueries(morphemes));
+  for (let i = 0; i < morphemes.length; i++) {
+    const verb = compoundVerbAt(morphemes, i);
+    if (verb) out.add(verb);
+  }
   for (const group of groups(morphemes)) {
     // 保てる: whether the dictionary has it, and whether it has 保つ.
     const potential = group[0] ? potentialOf(group[0], undefined) : undefined;
@@ -742,6 +860,53 @@ function merge(group: Morpheme[], lexicon: Lexicon | undefined): MergedToken {
   };
 }
 
+/**
+ * Two single kanji the dictionary has no word for: 事 + the suffix 談, in a
+ * subtitle that meant 示談 and was typed 事談. Merged, the group was looked
+ * up as its noun — 事, こと, "thing" — under all of 事談, which said
+ * something the line does not. As two words, each is what it is. A longer
+ * noun keeps its suffix: 学生達 is still 学生.
+ */
+function unknownPair(group: Morpheme[], lexicon: Lexicon | undefined): boolean {
+  const [head, tail] = group;
+  if (!lexicon || group.length !== 2 || !head || !tail) return false;
+  if (head.pos !== '名詞' || head.pos1 === '数' || tail.pos1 !== '接尾') return false;
+  if (head.surface.length !== 1 || tail.surface.length !== 1 || !KANJI_ONLY.test(head.surface + tail.surface)) return false;
+  return !lexicon(head.surface + tail.surface)?.length;
+}
+
+/*
+ * Forms said in more than one word: 待たなければ + ならない is "must", 待って
+ * + も + いい "may". The words stay apart — ならない and いい are words of their
+ * own — and the verb carries the name of what they make together, in place
+ * of the pieces it would otherwise list ("negative · conditional").
+ */
+const MUST_FOLLOW = /^(ならない|ならぬ|ならん|なりません|いけない|いけません|だめ|ダメ)/;
+const MAY_FOLLOW = /^(いい|よい|良い|かまわない|構わない|大丈夫)/;
+
+function constructions(tokens: MergedToken[]): MergedToken[] {
+  const say = (t: MergedToken, drop: string[], label: string): void => {
+    t.inflections = [...t.inflections.filter((g) => !drop.includes(g)), label];
+  };
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i]!;
+    if (!t.inflections.length) continue;
+    const next = tokens[i + 1]?.surface ?? '';
+    const after = tokens[i + 2]?.surface ?? '';
+    if (/(なければ|なけりゃ|なくては|なくちゃ|なきゃ)$/.test(t.surface) && MUST_FOLLOW.test(next)) {
+      say(t, ['negative', 'conditional', 'te-form'], 'must');
+    } else if (/[てで]$/.test(t.surface) && next === 'は' && MUST_FOLLOW.test(after)) {
+      say(t, ['te-form'], 'must not');
+    } else if (/なくて$/.test(t.surface) && next === 'も' && MAY_FOLLOW.test(after)) {
+      say(t, ['negative', 'te-form'], "don't have to");
+    } else if (/[てで]$/.test(t.surface) && next === 'も' && MAY_FOLLOW.test(after)) {
+      say(t, ['te-form'], 'may');
+    }
+  }
+  return tokens;
+}
+
 export function mergeMorphemes(morphemes: Morpheme[], lexicon?: Lexicon): MergedToken[] {
-  return groups(joinCompounds(morphemes, lexicon)).map((group) => merge(group, lexicon));
+  return constructions(groups(joinCompoundVerbs(joinCompounds(morphemes, lexicon), lexicon)).flatMap((group) =>
+    unknownPair(group, lexicon) ? group.map((m) => merge([m], lexicon)) : [merge(group, lexicon)]));
 }

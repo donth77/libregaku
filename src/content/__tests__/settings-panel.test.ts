@@ -176,22 +176,30 @@ describe('settings panel selects', () => {
     }
   });
 
-  it('keeps the translation and the definitions apart, each with its own languages', async () => {
+  it('asks for your language once, and for a definitions language only where the dictionary has none in it', async () => {
     const root = buildSettings(() => {});
-    const translation = root.querySelector<HTMLSelectElement>('select[name=native]')!;
+    const yours = selectFor(root, 'Your language');
     const definitions = root.querySelector<HTMLSelectElement>('select[name=definitions]')!;
+    const row = definitions.closest('label.set') as HTMLElement;
     const codes = (sel: HTMLSelectElement): string[] => Array.from(sel.options).map((o) => o.value);
-    expect(codes(translation)).toEqual(expect.arrayContaining(['en', 'ja', 'zh', 'ko', 'es']));
-    expect(codes(translation)).not.toContain('sl');
+    expect(codes(yours)).toEqual(expect.arrayContaining(['en', 'ja', 'zh', 'ko', 'es']));
+    expect(codes(yours)).not.toContain('sl');
     expect(codes(definitions)).toEqual(expect.arrayContaining(['en', 'hu', 'sl']));
-    // Definitions are a choice only where the language learned has a dictionary.
-    expect((definitions.closest('label.set') as HTMLElement).hidden).toBe(false);
-    await setSetting('target', 'es');
+    // English has definitions of its own: one row.
+    expect(row.hidden).toBe(true);
     try {
+      // Korean has none, so a second row asks which to use instead.
+      yours.value = 'ko';
+      yours.dispatchEvent(new Event('change', { bubbles: true }));
+      expect(row.hidden).toBe(false);
+      expect(hintOf(definitions).textContent).toBe("The dictionary has no definitions in Korean, so they're shown in this language.");
+      // A language learned without a dictionary has no definitions to choose.
+      await setSetting('target', 'es');
       syncSettingsControls(root);
-      expect((definitions.closest('label.set') as HTMLElement).hidden).toBe(true);
+      expect(row.hidden).toBe(true);
     } finally {
       await setSetting('target', 'ja');
+      await setSetting('native', 'en');
     }
   });
 

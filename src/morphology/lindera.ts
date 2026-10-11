@@ -52,29 +52,54 @@ export class LinderaSegmenter implements Segmenter {
   async segment(text: string): Promise<Token[]> {
     const hit = this.#cache.get(text);
     if (hit) return hit;
-
-    // Stretched vowels are read as ー, and dropped where IPADIC cannot read
-    // them so; either way the words go back on the line as written.
-    let used = forAnalysis(text);
-    let res = await analyse(used.text);
-    let analysed = toTokens(used.text, res.tokens, lexiconFrom(res.lexicon));
-    const drop = marksToDrop(analysed, used);
-    if (drop.size) {
-      used = forAnalysis(text, drop);
-      res = await analyse(used.text);
-      analysed = toTokens(used.text, res.tokens, lexiconFrom(res.lexicon));
-    }
-    const out = used.text === text ? analysed : restretched(analysed, text, used.at);
+    const { tokens, complete } = await segmentWith(text, analyse);
     // An analysis made before the dictionary loaded reads numbers and prefixed
     // words less well; keep it for this call only, so the line improves once
     // the dictionary is there.
-    if (res.complete !== false) {
+    if (complete) {
       // Bounded: a long film is a few thousand lines, and they are short.
       if (this.#cache.size > 4000) this.#cache.clear();
-      this.#cache.set(text, out);
+      this.#cache.set(text, tokens);
     }
-    return out;
+    return tokens;
   }
+}
+
+/** What the analyser answers for one piece of text. */
+export type Analyse = (text: string) => Promise<Analysis & { tokens: Analysed[] }>;
+
+/**
+ * A line into words, with whatever analyser is given: the offscreen
+ * document's here, the test harness's in Node, so both run the same steps.
+ * `complete` is false when an answer could have known more — the dictionary
+ * was not there yet.
+ */
+export async function segmentWith(text: string, analyse: Analyse): Promise<{ tokens: Token[]; complete: boolean }> {
+  // Stretched vowels are read as ー, and dropped where IPADIC cannot read
+  // them so; either way the words go back on the line as written.
+  let used = forAnalysis(text);
+  let res = await analyse(used.text);
+  let analysed = toTokens(used.text, res.tokens, lexiconFrom(res.lexicon));
+  const drop = marksToDrop(analysed, used);
+  if (drop.size) {
+    used = forAnalysis(text, drop);
+    res = await analyse(used.text);
+    analysed = toTokens(used.text, res.tokens, lexiconFrom(res.lexicon));
+  }
+  let out = used.text === text ? analysed : restretched(analysed, text, used.at);
+  // A っ put in for stress — 全っ然 — is read without it where the kanji
+  // either side then make one word, and goes back on the line as written.
+  const stress = stressToDrop(out, text);
+  if (stress.size) {
+    const tried = forAnalysis(text, new Set([...drop, ...stress]));
+    const again = await analyse(tried.text);
+    const read = restretched(toTokens(tried.text, again.tokens, lexiconFrom(again.lexicon)), text, tried.at);
+    if (stressRead(read, stress)) {
+      out = read;
+      res = again;
+    }
+  }
+  return { tokens: out, complete: res.complete !== false };
 }
 
 /** One request to the offscreen document's analyser. */
@@ -89,6 +114,9 @@ async function analyse(text: string): Promise<Analysis & { tokens: Analysed[] }>
 
 /** Marks that stretch a vowel in casual writing: は〜い, う～ん, ね~. */
 const STRETCH = new Set(['〜', '～', '~', '〰']);
+/** A small つ, which casual writing also puts inside a word for stress: 全っ然, 本っ当. */
+const SOKUON = new Set(['っ', 'ッ']);
+const KANJI = /[\u4E00-\u9FFF\u3400-\u4DBF々]/u;
 const KANA = /[\p{sc=Hiragana}\p{sc=Katakana}]/u;
 const HIRAGANA = /\p{sc=Hiragana}/u;
 
@@ -121,6 +149,8 @@ export function forAnalysis(text: string, drop: ReadonlySet<number> = new Set())
   let inRun = false;
   for (let i = 0; i < text.length; i++) {
     const c = text[i]!;
+    // A っ put in for stress, read without (stressToDrop).
+    if (SOKUON.has(c) && drop.has(i)) continue;
     const mark = afterKana && STRETCH.has(c);
     const long = afterHiragana && c === 'ー';
     if (mark || long) {
@@ -143,6 +173,28 @@ export function forAnalysis(text: string, drop: ReadonlySet<number> = new Set())
   }
   at.push(text.length);
   return { text: out, at, stretched };
+}
+
+/**
+ * A っ put inside a word for stress, which split it for the analyser:
+ * between two kanji, with no word spanning both. 全っ然 came back as 全 +
+ * っ + 然, the 然 read as しか. 真っ赤 is spelled with its っ and comes back
+ * whole, so it is left alone. `tokens` are on the line as written;
+ * positions are in it.
+ */
+export function stressToDrop(tokens: readonly Token[], text: string): Set<number> {
+  const drop = new Set<number>();
+  for (let i = 1; i < text.length - 1; i++) {
+    if (!SOKUON.has(text[i]!) || !KANJI.test(text[i - 1]!) || !KANJI.test(text[i + 1]!)) continue;
+    if (tokens.some((t) => t.start <= i - 1 && t.end >= i + 2)) continue;
+    drop.add(i);
+  }
+  return drop;
+}
+
+/** Read without them, each dropped っ sits inside one word with the kanji either side. */
+export function stressRead(tokens: readonly Token[], drop: ReadonlySet<number>): boolean {
+  return [...drop].every((i) => tokens.some((t) => t.start <= i - 1 && t.end >= i + 2));
 }
 
 /** Stretches IPADIC left on their own, as a word that is only ー: where they stand in the line. */

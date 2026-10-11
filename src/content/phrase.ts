@@ -23,6 +23,62 @@ export function selectedWords(root: ShadowRoot, within: Element, selector: strin
   );
 }
 
+/** A phrase picked out on a line: its words, as written, and the word it ends on. */
+export interface PhrasePick {
+  words: Token[];
+  text: string;
+  last: HTMLElement;
+}
+
+/**
+ * Mark the words a selection touches, and whatever lies between them, so the
+ * line draws the selection itself: one band of even height across whole
+ * words. The browser's own highlight drew a box per word, taller or shorter
+ * as each had a reading or not, and stopped where the click landed. True
+ * when a phrase — two words or more, on one line — is marked.
+ */
+export function markPhrase(root: ShadowRoot, within: Element, selector: string): boolean {
+  for (const el of Array.from(within.querySelectorAll('.inphrase'))) el.classList.remove('inphrase', 'phrase-last');
+  const picked = selectedWords(root, within, selector);
+  const first = picked[0];
+  const last = picked[picked.length - 1];
+  if (picked.length < 2 || !first || !last || first.parentNode !== last.parentNode) return false;
+  for (let n: Element | null = first; n; n = n.nextElementSibling) {
+    if (!n.classList.contains('br')) n.classList.add('inphrase');
+    if (n === last) break;
+  }
+  last.classList.add('phrase-last');
+  return true;
+}
+
+/** The phrase a marked word is part of, or undefined when it is in none. */
+export function phraseAt(el: HTMLElement, selector: string): PhrasePick | undefined {
+  if (!el.classList.contains('inphrase') || !el.parentElement) return undefined;
+  const words = Array.from(el.parentElement.querySelectorAll<HTMLElement>(`${selector}.inphrase`))
+    .filter((w) => w.dataset.tok);
+  const first = words[0];
+  const last = words[words.length - 1];
+  if (words.length < 2 || !first || !last) return undefined;
+  const text = textFrom(first, last);
+  if (text === null) return undefined;
+  return { words: words.map((w) => JSON.parse(w.dataset.tok ?? '{}') as Token), text, last };
+}
+
+/**
+ * Widen the selection to the whole words it touches. Shift-clicking a second
+ * word extends the selection only to the point clicked, often one character
+ * into it; the phrase looked up is whole words, and the highlight should say
+ * so.
+ */
+export function selectWhole(root: ShadowRoot, first: HTMLElement, last: HTMLElement): void {
+  const sel = (root as ShadowRoot & { getSelection?: () => Selection | null }).getSelection?.();
+  try {
+    sel?.setBaseAndExtent(first, 0, last, last.childNodes.length);
+  } catch {
+    /* a selection the browser will not move: the phrase is still looked up whole */
+  }
+}
+
 /**
  * The text from one word to another as it was written — the words'
  * surfaces and whatever sits between them, spaces included, but never the

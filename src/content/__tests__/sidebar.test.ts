@@ -44,6 +44,7 @@ import { Transcript } from '../transcript';
 import { closePopup, showPopup } from '../popup';
 import { setSetting } from '../../settings';
 import type { Segmenter, Token } from '../../morphology/types';
+import type { LookupResult } from '../../dict/client';
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -147,6 +148,14 @@ describe('tooltips in the panel', () => {
   });
 });
 
+describe('picking a phrase in the transcript', () => {
+  it('lets the line be selected, though the player it sits in turns selection off', async () => {
+    const { root } = await build();
+    // YouTube's player sets user-select: none, and the panel inherits it unless the text says otherwise.
+    expect(root.querySelector('style')?.textContent).toMatch(/\.tx \{[^}]*user-select: text/);
+  });
+});
+
 describe('the marked words', () => {
   type Mark = { word: string; status: 'tracking' | 'known' | 'ignored' | 'unknown' };
   const rows = (root: ShadowRoot): HTMLElement[] => Array.from(root.querySelectorAll<HTMLElement>('.trow'));
@@ -169,6 +178,7 @@ describe('the marked words', () => {
     expect(chip(root, 'tracking').getAttribute('aria-pressed')).toBe('true');
     expect(chip(root, 'tracking').textContent).toBe('Tracked2');
     expect(listed(root)).toEqual(['勉強', '計画']);
+    expect(root.querySelector('.tintro')?.textContent).toBe("2 words you're tracking, underlined wherever they come up.");
 
     const [add, stop] = Array.from(rows(root)[0]!.querySelectorAll<HTMLButtonElement>('.btnrow button'));
     expect(stop!.textContent).toBe('Stop tracking');
@@ -209,6 +219,61 @@ describe('the marked words', () => {
     chip(root, 'known').click();
     expect(listed(root)).toEqual(['猫']);
     expect(rows(root)[0]!.querySelector('.btnrow button')?.textContent).toBe('Unmark known');
+  });
+
+  it('finds a word in the open list by the word, its reading or its meaning', async () => {
+    const marks: Mark[] = [
+      { word: '保つ', status: 'known' }, { word: '猫', status: 'known' }, { word: '犬', status: 'known' },
+    ];
+    const MEANINGS: Record<string, [string, string]> = {
+      保つ: ['たもつ', 'to keep'], 猫: ['ねこ', 'cat'], 犬: ['いぬ', 'dog'],
+    };
+    const lookup = vi.fn(async (t: Token): Promise<LookupResult> => {
+      const [reading, gloss] = MEANINGS[t.surface]!;
+      return { state: 'ok', entries: [{ id: t.surface, word: t.surface, reading, common: true, senses: [{ pos: ['n'], glosses: [gloss] }] }] };
+    });
+    const { root } = await build({ marked: () => [...marks], unmark: async () => {}, lookup });
+    root.querySelector<HTMLButtonElement>('[role=tab][data-mode="words"]')!.click();
+    chip(root, 'known').click();
+    const find = root.querySelector<HTMLInputElement>('.wfind')!;
+    const search = async (q: string): Promise<void> => {
+      find.value = q;
+      find.dispatchEvent(new Event('input'));
+      await flush();
+      await flush();
+    };
+
+    await search('猫');
+    expect(listed(root)).toEqual(['猫']);
+    expect(root.querySelector('.tintro')?.textContent).toBe('1 of 3 words.');
+    // Meanings come from the dictionary: the search looks them up, then looks again.
+    await search('keep');
+    expect(listed(root)).toEqual(['保つ']);
+    await search('いぬ');
+    expect(listed(root)).toEqual(['犬']);
+    await search('horse');
+    expect(root.querySelector('.wordsview .empty')?.textContent).toBe('No word in this list matches “horse”.');
+    await search('');
+    expect(listed(root)).toEqual(['保つ', '猫', '犬']);
+  });
+
+  it('copies the open list, with readings and meanings, as a file Anki imports', async () => {
+    const marks: Mark[] = [{ word: '猫', status: 'tracking' }, { word: '犬', status: 'tracking' }];
+    const lookup = async (t: Token): Promise<LookupResult> => ({
+      state: 'ok',
+      entries: [{ id: t.surface, word: t.surface, reading: t.surface === '猫' ? 'ねこ' : 'いぬ', common: true, senses: [{ pos: ['n'], glosses: [t.surface === '猫' ? 'cat' : 'dog'] }] }],
+    });
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    const { root } = await build({ marked: () => [...marks], unmark: async () => {}, addWord: async () => '', lookup });
+    root.querySelector<HTMLButtonElement>('[role=tab][data-mode="words"]')!.click();
+    const copy = Array.from(root.querySelectorAll<HTMLButtonElement>('.wbar button')).find((b) => b.textContent === 'Copy')!;
+    copy.click();
+    await flush();
+    await flush();
+    const text = writeText.mock.calls[0]?.[0] as string;
+    expect(text.split('\n').slice(3)).toEqual(['猫\tねこ\tcat', '犬\tいぬ\tdog']);
+    expect(root.querySelector('.wsaid')?.textContent).toBe('2 words copied.');
   });
 
   it('says what each list is for when it is empty, and has no tab without marks to show', async () => {

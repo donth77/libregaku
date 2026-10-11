@@ -145,17 +145,16 @@ async function main(): Promise<void> {
 async function offerCapture(tabId: number, state: PageState): Promise<void> {
   const text = $('captureText');
   const go = $<HTMLButtonElement>('captureGo');
-  $('capture').hidden = false;
+  const section = $('capture');
+  // Already recording: nothing to ask, so nothing shown.
+  if (state.capturing) return;
+  section.hidden = false;
   const granted = await chrome.permissions.contains({ permissions: ['tabCapture'] }).catch(() => false);
   if (!granted) {
     text.textContent = "Recording sentence audio here needs permission to capture this tab's sound.";
     go.textContent = 'Allow in settings';
     go.hidden = false;
     go.onclick = () => void chrome.runtime.openOptionsPage();
-    return;
-  }
-  if (state.capturing) {
-    text.textContent = 'Recording sentence audio on this tab.';
     return;
   }
   text.textContent = "Netflix's sound can be recorded only after you turn it on for this tab.";
@@ -166,8 +165,11 @@ async function offerCapture(tabId: number, state: PageState): Promise<void> {
     const r = (await chrome.runtime.sendMessage({ type: 'tab-capture-start', tabId }).catch(() => null)) as
       | { ok?: boolean; error?: string }
       | null;
-    text.textContent = r?.ok ? 'Recording sentence audio on this tab.' : (r?.error ?? "Chrome couldn't record this tab.");
-    go.hidden = Boolean(r?.ok);
+    if (r?.ok) {
+      section.hidden = true;
+      return;
+    }
+    text.textContent = r?.error ?? "Chrome couldn't record this tab.";
     go.disabled = false;
   };
 }

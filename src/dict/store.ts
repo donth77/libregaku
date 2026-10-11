@@ -258,6 +258,44 @@ export async function lexicon(forms: string[]): Promise<Record<string, Reading[]
   return out;
 }
 
+/* ── Words for the analyser (src/morphology/extra-words.ts) ─────── */
+
+/** What the dictionary holds now, to file a list built from it under. Null when it is not complete. */
+export async function dataMark(): Promise<string | null> {
+  return storedMark(await open());
+}
+
+/** Every entry, one at a time — for building something from all of them without holding them all. */
+export async function eachEntry(fn: (entry: Entry) => void): Promise<void> {
+  const db = await open();
+  await new Promise<void>((resolve, reject) => {
+    const req = db.transaction(ENTRIES).objectStore(ENTRIES).openCursor();
+    req.onsuccess = () => {
+      const cursor = req.result;
+      if (!cursor) return resolve();
+      fn(cursor.value as Entry);
+      cursor.continue();
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+/** A list of words built for the analyser, if one was filed under `mark`. */
+export async function storedWords(mark: string): Promise<string | null> {
+  const db = await open();
+  const got = await request<{ mark: string; csv: string } | undefined>(
+    db.transaction(META).objectStore(META).get('extraWords'),
+  ).catch(() => undefined);
+  return got?.mark === mark ? got.csv : null;
+}
+
+export async function storeWords(mark: string, csv: string): Promise<void> {
+  const db = await open();
+  const tx = db.transaction(META, 'readwrite');
+  tx.objectStore(META).put({ mark, csv }, 'extraWords');
+  await done(tx);
+}
+
 /* ── KANJIDIC2 ──────────────────────────────────────────────────── */
 
 /** The shape `buildKanji` writes; bumped when toKanji changes what is stored. */

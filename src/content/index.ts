@@ -20,7 +20,8 @@ import { buildStatusMap, lemmaReading, type OverrideStatus, type Status, type St
 import { loadOverrides, setMark, syncMarks, type MarkSync } from '../anki/marks';
 import { furigana } from '../morphology/furigana';
 import {
-  DICTIONARIES, TIER2_LANGS, featuresOf, jmdictEditionFor, loadSettings, nextRuby, onSettingsChange, rubyLabel,
+  DICTIONARIES, TIER2_LANGS, definitionLanguage, featuresOf, jmdictEditionFor, loadSettings, nextRuby,
+  onSettingsChange, rubyLabel,
   setSetting, settings, underlineVars,
 } from '../settings';
 import {
@@ -28,7 +29,7 @@ import {
 } from './popup';
 import { outsideScope } from './settings-panel';
 import { clearFlash, flash as flashOn } from './flash';
-import { phraseToken } from './phrase';
+import { phraseAt, phraseToken } from './phrase';
 import { lineReading } from './line-card';
 import {
   elementRecorder, extensionFor, isEncrypted, stillOf, tabCaptured, tabRecorder, type LineRecorder, type Media,
@@ -340,7 +341,7 @@ async function makeSegmenter(): Promise<Segmenter | null> {
   if (DICTIONARIES[lang]) {
     void (async () => {
       try {
-        const d = await ensureDictionary(jmdictEditionFor(settings().definitions));
+        const d = await ensureDictionary(jmdictEditionFor(definitionLanguage(settings())));
         log(
           d.ready
             ? 'JMdict ready — click a word to look it up'
@@ -350,6 +351,9 @@ async function makeSegmenter(): Promise<Segmenter | null> {
         if (d.ready) {
           // Merging consults the dictionary — for counters, prefixes and the
           // like — so lines analysed before it arrived carry guesses. Again.
+          // The analyser itself knows more now too (JMdict's words), so its
+          // own cache of lines goes with them.
+          if (segmenter instanceof LinderaSegmenter) segmenter = new LinderaSegmenter();
           segmented = new Map();
           lineTokens = new Map();
           activeKey = STALE;
@@ -500,7 +504,7 @@ async function alsoInVideo(token: Token, here?: number): Promise<AlsoLine[]> {
 function charactersFor(token: Token, result: LookupResult): Promise<Characters> | undefined {
   // Only where the language has characters to list, and the card is set to show them.
   if (!DICTIONARIES[targetLang()] || !featuresOf(targetLang()).characters || !settings().cardKanji) return undefined;
-  return charactersOf(draftFor(result, token, '').expression, settings().definitions)
+  return charactersOf(draftFor(result, token, '').expression, definitionLanguage(settings()))
     .catch(() => ({ label: '', items: [] }));
 }
 
@@ -1030,11 +1034,12 @@ function pressPause(): void {
 }
 
 function wireHover(o: Overlay, mount: HTMLElement): void {
-  o.onHover((tok, el, shift) => {
+  o.onHover((word, at, shift, pick) => {
     clearTimeout(hoverTimer);
-    hovering = el;
+    // A word in a marked phrase is the phrase, and its last word stands for it.
+    hovering = pick ? pick.last : at;
 
-    if (!tok || !el) {
+    if (!word || !at) {
       // Leaving the word is often moving onto its card, to read it or press
       // Add. Playback resumes when the card closes (its onClose), not here —
       // resuming here restarted the video on the way to the card.
@@ -1045,6 +1050,9 @@ function wireHover(o: Overlay, mount: HTMLElement): void {
     if (how === 'click' || (how === 'shift' && !shift)) return;
     // A line replaying to be recorded passes under the cursor; it is not being read.
     if (recordingLine) return;
+    // A word in a marked phrase is the phrase: pointing at it again brings its card back.
+    const tok = pick ? phrase(pick.words, pick.text) : word;
+    const el = pick ? pick.last : at;
 
     // Already showing this word — do not restart anything.
     if (popupKey() === `${tok.start}:${tok.surface}`) {
@@ -1066,13 +1074,14 @@ function wireHover(o: Overlay, mount: HTMLElement): void {
  * on Shift: the card opens then, without moving the cursor off and back.
  */
 function lookUnderPointer(): void {
-  const el = hovering;
-  if (settings().interaction !== 'shift' || recordingLine || !currentMount || !el?.isConnected || !el.dataset.tok) return;
-  const tok = JSON.parse(el.dataset.tok) as Token;
+  const at = hovering;
+  if (settings().interaction !== 'shift' || recordingLine || !currentMount || !at?.isConnected || !at.dataset.tok) return;
+  const pick = phraseAt(at, '.t');
+  const tok = pick ? phrase(pick.words, pick.text) : (JSON.parse(at.dataset.tok) as Token);
   if (popupKey() === `${tok.start}:${tok.surface}`) return;
   clearTimeout(hoverTimer);
   pauseForHover();
-  void openLookup(currentMount, el, tok, true);
+  void openLookup(currentMount, pick ? pick.last : at, tok, true);
 }
 
 /** Resume a hover pause when the card goes away — unless another took its place. */
@@ -1904,9 +1913,7 @@ function act(action: KeyAction): void {
  * transcript itself — it used to close the panel showing settings instead.
  */
 function showTranscript(): void {
-  if (!sidebar) return;
-  if (sidebar.isOpen && sidebar.mode !== 'transcript') sidebar.setMode('transcript');
-  else sidebar.toggle();
+  sidebar?.toggleTranscript();
   header?.update();
 }
 
@@ -1971,7 +1978,7 @@ void loadSettings().then(async (s) => {
   log(`lookup opens on ${s.interaction}`);
   await reloadQueued();
   appearance = { size: s.subtitleSize, bottom: s.subtitleBottom, dual: s.dualSubtitles };
-  languages = { target: s.target, native: s.native, definitions: s.definitions };
+  languages = { target: s.target, native: s.native, definitions: definitionLanguage(s) };
   scopeRead = s.statusScope;
   settingsReady = true;
   void start();
@@ -2006,10 +2013,10 @@ onSettingsChange((s) => {
   overlay?.setColors(underlineVars(s));
 
   const languageChanged =
-    s.target !== languages.target || s.native !== languages.native || s.definitions !== languages.definitions;
+    s.target !== languages.target || s.native !== languages.native || definitionLanguage(s) !== languages.definitions;
   const dualTurnedOn = s.dualSubtitles && !appearance.dual;
   appearance = { size: s.subtitleSize, bottom: s.subtitleBottom, dual: s.dualSubtitles };
-  languages = { target: s.target, native: s.native, definitions: s.definitions };
+  languages = { target: s.target, native: s.native, definitions: definitionLanguage(s) };
 
   if (languageChanged) {
     // A new target needs a new analyser and new tracks; a new native language
@@ -2096,7 +2103,9 @@ chrome.runtime.onMessage.addListener((msg: { type?: string; track?: string; seco
   }
 
   if (msg?.type === 'lg-toggle-sidebar') {
+    // The toolbar popup's Toggle Sidebar: open or close the panel, on whatever it was showing.
     sidebar?.toggle();
+    header?.update();
     respond({ ok: true, open: sidebar?.isOpen ?? false });
     return true;
   }

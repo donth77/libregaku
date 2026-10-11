@@ -1,10 +1,11 @@
 /*
  * The help page, in the settings page's colours (options.css): navy ground,
- * paper ink, coral kept for what draws the eye on purpose — where you are in
- * the contents, and the words a search found.
+ * paper ink, and one accent, coral, for where you are in the contents and
+ * the words a search found. Structure comes from type, rules and space — no
+ * cards or pills, which read as decoration rather than as anything meant.
  */
 :root {
-  --bg: #0D111C; --surface: #141A2A; --raised: #161D2E;
+  --bg: #0D111C; --surface: #141A2A;
   --line: #263048; --rule: #1C2436;
   --ink: #F2F5FC; --text: #CDD4E4; --muted: #A3ACC4; --faint: #7A84A0; --accent: #E5806C; --focus: #F2F5FC;
 }
@@ -28,51 +29,47 @@ h1 svg { display: block; margin-left: -4px; }
 
 /* Chapters down the side; the help beside them. */
 .layout { display: grid; grid-template-columns: 200px minmax(0, 720px); gap: 56px; align-items: start; }
-.toc { position: sticky; top: 28px; display: flex; flex-direction: column; border-left: 1px solid var(--line); }
-.toc-title {
-  margin: 0 0 8px 15px; color: var(--faint);
-  font: 600 11.5px/1.4 ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase;
+.toc {
+  position: sticky; top: 28px; display: flex; flex-direction: column;
+  border-left: 1px solid var(--line);
 }
+.toc-title { margin: 0 0 8px 15px; color: var(--muted); font-size: 13px; font-weight: 600; }
+/* As the settings page marks its section: a plain track, and a straight accent line on the chapter being read. */
 .toc a {
-  display: block; margin-left: -1px; padding: 6px 14px; border-left: 2px solid transparent;
+  display: block; margin-left: -1px; padding: 6px 14px;
+  border-left: 2px solid transparent;
   color: var(--muted); text-decoration: none; font-size: 14.5px; line-height: 1.35;
 }
 .toc a:hover { color: var(--ink); }
 .toc a[aria-current] { color: var(--ink); border-left-color: var(--accent); }
 .toc a[hidden] { display: none; }
 
-/* What the page is, then the search — first, and wide, because it is what the page is for. */
+/* What the page is, then the search. */
 .hero .title { margin: 0; font: 700 34px/1.15 system-ui, -apple-system, sans-serif; letter-spacing: -.02em; color: var(--ink); }
 .hero .intro { margin: 8px 0 0; color: var(--muted); font-size: 16px; }
-.find { position: sticky; top: 0; z-index: 2; padding: 18px 0 12px; background: var(--bg); }
+.find { position: sticky; top: 0; z-index: 2; padding: 18px 0 10px; background: var(--bg); }
 .find input {
-  width: 100%; padding: 14px 18px; border-radius: 12px;
+  width: 100%; padding: 11px 14px; border-radius: 8px;
   background: var(--surface); color: var(--ink); border: 1px solid var(--line);
-  font: 16.5px/1.3 system-ui, -apple-system, "Hiragino Sans", sans-serif;
+  font: 16px/1.3 system-ui, -apple-system, "Hiragino Sans", sans-serif;
 }
 .find input::placeholder { color: var(--faint); }
-.find input:focus { border-color: #3A4560; }
-.popular { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 2px 0 8px; }
-.popular-label { margin-right: 4px; color: var(--faint); font: 600 11.5px/1 ui-monospace, monospace; letter-spacing: .08em; text-transform: uppercase; }
-.popular a {
-  padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface);
-  color: var(--text); text-decoration: none; font-size: 13.5px;
-}
-.popular a:hover { border-color: #3A4560; color: var(--ink); }
+.find input:focus-visible { outline: 1px solid #5A6480; outline-offset: 0; border-color: #5A6480; }
+.popular { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; margin: 4px 0 8px; font-size: 14.5px; }
+.popular-label { color: var(--muted); }
+.popular a { color: var(--text); }
+.popular a:hover { color: var(--ink); }
 .none { margin: 24px 0; color: var(--muted); }
 
-/* A chapter opens with a heading band, as a settings section does. */
+/* A chapter: its heading, a line on what it covers, and a rule between chapters. */
 .chapter { margin: 40px 0 0; }
+.chapter + .chapter { margin-top: 48px; padding-top: 36px; border-top: 1px solid var(--line); }
 .chapter[hidden] { display: none; }
-.chapter-head {
-  padding: 16px 20px 17px; border-radius: 12px; background: var(--raised); border: 1px solid var(--line);
-}
-.chapter-head h2 { margin: 0; font: 700 22px/1.25 system-ui, -apple-system, sans-serif; letter-spacing: -.015em; color: var(--ink); }
-.chapter-head p { margin: 4px 0 0; color: var(--muted); font-size: 14.5px; line-height: 1.5; }
+.chapter-head h2 { margin: 0; font: 700 24px/1.25 system-ui, -apple-system, sans-serif; letter-spacing: -.015em; color: var(--ink); }
+.chapter-head p { margin: 4px 0 0; color: var(--muted); font-size: 15px; line-height: 1.5; }
 
 /* A how-to: its title, and what to do. */
-.topic { padding: 22px 4px 8px; }
-.topic + .topic { border-top: 1px solid var(--rule); }
+.topic { padding: 22px 0 6px; }
 .topic[hidden] { display: none; }
 .topic h3 {
   display: flex; align-items: baseline; gap: 10px; margin: 0 0 8px;
@@ -82,29 +79,25 @@ h1 svg { display: block; margin-left: -4px; }
 .topic h3:hover .anchor, .anchor:focus-visible { opacity: 1; }
 .topic p { margin: 0 0 12px; max-width: 66ch; }
 
-/* Steps: numbered markers, so a sequence reads as one. */
-.steps { list-style: none; counter-reset: step; margin: 4px 0 14px; padding: 0; max-width: 66ch; }
-.steps li { counter-increment: step; position: relative; padding: 0 0 10px 38px; }
-.steps li::before {
-  content: counter(step); position: absolute; left: 0; top: 1px;
-  width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
-  background: #1C2436; border: 1px solid #343E58; color: var(--ink);
-  font: 600 13px/1 system-ui, -apple-system, sans-serif;
-}
+/* Steps: a numbered list, as written. */
+.steps { margin: 4px 0 14px; padding-left: 1.4em; max-width: 66ch; }
+.steps li { padding: 0 0 6px 4px; }
+.steps li::marker { color: var(--muted); font-weight: 600; }
 
-/* A tip: set apart, quieter. */
-.tip {
-  padding: 11px 14px 11px 16px; border-radius: 10px; border-left: 3px solid #4A5675;
-  background: #121828; color: var(--text); font-size: 14.5px;
-}
+/* A table: the keys and what each does, a row each. */
+.grid { width: 100%; max-width: 66ch; margin: 4px 0 14px; border-collapse: collapse; font-size: 15px; }
+.grid th { padding: 0 12px 8px 0; text-align: left; color: var(--muted); font-size: 13px; font-weight: 600; }
+.grid td { padding: 9px 12px 9px 0; border-top: 1px solid var(--rule); vertical-align: top; }
+.grid td:first-child { width: 1%; white-space: nowrap; padding-right: 20px; }
+.grid kbd + kbd { margin-left: 4px; }
+
+/* A tip: an ordinary paragraph, led by its label. */
+.tip { color: var(--text); }
+.tip strong { color: var(--ink); font-weight: 600; }
 
 /* The path to a setting, so it reads as a place to go. */
-.path {
-  display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px;
-  padding: 1px 8px; border-radius: 6px; background: #1A2133; border: 1px solid #2A3348;
-  color: var(--ink); font-size: .92em; white-space: nowrap;
-}
-.path .sep { color: var(--faint); }
+.path { color: var(--ink); font-weight: 600; }
+.path .sep { color: var(--faint); font-weight: 400; padding: 0 2px; }
 kbd {
   display: inline-block; min-width: 1.7em; padding: 0 6px; border-radius: 5px; text-align: center;
   background: #1C2436; border: 1px solid #343E58; border-bottom-width: 2px; color: var(--ink);
@@ -116,14 +109,14 @@ mark { background: rgba(229, 128, 108, .28); color: var(--ink); border-radius: 3
 .questions .topic { padding: 0; }
 .questions .topic + .topic { border-top: 1px solid var(--rule); }
 details.topic summary {
-  display: flex; align-items: baseline; gap: 12px; padding: 16px 4px; cursor: pointer; list-style: none;
+  display: flex; align-items: baseline; gap: 12px; padding: 14px 0; cursor: pointer; list-style: none;
   font: 600 16.5px/1.4 system-ui, -apple-system, sans-serif; color: var(--ink);
 }
 details.topic summary::-webkit-details-marker { display: none; }
 details.topic summary::before { content: '+'; flex: none; width: 14px; color: var(--faint); font-weight: 600; }
 details.topic[open] summary::before { content: '–'; }
 details.topic summary:hover { color: #FFFFFF; }
-details.topic .body { padding: 0 4px 14px 30px; }
+details.topic .body { padding: 0 0 14px 26px; }
 
 @media (max-width: 980px) {
   .layout { grid-template-columns: minmax(0, 1fr); }
@@ -132,7 +125,6 @@ details.topic .body { padding: 0 4px 14px 30px; }
 @media (max-width: 600px) {
   .page { padding: 24px 16px 80px; }
   .hero .title { font-size: 28px; }
-  .path { white-space: normal; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }

@@ -418,6 +418,29 @@ describe('the transcript button', () => {
     bar.querySelector<HTMLButtonElement>('button[aria-keyshortcuts="S"]')!.click();
     expect(panel().style.display).toBe('none');
   });
+
+  it('opens on the transcript, whatever view the panel was closed on', async () => {
+    await lines([[0, 2, '食べる']]);
+    const bar = root('#libregaku-header');
+    const side = root('.libregaku-sidebar');
+    const panel = (): HTMLElement => side.querySelector<HTMLElement>('.panel')!;
+    const selected = (): string | null | undefined => side.querySelector('[role=tab][aria-selected="true"]')?.getAttribute('data-mode');
+    // Closed while showing Saved, from the panel's own close button.
+    side.querySelector<HTMLButtonElement>('[role=tab][data-mode="saved"]')!.click();
+    side.querySelector<HTMLButtonElement>('button[aria-label="Collapse the panel"]')!.click();
+    expect(panel().style.display).toBe('none');
+
+    bar.querySelector<HTMLButtonElement>('button[aria-keyshortcuts="S"]')!.click();
+    expect(panel().style.display).not.toBe('none');
+    expect(selected()).toBe('transcript');
+
+    // The same from the panel's tab at the player's edge.
+    side.querySelector<HTMLButtonElement>('[role=tab][data-mode="saved"]')!.click();
+    side.querySelector<HTMLButtonElement>('button[aria-label="Collapse the panel"]')!.click();
+    side.querySelector<HTMLButtonElement>('button.tab')!.click();
+    expect(panel().style.display).not.toBe('none');
+    expect(selected()).toBe('transcript');
+  });
 });
 
 describe('taking a card back', () => {

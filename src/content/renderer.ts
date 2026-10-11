@@ -1,6 +1,6 @@
 import { furigana } from '../morphology/furigana';
 import type { Token } from '../morphology/types';
-import { plainText, selectedWords, textFrom } from './phrase';
+import { markPhrase, phraseAt, plainText, selectWhole, selectedWords, textFrom, type PhrasePick } from './phrase';
 
 /**
  * The subtitle overlay.
@@ -57,6 +57,9 @@ const STYLE = `
   }
   .primary:empty, .secondary:empty { display: none; }
   .primary.has-ruby { padding-top: .5em; }
+  /* No room for readings that are not showing: furigana off, or only on new words and none here. */
+  .wrap.ruby-off .primary.has-ruby,
+  .wrap:not(.ruby-all) .primary.has-ruby:not(.has-new-ruby) { padding-top: 0; }
   .primary {
     font-size: var(--size); line-height: 1.8; color: #F2F5FC;
     display: flex; flex-wrap: wrap; justify-content: center;
@@ -68,13 +71,24 @@ const STYLE = `
     user-select: text;
   }
   .secondary { font-size: calc(var(--size) * .66); font-weight: 500; color: #D5DCEC; user-select: text; }
-  .t { position: relative; padding: 0 1px 4px; border-radius: 2px; cursor: pointer; }
-  .p { padding: 0 1px 4px; white-space: pre-wrap; }
+  /* Square corners: a rounded box bent each underline up at its ends. */
+  .t { position: relative; padding: 0 1px 4px; cursor: pointer; }
+  .p { position: relative; padding: 0 1px 4px; white-space: pre-wrap; }
   /* A line break in a flex row: a zero-height item as wide as the row pushes
      what follows onto the next one. A newline inside a span does not — it
      only made that span two lines tall beside the rest of the row. */
   .br { flex-basis: 100%; height: 0; }
   .t:hover { background: rgba(255,255,255,.15); }
+  /*
+   * A phrase: one band across its words, drawn by the words themselves
+   * (markPhrase) with the browser's own highlight hidden. Each word fills its
+   * own box, the same height for all, and the 2px gap after it.
+   */
+  .primary.phrased ::selection { background: transparent; }
+  .t.inphrase, .p.inphrase { background: rgba(96, 140, 255, .48); border-radius: 0; }
+  .t.inphrase:not(.phrase-last)::after, .p.inphrase:not(.phrase-last)::after {
+    content: ''; position: absolute; top: 0; bottom: 0; left: 100%; width: 2px; background: inherit;
+  }
   /*
    * Furigana is taken out of flow.
    *
@@ -132,13 +146,16 @@ const STYLE = `
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 `;
 
+/** Statuses whose readings show when furigana is on for new words only. */
+const isNew = (status: string): boolean => status === 'unknown' || status === 'learning';
+
 export class Overlay {
   #host: HTMLElement;
   #root: ShadowRoot;
   #primary: HTMLElement;
   #secondary: HTMLElement;
   #onToken?: (t: Token, el: HTMLElement) => void;
-  #onHover?: (t: Token | null, el: HTMLElement | null, shift?: boolean) => void;
+  #onHover?: (t: Token | null, el: HTMLElement | null, shift?: boolean, phrase?: PhrasePick) => void;
   #onPhrase?: (tokens: Token[], text: string, el: HTMLElement) => void;
   #onPress?: () => void;
   /** A selection just ended on the line; the click that follows is not a word's. */
@@ -170,6 +187,7 @@ export class Overlay {
     // On the document: a selection dragged from the box's edge leaves focus
     // on the page, and the copy event goes there rather than into this root.
     document.addEventListener('copy', this.#copy, true);
+    document.addEventListener('selectionchange', this.#onSelection);
 
     this.#primary.addEventListener('click', (e) => {
       if (this.#selected) {
@@ -193,6 +211,10 @@ export class Overlay {
       const text = textFrom(picked[0]!, last);
       if (text === null) return;
       this.#selected = true;
+      // After the browser's own handling of the release, which collapses a
+      // selection clicked inside: the phrase stays marked, to point at again.
+      const first = picked[0]!;
+      setTimeout(() => selectWhole(this.#root, first, last), 0);
       this.#onPhrase?.(picked.map((el) => JSON.parse(el.dataset.tok ?? '{}') as Token), text, last);
     });
 
@@ -201,7 +223,7 @@ export class Overlay {
       if ((e as MouseEvent).buttons & 1) return;
       const el = (e.target as HTMLElement).closest('.t') as HTMLElement | null;
       if (!el?.dataset.tok) return;
-      this.#onHover?.(JSON.parse(el.dataset.tok) as Token, el, (e as MouseEvent).shiftKey);
+      this.#onHover?.(JSON.parse(el.dataset.tok) as Token, el, (e as MouseEvent).shiftKey, phraseAt(el, '.t'));
     });
     this.#primary.addEventListener('mouseout', (e) => {
       const el = (e.target as HTMLElement).closest('.t') as HTMLElement | null;
@@ -214,6 +236,16 @@ export class Overlay {
   }
 
   /** Copying from the line copies it as it reads (see plainText). */
+  #selFrame = 0;
+  /** Redraw the phrase band as the selection moves, once a frame. */
+  #onSelection = (): void => {
+    if (this.#selFrame) return;
+    this.#selFrame = requestAnimationFrame(() => {
+      this.#selFrame = 0;
+      this.#primary.classList.toggle('phrased', markPhrase(this.#root, this.#primary, '.t'));
+    });
+  };
+
   #copy = (e: ClipboardEvent): void => {
     const sel = (this.#root as ShadowRoot & { getSelection?: () => Selection | null }).getSelection?.();
     if (!sel || sel.isCollapsed || !sel.rangeCount || !e.clipboardData) return;
@@ -253,13 +285,17 @@ export class Overlay {
     this.#statusOf = fn;
     // Update the current line too, including paused and DOM-fallback captions.
     // Keeping the elements preserves focus and the popup's word anchor.
+    let fresh = false;
     for (const el of this.#primary.querySelectorAll<HTMLElement>('.t')) {
       if (el.dataset.tok) el.dataset.s = fn(JSON.parse(el.dataset.tok) as Token);
+      if (el.querySelector('rt') && isNew(el.dataset.s ?? '')) fresh = true;
     }
+    this.#primary.classList.toggle('has-new-ruby', fresh);
   }
 
   /** Fires with a token on enter, and whether Shift was held then; with null on leave. */
-  onHover(cb: (t: Token | null, el: HTMLElement | null, shift?: boolean) => void): void {
+  /** `phrase` is the phrase the word is part of, while one is marked on the line. */
+  onHover(cb: (t: Token | null, el: HTMLElement | null, shift?: boolean, phrase?: PhrasePick) => void): void {
     this.#onHover = cb;
   }
 
@@ -343,10 +379,10 @@ export class Overlay {
     }
     this.#primary.replaceChildren();
     // Whether this line needs headroom at all.
-    this.#primary.classList.toggle(
-      'has-ruby',
-      tokens.some((t) => !t.punct && furigana(t.surface, t.reading).some((x) => x.ruby)),
-    );
+    const annotated = tokens.filter((t) => !t.punct && furigana(t.surface, t.reading).some((x) => x.ruby));
+    this.#primary.classList.toggle('has-ruby', annotated.length > 0);
+    this.#primary.classList.toggle('has-new-ruby', annotated.some((t) => isNew(this.#statusOf(t))));
+    this.#primary.classList.remove('phrased');
     for (const tok of tokens) {
       // Punctuation is text, not a word: rendered, never hoverable. The line
       // breaks a subtitle was written with are kept — two speakers, or the
@@ -410,6 +446,7 @@ export class Overlay {
 
   destroy(): void {
     document.removeEventListener('copy', this.#copy, true);
+    document.removeEventListener('selectionchange', this.#onSelection);
     this.#host.remove();
   }
 }

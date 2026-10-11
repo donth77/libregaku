@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { forAnalysis, marksToDrop, restretched, toTokens } from '../lindera';
+import { forAnalysis, marksToDrop, restretched, stressRead, stressToDrop, toTokens } from '../lindera';
 
 describe('toTokens', () => {
   const line = '彼女は日本語を勉強している';
@@ -124,5 +124,34 @@ describe('stretched vowels', () => {
     expect(toks[2]).toMatchObject({ lemma: 'すごい', start: 4, end: 9 });
     for (const t of toks) expect(text.slice(t.start, t.end)).toBe(t.surface);
     expect(toks.map((t) => t.surface).join('')).toBe(text);
+  });
+});
+
+describe('a っ put inside a word for stress', () => {
+  const line = 'もう全っ然分かんないって';
+  // What IPADIC answers for the line as written, and for it without the っ.
+  const split = [
+    { surface: 'もう', lemma: 'もう', reading: 'モウ', pos: '副詞', pos1: '一般' },
+    { surface: '全', lemma: '全', reading: 'ゼン', pos: '接頭詞', pos1: '名詞接続' },
+    { surface: 'っ', lemma: 'く', reading: 'ッ', pos: '動詞', pos1: '非自立' },
+    { surface: '然', lemma: '然', reading: 'シカ', pos: '副詞', pos1: '一般' },
+  ];
+  const whole = [
+    { surface: 'もう', lemma: 'もう', reading: 'モウ', pos: '副詞', pos1: '一般' },
+    { surface: '全然', lemma: '全然', reading: 'ゼンゼン', pos: '副詞', pos1: '助詞類接続' },
+  ];
+
+  it('is read without it, and goes back on the line as written', () => {
+    const drop = stressToDrop(toTokens(line, split), line);
+    expect([...drop]).toEqual([3]);
+    const used = forAnalysis(line, drop);
+    expect(used.text).toBe('もう全然分かんないって');
+    const toks = restretched(toTokens(used.text, whole), line, used.at);
+    expect(toks[1]).toMatchObject({ surface: '全っ然', lemma: '全然', start: 2, end: 5 });
+    expect(stressRead(toks, drop)).toBe(true);
+  });
+
+  it('is left alone where it is the spelling', () => {
+    expect(stressToDrop(toTokens('真っ赤', [{ surface: '真っ赤', lemma: '真っ赤', reading: 'マッカ', pos: '名詞' }]), '真っ赤').size).toBe(0);
   });
 });
