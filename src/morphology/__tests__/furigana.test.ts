@@ -62,3 +62,12 @@ describe('furigana', () => {
     }
   });
 });
+
+describe('stretched words', () => {
+  it('aligns as though the stretch mark were not there, and keeps it where it was', () => {
+    expect(furigana('凄〜い', 'スゴイ')).toEqual([{ text: '凄', ruby: 'すご' }, { text: '〜' }, { text: 'い' }]);
+    expect(furigana('可愛い～', 'カワイイ')).toEqual([...furigana('可愛い', 'カワイイ'), { text: '～' }]);
+    expect(furigana('行こ〜〜', 'イコ')).toEqual([{ text: '行', ruby: 'い' }, { text: 'こ' }, { text: '〜〜' }]);
+    expect(furigana('は〜い', 'ハイ')).toEqual([{ text: 'は〜い' }]);
+  });
+});

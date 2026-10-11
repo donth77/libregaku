@@ -204,7 +204,7 @@ async function startTabCapture(tabId: number): Promise<unknown> {
   return toOffscreen({ type: 'capture-open', tabId, streamId });
 }
 
-chrome.runtime.onMessage.addListener((msg: { type?: string; file?: string; action?: string; params?: Record<string, unknown>; url?: string; tabId?: number }, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((msg: { type?: string; file?: string; action?: string; params?: Record<string, unknown>; url?: string; tabId?: number; topic?: string }, sender, sendResponse) => {
   // Only this extension's own pages and content scripts. Nothing is
   // externally connectable today; this keeps it that way if that changes.
   if (sender.id !== chrome.runtime.id) return false;
@@ -266,6 +266,14 @@ chrome.runtime.onMessage.addListener((msg: { type?: string; file?: string; actio
   }
   if (msg?.type === 'open-options') {
     void chrome.runtime.openOptionsPage();
+    sendResponse({ ok: true });
+    return true;
+  }
+
+  // A page cannot open an extension page itself; the help, from the panel, comes through here.
+  if (msg?.type === 'open-help') {
+    const topic = typeof msg.topic === 'string' && /^[a-z0-9-]+$/.test(msg.topic) ? `#${msg.topic}` : '';
+    void chrome.tabs.create({ url: chrome.runtime.getURL(`help.html${topic}`) });
     sendResponse({ ok: true });
     return true;
   }

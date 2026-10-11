@@ -120,6 +120,36 @@ describe('relay', () => {
     expect(await relay('deleteNotes', { notes: [2] })).toMatchObject({ ok: true });
   });
 
+  it('deletes a Libregaku card made minutes ago and never studied — Undo — and no other', async () => {
+    const now = Date.now();
+    const fresh = now - 60_000;            // a minute old
+    const studied = now - 120_000;         // as old, but reviewed since
+    const stale = now - 60 * 60_000;       // an hour old
+    const foreign = now - 30_000;          // minutes old, but another note type
+    const fetch = vi.fn(async (_url: string, init: RequestInit) => {
+      const { action, params } = JSON.parse(String(init.body)) as { action: string; params: { query?: string } };
+      const q = params?.query ?? '';
+      let result: unknown = null;
+      if (action === 'findNotes') {
+        if (q.startsWith('note:"Libregaku Mark"')) result = [];                       // no marks
+        else if (q.includes('note:"Libregaku"')) result = [fresh, studied].filter((id) => q.includes(String(id)));
+        else if (q.includes('-is:new')) result = [studied].filter((id) => q.includes(String(id)));
+        else result = [];
+      }
+      return { ok: true, status: 200, json: async () => ({ result, error: null }) };
+    });
+    vi.stubGlobal('fetch', fetch);
+
+    expect(await relay('deleteNotes', { notes: [fresh] })).toMatchObject({ ok: true });
+    for (const id of [studied, stale, foreign]) {
+      const r = await relay('deleteNotes', { notes: [id] });
+      expect(r, String(id)).toMatchObject({ ok: false, kind: 'refused' });
+      expect(r.error).toContain('a card it made in the last few minutes that has not been studied');
+    }
+    // Retagging and suspending stay marks-only, however new the card.
+    expect(await relay('addTags', { notes: [fresh], tags: 'x' })).toMatchObject({ ok: false, kind: 'refused' });
+  });
+
   it('refuses what it could not check, when the marks cannot be looked up', async () => {
     refuses();
     expect(await relay('deleteNotes', { notes: [1] })).toMatchObject({ ok: false, kind: 'offline' });

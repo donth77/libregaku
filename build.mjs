@@ -18,6 +18,7 @@ const targets = [
   { entry: 'src/offscreen.ts',       out: 'offscreen',       format: 'esm'  },
   { entry: 'src/options.ts',         out: 'options',         format: 'esm'  },
   { entry: 'src/action.ts',          out: 'action',          format: 'esm'  },
+  { entry: 'src/help.ts',            out: 'help',            format: 'esm'  },
 ];
 
 await mkdir(outdir, { recursive: true });
@@ -28,6 +29,8 @@ await cp('src/offscreen.html', `${outdir}/offscreen.html`);
 await cp('src/content/subs.css', `${outdir}/subs.css`);
 await cp('src/options.html', `${outdir}/options.html`);
 await cp('src/options.css', `${outdir}/options.css`);
+await cp('src/help.html', `${outdir}/help.html`);
+await cp('src/help.css', `${outdir}/help.css`);
 await cp('src/action.html', `${outdir}/action.html`);
 await cp('src/action.css', `${outdir}/action.css`);
 await cp('src/icons', `${outdir}/icons`, { recursive: true });
@@ -57,6 +60,8 @@ const contexts = await Promise.all(targets.map((t) =>
     external: ['*.wasm'],
     // The logo is imported from brand/ as markup (src/logo.ts).
     loader: { '.svg': 'text' },
+    // Shown in settings, so a copy that has not been reloaded can be told apart.
+    define: { __BUILT__: JSON.stringify(new Date().toISOString()) },
   })
 ));
 

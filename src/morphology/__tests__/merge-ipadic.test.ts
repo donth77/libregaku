@@ -178,7 +178,9 @@ describe('suffixes', () => {
 
   it('leave the voice endings to the verb — させる is a suffix in IPADIC too', () => {
     expect(only('食べさせる')).toMatchObject({ lemma: '食べる', pos: '動詞', inflections: ['causative'] });
-    expect(lexiconQueries(LINES['食べさせる']!.morphemes)).toEqual([]);
+    // Not asked about as a stem made a noun. (食べる is asked about, as a
+    // verb that might be a potential — see below.)
+    expect(lexiconQueries(LINES['食べさせる']!.morphemes)).not.toContain('食べ');
   });
 });
 
@@ -208,5 +210,101 @@ describe('lexiconQueries', () => {
 
   it('asks for every spelling a figure might be filed under', () => {
     expect(lexiconQueries(LINES['2人で']!.morphemes)).toEqual(['2人', '２人', '二人']);
+  });
+});
+
+describe('ございます', () => {
+  it('makes one expression of an interjection and ございます, looked up as the expression', () => {
+    const t = only('ありがとうございました');
+    expect(t).toMatchObject({ surface: 'ありがとうございました', lemma: 'ありがとうございます', content: true });
+    expect(keys(t)[0]).toBe('ありがとうございます');
+    expect(keys(t)).toContain('ありがとうございました');
+    expect(only('おはようございます').lemma).toBe('おはようございます');
+  });
+
+  it('makes でございます a word of its own, after the noun it follows', () => {
+    const t = tokens('こちらでございます');
+    expect(t.map((x) => [x.surface, x.lemma, x.content])).toEqual([
+      ['こちら', 'こちら', true],
+      ['でございます', 'でございます', true],
+    ]);
+  });
+
+  it('makes the expression whatever comes before it', () => {
+    expect(only('ありがとうございます').lemma).toBe('ありがとうございます');
+    expect(tokens('どうもありがとうございます').map((x) => x.lemma)).toEqual(['どうも', 'ありがとうございます']);
+  });
+
+  it('keeps both words where the subtitle puts a space between them, rather than losing them', () => {
+    const t = tokens('ありがとう ございます');
+    expect(t.map((x) => [x.surface, x.lemma, x.content])).toEqual([
+      ['ありがとう', 'ありがとう', true],
+      ['ございます', 'ござる', true],
+    ]);
+    expect(t.map((x) => x.start)).toEqual([0, 6]);
+  });
+
+  it('reads ござる on its own as the verb it is', () => {
+    const t = tokens('ここにございます');
+    expect(t.map((x) => x.surface)).toEqual(['ここ', 'に', 'ございます']);
+    expect(t[2]).toMatchObject({ lemma: 'ござる', content: true });
+  });
+});
+
+describe('potential verbs', () => {
+  it('are the verb they come from, where the dictionary has only that', () => {
+    for (const [text, lemma, reading] of [
+      ['保てる', '保つ', 'タモツ'], ['保てない', '保つ', 'タモツ'], ['会えた', '会う', 'アウ'],
+      ['帰れる', '帰る', 'カエル'], ['書けなかった', '書く', 'カク'], ['来れる', '来る', 'クル'],
+    ] as const) {
+      const t = only(text);
+      expect(t.lemma, text).toBe(lemma);
+      expect(t.lemmaReading, text).toBe(reading);
+      expect(keys(t)[0], text).toBe(lemma);
+      expect(t.inflections?.[0], text).toBe('potential');
+    }
+    expect(only('保てない').inflections).toEqual(['potential', 'negative']);
+    // The reading on the line is still the one spoken.
+    expect(only('保てる').reading).toBe('タモテル');
+  });
+
+  it('stay as they are where the dictionary has them as words', () => {
+    const t = only('読める');
+    expect(t.lemma).toBe('読める');
+    expect(t.inflections ?? []).not.toContain('potential');
+    // Its verb is still there to fall back on.
+    expect(keys(t)).toEqual(['読める', '読む']);
+    expect(only('見れる').lemma).toBe('見れる');
+  });
+
+  it('fall back to the verb they come from while the dictionary is not there', () => {
+    const t = only('保てる', false);
+    expect(t.lemma).toBe('保てる');
+    expect(keys(t)).toEqual(['保てる', '保つ']);
+  });
+
+  it('ask the dictionary about the form and the verb it may come from', () => {
+    expect(lexiconQueries(LINES['保てない']!.morphemes)).toEqual(['保てる', '保つ']);
+    expect(lexiconQueries(LINES['帰れる']!.morphemes)).toEqual(['帰れる', '帰る']);
+  });
+});
+
+describe('kanji compounds the analyser split', () => {
+  it('are one word where the dictionary has them whole, read as it reads them', () => {
+    // IPADIC has 灯篭 but not 灯籠, and reads the halves あかり and かご.
+    expect(only('灯籠')).toMatchObject({ surface: '灯籠', lemma: '灯籠', reading: 'トウロウ' });
+    expect(only('石灯籠')).toMatchObject({ lemma: '石灯籠', reading: 'イシドウロウ' });
+    expect(tokens('灯籠流し').map((t) => t.lemma)).toEqual(['灯籠', '流す']);
+    expect(only('犬猫').lemma).toBe('犬猫');
+  });
+
+  it('stay as the analyser split them without the dictionary', () => {
+    expect(words('灯籠', false)).toEqual(['灯', '籠']);
+  });
+
+  it('are asked about only where a lone kanji is among the nouns', () => {
+    expect(lexiconQueries(LINES['灯籠']!.morphemes)).toEqual(['灯籠']);
+    expect(lexiconQueries(LINES['石灯籠']!.morphemes)).toEqual(['石灯', '石灯籠', '灯籠']);
+    expect(lexiconQueries(LINES['視聴者']!.morphemes)).not.toContain('視聴');
   });
 });

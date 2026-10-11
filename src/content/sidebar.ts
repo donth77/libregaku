@@ -3,15 +3,17 @@ import { addSentence, isDuplicate, probe } from '../anki/client';
 import { ROOT_TAG, tagsFor } from '../anki/model';
 import { sourceField } from '../anki/source';
 import { icon } from './icons';
+import { TIP_STYLE, tooltips } from './tooltip';
 import * as bookmarks from './bookmarks';
 import type { Bookmark } from './bookmarks';
 import { copyText, downloadText, tsvCell } from './share';
 import { readablePos } from '../dict/pos';
 import type { Segmenter, Token } from '../morphology/types';
-import { onSettingsChange, setSetting, settings, type Settings } from '../settings';
+import type { OverrideStatus } from '../anki/status';
+import { applyVars, onSettingsChange, setSetting, settings, underlineVars, type Settings } from '../settings';
 import { selectedWords, textFrom } from './phrase';
 import { furigana } from '../morphology/furigana';
-import { PANEL_STYLE, buildSettings, syncSettingsControls } from './settings-panel';
+import { PANEL_STYLE, buildSettings, keysView, syncSettingsControls } from './settings-panel';
 import { popupIsOpen } from './popup';
 import type { Transcript, Line } from './transcript';
 import { TokenCache, countWords, estimateRowHeight, nextFrame, now, whenIdle, type Count } from './transcript-work';
@@ -72,6 +74,39 @@ const PROGRESS_MS = 250;
 
 type Filter = 'all' | 'unknown' | 'i1' | 'saved';
 
+/** What the panel is showing: the transcript, or one of the views over it. */
+type PanelMode = 'transcript' | 'settings' | 'saved' | 'keys' | 'words';
+
+/** The marks the Words view lists, one list each. */
+type WordMark = 'tracking' | 'known' | 'ignored';
+
+const WORD_LISTS: Array<[WordMark, string]> = [['tracking', 'Tracked'], ['known', 'Known'], ['ignored', 'Ignored']];
+
+const wordCount = (n: number): string => `${n} word${n === 1 ? '' : 's'}`;
+
+const isListed = (status: OverrideStatus): status is WordMark =>
+  status === 'tracking' || status === 'known' || status === 'ignored';
+
+/** What each list says, and what taking its mark off is called — as on the word's card. */
+const WORD_LIST: Record<WordMark, { empty: string; intro: (n: number) => string; unmark: string }> = {
+  tracking: {
+    empty: 'Nothing tracked yet. Track underlines a word so you notice it, without making a card. ' +
+      'Turn its button on in Settings, under Word popup.',
+    intro: (n) => `${wordCount(n)} you're tracking, underlined wherever they come up.`,
+    unmark: 'Stop tracking',
+  },
+  known: {
+    empty: "No words marked known. Mark one known from its popup, or press K, when you know it and don't want a card.",
+    intro: (n) => `${wordCount(n)} marked known. Unmark one and it goes back to what your Anki cards say.`,
+    unmark: 'Unmark known',
+  },
+  ignored: {
+    empty: 'No ignored words. Ignore names and sounds from their popup, and they are never underlined or counted.',
+    intro: (n) => `${wordCount(n)} never underlined or counted.`,
+    unmark: 'Stop ignoring',
+  },
+};
+
 /** Ten lines of the transcript, and their rows once they have been made. */
 interface Block {
   el: HTMLElement;
@@ -80,6 +115,24 @@ interface Block {
   filled: boolean;
   /** The estimated height of all its rows. */
   height: number;
+}
+
+/**
+ * A way to the help page from the panel. A page cannot open an extension
+ * page itself, so the service worker opens it (background.ts, open-help).
+ */
+function helpLink(label: string, topic?: string): HTMLElement {
+  const row = document.createElement('div');
+  row.className = 'helprow';
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'helplink';
+  b.append(icon('external', 13), document.createTextNode(label));
+  b.addEventListener('click', () => {
+    void chrome.runtime.sendMessage({ type: 'open-help', ...(topic ? { topic } : {}) }).catch(() => {});
+  });
+  row.appendChild(b);
+  return row;
 }
 
 /** Where a transcript word came from, for a card made from it. */
@@ -164,7 +217,7 @@ const STYLE = `
     position: absolute; right: 0; top: 50%; transform: translateY(-50%);
     width: 26px; height: 76px; padding: 0;
     display: flex; align-items: center; justify-content: center;
-    background: rgba(13,17,28,.82); color: #8AA2E8;
+    background: rgba(13,17,28,.82); color: #DDE3F0;
     border: 1px solid #2A3348; border-right: 0;
     border-radius: 8px 0 0 8px;
     cursor: pointer; backdrop-filter: blur(6px);
@@ -187,7 +240,7 @@ const STYLE = `
     position: absolute; left: -3px; top: 0; bottom: 0; width: 7px;
     cursor: col-resize; z-index: 2;
   }
-  .grip:hover { background: rgba(138,162,232,.35); }
+  .grip:hover { background: rgba(242,245,252,.28); }
   header {
     display: flex; align-items: center; justify-content: space-between; gap: 8px;
     padding: 12px 14px; border-bottom: 1px solid #212939;
@@ -200,11 +253,30 @@ const STYLE = `
     text-transform: uppercase; padding: 4px 6px;
   }
   button:hover { color: #E8ECF6; }
-  button:focus-visible { outline: 2px solid #8AA2E8; outline-offset: 2px; border-radius: 3px; }
+  button:focus-visible { outline: 2px solid #F2F5FC; outline-offset: 2px; border-radius: 3px; }
   /* Header controls are icons: three text buttons crowded a 340px column and
      read as a toolbar rather than as chrome. */
-  header { gap: 10px; }
-  header > span:last-child { display: flex; align-items: center; gap: 2px; }
+  header { gap: 10px; padding: 8px 10px 0 8px; align-items: flex-end; text-transform: none; letter-spacing: normal; }
+  header .controls { display: flex; align-items: center; gap: 2px; padding-bottom: 6px; }
+  /* The lists, as tabs: the one showing underlined, each with what it holds. */
+  .tabs { display: flex; align-items: flex-end; gap: 2px; min-width: 0; }
+  .tabbtn {
+    display: inline-flex; align-items: baseline; gap: 6px; padding: 8px 10px 9px;
+    background: none; border: 0; border-bottom: 2px solid transparent; cursor: pointer;
+    color: #A3ACC4; font: 600 13.5px/1.2 system-ui, -apple-system, sans-serif; white-space: nowrap;
+    text-transform: none; letter-spacing: normal;   /* not the panel's small-capitals buttons */
+  }
+  .tabbtn:hover { color: #E8ECF6; }
+  .tabbtn[aria-selected="true"] { color: #F2F5FC; border-bottom-color: #F2F5FC; }
+  .tabbtn .n { font: 600 11px/1 ui-monospace, monospace; color: #7A84A0; font-variant-numeric: tabular-nums; }
+  .tabbtn[aria-selected="true"] .n { color: #C7CFE2; }
+  .tabbtn:focus-visible { outline: 2px solid #F2F5FC; outline-offset: -2px; border-radius: 6px; }
+  .ico[aria-pressed="true"] { background: rgba(242, 245, 252, .1); color: #F2F5FC; }
+  .viewtitle {
+    flex: none; padding: 14px 16px 2px;
+    font: 700 17px/1.25 system-ui, -apple-system, sans-serif; color: #F2F5FC; letter-spacing: -.01em;
+  }
+  .viewtitle[hidden] { display: none; }
   .ico {
     display: flex; align-items: center; justify-content: center;
     width: 30px; height: 30px; padding: 0; border-radius: 6px;
@@ -227,14 +299,14 @@ const STYLE = `
     background: #12172A; border: 1px solid #2A3348; border-radius: 6px;
     color: #E8ECF6; font: 14px system-ui, sans-serif;
   }
-  input:focus { outline: none; border-color: #8AA2E8; }
+  input:focus { outline: none; border-color: #8A94AF; }
   .filters { display: flex; gap: 5px; padding: 0 12px 9px; flex: none; }
   .f {
     font: 600 10px/1 ui-monospace, monospace; letter-spacing: .06em;
     text-transform: uppercase; padding: 6px 10px; border-radius: 5px;
     border: 1px solid #2A3348; background: #12172A; color: #838DA8; cursor: pointer;
   }
-  .f[aria-pressed="true"] { background: #1A2138; color: #8AA2E8; border-color: #3B4A6B; }
+  .f[aria-pressed="true"] { background: #F2F5FC; color: #0D111C; border-color: #F2F5FC; }
   .summary {
     padding: 12px 14px 10px; font-size: 13.5px; color: #B4BDD4;
     display: flex; gap: 12px; flex-wrap: wrap; font-variant-numeric: tabular-nums;
@@ -264,9 +336,9 @@ const STYLE = `
   /* Rings drawn inside the card: a block clips what its rows paint outside
      it, so an outer glow was cut off on the first and last row of each. */
   .line.cur {
-    border-color: #8AA2E8;
-    box-shadow: inset 0 0 0 1px #8AA2E8;
-    background: #1A2138;
+    border-color: #C7CFE2;
+    box-shadow: inset 0 0 0 1px #C7CFE2;
+    background: #182033;
   }
   .line.hit { border-color: #D9A64A; }
   .line.hit-cur { border-color: #D9A64A; box-shadow: inset 0 0 0 1px #D9A64A; }
@@ -301,16 +373,16 @@ const STYLE = `
   .tx rt {
     position: absolute; left: 50%; bottom: calc(100% + .04em);
     transform: translateX(-50%);
-    font-size: .46em; line-height: 1; color: #8AA2E8;
+    font-size: .46em; line-height: 1; color: #B8C0D4;
     white-space: nowrap; user-select: none; pointer-events: none;
   }
 
   .w { cursor: pointer; border-radius: 2px; padding: 0 1px 3px; }
-  .w:hover { background: #2A3550; }
-  .w[data-s="unknown"]  { box-shadow: inset 0 -2.5px 0 #E5806C; }
-  .w[data-s="learning"] { box-shadow: inset 0 -1.5px 0 #D9A64A; }
-  .w[data-s="tracking"] { box-shadow: inset 0 -2px 0 #A78BFA; }
-  .lines.mark-known .w[data-s="known"] { box-shadow: inset 0 -1.5px 0 #63AF97; }
+  .w:hover { background: #262F45; }
+  .w[data-s="unknown"]  { box-shadow: inset 0 -2.5px 0 var(--lg-unknown, #E5806C); }
+  .w[data-s="learning"] { box-shadow: inset 0 -1.5px 0 var(--lg-learning, #D9A64A); }
+  .w[data-s="tracking"] { box-shadow: inset 0 -2px 0 var(--lg-tracking, #A78BFA); }
+  .lines.mark-known .w[data-s="known"] { box-shadow: inset 0 -1.5px 0 var(--lg-known, #63AF97); }
 
   /*
    * Readings follow the overlay's setting, keyed on the same status. The
@@ -338,7 +410,16 @@ const STYLE = `
     font: 12px/1.4 ui-monospace, monospace; color: #5A6480;
     font-variant-numeric: tabular-nums;
   }
-  .line .meta .x { margin-left: auto; }
+  /* The row's buttons at the right of its time; the count is up in its corner. */
+  .line .meta > button:first-of-type { margin-left: auto; }
+  .line > .x {
+    float: right; margin: 3px 0 4px 10px; padding: 1px 8px; border-radius: 999px;
+    font: 600 11.5px/1.6 ui-monospace, monospace; font-variant-numeric: tabular-nums;
+  }
+  .line > .x:empty { display: none; }
+  .line > .x.hot { background: rgba(229, 128, 108, .14); }
+  .line > .x.one { background: rgba(217, 166, 74, .14); }
+  .line .meta { clear: both; }
   /* A saved line has no count, so its remove button takes the right edge. */
   .sv .meta .save { margin-left: auto; }
   .x { font: inherit; white-space: nowrap; }
@@ -357,11 +438,11 @@ const STYLE = `
     position: absolute; right: 16px; bottom: 16px; z-index: 3;
     width: 44px; height: 44px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    background: #1A2138; border: 1px solid #3B4A6B; color: #8AA2E8;
+    background: #182033; border: 1px solid #343E58; color: #E8ECF6;
     box-shadow: 0 6px 20px -6px rgba(0,0,0,.7); cursor: pointer; padding: 0;
   }
-  .fab:hover { background: #232D4A; color: #E8ECF6; }
-  .fab.on { background: #8AA2E8; color: #0D111C; border-color: #8AA2E8; }
+  .fab:hover { background: #1F2840; color: #F2F5FC; }
+  .fab.on { background: #F2F5FC; color: #0D111C; border-color: #F2F5FC; }
   /*
    * The way back after reading ahead. Only present while the line being
    * spoken is out of sight, so it is never chrome — it is an answer to the
@@ -371,12 +452,12 @@ const STYLE = `
     position: absolute; left: 16px; bottom: 16px; z-index: 3;
     display: none; align-items: center; gap: 5px;
     height: 36px; padding: 0 14px 0 10px; border-radius: 18px;
-    background: #1A2138; border: 1px solid #3B4A6B; color: #8AA2E8;
+    background: #182033; border: 1px solid #343E58; color: #E8ECF6;
     font: 600 11px/1 ui-monospace, monospace; letter-spacing: .07em; text-transform: uppercase;
     box-shadow: 0 6px 20px -6px rgba(0,0,0,.7); cursor: pointer;
   }
   .now.on { display: inline-flex; }
-  .now:hover { background: #232D4A; color: #E8ECF6; }
+  .now:hover { background: #1F2840; color: #F2F5FC; }
   .now svg { display: block; transform: rotate(90deg); }
   .now.up svg { transform: rotate(-90deg); }
   .filters {
@@ -393,7 +474,7 @@ const STYLE = `
     cursor: pointer; text-align: left; white-space: nowrap;
   }
   .f:hover { background: #1B2234; color: #E8ECF6; }
-  .f[aria-pressed="true"] { background: #1A2138; color: #8AA2E8; border-color: #3B4A6B; }
+  .f[aria-pressed="true"] { background: #F2F5FC; color: #0D111C; border-color: #F2F5FC; }
 
   .hover {
     position: fixed; z-index: 2147483647; width: 270px;
@@ -403,18 +484,23 @@ const STYLE = `
   }
   .hover.on { display: block; }
   .hw { font-size: 17px; font-weight: 600; }
-  .hr { font: 500 11px ui-monospace, monospace; color: #8AA2E8; margin-left: 6px; }
+  .hr { font: 500 11px ui-monospace, monospace; color: #B8C0D4; margin-left: 6px; }
   .hp { font: 11px ui-monospace, monospace; color: #6B7490; margin: 2px 0 4px; letter-spacing: .05em; }
   .hd { font-size: 13.5px; color: #C7CFE2; }
-  .save {
+  .save, .addline {
     display: inline-flex; align-items: center; justify-content: center;
     width: 24px; height: 24px; padding: 0; margin: -4px -5px -4px 0;
     background: none; border: 0; border-radius: 4px;
     color: #5F6982; cursor: pointer; opacity: 0; transition: opacity .12s ease;
   }
   .line:hover .save, .save.on, .save:focus-visible { opacity: 1; }
-  .save:hover { background: rgba(255,255,255,.08); color: #C7CFE2; }
-  .save.on { color: #8AA2E8; }
+  .line:hover .addline, .addline:focus-visible, .addline.busy { opacity: 1; }
+  .addline { margin-right: 0; }
+  .addline.busy svg { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .addline.busy svg { animation: none; } }
+  .save:hover, .addline:hover { background: rgba(255,255,255,.08); color: #C7CFE2; }
+  .save.on { color: #F2F5FC; }
   .save.on svg { fill: currentColor; }
   .savedview { overflow-y: auto; padding: 0 0 14px; flex: 1; }
   /*
@@ -427,6 +513,36 @@ const STYLE = `
   .said { margin-top: 9px; font-size: 12px; line-height: 1.5; color: #8A94AF; }
   .said:empty { display: none; }
   .savedview .empty { margin: 16px 16px 0; font-size: 14px; line-height: 1.55; color: #8992AD; }
+  .tintro { margin: 14px 16px 6px; font-size: 13px; line-height: 1.5; color: #A3ACC4; }
+  .helprow { padding: 12px 4px 2px; }
+  .helplink {
+    display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; cursor: pointer;
+    color: #C7CFE2; font: 13px/1.4 system-ui, -apple-system, sans-serif; text-decoration: underline;
+    text-decoration-color: #5A6480; text-underline-offset: 3px;
+  }
+  .helplink:hover { color: #F2F5FC; }
+  .trow { padding: 12px 16px; border-bottom: 1px solid #212939; }
+  .tword { display: flex; align-items: baseline; gap: 10px; }
+  .tw { font-size: 20px; font-weight: 600; color: #E8ECF6; }
+  .tw[data-s="tracking"] { box-shadow: inset 0 -2px 0 var(--lg-tracking, #A78BFA); }
+  .tw[data-s="known"] { box-shadow: inset 0 -2px 0 var(--lg-known, #63AF97); }
+  .tw[data-s="ignored"] { color: #A3ACC4; }
+  /* Which marks the Words view lists: one list at a time, each with its count. */
+  .wchips { display: flex; flex-wrap: wrap; gap: 6px; padding: 14px 16px 2px; }
+  .wchip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border-radius: 999px; cursor: pointer;
+    border: 1px solid #2A3348; background: transparent; color: #A3ACC4;
+    font: 500 12.5px/1 system-ui, -apple-system, sans-serif; letter-spacing: normal; text-transform: none;
+  }
+  .wchip:hover { color: #E8ECF6; border-color: #4A5470; }
+  .wchip[aria-pressed="true"] { background: #E8ECF6; border-color: #E8ECF6; color: #0D111C; }
+  .wchip .n { font-variant-numeric: tabular-nums; opacity: .7; }
+  .wchip .n:empty { display: none; }
+  .tr { font: 500 12px/1.4 ui-monospace, monospace; color: #B8C0D4; }
+  .tm { margin: 4px 0 8px; font-size: 13.5px; line-height: 1.45; color: #C7CFE2; }
+  .trow .btnrow { padding: 0; }
+  .trow .said { margin-top: 6px; font-size: 12.5px; color: #A3ACC4; }
+  .trow .said:empty { display: none; }
   .gh {
     display: flex; align-items: baseline; gap: 8px;
     padding: 15px 16px 6px; font-size: 12px; font-weight: 600;
@@ -436,12 +552,13 @@ const STYLE = `
     font-size: 9px; letter-spacing: .07em; padding: 2px 5px; border-radius: 3px;
     background: #2A3348; color: #A9B3CC; text-transform: none;
   }
-  .sv { padding: 10px 16px; cursor: pointer; border-left: 2px solid transparent; }
-  .sv:hover { background: rgba(255,255,255,.045); border-left-color: #8AA2E8; }
+  .sv { padding: 10px 16px; cursor: pointer; }
+  .sv:hover { background: rgba(255,255,255,.045); }
   .sv .tx { display: block; font-size: 17px; line-height: 1.5; color: #E8ECF6; }
   .sv .sec { display: block; margin-top: 3px; font-size: 14px; color: #97A0BA; }
   @media (prefers-reduced-motion: no-preference) { .lines { scroll-behavior: smooth; } }
 ${PANEL_STYLE}
+${TIP_STYLE}
 `;
 
 export interface SidebarDeps {
@@ -469,6 +586,17 @@ export interface SidebarDeps {
   /** "Check again" in settings reached Anki: word status is worth re-reading. */
   onAnkiConnected?: () => void;
   /**
+   * Make a card of a whole line, from its row's button. Settles when the
+   * card is in, waiting for Anki, or refused; the outcome is the caller's to say.
+   */
+  onAddLine?: (text: string, context: WordContext) => Promise<void>;
+  /** Words marked by hand, newest first: the Words view lists them. */
+  marked?: () => Array<{ word: string; status: OverrideStatus }>;
+  /** Take a word's mark off. */
+  unmark?: (word: string) => Promise<void>;
+  /** Make a card for a tracked word. Resolves to what to say, or throws with it. */
+  addWord?: (word: string) => Promise<string>;
+  /**
    * How a word is looked up. Supplied so the transcript and the overlay answer
    * from the same place — including "no dictionary for this language" — rather
    * than each deciding for itself.
@@ -479,6 +607,8 @@ export interface SidebarDeps {
 export class Sidebar {
   #title!: HTMLElement;
   #gear!: HTMLButtonElement;
+  #keysButton!: HTMLButtonElement;
+  #tabs!: HTMLElement;
   #search: HTMLElement | null = null;
   #host: HTMLElement;
   #root: ShadowRoot;
@@ -504,7 +634,11 @@ export class Sidebar {
   /** Bumped whenever the card should not appear, so a slow lookup cannot show a stale one. */
   #hoverSeq = 0;
   #idle = 0;
-  #mode: 'transcript' | 'settings' | 'saved' = 'transcript';
+  #mode: PanelMode = 'transcript';
+  /** Which marks the Words view is listing. */
+  #wordsShow: WordMark = 'tracking';
+  /** Fills in the rows of the Words view as they come near the view. */
+  #wordsSeen: IntersectionObserver | null = null;
   #settingsEl: HTMLElement | null = null;
   #fab!: HTMLButtonElement;
   #now!: HTMLButtonElement;
@@ -618,27 +752,71 @@ export class Sidebar {
     grip.className = 'grip';
     this.#installResize(grip);
 
+    /*
+     * The panel's lists are tabs — the transcript, the lines saved, the words
+     * marked — each with how many it holds. Settings and the keyboard
+     * shortcuts are views of another kind, reached by their icons. The
+     * player bar keeps to the video; it used to open Saved lines too, while
+     * Tracked words opened from here, and the two lists worked differently.
+     */
     const head = document.createElement('header');
-    const title = document.createElement('span');
-    title.textContent = 'Transcript';
+    const tabs = document.createElement('nav');
+    tabs.className = 'tabs';
+    tabs.setAttribute('role', 'tablist');
+    tabs.setAttribute('aria-label', 'Lists');
+    const tab = (mode: PanelMode, label: string): HTMLButtonElement => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'tabbtn';
+      b.setAttribute('role', 'tab');
+      b.dataset.mode = mode;
+      const name = document.createElement('span');
+      name.textContent = label;
+      const n = document.createElement('span');
+      n.className = 'n';
+      b.append(name, n);
+      b.addEventListener('click', () => this.setMode(mode));
+      tabs.appendChild(b);
+      return b;
+    };
+    tab('transcript', 'Transcript');
+    tab('saved', 'Saved');
+    if (this.#deps.marked) tab('words', 'Words');
+    this.#tabs = tabs;
+    // What a view that is not a list is, under the tabs.
+    const title = document.createElement('div');
+    title.className = 'viewtitle';
+    title.hidden = true;
     const controls = document.createElement('span');
+    controls.className = 'controls';
     const gear = document.createElement('button');
     gear.className = 'ico';
     gear.replaceChildren(icon('settings', 17));
-    gear.title = 'Settings';
+    gear.dataset.tip = 'Settings';
     gear.setAttribute('aria-label', 'Settings');
     gear.addEventListener('click', () => this.setMode(this.#mode === 'settings' ? 'transcript' : 'settings'));
+
+    // The keys are reference for while the video plays, so they have a view
+    // of their own here rather than a place among the settings.
+    const keys = document.createElement('button');
+    keys.className = 'ico';
+    keys.replaceChildren(icon('keyboard', 17));
+    keys.dataset.tip = 'Keyboard shortcuts';
+    keys.setAttribute('aria-label', 'Keyboard shortcuts');
+    keys.addEventListener('click', () => this.setMode(this.#mode === 'keys' ? 'transcript' : 'keys'));
 
     const close = document.createElement('button');
     close.className = 'ico';
     close.replaceChildren(icon('x', 18));
-    close.title = 'Collapse the panel';
+    close.dataset.tip = 'Close';
+    close.dataset.key = 'S';
     close.setAttribute('aria-label', 'Collapse the panel');
     close.addEventListener('click', () => this.toggle(false));
-    controls.append(gear, close);
-    head.append(title, controls);
+    controls.append(keys, gear, close);
+    head.append(tabs, controls);
     this.#title = title;
     this.#gear = gear;
+    this.#keysButton = keys;
     this.#search = null;
 
     const filters = document.createElement('div');
@@ -646,7 +824,7 @@ export class Sidebar {
     const fab = document.createElement('button');
     fab.className = 'fab';
     fab.replaceChildren(icon('filter', 19));
-    fab.title = 'Filter lines';
+    fab.dataset.tip = 'Filter';
     fab.setAttribute('aria-label', 'Filter lines');
     fab.setAttribute('aria-expanded', 'false');
     fab.addEventListener('click', () => {
@@ -663,7 +841,7 @@ export class Sidebar {
       const b = document.createElement('button');
       b.className = 'f';
       b.textContent = label;
-      b.title = title;
+      b.setAttribute('aria-description', title);
       b.dataset.filter = key;
       b.setAttribute('aria-pressed', String(key === 'all'));
       b.addEventListener('click', () => {
@@ -728,7 +906,6 @@ export class Sidebar {
     const now = document.createElement('button');
     now.className = 'now';
     now.append(icon('forward', 13), document.createTextNode('Current line'));
-    now.title = 'Back to the line being spoken';
     now.addEventListener('click', () => this.#resume());
     this.#now = now;
 
@@ -738,17 +915,22 @@ export class Sidebar {
     this.#tab = document.createElement('button');
     this.#tab.className = 'tab';
     this.#tab.replaceChildren(icon('back', 16));
-    this.#tab.title = 'Show the transcript (S)';
+    this.#tab.dataset.tip = 'Transcript';
+    this.#tab.dataset.key = 'S';
     this.#tab.setAttribute('aria-label', 'Show the transcript');
     this.#tab.addEventListener('click', () => this.toggle(true));
 
     this.#search = search;
-    this.#panel.append(grip, head, search, summary, this.#note, this.#wait, this.#list, filters, fab, now);
+    this.#panel.append(grip, head, title, search, summary, this.#note, this.#wait, this.#list, filters, fab, now);
     this.#root.append(style, this.#panel, this.#tab, this.#hover);
     mount.appendChild(this.#host);
+    // Kept inside the panel while it is open; the tab alone has the player.
+    tooltips(this.#root, () =>
+      (this.#open ? this.#panel : (this.#host.parentElement ?? this.#host)).getBoundingClientRect());
 
     this.#installKeys();
     this.#applyAppearance(settings());
+    this.#paintTabs();
     this.#unwatch = watchSettings((s, here) => this.#settingsChanged(s, here));
     this.#tokens.reset(deps.segmenter());
     this.#lineSet = new Set(deps.transcript.lines);
@@ -793,6 +975,11 @@ export class Sidebar {
       if (!line) return;
       if (target?.closest('.save')) {
         void this.#toggleSave(line);
+        return;
+      }
+      const add = target?.closest<HTMLButtonElement>('.addline');
+      if (add) {
+        void this.#addLine(line, add);
         return;
       }
       const w = target?.closest('.w') as HTMLElement | null;
@@ -877,11 +1064,12 @@ export class Sidebar {
     if (this.#mode === 'settings' && this.#settingsEl) syncSettingsControls(this.#settingsEl);
   }
 
-  /** Readings and known-word marks, the same three ways the overlay offers. */
+  /** Readings, known-word marks and underline colours, as the overlay has them. */
   #applyAppearance(s: Settings): void {
     this.#list.classList.toggle('ruby-all', s.ruby === 'always');
     this.#list.classList.toggle('ruby-off', s.ruby === 'never');
     this.#list.classList.toggle('mark-known', s.markKnown);
+    applyVars(this.#host, underlineVars(s));
   }
 
   #countFilter(): boolean {
@@ -997,6 +1185,8 @@ export class Sidebar {
    */
   refreshStatus(): void {
     if (this.#destroyed) return;
+    this.#paintTabs();
+    if (this.#mode === 'words') this.#renderWords();
     // A different analyser means different words, which this cannot cover.
     if (this.#deps.segmenter() !== this.#tokens.segmenter) {
       this.refreshAnalysis();
@@ -1116,15 +1306,41 @@ export class Sidebar {
     return on;
   }
 
+  /** How many each list holds, on its tab. */
+  #paintTabs(): void {
+    for (const b of Array.from(this.#tabs.querySelectorAll<HTMLElement>('[role=tab]'))) {
+      b.setAttribute('aria-selected', String(b.dataset.mode === this.#mode));
+    }
+    const set = (mode: PanelMode, n: number | null): void => {
+      const el = this.#tabs.querySelector<HTMLElement>(`[data-mode="${mode}"] .n`);
+      if (el) el.textContent = n ? String(n) : '';
+    };
+    set('words', this.#deps.marked?.().filter((m) => isListed(m.status)).length ?? null);
+    void bookmarks.list().then((all) => set('saved', all.length), () => {});
+  }
+
+  /** The line as a card, from its row's button: busy while it goes, then a tick. */
+  async #addLine(line: Line, b: HTMLButtonElement): Promise<void> {
+    const add = this.#deps.onAddLine;
+    if (!add || b.classList.contains('busy')) return;
+    b.classList.add('busy');
+    b.replaceChildren(icon('loader', 15));
+    const ok = await add(line.text, { start: line.start, end: line.end, translation: line.secondary })
+      .then(() => true, () => false);
+    b.classList.remove('busy');
+    b.replaceChildren(icon(ok ? 'check' : 'linePlus', 15));
+    if (ok) window.setTimeout(() => b.replaceChildren(icon('linePlus', 15)), 2500);
+  }
+
   /** A row's bookmark, drawn to match whether its line is saved. */
   #paintSave(row: HTMLElement): void {
-    const b = row.querySelector('.save');
+    const b = row.querySelector<HTMLElement>('.save');
     const line = this.#lineOf.get(row);
     if (!b || !line) return;
     const on = this.#saved.has(this.#idFor(line.start));
     b.classList.toggle('on', on);
-    const title = on ? 'Saved — click to remove' : 'Save this line';
-    b.setAttribute('title', title);
+    const title = on ? 'Unsave' : 'Save line';
+    b.dataset.tip = title;
     b.setAttribute('aria-label', title);
     b.setAttribute('aria-pressed', String(on));
   }
@@ -1133,7 +1349,10 @@ export class Sidebar {
 
   /** The header keeps a count; let it know when the count moves. */
   onSavedChange(fn: () => void): void {
-    this.#onSavedChange = fn;
+    this.#onSavedChange = (): void => {
+      this.#paintTabs();
+      fn();
+    };
   }
 
   /**
@@ -1156,7 +1375,7 @@ export class Sidebar {
       const b = document.createElement('button');
       b.type = 'button';
       b.textContent = label;
-      b.title = title;
+      b.setAttribute('aria-description', title);
       b.addEventListener('click', () => onClick(b));
       row.appendChild(b);
       return b;
@@ -1247,6 +1466,133 @@ export class Sidebar {
    * lines from elsewhere open that video at the right second, which is the
    * whole reason the url is stored alongside the text.
    */
+  /**
+   * The words marked by hand — tracked, known, ignored — read from the marks,
+   * so the lists are the same on every device. A mark comes off here as it
+   * does on the word's card, and a tracked word can become a card, which
+   * takes it off the list: a card speaks for it now.
+   */
+  #renderWords(): void {
+    const host = this.#settingsEl;
+    if (!host) return;
+    this.#wordsSeen?.disconnect();
+    const all = (this.#deps.marked?.() ?? []).filter((m) => isListed(m.status));
+    host.replaceChildren();
+
+    const chips = document.createElement('div');
+    chips.className = 'wchips';
+    chips.setAttribute('role', 'group');
+    chips.setAttribute('aria-label', 'Which words');
+    for (const [show, label] of WORD_LISTS) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'wchip';
+      b.dataset.show = show;
+      b.setAttribute('aria-pressed', String(show === this.#wordsShow));
+      const name = document.createElement('span');
+      name.textContent = label;
+      const n = document.createElement('span');
+      n.className = 'n';
+      n.textContent = String(all.filter((m) => m.status === show).length || '');
+      b.append(name, n);
+      b.addEventListener('click', () => {
+        this.#wordsShow = show;
+        this.#renderWords();
+      });
+      chips.appendChild(b);
+    }
+    host.appendChild(chips);
+
+    const show = this.#wordsShow;
+    const list = WORD_LIST[show];
+    const words = all.filter((m) => m.status === show).map((m) => m.word);
+    if (!words.length) {
+      const empty = document.createElement('p');
+      empty.className = 'empty';
+      empty.textContent = list.empty;
+      host.appendChild(empty);
+      return;
+    }
+    const intro = document.createElement('p');
+    intro.className = 'tintro';
+    intro.textContent = list.intro(words.length);
+    host.appendChild(intro);
+
+    // Readings and meanings only for rows coming into view: a list of known
+    // words can run to thousands, and each is a dictionary lookup.
+    const fills = new Map<Element, () => void>();
+    const seen = typeof IntersectionObserver === 'function'
+      ? new IntersectionObserver((entries) => {
+        for (const e of entries) {
+          if (!e.isIntersecting) continue;
+          seen?.unobserve(e.target);
+          fills.get(e.target)?.();
+          fills.delete(e.target);
+        }
+      }, { rootMargin: '300px 0px' })
+      : null;
+    this.#wordsSeen = seen;
+
+    for (const word of words) {
+      const row = document.createElement('div');
+      row.className = 'trow';
+      const head = document.createElement('div');
+      head.className = 'tword';
+      const w = document.createElement('span');
+      w.className = 'tw';
+      w.dataset.s = show;
+      w.textContent = word;
+      const r = document.createElement('span');
+      r.className = 'tr';
+      head.append(w, r);
+      const meaning = document.createElement('div');
+      meaning.className = 'tm';
+      const said = document.createElement('div');
+      said.className = 'said';
+      said.setAttribute('role', 'status');
+      const actions = document.createElement('div');
+      actions.className = 'btnrow';
+      const button = (label: string, run: () => Promise<string | void>): void => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = label;
+        b.addEventListener('click', () => {
+          if (b.disabled) return;
+          b.disabled = true;
+          void run().then(
+            (msg) => {
+              if (msg) said.textContent = msg;
+            },
+            (e: unknown) => {
+              said.textContent = e instanceof Error ? e.message : String(e);
+              b.disabled = false;
+            },
+          );
+        });
+        actions.appendChild(b);
+      };
+      if (show === 'tracking' && this.#deps.addWord) button('Add to Anki', () => this.#deps.addWord!(word));
+      if (this.#deps.unmark) button(list.unmark, () => this.#deps.unmark!(word));
+      row.append(head, meaning, actions, said);
+      host.appendChild(row);
+      // Its reading and first meaning, from the same lookup the cards use.
+      const fill = (): void => void (this.#deps.lookup ?? lookupToken)({
+        surface: word, lemma: word, start: 0, end: word.length, content: true,
+      }).then((result) => {
+        const top = result.state === 'ok' ? result.entries[0] : undefined;
+        if (!top || !row.isConnected) return;
+        r.textContent = top.reading && top.reading !== word ? top.reading : '';
+        meaning.textContent = top.senses[0]?.glosses.slice(0, 3).join('; ') ?? '';
+      }, () => {});
+      if (seen) {
+        fills.set(row, fill);
+        seen.observe(row);
+      } else {
+        fill();
+      }
+    }
+  }
+
   async #renderSaved(): Promise<void> {
     const host = this.#settingsEl;
     if (!host) return;
@@ -1299,8 +1645,8 @@ export class Sidebar {
         const del = document.createElement('button');
         del.className = 'save on';
         del.replaceChildren(icon('x', 15));
-        del.title = 'Remove from saved';
-        del.setAttribute('aria-label', del.title);
+        del.dataset.tip = 'Remove';
+        del.setAttribute('aria-label', 'Remove from saved');
         del.addEventListener('click', async (e) => {
           e.stopPropagation();
           await bookmarks.remove(b.id);
@@ -1326,15 +1672,19 @@ export class Sidebar {
     }
   }
 
-  setMode(mode: 'transcript' | 'settings' | 'saved'): void {
+  setMode(mode: PanelMode): void {
     this.#mode = mode;
     const showing = mode !== 'transcript';
 
-    this.#title.textContent =
-      mode === 'settings' ? 'Settings' : mode === 'saved' ? 'Saved lines' : 'Transcript';
-    this.#gear.replaceChildren(icon(showing ? 'back' : 'settings', showing ? 17 : 15));
-    this.#gear.title = showing ? 'Back to the transcript' : 'Settings';
-    this.#gear.setAttribute('aria-label', this.#gear.title);
+    for (const b of Array.from(this.#tabs.querySelectorAll<HTMLElement>('[role=tab]'))) {
+      b.setAttribute('aria-selected', String(b.dataset.mode === mode));
+    }
+    const other = mode === 'settings' || mode === 'keys';
+    this.#title.hidden = !other;
+    this.#title.textContent = mode === 'settings' ? 'Settings' : mode === 'keys' ? 'Keyboard shortcuts' : '';
+    this.#keysButton.setAttribute('aria-pressed', String(mode === 'keys'));
+    this.#gear.setAttribute('aria-pressed', String(mode === 'settings'));
+    this.#paintTabs();
     if (this.#search) this.#search.style.display = showing ? 'none' : '';
 
     this.#settingsEl?.remove();
@@ -1357,12 +1707,22 @@ export class Sidebar {
       this.#settingsEl = buildSettings(() => this.render(), {
         onAnkiConnected: () => this.#deps.onAnkiConnected?.(),
       });
+      this.#settingsEl.prepend(helpLink('How-tos and questions'));
+      this.#panel.appendChild(this.#settingsEl);
+    } else if (mode === 'keys') {
+      this.#settingsEl = keysView();
+      this.#settingsEl.append(helpLink('More in the help', 'keys'));
       this.#panel.appendChild(this.#settingsEl);
     } else if (mode === 'saved') {
       this.#settingsEl = document.createElement('div');
       this.#settingsEl.className = 'savedview';
       this.#panel.appendChild(this.#settingsEl);
       void this.#renderSaved();
+    } else if (mode === 'words') {
+      this.#settingsEl = document.createElement('div');
+      this.#settingsEl.className = 'savedview wordsview';
+      this.#panel.appendChild(this.#settingsEl);
+      this.#renderWords();
     } else {
       this.render();
     }
@@ -1382,6 +1742,11 @@ export class Sidebar {
     this.#onLayout?.();
     if (this.#open) this.render();
     if (this.#open !== settings().sidebarOpen) void setSetting('sidebarOpen', this.#open);
+  }
+
+  /** What the panel is showing: the transcript, or one of its other views. */
+  get mode(): PanelMode {
+    return this.#mode;
   }
 
   get isOpen(): boolean {
@@ -2332,12 +2697,23 @@ export class Sidebar {
     if (this.#dressed.has(row)) return;
     const meta = row.querySelector('.meta');
     if (!meta) return;
+    // The count, a badge in the row's corner that the line flows around: in
+    // the time row it sat short of the buttons that only show on hover.
     const x = document.createElement('span');
     x.className = 'x';
+    row.prepend(x);
     const save = document.createElement('button');
     save.className = 'save';
     save.replaceChildren(icon('bookmark', 15));
-    meta.append(x, save);
+    if (this.#deps.onAddLine) {
+      const add = document.createElement('button');
+      add.className = 'addline';
+      add.replaceChildren(icon('linePlus', 15));
+      add.dataset.tip = 'Add sentence';
+      add.setAttribute('aria-label', 'Add the sentence to Anki');
+      meta.append(add);
+    }
+    meta.append(save);
     this.#dressed.add(row);
     this.#label(row);
     this.#paintSave(row);

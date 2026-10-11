@@ -90,6 +90,21 @@ export async function queueCard(entry: Omit<QueuedCard, 'at'>): Promise<'queued'
   }
 }
 
+/**
+ * Take a waiting card back out of the queue: Undo, before Anki has opened.
+ * False when it is no longer waiting — it has gone in, or was never kept.
+ */
+export async function unqueueCard(deck: string, expression: string): Promise<boolean> {
+  try {
+    const hits = (await readQueue()).filter((q) => q.entry.card.deck === deck && q.entry.card.expression === expression);
+    if (!hits.length) return false;
+    await chrome.storage.local.remove(hits.map((q) => q.key));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export interface CardFlush {
   /** Words — dictionary forms — Anki now has a card for, including ones it already had. */
   words: string[];

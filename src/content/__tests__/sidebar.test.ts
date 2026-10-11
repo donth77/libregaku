@@ -126,6 +126,135 @@ afterEach(async () => {
   await setSetting('markKnown', false);
 });
 
+describe('tooltips in the panel', () => {
+  it("labels its buttons with its own tooltips, quickly, and never the browser's slow one", async () => {
+    const { root } = await build({ onAddLine: async () => {} });
+    expect(root.querySelector('[title]')).toBeNull();
+    // Icon buttons carry a tip; a button with words on it needs none.
+    for (const sel of ['header .controls button', '.fab', '.line .save', '.line .addline', '.tab']) {
+      const found = Array.from(root.querySelectorAll<HTMLElement>(sel));
+      expect(found.length, sel).toBeGreaterThan(0);
+      for (const b of found) expect(b.dataset.tip, sel).toBeTruthy();
+    }
+    expect(root.querySelector<HTMLElement>('.tab')?.dataset.key).toBe('S');
+
+    const gear = root.querySelector<HTMLElement>('header button[aria-label="Settings"]')!;
+    gear.dispatchEvent(new MouseEvent('pointerover', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 400));
+    const tip = root.querySelector<HTMLElement>('.tip')!;
+    expect(tip.classList.contains('on')).toBe(true);
+    expect(tip.textContent).toBe('Settings');
+  });
+});
+
+describe('the marked words', () => {
+  type Mark = { word: string; status: 'tracking' | 'known' | 'ignored' | 'unknown' };
+  const rows = (root: ShadowRoot): HTMLElement[] => Array.from(root.querySelectorAll<HTMLElement>('.trow'));
+  const listed = (root: ShadowRoot): Array<string | null | undefined> =>
+    rows(root).map((r) => r.querySelector('.tw')?.textContent);
+  const chip = (root: ShadowRoot, show: string): HTMLButtonElement =>
+    root.querySelector<HTMLButtonElement>(`.wchip[data-show="${show}"]`)!;
+
+  it('lists the tracked ones first, and each can become a card or stop being tracked', async () => {
+    const marks: Mark[] = [
+      { word: '勉強', status: 'tracking' }, { word: '計画', status: 'tracking' }, { word: '田中', status: 'ignored' },
+    ];
+    const unmark = vi.fn(async (w: string) => { marks.splice(marks.findIndex((m) => m.word === w), 1); });
+    const addWord = vi.fn(async (w: string) => `${w} · added to Vocabulary`);
+    const { sidebar, root } = await build({ marked: () => [...marks], unmark, addWord });
+    const button = root.querySelector<HTMLButtonElement>('[role=tab][data-mode="words"]')!;
+    expect(button.textContent).toBe('Words3');
+    button.click();
+    expect(button.getAttribute('aria-selected')).toBe('true');
+    expect(chip(root, 'tracking').getAttribute('aria-pressed')).toBe('true');
+    expect(chip(root, 'tracking').textContent).toBe('Tracked2');
+    expect(listed(root)).toEqual(['勉強', '計画']);
+
+    const [add, stop] = Array.from(rows(root)[0]!.querySelectorAll<HTMLButtonElement>('.btnrow button'));
+    expect(stop!.textContent).toBe('Stop tracking');
+    add!.click();
+    await flush();
+    expect(addWord).toHaveBeenCalledWith('勉強');
+    expect(rows(root)[0]!.querySelector('.said')?.textContent).toBe('勉強 · added to Vocabulary');
+
+    stop!.click();
+    await flush();
+    expect(unmark).toHaveBeenCalledWith('勉強');
+    sidebar.refreshStatus();   // the mark came off: the list follows
+    expect(listed(root)).toEqual(['計画']);
+  });
+
+  it('lists ignored and known words too, each with a way to take the mark off', async () => {
+    const marks: Mark[] = [
+      { word: '田中', status: 'ignored' }, { word: 'へえ', status: 'ignored' }, { word: '猫', status: 'known' },
+      { word: '犬', status: 'unknown' },
+    ];
+    const unmark = vi.fn(async (w: string) => { marks.splice(marks.findIndex((m) => m.word === w), 1); });
+    const { sidebar, root } = await build({ marked: () => [...marks], unmark, addWord: async () => '' });
+    root.querySelector<HTMLButtonElement>('[role=tab][data-mode="words"]')!.click();
+
+    chip(root, 'ignored').click();
+    expect(chip(root, 'ignored').getAttribute('aria-pressed')).toBe('true');
+    expect(listed(root)).toEqual(['田中', 'へえ']);
+    expect(root.querySelector('.tintro')?.textContent).toBe('2 words never underlined or counted.');
+    // No card from here: an ignored word is one you do not want.
+    const buttons = Array.from(rows(root)[0]!.querySelectorAll<HTMLButtonElement>('.btnrow button'));
+    expect(buttons.map((b) => b.textContent)).toEqual(['Stop ignoring']);
+    buttons[0]!.click();
+    await flush();
+    expect(unmark).toHaveBeenCalledWith('田中');
+    sidebar.refreshStatus();
+    expect(listed(root)).toEqual(['へえ']);
+
+    chip(root, 'known').click();
+    expect(listed(root)).toEqual(['猫']);
+    expect(rows(root)[0]!.querySelector('.btnrow button')?.textContent).toBe('Unmark known');
+  });
+
+  it('says what each list is for when it is empty, and has no tab without marks to show', async () => {
+    let { root } = await build({ marked: () => [] });
+    root.querySelector<HTMLButtonElement>('[role=tab][data-mode="words"]')!.click();
+    expect(root.querySelector('.wordsview .empty')?.textContent).toContain('Settings, under Word popup');
+    chip(root, 'ignored').click();
+    expect(root.querySelector('.wordsview .empty')?.textContent).toContain('never underlined or counted');
+    sidebars.splice(0).forEach((s) => s.destroy());
+    document.body.replaceChildren();
+    ({ root } = await build());
+    expect(root.querySelector('[role=tab][data-mode="words"]')).toBeNull();
+  });
+});
+
+describe('a line as a card', () => {
+  it("makes a card of the row's line from its button, with the line's own times", async () => {
+    let finish!: () => void;
+    const onAddLine = vi.fn(() => new Promise<void>((r) => { finish = r; }));
+    const transcript = new Transcript();
+    transcript.setFull([{ start: 4, end: 7, text: '外国に行きたい', secondary: 'I want to go abroad' }]);
+    const { root } = await build({ transcript, onAddLine });
+    const row = root.querySelector<HTMLElement>('.line')!;
+    const add = row.querySelector<HTMLButtonElement>('.addline')!;
+    expect(add.getAttribute('aria-label')).toBe('Add the sentence to Anki');
+
+    add.click();
+    add.click();
+    expect(add.classList.contains('busy')).toBe(true);
+    finish();
+    await flush();
+    expect(onAddLine).toHaveBeenCalledOnce();
+    expect(onAddLine).toHaveBeenCalledWith('外国に行きたい', { start: 4, end: 7, translation: 'I want to go abroad' });
+    expect(add.classList.contains('busy')).toBe(false);
+    // A button on the row, not the row: no seek, and the bookmark untouched.
+    expect(seek).not.toHaveBeenCalled();
+    expect(row.querySelector('.save')!.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('has no such button when nothing is there to make the card', async () => {
+    const { root } = await build();
+    expect(root.querySelector('.addline')).toBeNull();
+    expect(root.querySelector('.line .save')).not.toBeNull();
+  });
+});
+
 describe('Sidebar vocabulary counts', () => {
   it('updates counts, the summary, and the active i+1 filter after marking and unmarking a word', async () => {
     let unknown = 1;
@@ -1091,5 +1220,29 @@ describe('Sidebar phrases', () => {
     expect(context).toEqual({ start: 8, end: 11, translation: 'study' });
     expect(onWordClick).not.toHaveBeenCalled();
     expect(seek).not.toHaveBeenCalled();
+  });
+});
+
+describe('Sidebar keys', () => {
+  it('shows the keys in a view of their own, and goes back to the transcript', async () => {
+    const { root } = await build();
+    const button = root.querySelector<HTMLButtonElement>('header button[aria-label="Keyboard shortcuts"]')!;
+    button.click();
+    expect(root.querySelector('.viewtitle')?.textContent).toBe('Keyboard shortcuts');
+    expect(root.querySelectorAll('.keysview .keys dt')).toHaveLength(10);
+    expect(root.querySelector('.keysview .grp')).toBeNull();
+    expect(button.getAttribute('aria-pressed')).toBe('true');
+    button.click();
+    expect(root.querySelector('[role=tab][aria-selected="true"]')?.getAttribute('data-mode')).toBe('transcript');
+    expect(root.querySelector<HTMLElement>('.viewtitle')?.hidden).toBe(true);
+    expect(root.querySelector('.keysview')).toBeNull();
+    expect(button.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('keeps them out of its settings', async () => {
+    const { sidebar, root } = await build();
+    sidebar.setMode('settings');
+    expect(root.querySelector('.settings .keys')).toBeNull();
+    expect(root.querySelector('.settings .grp')?.textContent).toBe('Languages');
   });
 });

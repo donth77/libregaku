@@ -5,6 +5,7 @@ import { readablePos } from '../dict/pos';
 import type { Token } from '../morphology/types';
 import { icon } from './icons';
 import { copyText } from './share';
+import { TIP_STYLE, tooltips } from './tooltip';
 
 /**
  * The lookup card.
@@ -39,8 +40,9 @@ const STYLE = `
   }
   .head, .meta, .tools, .marks { flex: none; }
   .body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
-  .head { padding: 14px 16px 0; }
-  .reading { font: 500 12px/1.4 ui-monospace, monospace; color: #8AA2E8; letter-spacing: .04em; }
+  .head { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px 0; }
+  .hw { flex: 1; min-width: 0; }
+  .reading { font: 500 12px/1.4 ui-monospace, monospace; color: #B8C0D4; letter-spacing: .04em; }
   .word { font-size: 27px; font-weight: 600; line-height: 1.2; margin-top: 1px; }
   .meta {
     display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
@@ -54,27 +56,84 @@ const STYLE = `
     cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0;
   }
   .tb svg { display: block; }
-  .tb.add { background: #1A2138; color: #8AA2E8; border-color: #3B4A6B; }
-  .tb.add.has { background: #16281F; color: #63AF97; border-color: #2A5245; }
-  .tb.busy { color: #8AA2E8; }
-  .tb.busy svg { animation: spin 1s linear infinite; }
+  .tb.busy { color: #F2F5FC; }
+  .tb.busy svg, .mk[data-state="busy"] svg { animation: spin 1s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  @media (prefers-reduced-motion: reduce) { .tb.busy svg { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .tb.busy svg, .mk[data-state="busy"] svg { animation: none; } }
   .loading { padding: 16px; color: #D9A64A; font-size: 13.5px; }
-  .marks { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid #212939; }
+  /* The marks: small toggles beside the word, each in its status colour, filled once made. */
+  .marks { display: flex; gap: 6px; flex: none; margin-top: 2px; }
   .mk {
-    flex: 1; padding: 9px 10px; border-radius: 7px; cursor: pointer;
-    font: 600 11.5px/1.2 ui-monospace, monospace; letter-spacing: .07em;
-    text-transform: uppercase; border: 1px solid transparent;
+    width: 30px; height: 30px; padding: 0; border-radius: 50%; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: transparent; border: 1px solid;
   }
-  .mk.known   { background: #16281F; color: #63AF97; border-color: #2A5245; }
-  .mk.track   { background: #211A38; color: #A78BFA; border-color: #46396B; }
-  .mk.ignore  { background: #1B2234; color: #838DA8; border-color: #2A3348; }
-  .mk[aria-pressed="true"] { outline: 2px solid currentColor; outline-offset: -1px; }
-  .mk:hover { filter: brightness(1.12); }
-  .tb:hover { border-color: #8AA2E8; color: #E8ECF6; }
-  .tb:focus-visible, .mk:focus-visible { outline: 2px solid #8AA2E8; outline-offset: 2px; }
+  .mk svg { display: block; }
+  .mk.known  { --c: var(--lg-known, #63AF97); }
+  .mk.track  { --c: var(--lg-tracking, #A78BFA); }
+  .mk.known, .mk.track { color: var(--c); border-color: color-mix(in srgb, var(--c) 38%, #141A2A); }
+  .mk.ignore { color: #838DA8; border-color: #2A3348; }
+  .mk.known[aria-pressed="true"], .mk.track[aria-pressed="true"] { background: var(--c); color: #0D111C; border-color: var(--c); }
+  .mk.ignore[aria-pressed="true"] { background: #838DA8; color: #0D111C; border-color: #838DA8; }
+  .mk:hover { filter: brightness(1.2); }
+  /*
+   * The one coral button: making a card of a word not learned yet, as the
+   * underline marks it. The foot of the card, full width and named, because
+   * it is what the card is for — beside the marks, it was taken for one.
+   */
+  .foot { display: flex; padding: 12px 16px; border-top: 1px solid #212939; }
+  .add, .more {
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px; cursor: pointer;
+    background: #E5806C; color: #0D111C; border: 1px solid #E5806C;
+  }
+  .add {
+    flex: 1; padding: 10px 12px; border-radius: 8px;
+    font: 600 12px/1.2 ui-monospace, monospace; letter-spacing: .07em; text-transform: uppercase;
+  }
+  .add.done { background: #1B2234; color: #E8ECF6; border-color: #3A4560; }
+  .add.has { background: #16281F; color: #63AF97; border-color: #2A5245; }
+  .add[data-state="busy"] svg { animation: spin 1s linear infinite; }
+  .more { width: 40px; padding: 0; border-radius: 0 8px 8px 0; border-left-color: rgba(13,17,28,.4); }
+  .foot:has(.more) .add { border-radius: 8px 0 0 8px; }
+  .add:hover, .more:hover { filter: brightness(1.08); }
+  .add:focus-visible, .more:focus-visible { outline: 2px solid #F2F5FC; outline-offset: 2px; }
+  .deckmenu {
+    position: absolute; right: 16px; bottom: 62px; z-index: 4;
+    min-width: 200px; max-width: calc(100% - 32px); max-height: 240px; overflow-y: auto;
+    padding: 6px; border-radius: 10px; background: #1B2234; border: 1px solid #2A3348;
+    box-shadow: 0 10px 30px -8px rgba(0,0,0,.7);
+  }
+  .deckmenu[hidden] { display: none; }
+  .deckmenu button {
+    display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px;
+    background: none; border: 0; border-radius: 6px; cursor: pointer; text-align: left;
+    color: #C7CFE2; font: 13.5px/1.3 system-ui, -apple-system, sans-serif;
+  }
+  .deckmenu button:hover, .deckmenu button:focus-visible { background: #232C42; color: #E8ECF6; outline: none; }
+  .deckmenu button.current { color: #E8ECF6; font-weight: 600; }
+  .deckmenu-note { padding: 8px 10px; color: #8A94AF; font-size: 13px; }
+  .tb:hover { border-color: #8A94AF; color: #E8ECF6; }
+  .tb:focus-visible, .mk:focus-visible { outline: 2px solid #F2F5FC; outline-offset: 2px; }
   ol { margin: 0; padding: 12px 16px 12px 34px; }
+  li[hidden] { display: none; }
+  .more-senses {
+    display: block; margin: -4px 16px 10px 34px; padding: 0; border: 0; background: none; cursor: pointer;
+    color: #8A94AF; font: 12.5px/1.4 system-ui, -apple-system, sans-serif;
+  }
+  .more-senses:hover { color: #E8ECF6; text-decoration: underline; }
+  /* A section past the meanings: one line until opened. */
+  .fold { border-top: 1px solid #212939; }
+  .fold-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;
+    padding: 10px 16px; border: 0; background: none; cursor: pointer; text-align: left;
+    color: #8A94AF; font: 600 11px/1.4 ui-monospace, monospace; letter-spacing: .07em; text-transform: uppercase;
+  }
+  .fold-head:hover { color: #E8ECF6; background: #161C2C; }
+  .fold-head:focus-visible { outline: 2px solid #F2F5FC; outline-offset: -2px; }
+  .fold-head svg { flex: none; transition: transform .12s ease; }
+  .fold.open .fold-head svg { transform: rotate(180deg); }
+  .fold > [hidden] { display: none; }
+  @media (prefers-reduced-motion: reduce) { .fold-head svg { transition: none; } }
   li { margin-bottom: 5px; color: #C7CFE2; }
   li:last-child { margin-bottom: 0; }
   .sense-pos { font: 500 11px/1.4 ui-monospace, monospace; color: #6B7490; letter-spacing: .05em; }
@@ -82,7 +141,7 @@ const STYLE = `
     padding: 11px 16px; border-top: 1px solid #212939;
     font: 12px/1.6 ui-monospace, monospace; color: #838DA8;
   }
-  .trace b { color: #8AA2E8; font-weight: 600; }
+  .trace b { color: #E8ECF6; font-weight: 600; }
   .grammar {
     margin-top: 4px; color: #D9A64A;
     font: 500 11px/1.5 ui-monospace, monospace; letter-spacing: .06em;
@@ -91,20 +150,12 @@ const STYLE = `
   .empty { padding: 16px; color: #838DA8; }
   .chars {
     display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: baseline;
-    gap: 7px 12px; padding: 10px 16px 12px; border-top: 1px solid #212939;
-  }
-  .chars-head {
-    grid-column: 1 / -1; font: 600 11px/1.4 ui-monospace, monospace; letter-spacing: .07em;
-    text-transform: uppercase; color: #8A94AF;
+    gap: 7px 12px; padding: 0 16px 12px;
   }
   .kanji { font: 500 24px/1.1 "Hiragino Mincho ProN", "Yu Mincho", serif; color: #E8ECF6; }
   .kanji-mean { font-size: 13.5px; line-height: 1.4; color: #C7CFE2; }
-  .kanji-read { display: block; font-size: 12px; line-height: 1.5; color: #8AA2E8; }
-  .also { padding: 10px 16px 12px; border-top: 1px solid #212939; }
-  .also-head {
-    font: 600 11px/1.4 ui-monospace, monospace; letter-spacing: .07em;
-    text-transform: uppercase; color: #8A94AF; margin-bottom: 4px;
-  }
+  .kanji-read { display: block; font-size: 12px; line-height: 1.5; color: #B8C0D4; }
+  .also { padding: 0 16px 12px; }
   .also-line {
     display: flex; gap: 10px; align-items: baseline; width: calc(100% + 12px);
     margin: 0 -6px; padding: 5px 6px; border: 0; border-radius: 6px;
@@ -112,9 +163,9 @@ const STYLE = `
     font: 14px/1.5 system-ui, -apple-system, "Hiragino Sans", sans-serif;
   }
   .also-line:hover { background: #1B2234; color: #E8ECF6; }
-  .also-line:focus-visible { outline: 2px solid #8AA2E8; outline-offset: -2px; }
+  .also-line:focus-visible { outline: 2px solid #F2F5FC; outline-offset: -2px; }
   .also-line .at { flex: none; font: 500 11.5px/1 ui-monospace, monospace; color: #6B7490; font-variant-numeric: tabular-nums; }
-  .also-line b { font-weight: 600; color: #E8ECF6; box-shadow: inset 0 -2px 0 #8AA2E8; }
+  .also-line b { font-weight: 600; color: #E8ECF6; box-shadow: inset 0 -2px 0 #8A94AF; }
   .also-more { font-size: 12px; color: #6B7490; padding: 4px 0 0; }
   /*
    * Inside the card, over the status row while it shows. It used to hang
@@ -128,6 +179,8 @@ const STYLE = `
     transition: opacity .15s; pointer-events: none; text-align: center;
   }
   .toast.on { opacity: .97; }
+  /* A button's label, over it on hover or focus (./tooltip.ts). */
+  ${TIP_STYLE}
   @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
 `;
 
@@ -203,6 +256,15 @@ export function cancelPopupClose(): void {
   clearTimeout(hideTimer);
 }
 
+/** What adding did, and how to take it back while that still makes sense. */
+export interface Added {
+  said: string;
+  /** Take the card back out: Undo, for one added a moment ago by mistake. */
+  undo?: () => Promise<string>;
+}
+
+const outcome = (out: string | Added): Added => (typeof out === 'string' ? { said: out } : out);
+
 export interface CardDraft {
   expression: string;
   reading: string;
@@ -231,21 +293,65 @@ export function draftFor(result: LookupResult, token: Token, sentence: string): 
  * is open.
  */
 export function pressAdd(): boolean {
-  const b = host?.shadowRoot?.querySelector<HTMLButtonElement>('.tb.add');
+  const b = host?.shadowRoot?.querySelector<HTMLButtonElement>('button.add');
   if (!b) return false;
-  b.click();
+  // Pressed again, the key says where the card is rather than undoing it or
+  // sending Anki's window to the front.
+  if (b.dataset.state === 'add') b.click();
+  else if (b.dataset.state !== 'busy') sayOnCard?.(PRESSED_AGAIN[b.dataset.state ?? ''] ?? '');
   return true;
 }
+
+/** What A says on a card past adding. */
+const PRESSED_AGAIN: Record<string, string> = {
+  added: 'Already added', in: 'Already in Anki', waiting: 'Waiting for Anki to open',
+};
+
+/** The open card's own line for saying things, for the A key. */
+let sayOnCard: ((m: string) => void) | null = null;
 
 interface Context {
   token: Token;
   /** The whole line, for copy-sentence. */
   sentence: string;
-  /** Current status, so the matching control reads as pressed. */
+  /**
+   * The token is a selected phrase: copying copies it as it was written,
+   * not the dictionary form it was looked up by.
+   */
+  phrase?: boolean;
+  /** Current status, from Anki or a hand mark. */
   status: Status;
+  /**
+   * The hand mark on this word, if any: what the status buttons show as
+   * pressed, and what pressing one again takes off. Not the status — a word
+   * Anki knows from a mature card has no mark to take off.
+   */
+  marked?: OverrideStatus | null;
   onMark: (word: string, status: OverrideStatus | null) => void;
-  /** Resolves to a message for the toast, or throws with one. */
-  onAddCard: (draft: CardDraft) => Promise<string>;
+  /** Resolves to what happened — a message, or one with a way to undo it — or throws with one. */
+  onAddCard: (draft: CardDraft) => Promise<string | Added>;
+  /** Make a card of the whole line instead. The same contract as onAddCard. */
+  onAddLine?: () => Promise<string | Added>;
+  /** Open Anki's own browser on the word's cards: what the Add button does once there is one. */
+  onShowInAnki?: () => void;
+  /** The deck new cards go to, shown under the Add button. */
+  deck?: string;
+  /** Anki's decks, for picking another, once Anki answers. */
+  decks?: Promise<string[]>;
+  /**
+   * New cards go to this deck from now on — made first, when `create`. With
+   * it, Add has a menu of decks to add to. Resolves to the deck in use, and
+   * a warning when that deck is one word status does not read.
+   */
+  onDeck?: (deck: string, create: boolean) => Promise<{ deck: string; warning?: string }>;
+  /** Offer Track beside Known and Ignore. A word already tracked shows it regardless. */
+  track?: boolean;
+  /** A dictionary site for the word, where the language has one. */
+  dictionary?: { name: string; url: string };
+  /** Offer Known and Ignore. A word already marked shows its mark regardless, so it can come off. */
+  marks?: boolean;
+  /** The underline colours, which the mark buttons wear too. */
+  colors?: Record<string, string>;
   /**
    * Whether Anki already holds a card for this word. The only thing the
    * "already in Anki" state is drawn from: a word marked known by hand, or
@@ -263,6 +369,11 @@ interface Context {
   onSeek?: (start: number) => void;
   /** The characters the word is written with, once looked up. */
   characters?: Promise<Characters>;
+  /**
+   * What the card should stay clear of, most important first — the subtitle
+   * with its second line, then the line alone. See placeCard.
+   */
+  keepClear?: Element[];
   /**
    * The card went away, however it went: closed, dismissed with Escape or an
    * outside click, timed out after the cursor left, or replaced by another.
@@ -284,6 +395,7 @@ export function showPopup(
 
   host = document.createElement('div');
   host.className = 'libregaku-popup';
+  for (const [name, value] of Object.entries(ctx.colors ?? {})) host.style.setProperty(name, value);
   const root = host.attachShadow({ mode: 'open' });
 
   const style = document.createElement('style');
@@ -314,16 +426,22 @@ export function showPopup(
 
   const head = document.createElement('div');
   head.className = 'head';
+  const hw = document.createElement('div');
+  hw.className = 'hw';
   if (reading) {
     const r = document.createElement('div');
     r.className = 'reading';
     r.textContent = reading;
-    head.appendChild(r);
+    hw.appendChild(r);
   }
   const w = document.createElement('div');
   w.className = 'word';
   w.textContent = word;
-  head.appendChild(w);
+  hw.appendChild(w);
+  // The marks, small, beside the word they are about (filled in below).
+  const marks = document.createElement('div');
+  marks.className = 'marks';
+  head.append(hw, marks);
   card.appendChild(head);
 
   if (top) {
@@ -365,7 +483,7 @@ export function showPopup(
     const b = document.createElement('button');
     b.className = 'tb';
     b.appendChild(icon(name, 16));
-    b.title = title;
+    b.dataset.tip = title;
     b.setAttribute('aria-label', title);
     b.addEventListener('click', () => fn(b));
     tools.appendChild(b);
@@ -393,61 +511,108 @@ export function showPopup(
         b.replaceChildren(icon('volume', 16));
       });
   });
-  /*
-   * Adding a card is the point of the whole tool, so it is the widest control
-   * and it states its outcome. A silent success is indistinguishable from a
-   * silent failure, and making a card is a decision the learner should see land.
-   */
-  const addBtn = button(hasCard ? 'check' : 'plus',
-    hasCard
-      ? ctx.queued ? 'Waiting for Anki to open — add another' : 'Already in Anki — add another'
-      : 'Add to Anki',
-    (b) => {
-      // One card per press, however impatient the second click or key.
-      if (b.classList.contains('busy')) return;
-      b.classList.add('busy');
-      b.replaceChildren(icon('loader', 16));
-      void ctx
-        .onAddCard(draftFor(result, ctx.token, ctx.sentence))
-        .then((msg) => {
-          say(msg);
-          b.replaceChildren(icon('check', 16));
-        })
-        .catch((e: unknown) => {
-          say(e instanceof Error ? e.message : String(e), 4000);
-          b.replaceChildren(icon('plus', 16));
-        })
-        .finally(() => b.classList.remove('busy'));
-    });
-  addBtn.classList.add('add');
-  if (hasCard) addBtn.classList.add('has');
-  // Its key, where someone hovering the button will see it (src/content/keys.ts).
-  shortcut(addBtn, 'A', 'A');
+  const failed = (e: unknown): string => (e instanceof Error ? e.message : String(e));
+  sayOnCard = say;
 
   // The clipboard refuses without focus or permission, which a video page can
   // withhold; copyText falls back, and either way the result is said aloud.
   const copy = (text: string, done: string): void => {
     void copyText(text).then((ok) => (ok ? say(done) : say('could not copy — select the text instead', 4000)));
   };
-  button('copy', 'Copy word', () => copy(word, 'word copied'));
+  // A sentence card: the line itself, with its sound and a still. Pressed
+  // again once it is in, it takes the card back out.
+  const onAddLine = ctx.onAddLine;
+  if (onAddLine) {
+    let back: (() => Promise<string>) | null = null;
+    let settled = 0;
+    button('linePlus', 'Add sentence', (b) => {
+      if (b.classList.contains('busy') || Date.now() - settled < SETTLE_MS) return;
+      const undo = back;
+      b.classList.add('busy');
+      b.replaceChildren(icon('loader', 16));
+      const done = (ico: string, tip: string): void => {
+        b.classList.remove('busy');
+        b.replaceChildren(icon(ico, 16));
+        b.dataset.tip = tip;
+        b.setAttribute('aria-label', tip);
+        settled = Date.now();
+      };
+      if (undo) {
+        void undo().then(
+          (said) => { say(said); back = null; done('linePlus', 'Add sentence'); },
+          (e: unknown) => { say(failed(e), 4000); done('check', 'Undo'); },
+        );
+        return;
+      }
+      void onAddLine().then(
+        (out) => {
+          const { said, undo: takeBack } = outcome(out);
+          say(said);
+          back = takeBack ?? null;
+          done('check', back ? 'Undo' : 'Sentence added');
+        },
+        (e: unknown) => { say(failed(e), 4000); done('linePlus', 'Add sentence'); },
+      );
+    });
+  }
+
+  if (ctx.phrase) button('copy', 'Copy phrase', () => copy(ctx.token.surface, 'phrase copied'));
+  else button('copy', 'Copy word', () => copy(word, 'word copied'));
   button('quote', 'Copy sentence', () => copy(ctx.sentence, 'sentence copied'));
   /*
-   * Jisho for the human link, Jotoba for the API — the distinction is real.
-   * Calling someone's API implicates their terms, so that goes to the one that
-   * documents and permits it. Opening a web page in a new tab implicates
-   * nothing, so it goes to whichever site a learner would rather land on: for
-   * English speakers that is Jisho, with its conjugation tables, kanji
-   * breakdowns and example sentences.
+   * A site for the human link, an API for the lookups — the distinction is
+   * real. Calling someone's API implicates their terms, so that goes to one
+   * that documents and permits it (Jotoba, for Japanese). Opening a page in a
+   * new tab implicates nothing, so it goes to whichever site a learner would
+   * rather land on — Jisho, for Japanese — and the language decides which
+   * (settings.ts, featuresOf).
    */
-  button('external', 'Open in Jisho', () => {
-    window.open(`https://jisho.org/search/${encodeURIComponent(word)}`, '_blank', 'noopener');
-  });
+  const site = ctx.dictionary;
+  if (site) button('external', site.name, () => window.open(site.url, '_blank', 'noopener'));
   card.appendChild(tools);
 
   // Everything that can grow goes in one scrolling body, so a long entry
   // costs scrolling rather than the status row.
   const body = document.createElement('div');
   body.className = 'body';
+
+  /*
+   * A section past the meanings is one line until it is opened: the kanji,
+   * the word's other lines. Each arrives when it is ready, so it goes in its
+   * own place — the kanji above the other lines, `before` anything else
+   * that has to come after it — and one opened stays open on the next card.
+   */
+  const fold = (before: Element | null, key: FoldKey, label: string, content: HTMLElement, fill: () => void): void => {
+    const sec = document.createElement('div');
+    sec.className = `fold ${key}-fold`;
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'fold-head';
+    const text = document.createElement('span');
+    text.textContent = label;
+    toggle.append(text, icon('chevronDown', 14));
+    let filled = false;
+    const show = (open: boolean): void => {
+      if (open && !filled) {
+        fill();
+        filled = true;
+      }
+      content.hidden = !open;
+      toggle.setAttribute('aria-expanded', String(open));
+      sec.classList.toggle('open', open);
+    };
+    toggle.addEventListener('click', () => {
+      const open = toggle.getAttribute('aria-expanded') !== 'true';
+      if (open) openFolds.add(key);
+      else openFolds.delete(key);
+      show(open);
+    });
+    sec.append(toggle, content);
+    // The kanji go above the other lines when the lines arrived first.
+    const after = key === 'kanji' ? body.querySelector('.also-fold') : null;
+    body.insertBefore(sec, after ?? before?.nextSibling ?? null);
+    show(openFolds.has(key));
+  };
 
   if (result.state === 'loading') {
     const e = document.createElement('div');
@@ -465,25 +630,38 @@ export function showPopup(
     e.textContent = 'No dictionary entry for this word.';
     body.appendChild(e);
   } else {
+    // The commonest words have the most senses: できる has ten. The first few
+    // are what is meant nearly always; the rest wait to be asked for.
     const ol = document.createElement('ol');
-    for (const sense of top!.senses.slice(0, 6)) {
+    const senses = top!.senses.slice(0, MAX_SENSES);
+    senses.forEach((sense, i) => {
       const li = document.createElement('li');
       li.textContent = sense.glosses.slice(0, 4).join('; ');
+      li.hidden = i >= SENSES_SHOWN;
       ol.appendChild(li);
-    }
+    });
     body.appendChild(ol);
+    if (senses.length > SENSES_SHOWN) {
+      const more = document.createElement('button');
+      more.type = 'button';
+      more.className = 'more-senses';
+      more.textContent = `+${senses.length - SENSES_SHOWN} more meaning${senses.length - SENSES_SHOWN === 1 ? '' : 's'}`;
+      more.addEventListener('click', () => {
+        for (const li of Array.from(ol.children) as HTMLElement[]) li.hidden = false;
+        more.remove();
+      });
+      body.appendChild(more);
+    }
   }
 
   if (ctx.characters) {
     const chars = document.createElement('div');
     chars.className = 'chars';
-    chars.hidden = true;
-    body.appendChild(chars);
     const mine = host;
     void ctx.characters.then((c) => {
       if (host !== mine || !c.items.length) return;
-      fillCharacters(chars, c);
-      chars.hidden = false;
+      fold(body.querySelector('.trace') ? body.querySelector('.trace')! : null, 'kanji',
+        `${c.label} · ${c.items.map((k) => k.char).join(' ')}`, chars, () => fillCharacters(chars, c));
     }, () => {});
   }
 
@@ -514,14 +692,12 @@ export function showPopup(
   if (ctx.elsewhere) {
     const also = document.createElement('div');
     also.className = 'also';
-    also.hidden = true;
-    body.appendChild(also);
     const mine = host;
     void ctx.elsewhere.then((lines) => {
       // The card may have closed, or become another word's, meanwhile.
       if (host !== mine || !lines.length) return;
-      fillAlso(also, lines, ctx.onSeek);
-      also.hidden = false;
+      fold(null, 'also', lines.length === 1 ? 'Once more in this video' : `${lines.length} more times in this video`,
+        also, () => fillAlso(also, lines, ctx.onSeek));
     }, () => {});
   }
   card.appendChild(body);
@@ -535,39 +711,196 @@ export function showPopup(
    * so it is kept as a mark: in the browser at once, and in Anki as a tagged,
    * suspended note that follows the collection (src/anki/marks.ts).
    */
-  const marks = document.createElement('div');
-  marks.className = 'marks';
   const markKey = ctx.token.lemma ?? ctx.token.surface;
 
-  const mark = (cls: string, label: string, next: OverrideStatus): void => {
+  /*
+   * Adding a card is the point of the whole tool, so it is the foot of the
+   * card, full width, named, and in the one colour kept for it, and it states
+   * its outcome: a silent success is indistinguishable from a silent failure.
+   * Once the card is in, the same button takes it back out for a while — a
+   * card added by mistake is undone where it was made — and on a word Anki
+   * already has, it opens it there.
+   */
+  const foot = document.createElement('div');
+  foot.className = 'foot';
+  let deckNow = ctx.deck ?? '';
+  let back: (() => Promise<string>) | null = null;
+  let settled = 0;
+  const add = document.createElement('button');
+  add.className = 'add';
+  // Its key, where someone hovering the button will see it (src/content/keys.ts).
+  shortcut(add, 'A', 'A');
+  const show = (state: AddState, busyText = 'Adding…'): void => {
+    add.dataset.state = state;
+    add.classList.toggle('has', state === 'in');
+    add.classList.toggle('done', state === 'added' || state === 'waiting');
+    const [ico, text, tip] = ({
+      add: ['plus', 'Add to Anki', deckNow ? `Add to ${deckNow}` : 'Add to Anki'],
+      busy: ['loader', busyText, busyText],
+      added: ['check', 'Added', back ? 'Undo' : 'Added'],
+      in: ['check', 'In Anki', 'Show in Anki'],
+      waiting: ['check', 'Waiting', 'Waiting for Anki'],
+    } as const)[state];
+    add.replaceChildren(icon(ico, 14), document.createTextNode(text));
+    add.dataset.tip = tip;
+    add.setAttribute('aria-label', state === 'add' ? 'Add to Anki' : tip);
+  };
+  show(hasCard ? (ctx.queued ? 'waiting' : 'in') : 'add');
+  /** Make the card, whatever the button shows — the deck menu adds to another deck even beside "In Anki". */
+  const addNow = (then?: string): void => {
+    show('busy');
+    void ctx.onAddCard(draftFor(result, ctx.token, ctx.sentence)).then(
+      (out) => {
+        const { said, undo } = outcome(out);
+        back = undo ?? null;
+        settled = Date.now();
+        show('added');
+        say(then ? `${said} — ${then}` : said, then ? 5000 : 1500);
+      },
+      (e: unknown) => {
+        say(failed(e), 4000);
+        settled = Date.now();
+        show(hasCard ? 'in' : 'add');
+      },
+    );
+  };
+  add.addEventListener('click', () => {
+    const state = add.dataset.state;
+    if (state === 'in') {
+      ctx.onShowInAnki?.();
+      return;
+    }
+    if (state === 'waiting') {
+      say('It goes into Anki when Anki opens', 2500);
+      return;
+    }
+    // A second press a moment after the first is impatience, not Undo.
+    if (state === 'busy' || Date.now() - settled < SETTLE_MS) return;
+    if (state === 'added') {
+      const undo = back;
+      if (!undo) return;
+      show('busy', 'Undoing…');
+      void undo().then(
+        (said) => { say(said); back = null; settled = Date.now(); show('add'); },
+        (e: unknown) => { say(failed(e), 4000); settled = Date.now(); show('added'); },
+      );
+      return;
+    }
+    addNow();
+  });
+  foot.appendChild(add);
+
+  // The deck menu, when it is on: "Add to <deck>" for each of Anki's decks.
+  // Picking one adds the card there, and new cards go there from then on.
+  const onDeck = ctx.onDeck;
+  if (onDeck) {
+    const more = document.createElement('button');
+    more.className = 'more';
+    more.dataset.tip = 'Other decks';
+    more.setAttribute('aria-label', 'Add to another deck');
+    more.setAttribute('aria-haspopup', 'menu');
+    more.setAttribute('aria-expanded', 'false');
+    more.appendChild(icon('chevronDown', 16));
+    const menu = document.createElement('div');
+    menu.className = 'deckmenu';
+    menu.setAttribute('role', 'menu');
+    menu.hidden = true;
+    let decks: readonly string[] = [];
+    const mine = host;
+    void ctx.decks?.then((d) => {
+      if (host === mine) decks = d;
+    }, () => {});
+    const close = (): void => {
+      menu.hidden = true;
+      more.setAttribute('aria-expanded', 'false');
+    };
+    const pick = (name: string, create: boolean): void => {
+      close();
+      void onDeck(name, create).then(
+        ({ deck, warning }) => {
+          deckNow = deck;
+          addNow(warning);
+        },
+        (e: unknown) => say(failed(e), 4000),
+      );
+    };
+    const item = (text: string, onPick: () => void, current = false): void => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.setAttribute('role', 'menuitem');
+      b.className = current ? 'current' : '';
+      b.append(icon(current ? 'check' : 'plus', 13), document.createTextNode(text));
+      b.addEventListener('click', onPick);
+      menu.appendChild(b);
+    };
+    more.addEventListener('click', () => {
+      if (!menu.hidden) {
+        close();
+        return;
+      }
+      menu.replaceChildren();
+      const list = deckNow && !decks.includes(deckNow) ? [deckNow, ...decks] : [...decks];
+      if (!list.length) {
+        const note = document.createElement('div');
+        note.className = 'deckmenu-note';
+        note.textContent = 'Anki is not answering, so its decks are not known yet.';
+        menu.appendChild(note);
+      }
+      for (const d of list) item(`Add to ${d}`, () => pick(d, false), d === deckNow);
+      // A deck can be made only with Anki answering.
+      if (decks.length) {
+        item('New deck…', () => {
+          const name = prompt('New deck — use :: for a subdeck, as in Japanese::Netflix')?.trim();
+          if (name) pick(name, true);
+          else close();
+        });
+      }
+      menu.hidden = false;
+      more.setAttribute('aria-expanded', 'true');
+    });
+    card.addEventListener('click', (e) => {
+      if (!menu.hidden && !(e.target as Element | null)?.closest?.('.deckmenu, .more')) close();
+    });
+    foot.append(more);
+    card.appendChild(menu);
+  }
+
+  /*
+   * The marks: small, beside the word they are about. Known and Ignore by
+   * default, Track when settings offer it — beside Add, as labelled buttons,
+   * they were taken for Add. A mark the word already has always shows, so it
+   * can come off again.
+   */
+  const mark = (cls: string, iconName: string, label: string, next: OverrideStatus): void => {
+    const on = ctx.marked === next;
     const b = document.createElement('button');
     b.className = `mk ${cls}`;
-    b.textContent = label;
-    if (next === 'known') {
-      b.title = label;
-      shortcut(b, 'K', 'K');
-    }
-    b.setAttribute('aria-pressed', String(ctx.status === next));
+    b.appendChild(icon(iconName, 17));
+    b.dataset.tip = on ? MARK_UNDO[next] : MARK_TIPS[next];
+    b.setAttribute('aria-label', label);
+    if (next === 'known') shortcut(b, 'K', 'K');
+    b.setAttribute('aria-pressed', String(on));
     b.addEventListener('click', () => {
-      const value = ctx.status === next ? null : next;   // clicking again clears
-      void ctx.onMark(markKey, value);
-      say(value ? `marked ${value}` : 'cleared');
+      // Pressed again, the mark comes off. The card closes at once; where
+      // the mark went is said over the player.
+      void ctx.onMark(markKey, on ? null : next);
       closePopup();
     });
     marks.appendChild(b);
   };
-
-  mark('known', 'Known', 'known');
-  mark('track', 'Track', 'tracking');
-  mark('ignore', 'Ignore', 'ignored');
-  card.appendChild(marks);
+  const offerMarks = ctx.marks !== false;
+  if (offerMarks || ctx.marked === 'known') mark('known', 'circleCheck', 'Known', 'known');
+  if (ctx.track || ctx.marked === 'tracking') mark('track', 'target', 'Track', 'tracking');
+  if (offerMarks || ctx.marked === 'ignored') mark('ignore', 'ban', 'Ignore', 'ignored');
+  card.appendChild(foot);
 
   card.appendChild(toast);
+  tooltips(card, () => card.getBoundingClientRect());
   root.append(style, card);
   mount.appendChild(host);
   onClose = ctx.onClose ?? null;
 
-  place(host, card, mount, anchor);
+  place(host, card, mount, anchor, ctx.keepClear ?? []);
 }
 
 /**
@@ -576,19 +909,45 @@ export function showPopup(
  * part of the button's name.
  */
 export function shortcut(b: HTMLElement, shown: string, aria: string): void {
-  b.title = `${b.title} (${shown})`;
+  b.dataset.key = shown;
   b.setAttribute('aria-keyshortcuts', aria);
 }
+
+/** The Add button's states (showPopup). */
+type AddState = 'add' | 'busy' | 'added' | 'in' | 'waiting';
+
+/** Meanings shown before "+N more", and the most a card lists at all. */
+const SENSES_SHOWN = 3;
+const MAX_SENSES = 10;
+
+/** The sections that open from one line, and which are open: an opened one stays open for the next card. */
+type FoldKey = 'kanji' | 'also';
+const openFolds = new Set<FoldKey>();
+
+/** How soon after one press a second counts as its own, rather than the same impatience. */
+const SETTLE_MS = 900;
+
+/** What each mark button does — what each one means is in settings, under Word popup. */
+const MARK_TIPS: Record<OverrideStatus, string> = {
+  known: 'Mark known',
+  tracking: 'Track',
+  ignored: 'Ignore',
+  unknown: 'Mark new',
+};
+
+/** The same buttons once pressed: pressing again takes the mark off. */
+const MARK_UNDO: Record<OverrideStatus, string> = {
+  known: 'Unmark known',
+  tracking: 'Stop tracking',
+  ignored: 'Stop ignoring',
+  unknown: 'Unmark new',
+};
 
 /**
  * Each character of the word: what it means, and how it reads. The readings
  * are the dictionary's, dots and all — つと.める shows where the okurigana starts.
  */
 function fillCharacters(el: HTMLElement, c: Characters): void {
-  const head = document.createElement('div');
-  head.className = 'chars-head';
-  head.textContent = c.label;
-  el.appendChild(head);
   for (const k of c.items) {
     const ch = document.createElement('div');
     ch.className = 'kanji';
@@ -629,15 +988,11 @@ function fillAlso(
   lines: Array<{ start: number; text: string; match: string }>,
   onSeek?: (start: number) => void,
 ): void {
-  const head = document.createElement('div');
-  head.className = 'also-head';
-  head.textContent = lines.length === 1 ? 'Once more in this video' : `${lines.length} more times in this video`;
-  el.appendChild(head);
   for (const line of lines.slice(0, ALSO_SHOWN)) {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'also-line';
-    b.title = 'Play from here';
+    b.dataset.tip = 'Play';
     const at = document.createElement('span');
     at.className = 'at';
     at.textContent = clock(line.start);
@@ -687,30 +1042,39 @@ export interface Placement {
 /**
  * Where the card goes, relative to the mount.
  *
- * Above the word when it fits there — subtitles sit low, so that is where the
- * room usually is — and below when that fits instead. When neither side can
- * take the whole card, it goes on the roomier side with its height capped to
- * that room, so its senses scroll and the word stays visible. Only when both
- * sides are too small for a usable card does it cover the word, with its
- * height capped to the player so the status row still fits on screen.
+ * Clear of the line the word is in, not only of the word. The card is about
+ * the word in that sentence; covering the rest of the line — or its
+ * translation — hides the context it was opened to read. `keepClear` lists
+ * what to keep in view, most first: the whole subtitle with its second line,
+ * then the line alone. The word itself is always the last of them.
+ *
+ * Against each in turn: above it when the whole card fits there — subtitles
+ * sit low, so that is where the room usually is — then below; then the
+ * roomier side with the card's height capped to it, so its senses scroll.
+ * Only when even the word leaves no usable room either side does the card
+ * cover it, with its height capped to the player so the status row still fits.
  */
-export function placeCard(mount: Box, anchor: Box, size: { width: number; height: number }): Placement {
+export function placeCard(
+  mount: Box, anchor: Box, size: { width: number; height: number }, keepClear: Box[] = [],
+): Placement {
   let left = anchor.left - mount.left + anchor.width / 2 - size.width / 2;
   left = Math.max(EDGE, Math.min(left, mount.width - size.width - EDGE));
 
-  const wordTop = anchor.top - mount.top;
-  const wordBottom = anchor.bottom - mount.top;
-  const above = wordTop - GAP - EDGE;
-  const below = mount.height - wordBottom - GAP - EDGE;
-
-  if (size.height <= above) return { left, top: wordTop - GAP - size.height, maxHeight: above, side: 'above' };
-  if (size.height <= below) return { left, top: wordBottom + GAP, maxHeight: below, side: 'below' };
-  if (Math.max(above, below) >= MIN_ROOM) {
-    return above >= below
-      ? { left, top: EDGE, maxHeight: above, side: 'above' }
-      : { left, top: wordBottom + GAP, maxHeight: below, side: 'below' };
+  for (const clear of [...keepClear, anchor]) {
+    const top = clear.top - mount.top;
+    const bottom = clear.bottom - mount.top;
+    const above = top - GAP - EDGE;
+    const below = mount.height - bottom - GAP - EDGE;
+    if (size.height <= above) return { left, top: top - GAP - size.height, maxHeight: above, side: 'above' };
+    if (size.height <= below) return { left, top: bottom + GAP, maxHeight: below, side: 'below' };
+    if (Math.max(above, below) >= MIN_ROOM) {
+      return above >= below
+        ? { left, top: EDGE, maxHeight: above, side: 'above' }
+        : { left, top: bottom + GAP, maxHeight: below, side: 'below' };
+    }
   }
 
+  const wordTop = anchor.top - mount.top;
   const maxHeight = Math.max(0, mount.height - 2 * EDGE);
   const height = Math.min(size.height, maxHeight);
   const top = Math.max(EDGE, Math.min(wordTop - GAP - height, mount.height - height - EDGE));
@@ -724,9 +1088,10 @@ export function placeCard(mount: Box, anchor: Box, size: { width: number; height
  * YouTube's default size a long entry was pinned to the top of the player,
  * covered the word it described, and pushed its status row out of sight.
  */
-function place(h: HTMLElement, card: HTMLElement, mount: HTMLElement, anchor: HTMLElement): void {
+function place(h: HTMLElement, card: HTMLElement, mount: HTMLElement, anchor: HTMLElement, keepClear: Element[]): void {
   const m = mount.getBoundingClientRect();
   const a = anchor.getBoundingClientRect();
+  const clear = keepClear.map((el) => el.getBoundingClientRect());
 
   // Narrower than the card, as in a miniplayer: fit the width first, since
   // the width decides how tall the wrapped senses are.
@@ -734,9 +1099,18 @@ function place(h: HTMLElement, card: HTMLElement, mount: HTMLElement, anchor: HT
   if (room > 0 && (card.offsetWidth || CARD_WIDTH) > room) card.style.width = `${room}px`;
 
   const size = { width: card.offsetWidth || CARD_WIDTH, height: card.offsetHeight || CARD_HEIGHT };
-  const p = placeCard(m, a, size);
+  const p = placeCard(m, a, size, clear);
   card.style.maxHeight = `${Math.floor(p.maxHeight)}px`;
   card.dataset.side = p.side;
   h.style.left = `${Math.round(p.left)}px`;
-  h.style.top = `${Math.round(p.top)}px`;
+  // Above, the card hangs from its bottom edge. What fills in later — the
+  // word's other lines, its kanji — then grows it upward into the room it
+  // was given, rather than down over the line it was keeping clear of.
+  if (p.side === 'above') {
+    h.style.top = '';
+    h.style.bottom = `${Math.round(m.height - p.top - Math.min(size.height, p.maxHeight))}px`;
+  } else {
+    h.style.bottom = '';
+    h.style.top = `${Math.round(p.top)}px`;
+  }
 }

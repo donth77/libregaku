@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Token } from '../../morphology/types';
-import { phraseToken, selectedWords, textFrom } from '../phrase';
+import { phraseToken, plainText, selectedWords, textFrom } from '../phrase';
 import { Overlay } from '../renderer';
 
 const tok = (surface: string, more: Partial<Token> = {}): Token => ({ surface, start: 0, end: surface.length, content: true, ...more });
@@ -139,5 +139,67 @@ describe('a phrase on the overlay', () => {
     expect(onHover).not.toHaveBeenCalled();
     words[2]!.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
     expect(onHover).toHaveBeenCalledOnce();
+  });
+});
+
+describe('copying from the overlay', () => {
+  const made: Overlay[] = [];
+  afterEach(() => {
+    for (const o of made.splice(0)) o.destroy();
+    document.body.replaceChildren();
+  });
+
+  /** The overlay's own markup: words with readings, a break, and a translation. */
+  function drawn(): { overlay: Overlay; root: ShadowRoot; wrap: HTMLElement } {
+    const mount = document.createElement('div');
+    document.body.appendChild(mount);
+    const overlay = new Overlay(mount);
+    made.push(overlay);
+    overlay.render([
+      tok('外国', { reading: 'ガイコク' }), tok('に', { reading: 'ニ' }), tok('行きたい', { reading: 'イキタイ' }),
+      { surface: '\n', start: -1, end: -1, punct: true }, tok('です', { reading: 'デス' }),
+    ], 'I want to go abroad');
+    const root = mount.querySelector('.libregaku-root')!.shadowRoot!;
+    return { overlay, root, wrap: root.querySelector<HTMLElement>('.wrap')! };
+  }
+
+  it('reads the selection as text: no readings, and a break only where the line has one', () => {
+    const { root, wrap } = drawn();
+    const range = document.createRange();
+    range.selectNodeContents(root.querySelector('.primary')!);
+    expect(plainText(range)).toBe('外国に行きたい\nです');
+    range.selectNodeContents(wrap);
+    expect(plainText(range)).toBe('外国に行きたい\nです\nI want to go abroad');
+  });
+
+  it('puts that text on the clipboard when the selection is on the line', () => {
+    const { overlay, root } = drawn();
+    const words = Array.from(root.querySelectorAll('.t'));
+    select(root, words[0]!, words[2]!);
+    const data = new Map<string, string>();
+    const e = new Event('copy', { cancelable: true }) as ClipboardEvent;
+    Object.defineProperty(e, 'clipboardData', { value: { setData: (k: string, v: string) => data.set(k, v) } });
+    document.dispatchEvent(e);
+    expect(data.get('text/plain')).toBe('外国に行きたい');
+    expect(e.defaultPrevented).toBe(true);
+
+    // Gone with the overlay: the page's own copying is left alone.
+    overlay.destroy();
+    const after = new Event('copy', { cancelable: true }) as ClipboardEvent;
+    Object.defineProperty(after, 'clipboardData', { value: { setData: () => {} } });
+    document.dispatchEvent(after);
+    expect(after.defaultPrevented).toBe(false);
+  });
+
+  it("leaves a selection that is not on the line to the page's own copy", () => {
+    const { root } = drawn();
+    const outside = document.createElement('p');
+    outside.textContent = 'page text';
+    document.body.appendChild(outside);
+    select(root, outside, outside);
+    const e = new Event('copy', { cancelable: true }) as ClipboardEvent;
+    Object.defineProperty(e, 'clipboardData', { value: { setData: () => {} } });
+    document.dispatchEvent(e);
+    expect(e.defaultPrevented).toBe(false);
   });
 });

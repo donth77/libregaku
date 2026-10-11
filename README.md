@@ -18,26 +18,36 @@ become yours.
 - **Transcript sidebar** — the full script beside the video. Click any line to jump
   there. Hover a word for its definition, click it for the full entry. Read ahead, and
   filter to lines with exactly one unknown word.
-- **Look-up on hover or click** — definitions, readings, a common-word marker and what
-  the endings do, with furigana for Japanese, the kanji a word is written with, and the
-  other lines in the video that use it. Drag across words, or shift-click a second one,
-  to look up a whole phrase.
+- **Look-up on hover, Shift-hover or click** — definitions, readings, a common-word
+  marker and what the endings do, with furigana for Japanese, the kanji a word is written
+  with, and the other lines in the video that use it. Drag across words, or shift-click a
+  second one, to look up a whole phrase. Copying from the subtitle copies the line as
+  text, without its readings.
 - **Anki integration** — cards carry the sentence and its translation, the reading,
   definition, a recording of the word where JapanesePod101 has one, the line itself as
-  it was said, a still from it, the timestamp and a link back to that moment. Recording
-  the line plays it once more. On Netflix the line's sound needs a permission you
+  it was said, a still from it, the timestamp and a link back to that moment. A line can
+  be a card of its own as well — the line with the readings it showed, its sound, its
+  translation and a still — from the word's card or the transcript. Recording the line
+  plays it once more. The card's Add to Anki takes a card back out again for a few
+  minutes (Undo), opens a word Anki already has in Anki's own browser, and — if you turn
+  it on — has a menu of decks to add to. On Netflix the line's sound needs a permission you
   allow in settings, then a click on the toolbar icon on that tab; its video cannot be
   copied, so there is no still. A card made while Anki is closed waits in the browser
   and goes in when Anki next answers, without the line's sound or still.
 - **Keyboard** — ← and → move a line at a time, ↓ plays the line again, ↑ shows or
-  hides the second line, A adds a card for the word looked up, K marks it known, R
-  steps through furigana, H blurs the subtitle until you hover it, B saves the line,
-  S shows the panel. Settings lists them.
+  hides the translation, A adds a card for the word looked up, K marks it known, R
+  steps through furigana (for Japanese), H blurs the subtitle until you hover it, B saves the line,
+  S shows the panel. The keyboard button in the transcript panel lists them.
 - **Your word list is your Anki collection.** What you know is read from Anki, so it
   stays consistent everywhere without an account. Words you mark by hand — known,
   tracked, ignored — are saved into Anki too, as hidden notes that never come up for
-  review, so they follow your collection to every device. Libregaku keeps only your
+  review, so they follow your collection to every device. The transcript panel's Words
+  tab lists them, each with a button to take the mark off. Libregaku keeps only your
   settings, saved lines, and any cards still waiting for Anki in the browser.
+- **Underline colours** — new, learning, tracked and known words each have a colour you
+  can change in Settings.
+- **Help** — how-tos, answers to common questions, and a search over them, on a page of
+  its own; Settings, the toolbar popup and the transcript panel link to it.
 
 ## Requirements
 

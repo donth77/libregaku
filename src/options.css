@@ -1,61 +1,157 @@
 /*
- * The options page is the shared settings component on a page of its own.
- * Its rows, selects and switches come from PANEL_STYLE, injected by
- * options.ts; this file adds only the page around them and the few
- * overrides a wider column wants.
+ * The settings page: the shared settings component (settings-panel.ts) on a
+ * page of its own.
+ *
+ * The component's own styles, PANEL_STYLE, are sized for the narrow transcript
+ * panel: the same sections and cards, packed tight. A page has the room for
+ * larger type, more space, and a list of the sections down the side, so this
+ * lays them out and scales the panel's sizes up. Its rules are scoped to
+ * #settings, which outranks PANEL_STYLE whatever order the two load in.
  */
 :root {
-  --bg: #0D111C; --card: #141A2A; --line: #232C42;
-  --ink: #E8ECF6; --dim: #B4BDD4; --faint: #838DA8; --accent: #8AA2E8;
+  /*
+   * The brand's three (brand/README.md): navy ground, paper ink, and coral —
+   * the underline under a word not learned yet. Coral is the one accent and is
+   * kept for what draws the eye on purpose: the action to take, and where you
+   * are. Focus and "on" are paper, so the accent keeps its meaning.
+   */
+  --bg: #0D111C; --surface: #141A2A; --raised: #161C2C;
+  --line: #232C42; --rule: #1C2436;
+  --ink: #F2F5FC; --text: #CDD4E4; --muted: #A3ACC4; --accent: #E5806C; --focus: #F2F5FC;
 }
 * { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
 body {
-  margin: 0; background: var(--bg); color: var(--ink);
-  font: 14px/1.6 system-ui, -apple-system, "Hiragino Sans", sans-serif;
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.6 system-ui, -apple-system, "Hiragino Sans", sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
-main { max-width: 640px; margin: 0 auto; padding: 48px 24px 96px; }
+a { color: var(--ink); text-decoration-color: #5A6480; text-underline-offset: 3px; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
-.top { margin-bottom: 26px; }
-h1 { font-size: 28px; letter-spacing: -.02em; margin: 0 0 6px; }
+.page { max-width: 1120px; margin: 0 auto; padding: 44px 32px 120px; }
+
+.top { margin: 0 0 36px; }
+h1 { font-size: 28px; letter-spacing: -.02em; margin: 0 0 8px; color: var(--ink); }
 /* The lockup's artboard has a margin; pull it back so the ink lines up with the text below. */
 h1 svg { display: block; margin-left: -4px; }
-.tag { margin: 0; color: var(--faint); }
+.tag { margin: 0; color: var(--muted); }
+.top .title { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
+.top .title h1 { margin: 0; }
+.to-help { font-size: 15px; color: var(--muted); }
+.to-help:hover { color: var(--ink); }
 
-.card {
-  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
-  overflow: hidden;
+/* Contents down the side, and the settings beside them. */
+.layout {
+  display: grid; grid-template-columns: 196px minmax(0, 760px);
+  gap: 56px; align-items: start;
 }
-/* A card ground and a wider column: the panel's own values suit the sidebar. */
-.card .settings { padding-bottom: 14px; }
-.card .grp:first-child { padding-top: 18px; }
-.card .set { border-top-color: #1B2334; }
-.card .set select { max-width: 280px; }
-.card .credits { padding-bottom: 6px; }
+/* A plain track down the side, and a straight accent line on the section being read. */
+.toc {
+  position: sticky; top: 28px; display: flex; flex-direction: column;
+  border-left: 1px solid var(--line);
+}
+.toc a {
+  display: block; margin-left: -1px; padding: 6px 14px;
+  border-left: 2px solid transparent;
+  color: var(--muted); text-decoration: none; font-size: 14.5px; line-height: 1.35;
+}
+.toc a:hover { color: var(--ink); }
+.toc a[aria-current="true"] { color: var(--ink); border-left-color: var(--accent); }
 
-a { color: var(--accent); }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+/* ── First run ─────────────────────────────────────────────────── */
 
 .setup {
-  background: #1A2138; border: 1px solid #3B4A6B; border-radius: 12px;
-  padding: 18px 20px; margin-bottom: 20px;
+  background: var(--raised); border: 1px solid var(--line); border-radius: 14px;
+  padding: 22px 24px; margin: 0 0 48px;
 }
-.setup h2 {
-  font: 600 11px/1.4 ui-monospace, monospace; letter-spacing: .14em;
-  text-transform: uppercase; color: var(--accent); margin: 0 0 10px;
+.setup h2 { font: 600 19px/1.3 system-ui, -apple-system, sans-serif; letter-spacing: -.01em; color: var(--ink); margin: 0; }
+.setup-about { margin: 4px 0 16px; color: var(--muted); }
+.setup ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.setup li { display: flex; align-items: center; gap: 12px; font-size: 15.5px; color: var(--text); }
+.setup .tick {
+  flex: none; width: 26px; height: 26px; border-radius: 50%;
+  display: inline-grid; place-items: center;
+  font: 600 13px/1 system-ui, -apple-system, sans-serif;
+  background: #1C2436; border: 1px solid #343E58; color: var(--ink);
 }
-.setup ol { margin: 0; padding-left: 4px; list-style: none; }
-.setup li { display: flex; gap: 10px; align-items: baseline; padding: 4px 0; color: var(--dim); }
-.setup li.done { color: var(--faint); text-decoration: line-through; }
-.setup .tick { font-family: ui-monospace, monospace; color: var(--faint); }
-.setup li.done .tick { color: #63AF97; text-decoration: none; }
-.setup .fine { color: var(--faint); font-size: 12px; margin: 12px 0 0; }
+.setup .step-text a { color: inherit; text-decoration: underline; text-decoration-color: #5A6480; text-underline-offset: 3px; }
+.setup .step-text a:hover { text-decoration-color: var(--ink); }
+.setup li.done .tick { background: #16281F; border-color: #2A5245; color: #63AF97; }
+.setup li.done .step-text { color: var(--muted); text-decoration: line-through; }
+.setup .fine { margin: 16px 0 0; font-size: 13.5px; color: var(--muted); }
 
-.confirms { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.confirms { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 #confirmLang, #confirmDeck {
-  background: var(--accent); color: #0D111C;
-  border: 0; border-radius: 6px; padding: 9px 16px; cursor: pointer;
-  font: 600 12px system-ui, sans-serif;
+  background: var(--accent); color: #0D111C; border: 0; border-radius: 8px;
+  padding: 10px 18px; cursor: pointer; font: 600 14px/1 system-ui, -apple-system, sans-serif;
 }
 #confirmLang:hover, #confirmDeck:hover { filter: brightness(1.08); }
 #confirmLang[hidden], #confirmDeck[hidden] { display: none; }
+
+/* ── The sections ──────────────────────────────────────────────── */
+
+#settings .settings { overflow: visible; padding: 0; }
+/*
+ * Each section opens with a heading band — larger and heavier than any
+ * setting, on a shade of its own — so a title is never taken for a setting.
+ */
+#settings .grp-section { margin: 0; padding: 36px 0 8px; scroll-margin-top: 12px; }
+#settings .grp-section:first-child { padding-top: 0; }
+#settings .grp-head {
+  display: block; margin: 0 0 6px; padding: 16px 20px 17px;
+  background: #161D2E; border: 1px solid #263048; border-radius: 12px;
+}
+#settings .grp {
+  margin: 0; padding: 0; color: var(--ink);
+  font: 700 22px/1.25 system-ui, -apple-system, sans-serif; letter-spacing: -.015em; text-transform: none;
+}
+#settings .grp-section:first-child .grp { padding: 0; }
+/* A section reached from the contents says so: the last few cannot be
+   scrolled to the top, and would otherwise seem not to have moved. */
+#settings .grp-section.landed .grp { animation: landed 1.6s ease-out; }
+@keyframes landed { from, 30% { color: var(--accent); } to { color: var(--ink); } }
+#settings .grp-about { display: block; margin: 5px 0 0; color: var(--muted); font-size: 14.5px; line-height: 1.5; }
+#settings .grp-rows > .set:first-child { border-top: 0; }
+
+/* A row: the setting's name, its control, and what it does underneath. */
+#settings .set { padding: 16px 0; column-gap: 24px; row-gap: 5px; border-top: 1px solid var(--rule); }
+#settings .set > .name { font-size: 15px; font-weight: 500; color: var(--ink); }
+#settings .set > .hint { font-size: 13.5px; line-height: 1.55; color: var(--muted); max-width: 62ch; }
+#settings .set > .hint.warn { color: #E2B866; }
+#settings .set select { font-size: 14px; padding: 8px 32px 8px 12px; min-width: 140px; max-width: 300px; }
+
+/* Anki: where it stands, what is left to do, and its buttons. */
+#settings .state { margin: 16px 0; font-size: 14.5px; line-height: 1.55; }
+#settings .steps { padding: 0 0 6px 24px; font-size: 14.5px; line-height: 1.6; color: var(--text); }
+#settings .steps li { margin-bottom: 12px; }
+#settings .chip { margin-top: 6px; }
+#settings .chip code { font-size: 13px; }
+#settings .btnrow { padding: 16px 0 0; gap: 8px; border-top: 1px solid var(--rule); }
+#settings .btnrow button,
+#settings .set .perm {
+  font: 500 13.5px/1 system-ui, -apple-system, sans-serif; letter-spacing: 0; text-transform: none;
+  padding: 9px 14px; border-radius: 7px; color: var(--text);
+}
+
+#settings .credits { padding: 16px 0 0; }
+#settings .credits dt { font-size: 14px; }
+#settings .credits dt a { color: var(--ink); }
+#settings .credits dd { font-size: 13px; line-height: 1.55; color: var(--muted); }
+
+/* ── Narrower windows ──────────────────────────────────────────── */
+
+@media (max-width: 980px) {
+  .page { max-width: 780px; }
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .toc { display: none; }
+}
+@media (max-width: 600px) {
+  .page { padding: 28px 16px 80px; }
+  .setup { padding: 18px; }
+  #settings .set { padding: 14px 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  * { transition: none !important; }
+}

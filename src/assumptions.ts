@@ -282,7 +282,7 @@ export const ASSUMPTIONS: Assumption[] = [
     id: 'anki.media',
     site: 'external',
     claim: 'addNote stores each file in note.audio and note.picture from its base64 data under its filename, and appends [sound:filename] or <img src="filename"> to the fields it names, in order',
-    breaks: 'Pronunciation, sentence audio and pictures on new cards',
+    breaks: 'Word audio, sentence audio and screenshots on new cards',
     fallback: 'The card is still added, without them',
   },
   {

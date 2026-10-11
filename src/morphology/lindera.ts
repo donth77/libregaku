@@ -53,16 +53,18 @@ export class LinderaSegmenter implements Segmenter {
     const hit = this.#cache.get(text);
     if (hit) return hit;
 
-    const res = (await chrome.runtime.sendMessage({
-      target: 'offscreen',
-      type: 'tokenize',
-      text,
-    })) as Analysis | undefined;
-
-    if (!res) throw new Error('the offscreen document did not answer');
-    if (!res.ok || !res.tokens) throw new Error(res.error ?? 'tokenizer unavailable');
-
-    const out = toTokens(text, res.tokens, lexiconFrom(res.lexicon));
+    // Stretched vowels are read as ー, and dropped where IPADIC cannot read
+    // them so; either way the words go back on the line as written.
+    let used = forAnalysis(text);
+    let res = await analyse(used.text);
+    let analysed = toTokens(used.text, res.tokens, lexiconFrom(res.lexicon));
+    const drop = marksToDrop(analysed, used);
+    if (drop.size) {
+      used = forAnalysis(text, drop);
+      res = await analyse(used.text);
+      analysed = toTokens(used.text, res.tokens, lexiconFrom(res.lexicon));
+    }
+    const out = used.text === text ? analysed : restretched(analysed, text, used.at);
     // An analysis made before the dictionary loaded reads numbers and prefixed
     // words less well; keep it for this call only, so the line improves once
     // the dictionary is there.
@@ -74,6 +76,107 @@ export class LinderaSegmenter implements Segmenter {
     return out;
   }
 }
+
+/** One request to the offscreen document's analyser. */
+async function analyse(text: string): Promise<Analysis & { tokens: Analysed[] }> {
+  const res = (await chrome.runtime.sendMessage({ target: 'offscreen', type: 'tokenize', text })) as
+    | Analysis
+    | undefined;
+  if (!res) throw new Error('the offscreen document did not answer');
+  if (!res.ok || !res.tokens) throw new Error(res.error ?? 'tokenizer unavailable');
+  return res as Analysis & { tokens: Analysed[] };
+}
+
+/** Marks that stretch a vowel in casual writing: は〜い, う～ん, ね~. */
+const STRETCH = new Set(['〜', '～', '~', '〰']);
+const KANA = /[\p{sc=Hiragana}\p{sc=Katakana}]/u;
+const HIRAGANA = /\p{sc=Hiragana}/u;
+
+/** A line as the analyser is given it. */
+export interface ForAnalysis {
+  text: string;
+  /** Where in the line each character of `text` came from, and one past the end. */
+  at: number[];
+  /** Positions in `text` of a stretch: a mark read as ー, or a ー after hiragana. */
+  stretched: Set<number>;
+}
+
+/**
+ * A line as the analyser should read it.
+ *
+ * IPADIC knows nothing of 〜 as a stretched vowel: は〜い came back as
+ * は + 〜 + い, the い read as いる. Spelled with ー, as the dictionary spells
+ * such words, it reads はーい, うーん and えーと — and う〜ん is not うん, so
+ * the mark is not simply dropped. A run of marks is one. Those at `drop`
+ * (positions in the line) are left out instead: where even ー leaves IPADIC
+ * a lone ー, as in すごーい and かわいー, the word reads right without it.
+ * A ー after katakana is part of the spelling and is never touched.
+ */
+export function forAnalysis(text: string, drop: ReadonlySet<number> = new Set()): ForAnalysis {
+  let out = '';
+  const at: number[] = [];
+  const stretched = new Set<number>();
+  let afterKana = false;
+  let afterHiragana = false;
+  let inRun = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i]!;
+    const mark = afterKana && STRETCH.has(c);
+    const long = afterHiragana && c === 'ー';
+    if (mark || long) {
+      // A run is one stretch, and a dropped one takes the rest of its run with it.
+      if ((mark && inRun) || drop.has(i)) {
+        inRun = true;
+        continue;
+      }
+      stretched.add(out.length);
+      out += 'ー';
+      at.push(i);
+      inRun = true;
+      continue;
+    }
+    out += c;
+    at.push(i);
+    inRun = false;
+    afterKana = KANA.test(c);
+    afterHiragana = HIRAGANA.test(c);
+  }
+  at.push(text.length);
+  return { text: out, at, stretched };
+}
+
+/** Stretches IPADIC left on their own, as a word that is only ー: where they stand in the line. */
+export function marksToDrop(tokens: readonly Token[], given: ForAnalysis): Set<number> {
+  const drop = new Set<number>();
+  for (const t of tokens) {
+    if (!/^ー+$/.test(t.surface)) continue;
+    const at = Array.from({ length: t.end - t.start }, (_, k) => t.start + k);
+    if (!at.every((p) => given.stretched.has(p))) continue;
+    for (const p of at) drop.add(given.at[p]!);
+  }
+  return drop;
+}
+
+/**
+ * Tokens of an unstretched line, put back on the line as written. Each word
+ * takes the marks that came after it, so は〜い is one word, looked up as
+ * はい, and nothing on the line goes undrawn.
+ */
+export function restretched(tokens: readonly Token[], text: string, at: readonly number[]): Token[] {
+  return tokens.map((t) => {
+    const start = at[t.start] ?? t.start;
+    const end = at[t.end] ?? text.length;
+    return { ...t, start, end, surface: text.slice(start, end) };
+  });
+}
+
+/**
+ * Nothing but punctuation, symbols, spaces or a long-vowel mark: never a word,
+ * whatever the analyser called it. IPADIC's pass over characters it has no
+ * entry for groups ？ with the space after it, and reads ～ and ? on their
+ * own, as nouns — which underlined them as new words.
+ */
+const MARKS_ONLY = /^[\p{P}\p{S}\p{Z}\sー]+$/u;
 
 /** The offscreen document's answers as the merge pass consumes them. */
 export function lexiconFrom(answers?: Record<string, LexiconEntry[]>): Lexicon | undefined {
@@ -89,7 +192,7 @@ export function lexiconFrom(answers?: Record<string, LexiconEntry[]>): Lexicon |
  * analyser normalising a character away.
  */
 export function toTokens(text: string, analysed: Analysed[], lexicon?: Lexicon): Token[] {
-  const merged = mergeMorphemes(analysed, lexicon);
+  const merged = spaced(text, analysed).flatMap((run) => mergeMorphemes(run, lexicon));
   const out: Token[] = [];
   let cursor = 0;
 
@@ -99,6 +202,8 @@ export function toTokens(text: string, analysed: Analysed[], lexicon?: Lexicon):
     if (at < 0) continue;   // normalised; skip rather than misalign the rest
     cursor = at + t.surface.length;
 
+    // IPADIC files punctuation under 記号, mostly.
+    const punct = t.pos === '記号' || MARKS_ONLY.test(t.surface);
     out.push({
       surface: t.surface,
       start: at,
@@ -106,9 +211,8 @@ export function toTokens(text: string, analysed: Analysed[], lexicon?: Lexicon):
       lemma: t.lemma,
       reading: t.reading,
       pos: t.pos,
-      content: t.content,
-      // IPADIC files punctuation under 記号.
-      punct: t.pos === '記号',
+      content: t.content && !punct,
+      punct,
       parts: t.parts.length > 1 ? t.parts : undefined,
       inflections: t.inflections.length ? t.inflections : undefined,
       lemmaReading: t.lemmaReading,
@@ -116,6 +220,33 @@ export function toTokens(text: string, analysed: Analysed[], lexicon?: Lexicon):
     });
   }
   return out;
+}
+
+/**
+ * The morphemes in the stretches a line writes without a space.
+ *
+ * The analyser drops spaces, so ありがとう ございます comes back as if it
+ * were written together. A word merged across the space was then nowhere in
+ * the line, and toTokens left it out — the whole phrase went missing. A space
+ * the subtitle put there is a boundary, and merging stays inside it.
+ */
+function spaced(text: string, analysed: Analysed[]): Analysed[][] {
+  const runs: Analysed[][] = [];
+  let run: Analysed[] = [];
+  let cursor = 0;
+  for (const m of analysed) {
+    const at = m.surface ? text.indexOf(m.surface, cursor) : -1;
+    if (at >= 0) {
+      if (run.length && /\s/.test(text.slice(cursor, at))) {
+        runs.push(run);
+        run = [];
+      }
+      cursor = at + m.surface.length;
+    }
+    run.push(m);
+  }
+  if (run.length) runs.push(run);
+  return runs;
 }
 
 /** Ruby segments for a token, for the renderer. */

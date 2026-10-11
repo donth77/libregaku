@@ -1,5 +1,5 @@
 import { NetflixAdapter } from '../adapters/netflix';
-import { pairCues } from '../adapters/pair';
+import { mergeRepeats, pairCues } from '../adapters/pair';
 import { YouTubeAdapter } from '../adapters/youtube';
 import type { Cue, SubtitleSource, TrackInfo } from '../adapters/types';
 import { IntlSegmenter } from '../morphology/intl';
@@ -8,24 +8,28 @@ import type { Segmenter, Token } from '../morphology/types';
 import { DomCaptionSource } from '../adapters/dom-captions';
 import { charactersOf, clearLookupCache, ensureDictionary, lookupToken, type Characters, type LookupResult } from '../dict/client';
 import { bottomOffset, namedMatches, occupiedBands } from './coexist';
-import { addNote, ensureModel, isDuplicate, type NewCard } from '../anki/client';
-import { flushCards, isQueueKey, queueCard, queuedCards } from '../anki/card-queue';
-import { lineMediaName, tagsFor, toAnkiFurigana } from '../anki/model';
+import {
+  addNote, browseWord, createDeck, deckNames, ensureModel, isDuplicate, takeBack, type NewCard,
+} from '../anki/client';
+import { flushCards, isQueueKey, queueCard, queuedCards, unqueueCard } from '../anki/card-queue';
+import { ROOT_TAG, lineMediaName, tagsFor, toAnkiFurigana } from '../anki/model';
 import { AnkiUnavailable } from '../anki/rpc';
 import { cardAudio } from '../audio/card-audio';
 import { sourceField } from '../anki/source';
 import { buildStatusMap, lemmaReading, type OverrideStatus, type Status, type StatusMap } from '../anki/status';
-import { loadOverrides, setMark, syncMarks } from '../anki/marks';
+import { loadOverrides, setMark, syncMarks, type MarkSync } from '../anki/marks';
 import { furigana } from '../morphology/furigana';
 import {
-  DICTIONARIES, TIER2_LANGS, jmdictEditionFor, loadSettings, nextRuby, onSettingsChange, rubyLabel, setSetting,
-  settings,
+  DICTIONARIES, TIER2_LANGS, featuresOf, jmdictEditionFor, loadSettings, nextRuby, onSettingsChange, rubyLabel,
+  setSetting, settings, underlineVars,
 } from '../settings';
 import {
-  cancelPopupClose, closePopup, closePopupSoon, draftFor, popupKey, pressAdd, showPopup, type CardDraft,
+  cancelPopupClose, closePopup, closePopupSoon, draftFor, popupKey, pressAdd, showPopup, type Added, type CardDraft,
 } from './popup';
+import { outsideScope } from './settings-panel';
 import { clearFlash, flash as flashOn } from './flash';
 import { phraseToken } from './phrase';
+import { lineReading } from './line-card';
 import {
   elementRecorder, extensionFor, isEncrypted, stillOf, tabCaptured, tabRecorder, type LineRecorder, type Media,
 } from './capture';
@@ -172,18 +176,42 @@ async function mark(word: string, next: OverrideStatus | null, reading?: string)
   repaint();
   // The mark shows at once either way; a failed write only costs it on reload,
   // which the learner should hear now rather than discover then.
-  if (!(await setMark(word, next, reading)) && currentMount) showNotice(currentMount, 'mark-not-saved');
-  void pushMarks();
+  if (!(await setMark(word, next, reading))) {
+    if (currentMount) showNotice(currentMount, 'mark-not-saved');
+    return;
+  }
+  const synced = await pushMarks();
+  // Say where it went. A mark is not a card: it is a hidden note in its own
+  // deck, which Anki's deck list does not show — so without this, a mark that
+  // reached Anki looked exactly like one that had not.
+  if (currentMount) flash(currentMount, markSaid(word, next, synced), 3000);
+}
+
+/** What a mark did, in one line. */
+/**
+ * What a mark did, in one line: what happened to the word, and that no card
+ * was made. Where the mark is kept — a hidden note in Anki, so it syncs —
+ * is for settings and the help: said here, "in Anki" read as a card added.
+ */
+export function markSaid(word: string, next: OverrideStatus | null, synced: MarkSync | null | 'here'): string {
+  if (!next) return `${word} · mark taken off`;
+  const done = ({ known: 'marked known', tracking: 'tracked', ignored: 'ignored', unknown: 'marked new' } as const)[next];
+  const where = next === 'tracking' ? '. See the Tracked tab in the panel' : '';
+  // Anki refused it: the one case worth saying, because it will be tried again.
+  if (synced && synced !== 'here' && synced.error) return `${word} · ${done}, no card — Anki refused it; trying again later`;
+  return `${word} · ${done}, no card${where}`;
 }
 
 /**
  * Exchange marks with Anki: this browser's waiting changes go in, and every
  * mark in the collection — some made on other devices — comes back.
  */
-async function pushMarks(): Promise<void> {
+async function pushMarks(): Promise<MarkSync | null | 'here'> {
+  // Kept in this browser by choice: they wait, and go in if the setting comes back on.
+  if (!settings().marksInAnki) return 'here';
   const revision = manualRevision;
   const synced = await syncMarks();
-  if (!synced) return;   // Anki closed: the marks wait in the browser
+  if (!synced) return null;   // Anki closed: the marks wait in the browser
   // A mark made while this was in flight is newer than what came back.
   if (revision === manualRevision) overrides = synced.marks;
   if (synced.error) {
@@ -191,6 +219,7 @@ async function pushMarks(): Promise<void> {
     if (currentMount) showNotice(currentMount, 'marks-not-synced', synced.error);
   }
   repaint();
+  return synced;
 }
 
 /**
@@ -311,7 +340,7 @@ async function makeSegmenter(): Promise<Segmenter | null> {
   if (DICTIONARIES[lang]) {
     void (async () => {
       try {
-        const d = await ensureDictionary(jmdictEditionFor(settings().native));
+        const d = await ensureDictionary(jmdictEditionFor(settings().definitions));
         log(
           d.ready
             ? 'JMdict ready — click a word to look it up'
@@ -469,9 +498,18 @@ async function alsoInVideo(token: Token, here?: number): Promise<AlsoLine[]> {
  * dictionary behind it, as with lookups themselves.
  */
 function charactersFor(token: Token, result: LookupResult): Promise<Characters> | undefined {
-  if (!DICTIONARIES[targetLang()]) return undefined;
-  return charactersOf(draftFor(result, token, '').expression, settings().native)
+  // Only where the language has characters to list, and the card is set to show them.
+  if (!DICTIONARIES[targetLang()] || !featuresOf(targetLang()).characters || !settings().cardKanji) return undefined;
+  return charactersOf(draftFor(result, token, '').expression, settings().definitions)
     .catch(() => ({ label: '', items: [] }));
+}
+
+/** The language's dictionary site for a word, for its card — none where the language has none. */
+function dictionaryFor(token: Token, result: LookupResult): { name: string; url: string } | undefined {
+  const site = featuresOf(targetLang()).dictionary;
+  if (!site) return undefined;
+  const word = (result.state === 'ok' ? result.entries[0]?.word : undefined) ?? token.lemma ?? token.surface;
+  return { name: site.name, url: site.url(word) };
 }
 
 /** Play from a line the lookup card points to. */
@@ -747,6 +785,8 @@ async function run(gen: number): Promise<boolean> {
     log('track loaded but contained no cues');
     return startDomFallback(mount, seg, adapter, 'load-failed');
   }
+  // A line split at a cut is one line (src/adapters/pair.ts).
+  loaded = mergeRepeats(loaded);
 
   log(`rendering ${loaded.length} cues · segmenter tier ${seg.tier}` +
       (seg.hasLemma ? '' : ' (no lemmas — Anki matching would be surface-form only)'));
@@ -909,14 +949,15 @@ let replace: (() => void) | null = null;
 /** What the overlay was last told, so a settings change applies only what moved. */
 let appearance = { size: 0, bottom: 0, dual: true };
 /** The languages the current run was built for. */
-let languages = { target: '', native: '' };
+let languages = { target: '', native: '', definitions: '' };
 /** The status scope last read from Anki. */
 let scopeRead: string | null = null;
 
 /** The second line only while it is wanted — the switch can flip mid-video. */
 function secondLine(shown: Array<{ secondary?: string }>): string | undefined {
   if (!settings().dualSubtitles) return undefined;
-  const lines = shown.map((c) => c.secondary).filter((s): s is string => Boolean(s));
+  // Lines shown together can share a translation; it is shown once.
+  const lines = [...new Set(shown.map((c) => c.secondary).filter((s): s is string => Boolean(s)))];
   return lines.length ? lines.join('\n') : undefined;
 }
 
@@ -952,6 +993,7 @@ function makeOverlay(mount: HTMLElement, adapter: SubtitleSource): Overlay {
   o.setRubyMode(settings().ruby);
   o.setBlurred(settings().blurPrimary);
   o.setMarkKnown(settings().markKnown);
+  o.setColors(underlineVars(settings()));
   o.setStatusSource(statusOf);
   o.onToken((tok, el) => void openLookup(mount, el, tok));
   o.onPhrase((words, text, el) => void openLookup(mount, el, phrase(words, text)));
@@ -988,7 +1030,7 @@ function pressPause(): void {
 }
 
 function wireHover(o: Overlay, mount: HTMLElement): void {
-  o.onHover((tok, el) => {
+  o.onHover((tok, el, shift) => {
     clearTimeout(hoverTimer);
     hovering = el;
 
@@ -999,7 +1041,8 @@ function wireHover(o: Overlay, mount: HTMLElement): void {
       closePopupSoon();
       return;
     }
-    if (settings().interaction !== 'hover') return;
+    const how = settings().interaction;
+    if (how === 'click' || (how === 'shift' && !shift)) return;
     // A line replaying to be recorded passes under the cursor; it is not being read.
     if (recordingLine) return;
 
@@ -1009,11 +1052,27 @@ function wireHover(o: Overlay, mount: HTMLElement): void {
       return;
     }
 
+    // Holding Shift is asking for the card; the grace period is for a cursor
+    // only passing over the line.
     hoverTimer = window.setTimeout(() => {
       pauseForHover();
       void openLookup(mount, el, tok, true);
-    }, settings().hoverDelay);
+    }, how === 'shift' ? 0 : settings().hoverDelay);
   });
+}
+
+/**
+ * Shift pressed with the cursor already resting on a word, when cards open
+ * on Shift: the card opens then, without moving the cursor off and back.
+ */
+function lookUnderPointer(): void {
+  const el = hovering;
+  if (settings().interaction !== 'shift' || recordingLine || !currentMount || !el?.isConnected || !el.dataset.tok) return;
+  const tok = JSON.parse(el.dataset.tok) as Token;
+  if (popupKey() === `${tok.start}:${tok.surface}`) return;
+  clearTimeout(hoverTimer);
+  pauseForHover();
+  void openLookup(currentMount, el, tok, true);
 }
 
 /** Resume a hover pause when the card goes away — unless another took its place. */
@@ -1069,7 +1128,7 @@ async function lookupFor(token: Token): Promise<LookupResult> {
 }
 
 /** Turn a lookup into an Anki note, with everything needed to review it. */
-async function addCard(draft: CardDraft, token: Token, line: LineContext): Promise<string> {
+async function addCard(draft: CardDraft, token: Token, line: LineContext): Promise<Added> {
   const deck = settings().deck;
   if (!deck) throw new Error('Pick a deck in Libregaku settings first');
 
@@ -1113,13 +1172,14 @@ async function addCard(draft: CardDraft, token: Token, line: LineContext): Promi
   const audio = settings().cardAudio ? { word: draft.expression, reading, lang: targetLang() } : undefined;
 
   let missing: string[] = [];
+  let id = 0;
   try {
     await ensureModel();
     const [wordAudio, media] = await Promise.all([audio ? cardAudio(audio) : Promise.resolve(null), lineMedia(line)]);
     missing = media.missing;
     const video = adapter?.videoId() ?? 'video';
     const name = (ext: string): string => lineMediaName(video, line.start ?? at, ext);
-    await addNote({
+    id = await addNote({
       ...card,
       audio: wordAudio,
       sentenceAudio: media.audio ? { data: media.audio.data, filename: name(extensionFor(media.audio.type)) } : null,
@@ -1129,20 +1189,20 @@ async function addCard(draft: CardDraft, token: Token, line: LineContext): Promi
     // Anki already has it. Not a failure: say so, and let status catch up.
     if (isDuplicate(e)) {
       void refreshStatus();
-      return `already in ${deck}`;
+      return { said: `already in ${deck}` };
     }
     if (!(e instanceof AnkiUnavailable)) throw e;
     // Anki is closed. Keep the card, and add it the next time Anki answers.
     const kept = await queueCard({ card, word, ...(audio ? { audio } : {}) });
     if (kept === 'failed') throw new Error('Anki is closed, and the browser would not keep the card for later');
-    if (kept === 'already') return `already waiting for Anki`;
+    if (kept === 'already') return { said: 'already waiting for Anki' };
     manualRevision++;
     overrides.delete(word);
     queuedWords.add(word);
     repaint();
     await setMark(word, null);
     watchQueue(true);
-    return `Anki is closed — this goes to ${deck} when it opens`;
+    return { said: `Anki is closed — this goes to ${deck} when it opens`, undo: unqueued(card, word) };
   }
 
   // Show the successful addition immediately, then let Anki's next snapshot
@@ -1155,7 +1215,136 @@ async function addCard(draft: CardDraft, token: Token, line: LineContext): Promi
   // A card now speaks for the word; a hand mark would hide what it says.
   await setMark(word, null);
   void refreshStatus();
-  return missing.length ? `added to ${deck} — without ${missing.join(' or ')}` : `added to ${deck}`;
+  return {
+    said: missing.length ? `added to ${deck} — without ${missing.join(' or ')}` : `added to ${deck}`,
+    undo: takenBack(id, word, deck),
+  };
+}
+
+/**
+ * Undo for a card just added: out of Anki again — the service worker allows
+ * it only for a card minutes old that has not been studied — and its word
+ * back to what Anki says about it.
+ */
+function takenBack(id: number, word: string, deck: string): () => Promise<string> {
+  return async () => {
+    await takeBack(id);
+    addedCards.delete(word);
+    statusRequest++;
+    manualRevision++;
+    repaint();
+    void refreshStatus();
+    return `taken back out of ${deck}`;
+  };
+}
+
+/** Undo for a card still waiting for Anki to open: it stops waiting. */
+function unqueued(card: NewCard, word: string): () => Promise<string> {
+  return async () => {
+    if (!(await unqueueCard(card.deck, card.expression))) throw new Error('It has already gone into Anki');
+    queuedWords.delete(word);
+    manualRevision++;
+    repaint();
+    return 'no longer waiting for Anki';
+  };
+}
+
+/** Anki's decks, for the card's deck menu: asked again at most once a minute. */
+let decksAsked: { at: number; list: Promise<string[]> } | null = null;
+function deckList(): Promise<string[]> {
+  if (!decksAsked || Date.now() - decksAsked.at > 60_000) {
+    decksAsked = { at: Date.now(), list: deckNames().catch(() => []) };
+  }
+  return decksAsked.list;
+}
+
+/** The deck menu on the card: where new cards go from now on, as in settings. */
+async function chooseDeck(deck: string, create: boolean): Promise<{ deck: string; warning?: string }> {
+  if (create) {
+    await createDeck(deck);
+    decksAsked = null;
+  }
+  await setSetting('deck', deck);
+  const scope = settings().statusScope;
+  return outsideScope(deck, scope)
+    ? { deck, warning: `words you know are read from ${scope}, so cards in ${deck} will not count` }
+    : { deck };
+}
+
+/** The Add button on a word Anki already has: its notes, in Anki's own browser. */
+function showInAnki(token: Token): void {
+  void browseWord(token.lemma ?? token.surface, settings().statusScope).catch((e: unknown) => {
+    if (currentMount) flash(currentMount, e instanceof Error ? e.message : String(e), 4000);
+  });
+}
+
+/**
+ * The line as a card of its own: what the saved-lines list makes, in one
+ * step and with what a word's card carries. The line on the front with the
+ * readings it showed and its sound; its translation, a still and a link back
+ * to the moment behind. Saving the same line twice is the same card.
+ */
+async function addLineCard(text: string, line: LineContext): Promise<Added> {
+  const deck = settings().deck;
+  if (!deck) throw new Error('Pick a deck in Libregaku settings first');
+
+  const adapter = pickAdapter();
+  const at = line.start ?? activeVideo?.currentTime ?? 0;
+  const tokens = lineTokens.get(text) ?? (await segmentText(text));
+  const ruby = settings().ruby;
+  // The words that showed a reading, as the overlay decides it.
+  const shows = (t: Token): boolean =>
+    ruby === 'always' || (ruby === 'unknown' && (statusOf(t) === 'unknown' || statusOf(t) === 'learning'));
+  const card: NewCard = {
+    deck,
+    expression: text,
+    // The front shows Reading: with no analysis, it is the line as written,
+    // since a card whose front is empty is one Anki refuses.
+    reading: tokens.length ? lineReading(tokens, shows) : [{ text }],
+    meaning: line.translation ?? '',
+    source: sourceField({
+      title: adapter?.title() ?? null,
+      seconds: at,
+      url: adapter?.deepLink(at) ?? null,
+    }),
+    tags: [...tagsFor({ source: adapter?.id ?? 'unknown', lang: targetLang() }), `${ROOT_TAG}::sentence`],
+  };
+
+  let missing: string[] = [];
+  let id = 0;
+  try {
+    await ensureModel();
+    const media = await lineMedia(line);
+    missing = media.missing;
+    const video = adapter?.videoId() ?? 'video';
+    const name = (ext: string): string => lineMediaName(video, line.start ?? at, ext);
+    id = await addNote({
+      ...card,
+      // The line is the card's subject, so its sound goes on the front.
+      audio: media.audio ? { data: media.audio.data, filename: name(extensionFor(media.audio.type)) } : null,
+      picture: media.picture ? { data: media.picture.data, filename: name(extensionFor(media.picture.type)) } : null,
+    });
+  } catch (e) {
+    if (isDuplicate(e)) return { said: `the sentence is already in ${deck}` };
+    if (!(e instanceof AnkiUnavailable)) throw e;
+    // Kept like any card, but the line is recorded only as it goes in.
+    const kept = await queueCard({ card, word: text });
+    if (kept === 'failed') throw new Error('Anki is closed, and the browser would not keep the card for later');
+    if (kept === 'already') return { said: 'the sentence is already waiting for Anki' };
+    watchQueue(true);
+    const without = [settings().cardSentenceAudio && 'sound', settings().cardScreenshot && 'picture'].filter(Boolean);
+    return {
+      said: `Anki is closed — the sentence goes to ${deck} when it opens${without.length ? `, without its ${without.join(' or ')}` : ''}`,
+      undo: unqueued(card, text),
+    };
+  }
+  return {
+    said: missing.length ? `sentence added to ${deck} — without ${missing.join(' or ')}` : `sentence added to ${deck}`,
+    undo: async () => {
+      await takeBack(id);
+      return `sentence taken back out of ${deck}`;
+    },
+  };
 }
 
 /** While a line replays to be recorded: hover must neither pause it nor open cards over it. */
@@ -1297,14 +1486,27 @@ async function openLookup(mount: HTMLElement, el: HTMLElement, token: Token, byH
     showPopup(mount, el, result, {
       token,
       sentence,
+      phrase: phrases.has(token),
       status: statusOf(token),
+      marked: overrides.get(token.lemma ?? token.surface) ?? null,
       onMark: (word, next) => mark(word, next, lemmaReading(word, token.surface, token.reading)),
       onAddCard: (draft) => addCard(draft, token, line),
+      onAddLine: settings().cardAddLine && sentence.trim() ? () => addLineCard(sentence, line) : undefined,
+      onShowInAnki: () => showInAnki(token),
+      deck: settings().deck,
+      decks: settings().cardDeckMenu ? deckList() : undefined,
+      onDeck: settings().cardDeckMenu ? chooseDeck : undefined,
+      track: settings().cardTrack,
+      marks: settings().cardMarks,
+      colors: underlineVars(settings()),
+      dictionary: dictionaryFor(token, result),
       hasCard: hasCardFor(token),
       queued: queuedWords.has(token.lemma ?? token.surface),
-      elsewhere: alsoInVideo(token, line.start),
+      elsewhere: settings().lookupElsewhere ? alsoInVideo(token, line.start) : undefined,
       onSeek: playFrom,
       characters: charactersFor(token, result),
+      // The subtitle with its translation, then the line alone.
+      keepClear: [el.closest('.wrap'), el.closest('.primary')].filter((x): x is Element => Boolean(x)),
       onClose: onCardClosed,
     });
   } catch (e) {
@@ -1364,6 +1566,26 @@ function mountSidebar(mount: HTMLElement, video: HTMLVideoElement, adapter: Subt
     onWordClick: (token, el, sentence, context) => openFromTranscript(token, el, sentence, context),
     onPhrase: (words, text, el, sentence, context) =>
       openFromTranscript(phrase(words, text), el, sentence, context),
+    // A row's own button: the outcome is said over the player, as a mark's is.
+    onAddLine: (text, context) =>
+      addLineCard(text, context).then(
+        ({ said }) => {
+          if (currentMount) flash(currentMount, said, 3000);
+        },
+        (e: unknown) => {
+          if (currentMount) flash(currentMount, e instanceof Error ? e.message : String(e), 5000);
+          throw e;
+        },
+      ),
+    // The Tracked view: the words marked tracking, newest first, and what can be done with each.
+    marked: () => [...overrides].map(([word, status]) => ({ word, status })).reverse(),
+    unmark: (word) => mark(word, null),
+    addWord: async (word) => {
+      const token: Token = { surface: word, lemma: word, start: 0, end: word.length, content: true };
+      const draft = draftFor(await lookupFor(token), token, '');
+      const { said } = await addCard(draft, token, {});
+      return `${draft.expression} · ${said}`;
+    },
     // "Check again" found Anki: what the words' colours say is now out of date.
     onAnkiConnected: () => void refreshStatus(),
     lookup: lookupFor,
@@ -1380,14 +1602,26 @@ function mountSidebar(mount: HTMLElement, video: HTMLVideoElement, adapter: Subt
       showPopup((host.host as HTMLElement).parentElement ?? mount, el, result, {
         token,
         sentence,
+        phrase: phrases.has(token),
         status: statusOf(token),
+        marked: overrides.get(token.lemma ?? token.surface) ?? null,
         onMark: (word, next) => mark(word, next, lemmaReading(word, token.surface, token.reading)),
         onAddCard: (draft) => addCard(draft, token, line),
+        onAddLine: settings().cardAddLine && sentence.trim() ? () => addLineCard(sentence, line) : undefined,
+        onShowInAnki: () => showInAnki(token),
+        deck: settings().deck,
+        decks: settings().cardDeckMenu ? deckList() : undefined,
+        onDeck: settings().cardDeckMenu ? chooseDeck : undefined,
+        track: settings().cardTrack,
+        marks: settings().cardMarks,
+        colors: underlineVars(settings()),
+        dictionary: dictionaryFor(token, result),
         hasCard: hasCardFor(token),
         queued: queuedWords.has(token.lemma ?? token.surface),
-        elsewhere: alsoInVideo(token, line.start),
+        elsewhere: settings().lookupElsewhere ? alsoInVideo(token, line.start) : undefined,
         onSeek: playFrom,
         characters: charactersFor(token, result),
+        keepClear: [el.closest('.line')].filter((x): x is Element => Boolean(x)),
         onClose: onCardClosed,
       });
     });
@@ -1410,17 +1644,12 @@ function mountSidebar(mount: HTMLElement, video: HTMLVideoElement, adapter: Subt
   }, { signal: controlsAbort.signal, passive: true });
   header = new Header(mount, {
     stats: () => sidebar?.stats ?? null,
-    savedCount: () => sidebar?.savedCount ?? 0,
     sidebarOpen: () => sidebar?.isOpen ?? false,
     inset: () => sidebar?.inset ?? 0,
-    onToggleSidebar: () => sidebar?.toggle(),
+    onToggleSidebar: () => showTranscript(),
     onOpenSettings: () => {
       sidebar?.toggle(true);
       sidebar?.setMode('settings');
-    },
-    onShowSaved: () => {
-      sidebar?.toggle(true);
-      sidebar?.setMode('saved');
     },
   });
   // The panel sits over the player, so making room for it means moving three
@@ -1588,6 +1817,8 @@ function keyApplies(action: KeyAction): boolean {
     return cues.length > 0 && !domSource && !pickAdapter()?.isAd?.() && playerInView();
   }
   if (action === 'known') return popupKey() !== null;   // otherwise K is YouTube's play/pause
+  // Furigana is for a language with readings; elsewhere R stays the site's.
+  if (action === 'furigana' && !featuresOf(targetLang()).readings) return false;
   if (action === 'save' || action === 'panel') return sidebar !== null;
   return overlay !== null;
 }
@@ -1604,17 +1835,27 @@ function keyOnWord(action: 'add' | 'known'): void {
   }
   const word = last.token.lemma ?? last.token.surface;
   if (action === 'known') {
-    // As the card's Known button does: pressing it on a known word clears it.
-    const next = statusOf(last.token) === 'known' ? null : 'known';
-    void mark(word, next, lemmaReading(word, last.token.surface, last.token.reading));
     closePopup();
-    if (mount) flash(mount, next ? `${word} · marked known` : `${word} · mark cleared`);
+    // As the card's Known button does: on a word marked known, the mark comes off.
+    const marked = overrides.get(word) === 'known';
+    if (!marked && statusOf(last.token) === 'known') {
+      // Known from its cards: there is no mark to take off, and none needed.
+      if (mount) flash(mount, `${word} · already known in Anki`);
+      return;
+    }
+    // mark() says where it went.
+    void mark(word, marked ? null : 'known', lemmaReading(word, last.token.surface, last.token.reading));
+    return;
+  }
+  // A card already there is said, not made again.
+  if (hasCardFor(last.token)) {
+    if (mount) flash(mount, `${word} · already in Anki`);
     return;
   }
   const draft = draftFor(last.result, last.token, last.sentence);
   if (mount) flash(mount, `Adding ${draft.expression}…`, 8000);
   void addCard(draft, last.token, last.line).then(
-    (said) => mount && flash(mount, `${draft.expression} · ${said}`),
+    ({ said }) => mount && flash(mount, `${draft.expression} · ${said}`),
     (e: unknown) => mount && flash(mount, e instanceof Error ? e.message : String(e), 4000),
   );
 }
@@ -1630,7 +1871,7 @@ function act(action: KeyAction): void {
     case 'second': {
       const on = !settings().dualSubtitles;
       void setSetting('dualSubtitles', on).then(() => header?.update());
-      if (mount) flash(mount, on ? 'Second line on' : 'Second line off');
+      if (mount) flash(mount, on ? 'Translation on' : 'Translation off');
       return;
     }
     case 'furigana': {
@@ -1653,8 +1894,20 @@ function act(action: KeyAction): void {
       void saveCurrentLine();
       return;
     case 'panel':
-      sidebar?.toggle();
+      showTranscript();
   }
+}
+
+/**
+ * The transcript, from the bar's button or S: shown in place of settings or
+ * another of the panel's views, and the panel closed only from the
+ * transcript itself — it used to close the panel showing settings instead.
+ */
+function showTranscript(): void {
+  if (!sidebar) return;
+  if (sidebar.isOpen && sidebar.mode !== 'transcript') sidebar.setMode('transcript');
+  else sidebar.toggle();
+  header?.update();
 }
 
 /** Keys taken on the way down, whose release must not reach the page either. */
@@ -1665,6 +1918,7 @@ document.addEventListener(
   'keydown',
   (e) => {
     if (e.key === 'Escape') closePopup();
+    if (e.key === 'Shift' && !e.repeat && !isTyping(e)) lookUnderPointer();
     const action = keyAction(e);
     if (!action || isTyping(e) || !keyApplies(action)) return;
     // Netflix and YouTube both treat stray letters and arrows as player shortcuts.
@@ -1717,7 +1971,7 @@ void loadSettings().then(async (s) => {
   log(`lookup opens on ${s.interaction}`);
   await reloadQueued();
   appearance = { size: s.subtitleSize, bottom: s.subtitleBottom, dual: s.dualSubtitles };
-  languages = { target: s.target, native: s.native };
+  languages = { target: s.target, native: s.native, definitions: s.definitions };
   scopeRead = s.statusScope;
   settingsReady = true;
   void start();
@@ -1733,6 +1987,12 @@ onSettingsChange((s) => {
 onSettingsChange((s) => {
   if (s.interaction !== 'hover') closePopup();
 });
+// Marks kept in the browser go into Anki the moment keeping them there comes back on.
+let marksInAnki: boolean | null = null;
+onSettingsChange((s) => {
+  if (marksInAnki === false && s.marksInAnki) void pushMarks();
+  marksInAnki = s.marksInAnki;
+});
 onSettingsChange(() => header?.update());
 // Appearance applies to the line on screen, not only to the next overlay built.
 // The top bar's furigana and second-line buttons depend on this: they used to
@@ -1743,11 +2003,13 @@ onSettingsChange((s) => {
   overlay?.setRubyMode(s.ruby);
   overlay?.setBlurred(s.blurPrimary);
   overlay?.setMarkKnown(s.markKnown);
+  overlay?.setColors(underlineVars(s));
 
-  const languageChanged = s.target !== languages.target || s.native !== languages.native;
+  const languageChanged =
+    s.target !== languages.target || s.native !== languages.native || s.definitions !== languages.definitions;
   const dualTurnedOn = s.dualSubtitles && !appearance.dual;
   appearance = { size: s.subtitleSize, bottom: s.subtitleBottom, dual: s.dualSubtitles };
-  languages = { target: s.target, native: s.native };
+  languages = { target: s.target, native: s.native, definitions: s.definitions };
 
   if (languageChanged) {
     // A new target needs a new analyser and new tracks; a new native language

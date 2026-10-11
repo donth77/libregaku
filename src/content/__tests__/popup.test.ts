@@ -88,6 +88,51 @@ describe('placing the card', () => {
     expect(p.top).toBe(8);
   });
 
+  it('keeps clear of the whole subtitle, translation and all, when there is room', () => {
+    // Two lines and a translation, low in a 480px player; the word is on the second line.
+    const subtitle = box(100, 300, 650, 150);
+    const line = box(100, 300, 650, 100);
+    const word = box(400, 350, 40, 40);
+    const p = placeCard(player, word, { width: 400, height: 260 }, [subtitle, line]);
+    expect(p.side).toBe('above');
+    expect(p.top + 260).toBeLessThanOrEqual(subtitle.top - 10);
+  });
+
+  it('gives up the translation before the line, and the line before the word', () => {
+    const small = box(0, 0, 640, 400);
+    const subtitle = box(40, 150, 560, 240);   // too little room either side of all of it
+    const line = box(40, 280, 560, 90);        // 262px above the line itself
+    const word = box(300, 320, 40, 40);
+    const p = placeCard(small, word, { width: 400, height: 520 }, [subtitle, line]);
+    // The card gives up the translation's clearance but keeps the line in view.
+    expect(p.side).toBe('above');
+    expect(p.top + p.maxHeight).toBeLessThanOrEqual(line.top - 10);
+
+    // With the line as tall as the subtitle, the only clearance left is the word's.
+    const tall = box(40, 150, 560, 240);
+    const q = placeCard(small, word, { width: 400, height: 520 }, [subtitle, tall]);
+    expect(q.side).toBe('above');
+    expect(q.top + q.maxHeight).toBeLessThanOrEqual(word.top - 10);
+    expect(q.top + q.maxHeight).toBeGreaterThan(tall.top);
+  });
+
+  it('grows upward when it sits above, and down when it sits below', () => {
+    const word = (top: number) => vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      return (this.tagName === 'SPAN' ? box(300, top, 40, 30) : box(0, 0, 854, 480)) as DOMRect;
+    });
+    word(400);
+    let host = open().host as HTMLElement;
+    expect(host.style.top).toBe('');
+    expect(host.style.bottom).toBe(`${480 - (400 - 10)}px`);
+    closePopup();
+    vi.restoreAllMocks();
+
+    word(20);
+    host = open().host as HTMLElement;
+    expect(host.style.bottom).toBe('');
+    expect(host.style.top).toBe(`${20 + 30 + 10}px`);
+  });
+
   it('stays inside the player at either edge', () => {
     expect(placeCard(player, box(0, 380, 30, 30), { width: 400, height: 200 }).left).toBe(8);
     expect(placeCard(player, box(830, 380, 20, 30), { width: 400, height: 200 }).left).toBe(854 - 400 - 8);
@@ -102,10 +147,13 @@ describe('placing the card', () => {
     const host = root.host as HTMLElement;
     expect(card.dataset.side).toBe('above');
     expect(card.style.maxHeight).toBe(`${290 - 10 - 8}px`);
-    expect(host.style.top).toBe('8px');
-    // The status row is outside the scrolling body, so a cap never hides it.
-    expect(card.querySelector('.body .marks')).toBeNull();
-    expect(card.querySelector(':scope > .marks')).not.toBeNull();
+    // Hung from its bottom edge, 10px above the word, so growing never covers it.
+    expect(host.style.bottom).toBe(`${360 - (290 - 10)}px`);
+    expect(host.style.top).toBe('');
+    // Add and the marks are outside the scrolling body, so a cap never hides them.
+    expect(card.querySelector('.body .foot, .body .marks')).toBeNull();
+    expect(card.querySelector(':scope > .foot button.add')).not.toBeNull();
+    expect(card.querySelector(':scope > .head .marks')).not.toBeNull();
     expect(card.querySelector('.body ol')).not.toBeNull();
   });
 });
@@ -146,17 +194,179 @@ describe('closing the card', () => {
   });
 });
 
+describe('the status buttons', () => {
+  it('wear the underline colours chosen in Settings', () => {
+    const root = open({ colors: { '--lg-tracking': '#3366ff', '--lg-known': '#ffcc00' } });
+    const host = root.host as HTMLElement;
+    expect(host.style.getPropertyValue('--lg-tracking')).toBe('#3366ff');
+    expect(host.style.getPropertyValue('--lg-known')).toBe('#ffcc00');
+  });
+
+  it('asks for a mark, and shows one already made filled in, beside the word', () => {
+    let card = open({ track: true });
+    let track = card.querySelector<HTMLElement>('.head .marks .mk.track')!;
+    expect(track.getAttribute('aria-label')).toBe('Track');
+    expect(track.getAttribute('aria-pressed')).toBe('false');
+    expect(track.dataset.tip).toBe('Track');
+    closePopup();
+
+    card = open({ status: 'tracking', marked: 'tracking' });
+    track = card.querySelector<HTMLElement>('.mk.track')!;
+    expect(track.getAttribute('aria-pressed')).toBe('true');
+    expect(track.dataset.tip).toBe('Stop tracking');
+    // Only the mark that is there.
+    expect(card.querySelector('.mk.known')?.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('takes a mark off when pressed again, and puts one on otherwise', () => {
+    const onMark = vi.fn();
+    open({ status: 'tracking', marked: 'tracking', onMark }).querySelector<HTMLElement>('.mk.track')!.click();
+    expect(onMark).toHaveBeenLastCalledWith('勉強', null);
+    open({ status: 'tracking', marked: 'tracking', onMark }).querySelector<HTMLElement>('.mk.known')!.click();
+    expect(onMark).toHaveBeenLastCalledWith('勉強', 'known');
+  });
+
+  it('shows no mark on a word Anki knows from its cards, since there is none to take off', () => {
+    const known = open({ status: 'known', marked: null }).querySelector<HTMLElement>('.mk.known')!;
+    expect(known.getAttribute('aria-pressed')).toBe('false');
+    expect(known.dataset.tip).toBe('Mark known');
+  });
+
+  it('leaves Known and Ignore off when settings do, but always shows a mark the word has', () => {
+    expect(open({ marks: false }).querySelector('.marks')?.children.length).toBe(0);
+    closePopup();
+    const marks = Array.from(open({ marks: false, marked: 'ignored' }).querySelectorAll('.marks .mk'));
+    expect(marks.map((m) => m.getAttribute('aria-label'))).toEqual(['Ignore']);
+  });
+});
+
+describe('adding, and taking it back', () => {
+  it('turns Add into Undo once the card is in, and takes it back out on a later press', async () => {
+    vi.useFakeTimers();
+    try {
+      const undo = vi.fn(async () => 'taken back out of Vocabulary');
+      const card = open({ onAddCard: async () => ({ said: 'added to Vocabulary', undo }) });
+      const add = card.querySelector<HTMLButtonElement>('button.add')!;
+      add.click();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(add.dataset.state).toBe('added');
+      expect(add.textContent).toBe('Added');
+      expect(add.dataset.tip).toBe('Undo');
+      // A second press straight after is impatience, not Undo.
+      add.click();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(undo).not.toHaveBeenCalled();
+
+      await vi.advanceTimersByTimeAsync(1000);
+      add.click();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(undo).toHaveBeenCalledOnce();
+      expect(add.dataset.state).toBe('add');
+      expect(card.querySelector('.toast')?.textContent).toBe('taken back out of Vocabulary');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('opens a word Anki already has there, rather than adding it again', () => {
+    const onShowInAnki = vi.fn();
+    const onAddCard = vi.fn(async () => 'added');
+    const card = open({ hasCard: true, onShowInAnki, onAddCard });
+    card.querySelector<HTMLButtonElement>('button.add')!.click();
+    expect(onShowInAnki).toHaveBeenCalledOnce();
+    expect(onAddCard).not.toHaveBeenCalled();
+    // The A key says where the card is instead.
+    expect(pressAdd()).toBe(true);
+    expect(onShowInAnki).toHaveBeenCalledOnce();
+    expect(card.querySelector('.toast')?.textContent).toBe('Already in Anki');
+  });
+
+  it('offers Track only when settings do, or when the word is already tracked', () => {
+    expect(open().querySelector('.mk.track')).toBeNull();
+    closePopup();
+    expect(open({ track: true }).querySelector('.mk.track')).not.toBeNull();
+    closePopup();
+    expect(open({ marked: 'tracking' }).querySelector('.mk.track')?.getAttribute('aria-pressed')).toBe('true');
+    closePopup();
+    const card = open();
+    expect(Array.from(card.querySelectorAll('.marks .mk')).map((b) => b.getAttribute('aria-label'))).toEqual(['Known', 'Ignore']);
+    expect(Array.from(card.querySelectorAll('.foot button')).map((b) => b.textContent)).toEqual(['Add to Anki']);
+  });
+});
+
+describe('the deck menu', () => {
+  const items = (card: ShadowRoot): string[] =>
+    Array.from(card.querySelectorAll('.deckmenu [role=menuitem]')).map((b) => b.textContent ?? '');
+
+  it('is not there unless settings ask for it', () => {
+    expect(open().querySelector('.foot .more')).toBeNull();
+  });
+
+  it("lists Anki's decks as places to add to, and adding there makes it the deck from then on", async () => {
+    const onDeck = vi.fn(async (deck: string) => ({ deck }));
+    const onAddCard = vi.fn(async () => 'added to Test Deck');
+    const card = open({ deck: 'Japanese', decks: Promise.resolve(['Japanese', 'Test Deck']), onDeck, onAddCard });
+    await flush();
+    expect(card.querySelector<HTMLElement>('button.add')!.dataset.tip).toBe('Add to Japanese');
+    const more = card.querySelector<HTMLButtonElement>('.foot .more')!;
+    more.click();
+    expect(items(card)).toEqual(['Add to Japanese', 'Add to Test Deck', 'New deck…']);
+    expect(more.getAttribute('aria-expanded')).toBe('true');
+
+    (Array.from(card.querySelectorAll<HTMLButtonElement>('.deckmenu [role=menuitem]'))[1])!.click();
+    await flush();
+    expect(onDeck).toHaveBeenCalledWith('Test Deck', false);
+    expect(onAddCard).toHaveBeenCalledOnce();
+    expect(card.querySelector<HTMLElement>('.deckmenu')!.hidden).toBe(true);
+    expect(card.querySelector('.toast')?.textContent).toBe('added to Test Deck');
+  });
+
+  it('says so when the deck is one word status does not read', async () => {
+    const onDeck = vi.fn(async (deck: string) => ({ deck, warning: 'words you know are read from Japanese' }));
+    const card = open({ deck: 'Japanese', decks: Promise.resolve(['Japanese', 'Test Deck']), onDeck });
+    await flush();
+    card.querySelector<HTMLButtonElement>('.foot .more')!.click();
+    (Array.from(card.querySelectorAll<HTMLButtonElement>('.deckmenu [role=menuitem]'))[1])!.click();
+    await flush();
+    expect(card.querySelector('.toast')?.textContent).toBe('added to Vocabulary — words you know are read from Japanese');
+  });
+
+  it('makes a new deck from a name asked for, and adds nothing if none is given', async () => {
+    const onDeck = vi.fn(async (deck: string) => ({ deck }));
+    const onAddCard = vi.fn(async () => 'added');
+    const ask = vi.fn<(message?: string) => string | null>().mockReturnValueOnce('Japanese::Netflix').mockReturnValueOnce(null);
+    vi.stubGlobal('prompt', ask);
+    const card = open({ deck: 'Japanese', decks: Promise.resolve(['Japanese']), onDeck, onAddCard });
+    await flush();
+    const newDeck = (): HTMLButtonElement => {
+      card.querySelector<HTMLButtonElement>('.foot .more')!.click();
+      return Array.from(card.querySelectorAll<HTMLButtonElement>('.deckmenu [role=menuitem]')).at(-1)!;
+    };
+    newDeck().click();
+    await flush();
+    expect(onDeck).toHaveBeenCalledWith('Japanese::Netflix', true);
+    expect(onAddCard).toHaveBeenCalledOnce();
+
+    await new Promise((r) => setTimeout(r, 950));
+    newDeck().click();
+    await flush();
+    expect(onDeck).toHaveBeenCalledOnce();
+    expect(ask).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe('the card\'s controls', () => {
   it('claims a card exists only when the caller says Anki has one', () => {
     let root = open({ status: 'known' });
-    let add = root.querySelector<HTMLButtonElement>('.tb.add')!;
+    let add = root.querySelector<HTMLButtonElement>('button.add')!;
     expect(add.getAttribute('aria-label')).toBe('Add to Anki');
     expect(add.classList.contains('has')).toBe(false);
     closePopup();
 
     root = open({ hasCard: true });
-    add = root.querySelector<HTMLButtonElement>('.tb.add')!;
-    expect(add.getAttribute('aria-label')).toBe('Already in Anki — add another');
+    add = root.querySelector<HTMLButtonElement>('button.add')!;
+    expect(add.textContent).toBe('In Anki');
+    expect(add.getAttribute('aria-label')).toBe('Show in Anki');
     expect(add.classList.contains('has')).toBe(true);
   });
 
@@ -177,6 +387,17 @@ describe('the card\'s controls', () => {
     expect(root.querySelector('.toast')?.textContent).toBe('sentence copied');
   });
 
+  it('copies a selected phrase as it was written, not as it was looked up', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    const root = open({ phrase: true }, '気にした');
+    expect(root.querySelector('.tb[aria-label="Copy word"]')).toBeNull();
+    root.querySelector<HTMLButtonElement>('.tb[aria-label="Copy phrase"]')!.click();
+    await flush();
+    expect(writeText).toHaveBeenCalledWith('気にした');
+    expect(root.querySelector('.toast')?.textContent).toBe('phrase copied');
+  });
+
   it('never lets a clicked button keep focus, and names itself', () => {
     const root = open();
     const down = (el: Element): boolean => {
@@ -184,7 +405,7 @@ describe('the card\'s controls', () => {
       el.dispatchEvent(e);
       return e.defaultPrevented;
     };
-    expect(down(root.querySelector('.tb.add svg')!)).toBe(true);
+    expect(down(root.querySelector('button.add svg')!)).toBe(true);
     expect(down(root.querySelector('.mk.known')!)).toBe(true);
     expect(down(root.querySelector('.body li')!)).toBe(false);
     expect(root.querySelector('.card')?.getAttribute('aria-label')).toBe('勉強 — dictionary');
@@ -223,72 +444,153 @@ describe('adding from the card', () => {
     expect(onAddCard).toHaveBeenCalledOnce();
   });
 
+  it('makes a card of the whole line from its own button, once per press', async () => {
+    let finish!: (msg: string) => void;
+    const onAddLine = vi.fn(() => new Promise<string>((r) => { finish = r; }));
+    const card = open({ onAddLine });
+    const b = card.querySelector<HTMLButtonElement>('.tb[aria-label="Add sentence"]')!;
+    b.click();
+    b.click();
+    expect(b.classList.contains('busy')).toBe(true);
+    finish('line added to Vocabulary');
+    await flush();
+    expect(onAddLine).toHaveBeenCalledOnce();
+    expect(card.querySelector('.toast')?.textContent).toBe('line added to Vocabulary');
+    // Not the word's button: that one is still waiting to be pressed.
+    expect(card.querySelector('button.add svg path')?.getAttribute('d')).toBe('M5 12h14');
+  });
+
+  it('offers no line button when there is no line to add', () => {
+    expect(open().querySelector('.tb[aria-label="Add sentence"]')).toBeNull();
+  });
+
   it('says a card is waiting for Anki rather than in it', () => {
     const card = open({ hasCard: true, queued: true });
-    expect(card.querySelector('.tb.add')?.getAttribute('title')).toBe('Waiting for Anki to open — add another (A)');
+    expect((card.querySelector('button.add') as HTMLElement).dataset.tip).toBe('Waiting for Anki');
   });
 
   it('names its keys in the tooltips, without changing what the buttons are called', () => {
     const card = open();
-    const add = card.querySelector('.tb.add')!;
-    expect(add.getAttribute('title')).toBe('Add to Anki (A)');
+    const add = card.querySelector<HTMLElement>('button.add')!;
+    expect(add.dataset.tip).toBe('Add to Anki');
+    expect(add.dataset.key).toBe('A');
     expect(add.getAttribute('aria-label')).toBe('Add to Anki');
     expect(add.getAttribute('aria-keyshortcuts')).toBe('A');
-    const known = card.querySelector('.mk.known')!;
-    expect(known.getAttribute('title')).toBe('Known (K)');
+    const known = card.querySelector<HTMLElement>('.mk.known')!;
+    expect(known.dataset.key).toBe('K');
     expect(known.getAttribute('aria-keyshortcuts')).toBe('K');
-    expect(card.querySelector('.mk.track')?.hasAttribute('aria-keyshortcuts')).toBe(false);
+    expect(card.querySelector('.mk.ignore')?.hasAttribute('aria-keyshortcuts')).toBe(false);
+    // Its own tooltip, not the browser's slow one as well.
+    expect(card.querySelector('[title]')).toBeNull();
+  });
+});
+
+describe('tooltips on the card', () => {
+  const over = (el: Element, from: Element | null = null) =>
+    el.dispatchEvent(new MouseEvent('pointerover', { bubbles: true, relatedTarget: from }));
+  const out = (el: Element, to: Element | null = null) =>
+    el.dispatchEvent(new MouseEvent('pointerout', { bubbles: true, relatedTarget: to }));
+
+  it('labels an icon button after a short pause, with its key', async () => {
+    vi.useFakeTimers();
+    const card = open();
+    const tip = card.querySelector<HTMLElement>('.tip')!;
+    over(card.querySelector('button.add')!);
+    expect(tip.classList.contains('on')).toBe(false);
+    await vi.advanceTimersByTimeAsync(400);
+    expect(tip.classList.contains('on')).toBe(true);
+    expect(tip.firstChild?.textContent).toBe('Add to Anki');
+    expect(tip.querySelector('kbd')?.textContent).toBe('A');
+    vi.useRealTimers();
+  });
+
+  it('follows the pointer from one button to the next at once, and goes when it leaves', async () => {
+    vi.useFakeTimers();
+    const card = open();
+    const tip = card.querySelector<HTMLElement>('.tip')!;
+    const [pronounce, word, sentence] = Array.from(card.querySelectorAll('.tb'));
+    over(pronounce!);
+    await vi.advanceTimersByTimeAsync(400);
+    expect(tip.textContent).toBe('Pronounce');
+    out(pronounce!, word!);
+    over(word!, pronounce!);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(tip.textContent).toBe('Copy word');
+    out(word!, sentence!);
+    over(sentence!, word!);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(tip.textContent).toBe('Copy sentence');
+    out(sentence!, null);
+    expect(tip.classList.contains('on')).toBe(false);
+    vi.useRealTimers();
+  });
+
+  it('names each mark in a word or two', () => {
+    const card = open({ track: true });
+    const tips = Array.from(card.querySelectorAll<HTMLElement>('.mk')).map((b) => b.dataset.tip);
+    expect(tips).toEqual(['Mark known', 'Track', 'Ignore']);
   });
 });
 
 describe('the word elsewhere in the video', () => {
   const lines = (n: number) => Array.from({ length: n }, (_, i) => ({ start: 60 * i + 5, text: `毎日勉強した${i}`, match: '勉強' }));
+  const fold = (card: ShadowRoot): HTMLButtonElement | null => card.querySelector<HTMLButtonElement>('.also-fold .fold-head');
 
-  it('lists the other lines once they are found, each with the word picked out', async () => {
+  it('is one line until opened, then lists the other lines with the word picked out', async () => {
     const card = open({ elsewhere: Promise.resolve(lines(2)) });
-    expect(card.querySelector<HTMLElement>('.also')?.hidden).toBe(true);
+    expect(fold(card)).toBeNull();
     await flush();
-    const also = card.querySelector<HTMLElement>('.also')!;
-    expect(also.hidden).toBe(false);
-    expect(also.querySelector('.also-head')?.textContent).toBe('2 more times in this video');
-    const rows = Array.from(also.querySelectorAll('.also-line'));
+    expect(fold(card)?.textContent).toBe('2 more times in this video');
+    expect(fold(card)?.getAttribute('aria-expanded')).toBe('false');
+    expect(card.querySelectorAll('.also-line')).toHaveLength(0);
+    fold(card)!.click();
+    const rows = Array.from(card.querySelectorAll('.also-line'));
     expect(rows.map((r) => r.querySelector('.at')?.textContent)).toEqual(['0:05', '1:05']);
     expect(rows[0]?.querySelector('b')?.textContent).toBe('勉強');
+    fold(card)!.click();   // closed again, for the next card too
   });
 
   it('plays from a line when it is clicked, and closes the card', async () => {
     const onSeek = vi.fn();
     const card = open({ elsewhere: Promise.resolve(lines(1)), onSeek });
     await flush();
-    expect(card.querySelector('.also-head')?.textContent).toBe('Once more in this video');
+    expect(fold(card)?.textContent).toBe('Once more in this video');
+    fold(card)!.click();
     card.querySelector<HTMLButtonElement>('.also-line')!.click();
     expect(onSeek).toHaveBeenCalledWith(5);
     expect(popupIsOpen()).toBe(false);
   });
 
-  it('lists four and counts the rest', async () => {
-    const card = open({ elsewhere: Promise.resolve(lines(7)) });
+  it('lists four and counts the rest, and stays open for the next card once opened', async () => {
+    let card = open({ elsewhere: Promise.resolve(lines(7)) });
     await flush();
+    // Opened by an earlier card, or opened now.
+    if (fold(card)!.getAttribute('aria-expanded') !== 'true') fold(card)!.click();
     expect(card.querySelectorAll('.also-line')).toHaveLength(4);
     expect(card.querySelector('.also-more')?.textContent).toContain('and 3 more');
+    closePopup();
+    card = open({ elsewhere: Promise.resolve(lines(2)) }, '学校');
+    await flush();
+    expect(fold(card)?.getAttribute('aria-expanded')).toBe('true');
+    fold(card)!.click();
   });
 
   it('shows nothing when the word is nowhere else, or the card has moved on', async () => {
     const none = open({ elsewhere: Promise.resolve([]) });
     await flush();
-    expect(none.querySelector<HTMLElement>('.also')?.hidden).toBe(true);
+    expect(fold(none)).toBeNull();
 
     let found!: (v: ReturnType<typeof lines>) => void;
     open({ elsewhere: new Promise((r) => { found = r; }) }, '勉強');
     const next = open({}, '学校');
     found(lines(2));
     await flush();
-    expect(next.querySelector('.also')).toBeNull();
+    expect(fold(next)).toBeNull();
   });
 });
 
 describe("the word's kanji", () => {
-  it('lists each with its meanings and readings, once looked up', async () => {
+  it('is one line naming them until opened, then lists each with its meanings and readings', async () => {
     const card = open({
       characters: Promise.resolve({
         label: 'Kanji',
@@ -298,21 +600,51 @@ describe("the word's kanji", () => {
         ],
       }),
     });
-    expect(card.querySelector<HTMLElement>('.chars')?.hidden).toBe(true);
     await flush();
+    const head = card.querySelector<HTMLButtonElement>('.kanji-fold .fold-head')!;
+    expect(head.textContent).toBe('Kanji · 勉 強');
+    head.click();
     const chars = card.querySelector<HTMLElement>('.chars')!;
     expect(chars.hidden).toBe(false);
-    expect(chars.querySelector('.chars-head')?.textContent).toBe('Kanji');
     expect(Array.from(chars.querySelectorAll('.kanji')).map((k) => k.textContent)).toEqual(['勉', '強']);
     const [ben, tsuyoi] = Array.from(chars.querySelectorAll('.kanji-mean'));
     // Three meanings at most, and two readings of each kind.
     expect(ben?.firstChild?.textContent).toBe('exertion, endeavour, encourage');
     expect(tsuyoi?.querySelector('.kanji-read')?.textContent).toBe('キョウ · ゴウ · つよ.い');
+    head.click();
   });
 
   it('leaves the section out for a word with no kanji', async () => {
     const card = open({ characters: Promise.resolve({ label: 'Kanji', items: [] }) });
     await flush();
-    expect(card.querySelector<HTMLElement>('.chars')?.hidden).toBe(true);
+    expect(card.querySelector('.kanji-fold')).toBeNull();
+  });
+});
+
+describe('the meanings', () => {
+  it('shows three, and the rest when asked', () => {
+    const many: LookupResult = {
+      state: 'ok',
+      entries: [{
+        id: '2', word: '出来る', reading: 'できる', common: true,
+        senses: Array.from({ length: 7 }, (_, i) => ({ pos: ['v1'], glosses: [`sense ${i + 1}`] })),
+      }],
+    };
+    const mount = document.createElement('div');
+    const anchor = document.createElement('span');
+    mount.appendChild(anchor);
+    document.body.appendChild(mount);
+    showPopup(mount, anchor, many, {
+      token: { surface: 'できる', start: 0, end: 3 }, sentence: 'できる', status: 'unknown',
+      onMark: () => {}, onAddCard: async () => 'added',
+    });
+    const card = document.querySelector('.libregaku-popup')!.shadowRoot!;
+    const shown = (): number => Array.from(card.querySelectorAll('ol li')).filter((li) => !(li as HTMLElement).hidden).length;
+    expect(shown()).toBe(3);
+    const more = card.querySelector<HTMLButtonElement>('.more-senses')!;
+    expect(more.textContent).toBe('+4 more meanings');
+    more.click();
+    expect(shown()).toBe(7);
+    expect(card.querySelector('.more-senses')).toBeNull();
   });
 });

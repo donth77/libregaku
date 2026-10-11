@@ -1,6 +1,6 @@
 import { furigana } from '../morphology/furigana';
 import type { Token } from '../morphology/types';
-import { selectedWords, textFrom } from './phrase';
+import { plainText, selectedWords, textFrom } from './phrase';
 
 /**
  * The subtitle overlay.
@@ -90,15 +90,15 @@ const STYLE = `
     position: absolute; left: 50%; bottom: calc(100% + .04em);
     transform: translateX(-50%);
     font-size: .46em; font-weight: 400; line-height: 1;
-    color: #9FB4E8; letter-spacing: .02em;
+    color: #B8C0D4; letter-spacing: .02em;
     white-space: nowrap; user-select: none; pointer-events: none;
   }
   /* Ruby only where it earns its place: words you have not learned yet. */
   .wrap:not(.ruby-all) .t:not([data-s="unknown"]):not([data-s="learning"]) rt { visibility: hidden; }
   .wrap.ruby-off rt { display: none; }
-  .t[data-s="unknown"]  { box-shadow: inset 0 -2.5px 0 #E5806C; }
-  .t[data-s="learning"] { box-shadow: inset 0 -1.5px 0 #D9A64A; }
-  .t[data-s="tracking"] { box-shadow: inset 0 -2px 0 #A78BFA; }
+  .t[data-s="unknown"]  { box-shadow: inset 0 -2.5px 0 var(--lg-unknown, #E5806C); }
+  .t[data-s="learning"] { box-shadow: inset 0 -1.5px 0 var(--lg-learning, #D9A64A); }
+  .t[data-s="tracking"] { box-shadow: inset 0 -2px 0 var(--lg-tracking, #A78BFA); }
   .t[data-s="ignored"]  { box-shadow: none; }
   /*
    * Known is unmarked by default, which is where this parts company with
@@ -107,7 +107,7 @@ const STYLE = `
    * system confirm what it thinks they know, so mark-known restores it.
    */
   .t[data-s="known"] { box-shadow: none; }
-  .wrap.mark-known .t[data-s="known"] { box-shadow: inset 0 -1.5px 0 #63AF97; }
+  .wrap.mark-known .t[data-s="known"] { box-shadow: inset 0 -1.5px 0 var(--lg-known, #63AF97); }
   /*
    * Listening practice: the line is there, unreadable, until the cursor
    * reaches it. The words are blurred and their box is not, so it still
@@ -138,7 +138,7 @@ export class Overlay {
   #primary: HTMLElement;
   #secondary: HTMLElement;
   #onToken?: (t: Token, el: HTMLElement) => void;
-  #onHover?: (t: Token | null, el: HTMLElement | null) => void;
+  #onHover?: (t: Token | null, el: HTMLElement | null, shift?: boolean) => void;
   #onPhrase?: (tokens: Token[], text: string, el: HTMLElement) => void;
   #onPress?: () => void;
   /** A selection just ended on the line; the click that follows is not a word's. */
@@ -167,6 +167,9 @@ export class Overlay {
     wrap.style.bottom = '12%';   // default; setAnchor overrides
     this.#root.append(style, wrap);
     mount.appendChild(this.#host);
+    // On the document: a selection dragged from the box's edge leaves focus
+    // on the page, and the copy event goes there rather than into this root.
+    document.addEventListener('copy', this.#copy, true);
 
     this.#primary.addEventListener('click', (e) => {
       if (this.#selected) {
@@ -198,7 +201,7 @@ export class Overlay {
       if ((e as MouseEvent).buttons & 1) return;
       const el = (e.target as HTMLElement).closest('.t') as HTMLElement | null;
       if (!el?.dataset.tok) return;
-      this.#onHover?.(JSON.parse(el.dataset.tok) as Token, el);
+      this.#onHover?.(JSON.parse(el.dataset.tok) as Token, el, (e as MouseEvent).shiftKey);
     });
     this.#primary.addEventListener('mouseout', (e) => {
       const el = (e.target as HTMLElement).closest('.t') as HTMLElement | null;
@@ -209,6 +212,18 @@ export class Overlay {
       this.#onHover?.(null, null);
     });
   }
+
+  /** Copying from the line copies it as it reads (see plainText). */
+  #copy = (e: ClipboardEvent): void => {
+    const sel = (this.#root as ShadowRoot & { getSelection?: () => Selection | null }).getSelection?.();
+    if (!sel || sel.isCollapsed || !sel.rangeCount || !e.clipboardData) return;
+    const range = sel.getRangeAt(0);
+    if (!this.#root.contains(range.commonAncestorContainer)) return;
+    const text = plainText(range);
+    if (!text) return;
+    e.clipboardData.setData('text/plain', text);
+    e.preventDefault();
+  };
 
   onToken(cb: (t: Token, el: HTMLElement) => void): void {
     this.#onToken = cb;
@@ -243,8 +258,8 @@ export class Overlay {
     }
   }
 
-  /** Fires with a token on enter and with null on leave. */
-  onHover(cb: (t: Token | null, el: HTMLElement | null) => void): void {
+  /** Fires with a token on enter, and whether Shift was held then; with null on leave. */
+  onHover(cb: (t: Token | null, el: HTMLElement | null, shift?: boolean) => void): void {
     this.#onHover = cb;
   }
 
@@ -293,6 +308,11 @@ export class Overlay {
   /** Whether known words carry a green underline, as Migaku does. */
   setMarkKnown(on: boolean): void {
     this.#primary.parentElement?.classList.toggle('mark-known', on);
+  }
+
+  /** The underline colours, as underlineVars gives them. */
+  setColors(vars: Record<string, string>): void {
+    for (const [name, value] of Object.entries(vars)) this.#host.style.setProperty(name, value);
   }
 
   /** Blur the line until the cursor is on it. */
@@ -389,6 +409,7 @@ export class Overlay {
   }
 
   destroy(): void {
+    document.removeEventListener('copy', this.#copy, true);
     this.#host.remove();
   }
 }

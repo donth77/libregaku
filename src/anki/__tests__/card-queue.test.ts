@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ankiCall, ankiTry } from '../rpc';
-import { flushCards, queueCard, queuedCards } from '../card-queue';
+import { flushCards, queueCard, queuedCards, unqueueCard } from '../card-queue';
 import type { NewCard } from '../client';
 import { FIELDS, MODEL_NAME } from '../model';
 import { FakeAnki, FakeStorage } from './fake-anki';
@@ -72,6 +72,17 @@ describe('keeping a card', () => {
     store.local['libregaku.cards.pending.broken'] = { card: { deck: '', expression: '' }, word: 'x', at: 1 };
     store.local['libregaku.cards.pending.junk'] = 'not a card';
     expect(await queuedCards()).toEqual([]);
+  });
+});
+
+describe('taking a waiting card back', () => {
+  it('takes it out of the queue, and says when there was nothing to take', async () => {
+    await queueCard({ card: card('食べる'), word: '食べる' });
+    await queueCard({ card: card('飲む'), word: '飲む' });
+    expect(await unqueueCard('Vocabulary', '食べる')).toBe(true);
+    expect((await queuedCards()).map((q) => q.card.expression)).toEqual(['飲む']);
+    expect(await unqueueCard('Vocabulary', '食べる')).toBe(false);
+    expect(await unqueueCard('Other deck', '飲む')).toBe(false);
   });
 });
 

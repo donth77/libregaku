@@ -183,6 +183,20 @@ const CONTRACTIONS = new Set(['てる', 'でる', 'ちゃう', 'じゃう', 'ち
 const CONJUGATIONAL_PARTICLES = new Set(['て', 'で', 'ば', 'たり', 'だり', 'ちゃ', 'じゃ']);
 const FUNCTION_POS = new Set(['助詞', '助動詞', '記号', 'フィラー']);
 
+/*
+ * ござる — the polite "to be" of ございます — is a word, though IPADIC files it
+ * as an auxiliary after an interjection or a copula: ありがとう + ござい + まし
+ * + た, こちら + で + ござい + ます. As an auxiliary it was grammar: never
+ * underlined or looked up, and ありがとうございました lost the entry JMdict
+ * has for it. So it joins the interjection, or the で, into one expression,
+ * and on its own it is a verb.
+ */
+const isGozaru = (m: Morpheme): boolean => m.lemma === 'ござる';
+const isCopulaDe = (m: Morpheme | undefined): boolean => m?.surface === 'で' && m.lemma === 'だ';
+/** Function words — but not ござる, whatever IPADIC calls it. */
+const functional = (m: Morpheme | undefined): boolean =>
+  Boolean(m && FUNCTION_POS.has(m.pos ?? '') && !isGozaru(m));
+
 /**
  * Is this group inflecting a verb or adjective?
  *
@@ -192,12 +206,16 @@ const FUNCTION_POS = new Set(['助詞', '助動詞', '記号', 'フィラー']);
 function isVerbal(group: Morpheme[]): boolean {
   const head = group[0];
   if (head?.pos === '動詞' || head?.pos === '形容詞') return true;
-  return group.some((m) => m.pos === '動詞');
+  // ござる conjugates — ございました — whatever IPADIC calls it.
+  return group.some((m) => m.pos === '動詞' || isGozaru(m));
 }
 
 /** Does `cur` continue the word this `group` started? */
 function attaches(group: Morpheme[], cur: Morpheme): boolean {
   const prev = group[group.length - 1]!;
+
+  // ありがとう + ござい, で + ござい: the set phrases ございます makes.
+  if (isGozaru(cur) && (prev.pos === '感動詞' || isCopulaDe(prev))) return true;
 
   /*
    * Auxiliaries inflect verbs and adjectives — 食べ+まし+た, 来+た, 高+かっ+た —
@@ -274,8 +292,10 @@ function groups(morphemes: Morpheme[]): Morpheme[][] {
   const out: Morpheme[][] = [];
   let group: Morpheme[] = [];
   for (const m of morphemes.map(normalise)) {
-    // Never let a trailing particle start absorbing things.
-    if (group.length && !FUNCTION_POS.has(group[0]!.pos ?? '') && attaches(group, m)) {
+    // Never let a trailing particle start absorbing things — except the で
+    // of でございます, which ござる joins, and a group ござる is part of.
+    const opens = !functional(group[0]) || group.some(isGozaru) || (group.length === 1 && isCopulaDe(group[0]) && isGozaru(m));
+    if (group.length && opens && attaches(group, m)) {
       group.push(m);
     } else {
       if (group.length) out.push(group);
@@ -422,6 +442,114 @@ function lookupKeys(...keys: Array<[string | undefined, string | undefined, stri
   return out;
 }
 
+/*
+ * Potential verbs. IPADIC lists 保てる, 会える, 帰れる as verbs of their own,
+ * each its own dictionary form, but JMdict files nearly all of them under the
+ * godan verb they come from: it has 保つ and no 保てる. So the potential is
+ * undone — the e-row kana before る goes back to the u-row — and the
+ * dictionary has to agree that what comes out is a godan verb of that row.
+ * れる also takes the spoken potential that drops ら, 見れる and 来れる, back
+ * to an ichidan or くる verb.
+ */
+const POTENTIAL: Record<string, { kana: string; reading: string; classes: string[] }> = {
+  え: { kana: 'う', reading: 'ウ', classes: ['v5u', 'v5u-s'] },
+  け: { kana: 'く', reading: 'ク', classes: ['v5k', 'v5k-s'] },
+  げ: { kana: 'ぐ', reading: 'グ', classes: ['v5g'] },
+  せ: { kana: 'す', reading: 'ス', classes: ['v5s'] },
+  て: { kana: 'つ', reading: 'ツ', classes: ['v5t'] },
+  ね: { kana: 'ぬ', reading: 'ヌ', classes: ['v5n'] },
+  べ: { kana: 'ぶ', reading: 'ブ', classes: ['v5b'] },
+  め: { kana: 'む', reading: 'ム', classes: ['v5m'] },
+  れ: { kana: 'る', reading: 'ル', classes: ['v5r', 'v5r-i', 'v1', 'vk'] },
+};
+
+interface Potential {
+  word: string;
+  reading?: string;
+  /** JMdict conjugation classes the word must have for this to be its potential. */
+  classes: string[];
+}
+
+/** The verb a potential-shaped verb would be the potential of: 保てる → 保つ. */
+function potentialOf(m: Morpheme, lemmaReading: string | undefined): Potential | undefined {
+  const lemma = m.lemma;
+  if (m.pos !== '動詞' || m.pos1 !== '自立' || !lemma || lemma.length < 3 || !lemma.endsWith('る')) return undefined;
+  const row = POTENTIAL[lemma[lemma.length - 2]!];
+  if (!row) return undefined;
+  const word = lemma.slice(0, -2) + row.kana;
+  const reading = word === '来る' ? 'クル'
+    : lemmaReading?.endsWith('ル') ? lemmaReading.slice(0, -2) + row.reading : undefined;
+  return { word, reading, classes: row.classes };
+}
+
+/** The dictionary has `p.word` as a verb of the right class, and nothing under the potential itself. */
+function confirmed(p: Potential, lemma: string, lexicon: Lexicon | undefined): boolean {
+  if (!lexicon || lexicon(lemma)?.length) return false;
+  return Boolean(lexicon(p.word)?.some((e) => e.pos?.some((code) => p.classes.includes(code))));
+}
+
+/*
+ * Kanji nouns the analyser split but the dictionary has whole. IPADIC knows
+ * 灯篭 and not 灯籠, so 灯籠 comes back as 灯 + 籠, read あかり and かご;
+ * JMdict has it, read とうろう. A run of kanji nouns with a lone kanji among
+ * them is asked about whole, and joined where the dictionary has the word —
+ * with the dictionary's reading, since the parts' readings are what went
+ * wrong. Names and numbers stay out: 田中 + 家 is not a compound to look for.
+ */
+const KANJI_ONLY = /^[\u4E00-\u9FFF\u3400-\u4DBF々〆ヶ]+$/u;
+const COMPOUND_POS1 = new Set(['一般', '接尾', 'サ変接続', '形容動詞語幹', '副詞可能']);
+/** Characters, at most: 石灯籠, 灯籠流し are as long as it is worth reaching. */
+const COMPOUND_MAX = 4;
+
+function compoundable(m: Morpheme): boolean {
+  return m.pos === '名詞' && COMPOUND_POS1.has(m.pos1 ?? '') && KANJI_ONLY.test(m.surface);
+}
+
+/** The run i..j, written out, if it could be a compound split apart: else undefined. */
+function compoundAt(morphemes: Morpheme[], i: number, j: number): string | undefined {
+  const run = morphemes.slice(i, j + 1);
+  if (run.length < 2 || !run.every(compoundable) || !run.some((m) => m.surface.length === 1)) return undefined;
+  const form = run.map((m) => m.surface).join('');
+  return form.length <= COMPOUND_MAX ? form : undefined;
+}
+
+/** Every run worth asking the dictionary about whole. */
+function compoundQueries(morphemes: Morpheme[]): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < morphemes.length; i++) {
+    for (let j = i + 1; j < morphemes.length && j < i + COMPOUND_MAX; j++) {
+      const form = compoundAt(morphemes, i, j);
+      if (form) out.push(form);
+    }
+  }
+  return out;
+}
+
+/** The morphemes, with each compound the dictionary has put back together — the longest it has. */
+function joinCompounds(morphemes: Morpheme[], lexicon: Lexicon | undefined): Morpheme[] {
+  if (!lexicon) return morphemes;
+  const out: Morpheme[] = [];
+  for (let i = 0; i < morphemes.length;) {
+    let joined: Morpheme | undefined;
+    let next = i + 1;
+    for (let j = Math.min(morphemes.length - 1, i + COMPOUND_MAX - 1); j > i && !joined; j--) {
+      const form = compoundAt(morphemes, i, j);
+      const hits = form ? lexicon(form) : undefined;
+      if (!form || !hits?.length) continue;
+      // One reading, or none: 一日 is いちにち or ついたち, and guessing is worse than not saying.
+      const readings = new Set(hits.map((h) => h.reading));
+      joined = {
+        surface: form, lemma: form, pos: '名詞', pos1: '一般',
+        reading: readings.size === 1 ? toKatakana(hits[0]!.reading) : undefined,
+      };
+      next = j + 1;
+    }
+    out.push(joined ?? morphemes[i]!);
+    i = next;
+  }
+  return out;
+}
+
 /**
  * A verb stem made a noun by a noun suffix: 食べ + 放題, 使い + 方. Not the
  * voice endings — させる, られる are suffixes too in IPADIC, but verbs.
@@ -438,8 +566,11 @@ function nounSuffixed(group: Morpheme[]): boolean {
  * answers.
  */
 export function lexiconQueries(morphemes: Morpheme[]): string[] {
-  const out = new Set<string>();
+  const out = new Set<string>(compoundQueries(morphemes));
   for (const group of groups(morphemes)) {
+    // 保てる: whether the dictionary has it, and whether it has 保つ.
+    const potential = group[0] ? potentialOf(group[0], undefined) : undefined;
+    if (potential && group[0]?.lemma) out.add(group[0].lemma).add(potential.word);
     if (group.length < 2) continue;
     if (isVerbal(group)) {
       // 食べ + 放題, 使い + 方: a verb stem made into a noun by a suffix.
@@ -467,8 +598,32 @@ function merge(group: Morpheme[], lexicon: Lexicon | undefined): MergedToken {
     parts: group.map((m) => m.surface),
     inflections: grammarOf(group),
     // A group is vocabulary if its head is, even when the tail is grammar.
-    content: head.pos ? !FUNCTION_POS.has(head.pos) : true,
+    content: head.pos ? !functional(head) || group.some(isGozaru) : true,
   };
+
+  /*
+   * ございます and what it makes: ありがとう + ございました is ありがとうございます,
+   * で + ございます is でございます — both expressions JMdict has — and ござい +
+   * ます on its own is ござる.
+   */
+  const g = group.findIndex(isGozaru);
+  if (g >= 0) {
+    const before = group.slice(0, g);
+    const lemma = before.length ? `${before.map((m) => m.surface).join('')}ございます` : 'ござる';
+    const lemmaReading = before.length
+      ? before.every((m) => m.reading) ? `${before.map((m) => m.reading).join('')}ゴザイマス` : undefined
+      : 'ゴザル';
+    return {
+      ...common, content: true, lemma, reading, pos: before.length ? '表現' : '動詞', lemmaReading,
+      lookup: lookupKeys(
+        [lemma, lemmaReading, undefined],
+        [surface, reading, undefined],
+        // Failing the expression, the word it was built on.
+        [before[0]?.lemma ?? before[0]?.surface, before[0]?.reading, before[0] ? posOf(before[0]) : undefined],
+        ['ござる', 'ゴザル', '動詞'],
+      ),
+    };
+  }
 
   // A サ変 noun's dictionary form is the noun plus する, not the noun alone —
   // but JMdict files it under the noun, so that is the next key to try.
@@ -496,9 +651,28 @@ function merge(group: Morpheme[], lexicon: Lexicon | undefined): MergedToken {
     }
     const lemma = lead.lemma ?? lead.surface;
     const lemmaReading = lemmaReadingOf(lead);
+    const potential = potentialOf(lead, lemmaReading);
+    if (potential && confirmed(potential, lemma, lexicon)) {
+      // The word is 保つ — what a card is made for, and what status matches.
+      return {
+        ...common,
+        inflections: ['potential', ...common.inflections.filter((g) => g !== 'potential')],
+        lemma: potential.word, reading, pos: lead.pos, lemmaReading: potential.reading,
+        lookup: lookupKeys(
+          [potential.word, potential.reading, posOf(lead)],
+          [lemma, lemmaReading, posOf(lead)],
+          [surface, reading, posOf(lead)],
+        ),
+      };
+    }
     return {
       ...common, lemma, reading, pos: lead.pos, lemmaReading,
-      lookup: lookupKeys([lemma, lemmaReading, posOf(lead)], [surface, reading, posOf(lead)]),
+      lookup: lookupKeys(
+        [lemma, lemmaReading, posOf(lead)],
+        [surface, reading, posOf(lead)],
+        // Without the dictionary's word on it, 保てる may still be 保つ.
+        [potential?.word, potential?.reading, posOf(lead)],
+      ),
     };
   }
 
@@ -569,5 +743,5 @@ function merge(group: Morpheme[], lexicon: Lexicon | undefined): MergedToken {
 }
 
 export function mergeMorphemes(morphemes: Morpheme[], lexicon?: Lexicon): MergedToken[] {
-  return groups(morphemes).map((group) => merge(group, lexicon));
+  return groups(joinCompounds(morphemes, lexicon)).map((group) => merge(group, lexicon));
 }

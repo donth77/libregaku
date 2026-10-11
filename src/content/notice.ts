@@ -41,7 +41,7 @@ const STYLE = `
     letter-spacing: .08em; text-transform: uppercase; padding: 3px 5px;
   }
   button:hover { color: #E8ECF6; }
-  button:focus-visible { outline: 2px solid #8AA2E8; outline-offset: 2px; border-radius: 3px; }
+  button:focus-visible { outline: 2px solid #F2F5FC; outline-offset: 2px; border-radius: 3px; }
   @media (prefers-reduced-motion: no-preference) {
     .card { animation: in .18s ease-out; }
     @keyframes in { from { opacity: 0; transform: translateY(6px); } }

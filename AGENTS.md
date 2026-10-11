@@ -53,7 +53,7 @@ whether the tokenizer works.
 ## Layout
 
 ```
-build.mjs               esbuild build — seven entry points, no plugin framework
+build.mjs               esbuild build — eight entry points, no plugin framework
 src/manifest.json       MV3 manifest
 src/assumptions.ts      every live-site assumption, and the notices shown when one breaks
 src/settings.ts         settings, defaults, and which languages get which tier
@@ -78,11 +78,15 @@ src/content/
   popup.ts              lookup card
   keys.ts               the player's keys
   capture.ts            a line's sound and a still, for cards
-  phrase.ts             a selection across words, looked up as one
+  phrase.ts             a selection across words, looked up as one, and copied as text
+  line-card.ts          a whole line as a card: the readings it showed
+  tooltip.ts            labels for icon buttons, shared by the card, panel and bar
   header.ts             bar across the top of the player
   player-inset.ts       moves the picture beside the open panel
 src/options.*           options page (Anki setup)
 src/action.*            toolbar popup: status and per-video track pickers
+src/help.*              help page: how-tos, questions, and a search over them
+src/help/content.ts     everything the help page says, one entry per language
 src/icons/              extension icons, 16/32/48/128 PNG, exported from brand/
 src/logo.ts             the logo in the popup, options page and player bar, imported
                         from brand/ as markup (the build loads .svg as text)
@@ -107,8 +111,13 @@ type in the `Libregaku::Marks` deck, its card suspended so it never reaches a re
 its status a tag (`libregaku::mark::known` and so on). Marking writes to the browser
 at once and queues the change; each sync with Anki flushes the queue and reads every
 mark back, so a mark made on one device reaches the others through Anki's own sync.
+A learner can turn "Keep marks in Anki" off: marks then stay in this browser's queue, and go
+in when it comes back on — the one case where a mark is not in Anki, and their choice.
 The status searches exclude the mark note type, and the service worker lets the page
-delete, retag or suspend only notes of that type.
+delete, retag or suspend only notes of that type — with one exception, Undo: it may
+delete a note of the Libregaku type made in the last 15 minutes whose cards have never
+been studied (a note's id is its creation time). Nothing else the learner has in Anki
+can be removed through it.
 
 Cards made while Anki is closed are not status either: they are writes that have not
 happened yet (`src/anki/card-queue.ts`), one storage key each, sent the next time Anki

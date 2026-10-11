@@ -51,13 +51,13 @@ async function askPage(tabId: number, msg: unknown): Promise<PageState | null> {
 function describe(state: PageState | null): { text: string; cls: string } {
   if (!state) {
     return {
-      text: 'Not active on this page. Open a video on YouTube or Netflix — and if you just installed or reloaded the extension, refresh the tab.',
+      text: 'Not active on this page. Open a YouTube or Netflix video. If you just installed or reloaded Libregaku, reload the tab.',
       cls: 'off',
     };
   }
-  if (!state.supported) return { text: 'Not a supported site.', cls: 'off' };
+  if (!state.supported) return { text: 'Libregaku works on YouTube and Netflix.', cls: 'off' };
   if (!state.rendering) {
-    return { text: `Waiting for subtitles on ${state.site}. Make sure they are switched on.`, cls: 'off' };
+    return { text: `Waiting for subtitles on ${state.site}. Make sure they're turned on.`, cls: 'off' };
   }
   return { text: state.title ? `Active — ${state.title}` : 'Active on this video.', cls: 'ok' };
 }
@@ -148,7 +148,7 @@ async function offerCapture(tabId: number, state: PageState): Promise<void> {
   $('capture').hidden = false;
   const granted = await chrome.permissions.contains({ permissions: ['tabCapture'] }).catch(() => false);
   if (!granted) {
-    text.textContent = "Sentence audio here needs Chrome's permission to capture this tab's sound.";
+    text.textContent = "Recording sentence audio here needs permission to capture this tab's sound.";
     go.textContent = 'Allow in settings';
     go.hidden = false;
     go.onclick = () => void chrome.runtime.openOptionsPage();
@@ -158,7 +158,7 @@ async function offerCapture(tabId: number, state: PageState): Promise<void> {
     text.textContent = 'Recording sentence audio on this tab.';
     return;
   }
-  text.textContent = 'Chrome lets Libregaku hear a tab only after you click its icon there.';
+  text.textContent = "Netflix's sound can be recorded only after you turn it on for this tab.";
   go.textContent = 'Record sentence audio here';
   go.hidden = false;
   go.onclick = async () => {
@@ -166,7 +166,7 @@ async function offerCapture(tabId: number, state: PageState): Promise<void> {
     const r = (await chrome.runtime.sendMessage({ type: 'tab-capture-start', tabId }).catch(() => null)) as
       | { ok?: boolean; error?: string }
       | null;
-    text.textContent = r?.ok ? 'Recording sentence audio on this tab.' : (r?.error ?? 'Chrome would not capture this tab.');
+    text.textContent = r?.ok ? 'Recording sentence audio on this tab.' : (r?.error ?? "Chrome couldn't record this tab.");
     go.hidden = Boolean(r?.ok);
     go.disabled = false;
   };

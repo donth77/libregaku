@@ -1,0 +1,29 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Libregaku help</title>
+<link rel="stylesheet" href="help.css">
+<div class="page">
+  <header class="top">
+    <h1>Libregaku</h1>
+    <a class="to-settings" href="options.html"></a>
+  </header>
+  <div class="layout">
+    <nav class="toc" aria-labelledby="toc-title">
+      <p class="toc-title" id="toc-title"></p>
+    </nav>
+    <main>
+      <div class="hero">
+        <h2 class="title" id="title"></h2>
+        <p class="intro" id="intro"></p>
+      </div>
+      <div class="find">
+        <input type="search" id="q" autocomplete="off" spellcheck="false">
+      </div>
+      <p class="popular" id="popular"></p>
+      <p class="none" id="none" role="status" hidden></p>
+      <div id="help"></div>
+    </main>
+  </div>
+</div>
+<script type="module" src="help.js"></script>

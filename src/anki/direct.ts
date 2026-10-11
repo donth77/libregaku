@@ -14,7 +14,7 @@
  */
 
 import { ANKI_PORT, ENDPOINT, extensionOrigin } from './endpoint';
-import { MARK_SEARCH, MEDIA_PREFIX, isOwnMedia } from './model';
+import { MARK_SEARCH, MEDIA_PREFIX, MODEL_NAME, isOwnMedia } from './model';
 
 const VERSION = 6;
 
@@ -97,6 +97,29 @@ const MARKS_ONLY: Record<string, { ids: 'notes' | 'cards'; find: 'findNotes' | '
 };
 
 /**
+ * How long after it was made a card can still be taken back out: Undo, for a
+ * card added a moment ago by mistake, not a way to delete cards. A note's id
+ * is the time it was made, in milliseconds.
+ */
+export const UNDO_WINDOW_MS = 15 * 60_000;
+
+/**
+ * Of these note ids, the ones Undo may delete: Libregaku cards made in the
+ * last few minutes, not one of whose cards has been studied.
+ */
+async function undoable(ids: number[], now = Date.now()): Promise<AnkiResult<Set<number>>> {
+  const recent = ids.filter((id) => id <= now && now - id < UNDO_WINDOW_MS);
+  if (!recent.length) return { ok: true, result: new Set() };
+  const nids = `nid:${recent.join(',')}`;
+  const ours = await ankiDirect<number[]>('findNotes', { query: `${nids} note:"${MODEL_NAME}"` });
+  if (!ours.ok) return { ok: false, kind: ours.kind, offline: ours.offline, error: ours.error };
+  const studied = await ankiDirect<number[]>('findNotes', { query: `${nids} -is:new` });
+  if (!studied.ok) return { ok: false, kind: studied.kind, offline: studied.offline, error: studied.error };
+  const seen = new Set(studied.result ?? []);
+  return { ok: true, result: new Set((ours.result ?? []).filter((id) => !seen.has(id))) };
+}
+
+/**
  * What is wrong with the media a new note asks AnkiConnect to store, or null.
  *
  * AnkiConnect will fetch a URL, or read any path on the computer, into the
@@ -145,14 +168,22 @@ export async function relay<T>(action: unknown, params: unknown): Promise<AnkiRe
     const own = await ankiDirect<number[]>(rule.find, { query: MARK_SEARCH });
     if (!own.ok) return { ok: false, kind: own.kind, offline: own.offline, error: own.error };
     const marks = new Set(own.result ?? []);
-    const foreign = ids.filter((id) => !marks.has(id)).length;
+    let others = ids.filter((id) => !marks.has(id));
+    // Undo: a card made a moment ago, and never studied, may go again.
+    if (others.length && action === 'deleteNotes') {
+      const fresh = await undoable(others);
+      if (!fresh.ok) return { ok: false, kind: fresh.kind, offline: fresh.offline, error: fresh.error };
+      others = others.filter((id) => !fresh.result?.has(id));
+    }
+    const foreign = others.length;
     if (foreign) {
       const verb = action === 'deleteNotes' ? 'deletes' : action === 'suspend' ? 'suspends' : 'retags';
       return {
         ok: false,
         kind: 'refused',
         error: `Refused: ${foreign} of the ${rule.ids} sent ${foreign === 1 ? 'belongs' : 'belong'} to no ` +
-          `Libregaku mark. Libregaku only ${verb} its own marks.`,
+          `Libregaku mark. Libregaku only ${verb} its own marks` +
+          (action === 'deleteNotes' ? ', and a card it made in the last few minutes that has not been studied.' : '.'),
       };
     }
   }

@@ -1,6 +1,7 @@
 import { icon } from './icons';
+import { TIP_STYLE, tooltips } from './tooltip';
 import { logo } from '../logo';
-import { nextRuby, rubyLabel, settings, setSetting } from '../settings';
+import { TARGET_LANGUAGES, featuresOf, nextRuby, rubyLabel, settings, setSetting } from '../settings';
 
 /**
  * The bar across the top of the player.
@@ -31,13 +32,11 @@ export interface HeaderStats {
 export interface HeaderDeps {
   /** Null until enough of the transcript has been measured to mean anything. */
   stats: () => HeaderStats | null;
-  savedCount: () => number;
   sidebarOpen: () => boolean;
   /** Width of the open transcript panel, so the bar stops short of it. */
   inset: () => number;
   onToggleSidebar: () => void;
   onOpenSettings: () => void;
-  onShowSaved: () => void;
 }
 
 const STYLE = `
@@ -76,6 +75,10 @@ const STYLE = `
   border-radius: 999px; background: #2A3348; color: #C7CFE2;
   font: 600 11px/1 ui-monospace, monospace; letter-spacing: .09em; text-transform: uppercase;
 }
+.badge.flag {
+  height: auto; padding: 0; background: none; border-radius: 0;
+  font: 20px/1 "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; letter-spacing: 0;
+}
 .stat { color: #9AA4BF; white-space: nowrap; font-size: 14px; }
 .stat b { color: #E8ECF6; font-weight: 700; font-variant-numeric: tabular-nums; }
 .stat.good b { color: #63AF97; }
@@ -90,14 +93,14 @@ button {
   color: #9AA4BF; cursor: pointer;
 }
 button:hover { background: rgba(255,255,255,.09); color: #E8ECF6; }
-button.on { color: #8AA2E8; }
-button:focus-visible { outline: 2px solid #8AA2E8; outline-offset: -2px; }
+button.on { color: #F2F5FC; }
+button:focus-visible { outline: 2px solid #F2F5FC; outline-offset: -2px; }
 button svg { display: block; }
 
 .count {
   position: absolute; transform: translate(11px, -11px);
   min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px;
-  background: #8AA2E8; color: #11141F;
+  background: #F2F5FC; color: #0D111C;
   font: 700 10px/16px ui-monospace, monospace; text-align: center;
   pointer-events: none;
 }
@@ -115,6 +118,7 @@ button svg { display: block; }
 }
 .tab:hover { color: #E8ECF6; background: rgba(17, 20, 33, .96); }
 .tab[hidden] { display: none; }
+${TIP_STYLE}
 `;
 
 export class Header {
@@ -163,7 +167,7 @@ export class Header {
     ): HTMLButtonElement => {
       const b = document.createElement('button');
       b.replaceChildren(icon(name, 20));
-      b.title = title;
+      b.dataset.tip = title;
       b.setAttribute('aria-label', title);
       b.addEventListener('click', onClick);
       this.#buttons.set(key, b);
@@ -171,23 +175,22 @@ export class Header {
       return b;
     };
 
-    add('ruby', 'ruby', 'Furigana', () => {
+    add('ruby', 'rubySome', 'Furigana', () => {
       // Cycles the same three values the settings panel offers, in the order
       // you would want them mid-episode: off, only what you don't know, all.
       void setSetting('ruby', nextRuby(settings().ruby)).then(() => this.update());
     });
-    add('blur', 'eyeOff', 'Blur the subtitle until hovered', () => {
+    add('blur', 'eyeOff', 'Blur subtitle', () => {
       void setSetting('blurPrimary', !settings().blurPrimary).then(() => this.update());
     });
-    add('dual', 'captions', 'Second subtitle line', () => {
+    add('dual', 'captions', 'Translation', () => {
       void setSetting('dualSubtitles', !settings().dualSubtitles).then(() => this.update());
     });
-    add('saved', 'bookmark', 'Saved lines', () => this.#deps.onShowSaved());
-    add('sidebar', 'panel', 'Transcript panel', () => {
+    add('sidebar', 'panel', 'Transcript', () => {
       this.#deps.onToggleSidebar();
       this.update();
     });
-    add('pin', 'unlock', 'Keep this bar open', () => {
+    add('pin', 'unlock', 'Pin bar', () => {
       const pinned = !settings().headerPinned;
       void setSetting('headerPinned', pinned).then(() => {
         this.#reveal(pinned || this.#shown);
@@ -201,11 +204,13 @@ export class Header {
     this.#tab = document.createElement('button');
     this.#tab.className = 'tab';
     this.#tab.replaceChildren(icon('chevronsUp', 16));
-    this.#tab.title = 'Libregaku';
+    this.#tab.dataset.tip = 'Show bar';
     this.#tab.setAttribute('aria-label', 'Show the Libregaku bar');
     this.#tab.addEventListener('click', () => this.#reveal(!this.#shown));
 
     this.#root.append(style, this.#bar, this.#tab);
+    // Under each button: the bar runs along the top of the player.
+    tooltips(this.#root, () => this.#host.getBoundingClientRect());
 
     // A click leaves focus where it was. A focused switch here kept Space for
     // itself, so the next Space flipped furigana again instead of pausing.
@@ -254,9 +259,15 @@ export class Header {
     this.#left.replaceChildren();
     if (this.#mark) this.#left.appendChild(this.#mark);
 
+    // The language being learned: its flag, or its code, as settings say.
+    const lang = TARGET_LANGUAGES.find((l) => l.code === s.target);
     const badge = document.createElement('span');
-    badge.className = 'badge';
-    badge.textContent = s.target;
+    const flag = s.languageBadge === 'flag' && lang?.flag;
+    badge.className = flag ? 'badge flag' : 'badge';
+    badge.textContent = flag || s.target;
+    badge.dataset.tip = lang?.label ?? s.target;
+    badge.setAttribute('role', 'img');
+    badge.setAttribute('aria-label', lang?.label ?? s.target);
     this.#left.appendChild(badge);
 
     if (stats) {
@@ -264,10 +275,8 @@ export class Header {
       sep.className = 'sep';
       this.#left.appendChild(sep);
       // The same words the panel uses for the same numbers: one number, one name.
-      this.#left.appendChild(stat('good', `${stats.known}%`, 'known',
-        'Share of the words in this video you already have a card for'));
-      this.#left.appendChild(stat('i1', String(stats.i1), 'ready to learn',
-        'Lines where only one word is new to you — the easiest to learn from'));
+      this.#left.appendChild(stat('good', `${stats.known}%`, 'known', 'Words you know'));
+      this.#left.appendChild(stat('i1', String(stats.i1), 'ready to learn', 'Lines with one new word'));
     }
 
     /** `keys` is the button's key, shown in its tooltip and given to assistive tech. */
@@ -275,38 +284,32 @@ export class Header {
       const b = this.#buttons.get(key);
       if (!b) return;
       b.classList.toggle('on', on);
-      b.title = keys ? `${title} (${keys.shown})` : title;
+      b.dataset.tip = title;
+      if (keys) b.dataset.key = keys.shown;
       b.setAttribute('aria-label', title);
       b.setAttribute('aria-pressed', String(on));
       if (keys) b.setAttribute('aria-keyshortcuts', keys.aria);
     };
 
+    // Furigana is for a language with readings; its icon draws which of the three it is on.
+    const ruby = this.#buttons.get('ruby');
+    if (ruby) {
+      ruby.hidden = !featuresOf(s.target).readings;
+      ruby.replaceChildren(icon(s.ruby === 'always' ? 'rubyAll' : s.ruby === 'never' ? 'rubyOff' : 'rubySome', 20));
+    }
     setOn('ruby', s.ruby !== 'never', `Furigana: ${rubyLabel(s.ruby)}`, { shown: 'R', aria: 'R' });
-    setOn('blur', s.blurPrimary, s.blurPrimary ? 'Stop blurring the subtitle' : 'Blur the subtitle until hovered',
-      { shown: 'H', aria: 'H' });
+    setOn('blur', s.blurPrimary, s.blurPrimary ? 'Unblur subtitle' : 'Blur subtitle', { shown: 'H', aria: 'H' });
     this.#buttons.get('blur')?.replaceChildren(icon(s.blurPrimary ? 'eye' : 'eyeOff', 20));
-    setOn('dual', s.dualSubtitles, s.dualSubtitles ? 'Hide the second line' : 'Show a second line',
+    setOn('dual', s.dualSubtitles, s.dualSubtitles ? 'Hide translation' : 'Show translation',
       { shown: '↑', aria: 'ArrowUp' });
-    setOn('sidebar', this.#deps.sidebarOpen(), 'Transcript panel', { shown: 'S', aria: 'S' });
+    setOn('sidebar', this.#deps.sidebarOpen(), 'Transcript', { shown: 'S', aria: 'S' });
 
     const pin = this.#buttons.get('pin');
     if (pin) {
       pin.replaceChildren(icon(s.headerPinned ? 'lock' : 'unlock', 20));
-      setOn('pin', s.headerPinned, s.headerPinned ? 'Let this bar hide again' : 'Keep this bar open');
+      setOn('pin', s.headerPinned, s.headerPinned ? 'Unpin bar' : 'Pin bar');
     }
 
-    const saved = this.#buttons.get('saved');
-    if (saved) {
-      const n = this.#deps.savedCount();
-      saved.replaceChildren(icon('bookmark', 20));
-      if (n) {
-        const c = document.createElement('span');
-        c.className = 'count';
-        c.textContent = n > 99 ? '99+' : String(n);
-        saved.appendChild(c);
-      }
-      setOn('saved', n > 0, n ? `${n} saved on this video` : 'Saved lines');
-    }
   }
 
   destroy(): void {
@@ -319,7 +322,7 @@ export class Header {
 function stat(cls: string, value: string, label: string, title: string): HTMLElement {
   const el = document.createElement('span');
   el.className = `stat ${cls}`;
-  el.title = title;
+  el.dataset.tip = title;
   const b = document.createElement('b');
   b.textContent = value;
   el.append(b, document.createTextNode(` ${label}`));

@@ -4,6 +4,7 @@ import type { Status, StatusMap } from '../../anki/status';
 const api = vi.hoisted(() => ({
   buildStatusMap: vi.fn<() => Promise<StatusMap>>(),
   addNote: vi.fn<(card: Record<string, unknown>) => Promise<number>>(),
+  takeBack: vi.fn<(id: number) => Promise<void>>(),
   navigate: () => {},
   /** The video's tracks, and what each one says — one Japanese track unless a test says otherwise. */
   tracks: [{ id: 'ja', lang: 'ja', label: 'Japanese' }] as Array<{ id: string; lang: string; label: string }>,
@@ -18,6 +19,7 @@ vi.mock('../../anki/client', async (original) => ({
   ...await original<typeof import('../../anki/client')>(),
   ensureModel: async () => 'present',
   addNote: api.addNote,
+  takeBack: api.takeBack,
 }));
 vi.mock('../../dict/client', async (original) => ({
   ...await original<typeof import('../../dict/client')>(),
@@ -126,6 +128,7 @@ beforeEach(async () => {
   api.cues = { ja: [{ start: 0, end: 10, text: '食べる' }] };
   api.buildStatusMap.mockReset().mockResolvedValue(snapshot('unknown'));
   api.addNote.mockReset().mockResolvedValue(1);
+  api.takeBack.mockReset().mockResolvedValue(undefined);
   Object.assign(cap, { record: false, encrypted: false, starts: 0, recorded: null, still: null });
   listeners = vi.spyOn(document, 'addEventListener');
   vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -152,7 +155,7 @@ describe('vocabulary status in the player', () => {
     let answer!: (value: StatusMap) => void;
     api.buildStatusMap.mockReturnValueOnce(new Promise((resolve) => { answer = resolve; }));
     const popup = await openWord();
-    popup.querySelector<HTMLButtonElement>('.tb.add')!.click();
+    popup.querySelector<HTMLButtonElement>('button.add')!.click();
     await flush();
     expect(api.addNote).toHaveBeenCalledOnce();
     expect(token().dataset.s).toBe('learning');
@@ -231,7 +234,7 @@ describe('vocabulary status in the player', () => {
   it('does not change vocabulary status when adding the card fails', async () => {
     api.addNote.mockRejectedValueOnce(new Error('Anki is closed'));
     const popup = await openWord();
-    popup.querySelector<HTMLButtonElement>('.tb.add')!.click();
+    popup.querySelector<HTMLButtonElement>('button.add')!.click();
     await flush();
     expect(token().dataset.s).toBe('unknown');
     expect(summary()).toContain('1 new');
@@ -255,7 +258,7 @@ describe('a card made from the player', () => {
     Object.defineProperty(video, 'currentTime', { value: 7, configurable: true });
 
     const popup = await openWord();
-    popup.querySelector<HTMLButtonElement>('.tb.add')!.click();
+    popup.querySelector<HTMLButtonElement>('button.add')!.click();
     await flush();
 
     const card = api.addNote.mock.calls[0]?.[0] as Record<string, string> | undefined;
@@ -342,7 +345,7 @@ describe('keys in the player', () => {
     expect(flashed()).toContain('Furigana: always');
     key('ArrowUp');
     expect((stored['libregaku.settings'] as Record<string, unknown>).dualSubtitles).toBe(false);
-    expect(flashed()).toContain('Second line off');
+    expect(flashed()).toContain('Translation off');
   });
 
   it('blurs the subtitle until hovered with H, and says so', async () => {
@@ -391,7 +394,125 @@ describe('keys in the player', () => {
     await flush();
     expect(token().dataset.s).toBe('known');
     expect(document.querySelector('.libregaku-popup')).toBeNull();
-    expect(flashed()).toContain('marked known');
+    // Anki is not answering here, so the mark waits in the browser and says so.
+    expect(flashed()).toContain('食べる · marked known, no card');
+  });
+});
+
+describe('the transcript button', () => {
+  it('shows the transcript when the panel is on settings, and closes it only from the transcript', async () => {
+    await lines([[0, 2, '食べる']]);
+    const bar = root('#libregaku-header');
+    const panel = (): HTMLElement => root('.libregaku-sidebar').querySelector<HTMLElement>('.panel')!;
+    // The view showing: a list's tab, or the title of one that is not a list.
+    const title = (): string => {
+      const r = root('.libregaku-sidebar');
+      const t = r.querySelector<HTMLElement>('.viewtitle');
+      return t && !t.hidden ? t.textContent ?? '' : r.querySelector('[role=tab][aria-selected="true"] span')?.textContent ?? '';
+    };
+    bar.querySelector<HTMLButtonElement>('button[aria-label="Settings"]')!.click();
+    expect(title()).toBe('Settings');
+    bar.querySelector<HTMLButtonElement>('button[aria-keyshortcuts="S"]')!.click();
+    expect(panel().style.display).not.toBe('none');
+    expect(title()).toBe('Transcript');
+    bar.querySelector<HTMLButtonElement>('button[aria-keyshortcuts="S"]')!.click();
+    expect(panel().style.display).toBe('none');
+  });
+});
+
+describe('taking a card back', () => {
+  it('undoes a card just added: out of Anki, and the word new again', async () => {
+    api.addNote.mockResolvedValue(1791680000000);
+    const popup = await openWord();
+    // Anki has the card once it is added…
+    api.buildStatusMap.mockResolvedValue(snapshot('learning'));
+    const add = popup.querySelector<HTMLButtonElement>('button.add')!;
+    add.click();
+    await flush();
+    await flush();
+    expect(token().dataset.s).toBe('learning');
+    expect(add.dataset.tip).toBe('Undo');
+
+    // …and not once it is taken back out.
+    api.buildStatusMap.mockResolvedValue(snapshot('unknown'));
+    await vi.advanceTimersByTimeAsync(1000);
+    add.click();
+    await flush();
+    await flush();
+    expect(api.takeBack).toHaveBeenCalledWith(1791680000000);
+    expect(popup.querySelector('.toast')?.textContent).toBe('taken back out of Vocabulary');
+    expect(token().dataset.s).toBe('unknown');
+  });
+});
+
+describe('K on a word Anki already knows', () => {
+  it('says so, and makes no mark', async () => {
+    api.buildStatusMap.mockResolvedValue(snapshot('known'));
+    const { setSetting } = await import('../../settings');
+    await setSetting('statusScope', 'Japanese');
+    await flush();
+    await flush();
+    expect(token().dataset.s).toBe('known');
+    const card = await openWord();
+    // Known from its cards: the button is not pressed, because no mark is there.
+    expect(card.querySelector('.mk.known')?.getAttribute('aria-pressed')).toBe('false');
+    key('k');
+    await flush();
+    expect(flashed()).toContain('食べる · already known in Anki');
+    expect(JSON.stringify(local['libregaku.overrides'] ?? {})).not.toContain('食べる');
+    expect(JSON.stringify(local['libregaku.marks.pending'] ?? [])).not.toContain('食べる');
+    expect(token().dataset.s).toBe('known');
+  });
+});
+
+describe('what a mark says it did', () => {
+  it('says what happened to the word, that no card was made, and where tracked words are', async () => {
+    const { markSaid } = await import('../index');
+    expect(markSaid('食べる', 'known', { marks: new Map(), error: undefined } as never)).toBe('食べる · marked known, no card');
+    expect(markSaid('食べる', 'tracking', null)).toBe('食べる · tracked, no card. See the Tracked tab in the panel');
+    expect(markSaid('食べる', 'ignored', 'here')).toBe('食べる · ignored, no card');
+    expect(markSaid('食べる', 'ignored', { marks: new Map(), error: 'refused' } as never))
+      .toBe('食べる · ignored, no card — Anki refused it; trying again later');
+    expect(markSaid('食べる', null, null)).toBe('食べる · mark taken off');
+  });
+});
+
+describe('cards that open on Shift', () => {
+  it('opens a word only with Shift held, or when Shift is pressed over it', async () => {
+    const { setSetting } = await import('../../settings');
+    await setSetting('interaction', 'shift');
+    await lines([[0, 2, '食べる']]);
+    const word = token();
+    word.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+    await vi.advanceTimersByTimeAsync(600);
+    expect(document.querySelector('.libregaku-popup')).toBeNull();
+
+    // The cursor is resting on it: pressing Shift opens it there.
+    key('Shift', { shiftKey: true });
+    await flush();
+    expect(document.querySelector('.libregaku-popup')).not.toBeNull();
+    // Shift is not a player key, and is never kept from the page.
+    expect(key('Shift', { shiftKey: true }).defaultPrevented).toBe(false);
+  });
+
+  it('opens at once when the cursor arrives with Shift already held', async () => {
+    const { setSetting } = await import('../../settings');
+    await setSetting('interaction', 'shift');
+    await lines([[0, 2, '食べる']]);
+    token().dispatchEvent(new MouseEvent('mouseover', { bubbles: true, shiftKey: true }));
+    await vi.advanceTimersByTimeAsync(0);
+    await flush();
+    expect(document.querySelector('.libregaku-popup')).not.toBeNull();
+  });
+
+  it('leaves Shift alone when cards open on hover', async () => {
+    await lines([[0, 2, '食べる']]);
+    token().dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+    await vi.advanceTimersByTimeAsync(50);
+    key('Shift', { shiftKey: true });
+    await flush();
+    // Still the grace period's to decide.
+    expect(document.querySelector('.libregaku-popup')).toBeNull();
   });
 });
 
@@ -412,6 +533,7 @@ describe('the word elsewhere in the video', () => {
     clock.now = 1;
     const popup = await openWord();
     await flush();
+    popup.querySelector<HTMLButtonElement>('.also-fold .fold-head')!.click();
     const rows = Array.from(popup.querySelectorAll('.also-line'));
     // The analyser stand-in reads every line as 食べる, so both others count.
     expect(rows.map((r) => r.querySelector('.at')?.textContent)).toEqual(['0:03', '0:06']);
@@ -421,12 +543,23 @@ describe('the word elsewhere in the video', () => {
   });
 });
 
+describe("the word's other lines, switched off", () => {
+  it('leaves them off the card', async () => {
+    const { setSetting } = await import('../../settings');
+    await setSetting('lookupElsewhere', false);
+    await lines([[0, 2, '食べる'], [3, 5, '食べた']]);
+    const popup = await openWord();
+    await flush();
+    expect(popup.querySelector('.also')).toBeNull();
+  });
+});
+
 describe('a card made while Anki is closed', () => {
   it('waits in the browser, shows as on its way, and goes in when Anki answers', async () => {
     const { AnkiUnavailable } = await import('../../anki/rpc');
     api.addNote.mockRejectedValueOnce(new AnkiUnavailable('Nothing is listening on port 8765.'));
     const popup = await openWord();
-    popup.querySelector<HTMLButtonElement>('.tb.add')!.click();
+    popup.querySelector<HTMLButtonElement>('button.add')!.click();
     await flush();
     await flush();
 
@@ -484,7 +617,7 @@ describe('a card with the line on it', () => {
     Object.assign(cap, { record: true, recorded: { data: 'TElORQ==', type: 'audio/mp4;codecs=mp4a.40.2' }, still: { data: 'SU1H', type: 'image/jpeg' } });
     const p = await player([[0, 2, '食べる'], [3, 5, '飲む']], 3.5);
     const popup = await openWord();
-    popup.querySelector<HTMLButtonElement>('.tb.add')!.click();
+    popup.querySelector<HTMLButtonElement>('button.add')!.click();
     await vi.advanceTimersByTimeAsync(4000);
     p.stop();
 
@@ -501,7 +634,7 @@ describe('a card with the line on it', () => {
     Object.assign(cap, { record: true, recorded: { data: 'TElORQ==', type: 'audio/mp4;codecs=mp4a.40.2' } });
     const p = await player([[0, 2, '食べる'], [3, 5, '飲む']], 3.5);
     const popup = await openWord();
-    popup.querySelector<HTMLButtonElement>('.tb.add')!.click();
+    popup.querySelector<HTMLButtonElement>('button.add')!.click();
     await vi.advanceTimersByTimeAsync(700);
     p.setPlaying(false);   // paused by hand, mid-line
     await vi.advanceTimersByTimeAsync(4000);
@@ -515,13 +648,58 @@ describe('a card with the line on it', () => {
     Object.assign(cap, { record: true, encrypted: true, still: { data: 'SU1H', type: 'image/jpeg' } });
     const p = await player([[0, 2, '食べる']], 1);
     const popup = await openWord();
-    popup.querySelector<HTMLButtonElement>('.tb.add')!.click();
+    popup.querySelector<HTMLButtonElement>('button.add')!.click();
     await vi.advanceTimersByTimeAsync(100);
     p.stop();
     const card = api.addNote.mock.calls[0]?.[0] as Record<string, unknown>;
     expect(card.sentenceAudio).toBeNull();
     expect(card.picture).toBeNull();
     expect(popup.querySelector('.toast')?.textContent).toContain('click the Libregaku icon to record here');
+  });
+
+  it("makes a card of the whole line from the card's line button, its sound on the front", async () => {
+    Object.assign(cap, { record: true, recorded: { data: 'TElORQ==', type: 'audio/mp4;codecs=mp4a.40.2' }, still: { data: 'SU1H', type: 'image/jpeg' } });
+    const p = await player([[0, 2, '食べる'], [3, 5, '飲む']], 3.5);
+    const popup = await openWord();
+    popup.querySelector<HTMLButtonElement>('.tb[aria-label="Add sentence"]')!.click();
+    await vi.advanceTimersByTimeAsync(4000);
+    p.stop();
+
+    expect(api.addNote).toHaveBeenCalledOnce();
+    const card = api.addNote.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(card.expression).toBe('飲む');
+    expect(card.deck).toBe('Vocabulary');
+    expect(card.tags).toContain('libregaku::sentence');
+    expect(card.audio).toEqual({ data: 'TElORQ==', filename: 'libregaku_test_3000.m4a' });
+    expect(card.sentenceAudio).toBeUndefined();
+    expect(card.picture).toEqual({ data: 'SU1H', filename: 'libregaku_test_3000.jpg' });
+    expect(String(card.source)).toContain('0:03');
+    expect(p.clock.now).toBe(3.5);
+    expect(popup.querySelector('.toast')?.textContent).toBe('sentence added to Vocabulary');
+  });
+
+  it('says a line is already in the deck rather than failing', async () => {
+    const { DuplicateNote } = await import('../../anki/client');
+    api.addNote.mockRejectedValueOnce(new DuplicateNote('Vocabulary', '食べる'));
+    const popup = await openWord();
+    popup.querySelector<HTMLButtonElement>('.tb[aria-label="Add sentence"]')!.click();
+    await flush();
+    await flush();
+    expect(popup.querySelector('.toast')?.textContent).toBe('the sentence is already in Vocabulary');
+  });
+
+  it('keeps a line made while Anki is closed, and says it will go in without its sound', async () => {
+    const { AnkiUnavailable } = await import('../../anki/rpc');
+    api.addNote.mockRejectedValueOnce(new AnkiUnavailable('Nothing is listening on port 8765.'));
+    const popup = await openWord();
+    popup.querySelector<HTMLButtonElement>('.tb[aria-label="Add sentence"]')!.click();
+    await flush();
+    await flush();
+    const waiting = Object.entries(local).filter(([k]) => k.startsWith('libregaku.cards.pending.'));
+    expect(waiting).toHaveLength(1);
+    expect((waiting[0]![1] as { card: { expression: string; tags: string[] } }).card.tags).toContain('libregaku::sentence');
+    expect(popup.querySelector('.toast')?.textContent)
+      .toBe('Anki is closed — the sentence goes to Vocabulary when it opens, without its sound or picture');
   });
 
   it('records nothing and touches nothing when both are switched off', async () => {
@@ -531,7 +709,7 @@ describe('a card with the line on it', () => {
     await setSetting('cardScreenshot', false);
     const p = await player([[0, 2, '食べる']], 1);
     const popup = await openWord();
-    popup.querySelector<HTMLButtonElement>('.tb.add')!.click();
+    popup.querySelector<HTMLButtonElement>('button.add')!.click();
     await vi.advanceTimersByTimeAsync(100);
     p.stop();
     expect(cap.starts).toBe(0);

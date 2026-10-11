@@ -34,8 +34,42 @@ function runs(surface: string): Array<{ kanji: boolean; text: string }> {
   return out;
 }
 
+/** Marks that stretch a vowel (は〜い, 可愛い～). They are in no reading. */
+const STRETCH = new Set(['〜', '～', '~', '〰']);
+
+/**
+ * Segments aligned without the stretch marks, given them back where they
+ * stood: as text of their own between segments, inside the one they
+ * interrupt otherwise.
+ */
+function withMarks(surface: string, segs: RubySegment[]): RubySegment[] {
+  const out: RubySegment[] = [];
+  let i = 0;
+  const marks = (): void => {
+    let m = '';
+    while (i < surface.length && STRETCH.has(surface[i]!)) m += surface[i++];
+    if (m) out.push({ text: m });
+  };
+  for (const seg of segs) {
+    marks();
+    let text = '';
+    for (let k = 0; k < seg.text.length && i < surface.length; i++) {
+      text += surface[i];
+      if (!STRETCH.has(surface[i]!)) k++;
+    }
+    out.push(seg.ruby ? { text, ruby: seg.ruby } : { text });
+  }
+  marks();
+  return out;
+}
+
 export function furigana(surface: string, reading?: string): RubySegment[] {
   if (!reading) return [{ text: surface }];
+  // A stretched word reads as the word: 凄〜い is 凄[すご]い with a mark in it.
+  if ([...surface].some((c) => STRETCH.has(c))) {
+    const plain = [...surface].filter((c) => !STRETCH.has(c)).join('');
+    if (plain && plain !== surface) return withMarks(surface, furigana(plain, reading));
+  }
 
   const parts = runs(surface);
   if (!parts.some((p) => p.kanji)) return [{ text: surface }];

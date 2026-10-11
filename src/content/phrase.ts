@@ -40,6 +40,23 @@ export function textFrom(first: HTMLElement, last: HTMLElement): string | null {
 }
 
 /**
+ * A selection on the overlay as text, the way it reads.
+ *
+ * The browser's own copy puts a line break after every word there — each is
+ * a flex item, a box of its own — so a line pasted anywhere came out one word
+ * to a line. This keeps the breaks the subtitle was written with and one
+ * between the line and its translation, and leaves out the readings above
+ * the words, as the browser does.
+ */
+export function plainText(range: Range): string {
+  const frag = range.cloneContents();
+  for (const n of frag.querySelectorAll('rt, rp')) n.remove();
+  for (const n of frag.querySelectorAll('.br')) n.replaceWith('\n');
+  for (const n of frag.querySelectorAll('.secondary')) n.before('\n');
+  return (frag.textContent ?? '').replace(/^\n+|\n+$/g, '');
+}
+
+/**
  * A run of words as one token to look up: the last word in its dictionary
  * form, the rest as written — 気にした is looked up as 気にする, and falls
  * back to the text itself.

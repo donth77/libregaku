@@ -2,6 +2,7 @@ import {
   FIELDS, MARK_SEARCH, MODEL, MODEL_NAME, ROOT_TAG, fieldHtml, furiganaField, keyField, toAnkiFurigana,
 } from './model';
 import { ankiCall as call, ankiTry } from './rpc';
+import { deckQuery } from './status';
 
 /**
  * AnkiConnect, spoken to over HTTP.
@@ -284,6 +285,28 @@ const OURS = `tag:${ROOT_TAG} -${MARK_SEARCH}`;
  */
 export async function browseOurCards(extra = ''): Promise<void> {
   await call('guiBrowse', { query: `${OURS}${extra ? ` ${extra}` : ''}` });
+}
+
+/** Open Anki's browser on the hand marks — hidden notes, so the deck list never shows them. */
+export async function browseMarks(): Promise<void> {
+  await call('guiBrowse', { query: MARK_SEARCH });
+}
+
+/**
+ * Open Anki's browser on the notes that hold a word, in the decks word status
+ * reads — where the card that made it "in Anki" is, whichever deck that is.
+ */
+export async function browseWord(word: string, scope: string): Promise<void> {
+  const text = word.replace(/[\\"*_:]/g, '\\$&');
+  await call('guiBrowse', { query: `${deckQuery(scope)} -${MARK_SEARCH} "${text}"` });
+}
+
+/**
+ * Take a card just added back out: Undo. The service worker allows it only
+ * for a Libregaku card a few minutes old that has not been studied.
+ */
+export async function takeBack(noteId: number): Promise<void> {
+  await call('deleteNotes', { notes: [noteId] });
 }
 
 /** Cards, not notes: what the settings panel and the toolbar both call them. */

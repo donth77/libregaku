@@ -21,12 +21,10 @@ function build(): { header: Header; host: HTMLElement } {
   document.body.appendChild(mount);
   const header = new Header(mount, {
     stats: () => ({ known: 87, unknown: 14, i1: 3 }),
-    savedCount: () => 0,
     sidebarOpen: () => false,
     inset: () => 0,
     onToggleSidebar: () => {},
     onOpenSettings: () => {},
-    onShowSaved: () => {},
   });
   return { header, host: mount.querySelector('#libregaku-header')! };
 }
@@ -55,14 +53,67 @@ describe('Header', () => {
     await setSetting('blurPrimary', false);
     await setSetting('dualSubtitles', true);
     const { host } = build();
-    const tips = Array.from(host.shadowRoot!.querySelectorAll('button[aria-keyshortcuts]'))
-      .map((b) => [b.getAttribute('aria-keyshortcuts'), b.getAttribute('title'), b.getAttribute('aria-label')]);
+    const tips = Array.from(host.shadowRoot!.querySelectorAll<HTMLElement>('button[aria-keyshortcuts]'))
+      .map((b) => [b.getAttribute('aria-keyshortcuts'), b.dataset.tip, b.dataset.key, b.getAttribute('aria-label')]);
     expect(tips).toEqual([
-      ['R', 'Furigana: new words (R)', 'Furigana: new words'],
-      ['H', 'Blur the subtitle until hovered (H)', 'Blur the subtitle until hovered'],
-      ['ArrowUp', 'Hide the second line (↑)', 'Hide the second line'],
-      ['S', 'Transcript panel (S)', 'Transcript panel'],
+      ['R', 'Furigana: new words', 'R', 'Furigana: new words'],
+      ['H', 'Blur subtitle', 'H', 'Blur subtitle'],
+      ['ArrowUp', 'Hide translation', '↑', 'Hide translation'],
+      ['S', 'Transcript', 'S', 'Transcript'],
     ]);
+  });
+
+  it('labels every button with its own tooltip, quickly, and never the browser\'s slow one', async () => {
+    vi.useFakeTimers();
+    try {
+      const { host } = build();
+      const root = host.shadowRoot!;
+      expect(root.querySelector('[title]')).toBeNull();
+      for (const b of Array.from(root.querySelectorAll<HTMLElement>('button'))) expect(b.dataset.tip).toBeTruthy();
+      const settingsButton = root.querySelector<HTMLElement>('button[aria-label="Settings"]')!;
+      settingsButton.dispatchEvent(new MouseEvent('pointerover', { bubbles: true }));
+      await vi.advanceTimersByTimeAsync(400);
+      const tip = root.querySelector<HTMLElement>('.tip')!;
+      expect(tip.classList.contains('on')).toBe(true);
+      expect(tip.textContent).toBe('Settings');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("shows the language's flag, or its code when settings ask", async () => {
+    await setSetting('languageBadge', 'flag');
+    let badge = build().host.shadowRoot!.querySelector<HTMLElement>('.badge')!;
+    expect(badge.textContent).toBe('🇯🇵');
+    expect(badge.getAttribute('aria-label')).toBe('Japanese');
+    document.body.replaceChildren();
+    await setSetting('languageBadge', 'code');
+    badge = build().host.shadowRoot!.querySelector<HTMLElement>('.badge')!;
+    expect(badge.textContent).toBe('ja');
+    await setSetting('languageBadge', 'flag');
+  });
+
+  it('keeps furigana to a language with readings, and draws which of the three it is on', async () => {
+    await setSetting('ruby', 'always');
+    let ruby = build().host.shadowRoot!.querySelector<HTMLElement>('button[aria-keyshortcuts="R"]')!;
+    expect(ruby.hidden).toBe(false);
+    expect(ruby.querySelectorAll('svg path')).toHaveLength(6);   // a reading over both words
+    document.body.replaceChildren();
+    await setSetting('target', 'es');
+    try {
+      ruby = build().host.shadowRoot!.querySelector<HTMLElement>('button[aria-keyshortcuts="R"]')!;
+      expect(ruby.hidden).toBe(true);
+    } finally {
+      await setSetting('target', 'ja');
+      await setSetting('ruby', 'unknown');
+    }
+  });
+
+  it('keeps to the video: lists open from the panel, not from here', () => {
+    const { host } = build();
+    const labels = Array.from(host.shadowRoot!.querySelectorAll('.right button')).map((b) => b.getAttribute('aria-label'));
+    expect(labels.some((l) => /saved/i.test(l ?? ''))).toBe(false);
+    expect(labels).toContain('Transcript');
   });
 
   it('names the numbers the way the panel does', () => {

@@ -28,26 +28,64 @@ export const DICTIONARIES: Record<string, string> = {
   ja: 'jmdict',
 };
 
-export const TARGET_LANGUAGES: Array<{ code: string; label: string; tier: 0 | 1 | 2 }> = [
-  { code: 'ja', label: 'Japanese', tier: 2 },
-  { code: 'ko', label: 'Korean', tier: 0 },
-  { code: 'zh', label: 'Chinese', tier: 0 },
-  { code: 'es', label: 'Spanish', tier: 0 },
-  { code: 'fr', label: 'French', tier: 0 },
-  { code: 'de', label: 'German', tier: 0 },
-  { code: 'it', label: 'Italian', tier: 0 },
-  { code: 'pt', label: 'Portuguese', tier: 0 },
-  { code: 'th', label: 'Thai', tier: 0 },
+/**
+ * The languages that can be learned. `flag` is the player bar's badge: a
+ * country standing for a language, so the one most learners of it mean —
+ * Brazil for Portuguese, as most courses do.
+ */
+export const TARGET_LANGUAGES: Array<{ code: string; label: string; tier: 0 | 1 | 2; flag: string }> = [
+  { code: 'ja', label: 'Japanese', tier: 2, flag: '🇯🇵' },
+  { code: 'ko', label: 'Korean', tier: 0, flag: '🇰🇷' },
+  { code: 'zh', label: 'Chinese', tier: 0, flag: '🇨🇳' },
+  { code: 'es', label: 'Spanish', tier: 0, flag: '🇪🇸' },
+  { code: 'fr', label: 'French', tier: 0, flag: '🇫🇷' },
+  { code: 'de', label: 'German', tier: 0, flag: '🇩🇪' },
+  { code: 'it', label: 'Italian', tier: 0, flag: '🇮🇹' },
+  { code: 'pt', label: 'Portuguese', tier: 0, flag: '🇧🇷' },
+  { code: 'th', label: 'Thai', tier: 0, flag: '🇹🇭' },
 ];
 
 /**
- * Languages definitions can appear in.
+ * What a language's analysis and dictionary give the interface, so a button
+ * that only makes sense for one language is asked about by what it needs,
+ * never by the language's name (AGENTS.md, invariant 4).
+ */
+export interface LanguageFeatures {
+  /** Readings over words: the Furigana setting, its button in the bar, the R key. */
+  readings: boolean;
+  /** The characters a word is written with, on its card. */
+  characters: boolean;
+  /** A dictionary site to open a word in, from its card. */
+  dictionary?: { name: string; url: (word: string) => string };
+  /** Definitions in more than one language, so a choice of which. */
+  definitions: boolean;
+}
+
+const LANGUAGE_FEATURES: Record<string, LanguageFeatures> = {
+  ja: {
+    readings: true,
+    characters: true,
+    definitions: true,
+    dictionary: { name: 'Jisho', url: (w) => `https://jisho.org/search/${encodeURIComponent(w)}` },
+  },
+};
+
+const NO_FEATURES: LanguageFeatures = { readings: false, characters: false, definitions: false };
+
+export function featuresOf(lang: string): LanguageFeatures {
+  return LANGUAGE_FEATURES[lang] ?? NO_FEATURES;
+}
+
+/**
+ * Languages the dictionary can explain words in.
  *
  * Constrained by what JMdict actually publishes rather than by what would be
  * nice: these are the editions that exist. Offering a language with no edition
  * behind it would mean silently serving English while claiming otherwise.
+ * Hungarian and Slovenian are here for that reason alone — as translations of
+ * a subtitle they are rare, and that list is TRANSLATION_LANGUAGES.
  */
-export const NATIVE_LANGUAGES: Array<{ code: string; label: string; jmdict: string }> = [
+export const DEFINITION_LANGUAGES: Array<{ code: string; label: string; jmdict: string }> = [
   { code: 'en', label: 'English', jmdict: 'eng' },
   { code: 'nl', label: 'Dutch', jmdict: 'dut' },
   { code: 'fr', label: 'French', jmdict: 'fre' },
@@ -59,20 +97,54 @@ export const NATIVE_LANGUAGES: Array<{ code: string; label: string; jmdict: stri
   { code: 'sv', label: 'Swedish', jmdict: 'swe' },
 ];
 
-/** JMdict's three-letter code for a native language, or English. */
+/** JMdict's three-letter code for a definitions language, or English. */
 export function jmdictEditionFor(code: string): string {
-  return NATIVE_LANGUAGES.find((l) => l.code === code)?.jmdict ?? 'eng';
+  return DEFINITION_LANGUAGES.find((l) => l.code === code)?.jmdict ?? 'eng';
 }
+
+/**
+ * Languages the translation under a subtitle can be in: the second subtitle
+ * track the site carries. Any language a site translates into could be here;
+ * these are the ones most learners speak, Japanese, Chinese and Korean among
+ * them, so the same extension serves someone learning English from Japanese.
+ */
+export const TRANSLATION_LANGUAGES: Array<{ code: string; label: string }> = [
+  { code: 'en', label: 'English' },
+  { code: 'es', label: 'Spanish' },
+  { code: 'fr', label: 'French' },
+  { code: 'de', label: 'German' },
+  { code: 'pt', label: 'Portuguese' },
+  { code: 'it', label: 'Italian' },
+  { code: 'ru', label: 'Russian' },
+  { code: 'ja', label: 'Japanese' },
+  { code: 'zh', label: 'Chinese' },
+  { code: 'ko', label: 'Korean' },
+  { code: 'ar', label: 'Arabic' },
+  { code: 'hi', label: 'Hindi' },
+  { code: 'id', label: 'Indonesian' },
+  { code: 'vi', label: 'Vietnamese' },
+  { code: 'th', label: 'Thai' },
+  { code: 'tr', label: 'Turkish' },
+  { code: 'pl', label: 'Polish' },
+  { code: 'uk', label: 'Ukrainian' },
+  { code: 'nl', label: 'Dutch' },
+  { code: 'sv', label: 'Swedish' },
+];
 
 export interface Settings {
   /** BCP-47 of the language being learned. */
   target: string;
-  /** BCP-47 of the language to show translations in. */
+  /** BCP-47 of the language to show translations in: the second subtitle line. */
   native: string;
+  /** The language the dictionary explains words in (DEFINITION_LANGUAGES). */
+  definitions: string;
   /** False until the user has been through setup once. */
   configured: boolean;
-  /** How the lookup card opens. */
-  interaction: 'hover' | 'click';
+  /**
+   * How the lookup card opens: resting on a word, resting on it with Shift
+   * held — so the cursor can cross a line without opening anything — or a click.
+   */
+  interaction: 'hover' | 'shift' | 'click';
   /** Grace period before a hover opens a card, in ms. */
   hoverDelay: number;
   /** Pause playback while the cursor is on a subtitle. */
@@ -86,6 +158,28 @@ export interface Settings {
   blurPrimary: boolean;
   /** Preview definitions on hover in the transcript panel. */
   sidebarHover: boolean;
+  /** List the video's other lines with the word on its lookup card. */
+  lookupElsewhere: boolean;
+  /**
+   * Track beside Known and Ignore on the card. Off by default: beside Add it
+   * was taken for Add, and a purple underline with no card is for few.
+   */
+  cardTrack: boolean;
+  /** Known and Ignore beside the word on its card. */
+  cardMarks: boolean;
+  /** A menu beside Add, for adding the card to another deck. */
+  cardDeckMenu: boolean;
+  /** The button for a card of the whole line. */
+  cardAddLine: boolean;
+  /** The word's kanji on its card, where the language has them. */
+  cardKanji: boolean;
+  /** The player bar names the language being learned by its flag, or by its code. */
+  languageBadge: 'flag' | 'code';
+  /**
+   * Hand marks — Known, Track, Ignore — kept in Anki, where they reach every
+   * device. Off, they stay in this browser, waiting to go in if it comes on.
+   */
+  marksInAnki: boolean;
   /**
    * Where new cards go. One specific deck.
    */
@@ -121,6 +215,14 @@ export interface Settings {
   sidebarFollow: boolean;
   /** Underline known words too, rather than leaving them bare. */
   markKnown: boolean;
+  /**
+   * The underline for each word status, as #rrggbb. The subtitle, the
+   * transcript and the popup's mark buttons all take theirs from these.
+   */
+  colorUnknown: string;
+  colorLearning: string;
+  colorTracking: string;
+  colorKnown: string;
   /**
    * Show a native-language line beneath the target one.
    *
@@ -160,6 +262,7 @@ export interface Settings {
 export const DEFAULTS: Settings = {
   target: 'ja',
   native: 'en',
+  definitions: 'en',
   configured: false,
   interaction: 'hover',
   hoverDelay: 220,
@@ -167,6 +270,14 @@ export const DEFAULTS: Settings = {
   ruby: 'unknown',
   blurPrimary: false,
   sidebarHover: true,
+  lookupElsewhere: true,
+  cardTrack: false,
+  cardMarks: true,
+  cardDeckMenu: false,
+  cardAddLine: true,
+  cardKanji: true,
+  languageBadge: 'flag',
+  marksInAnki: true,
   deck: '',
   cardAudio: true,
   cardSentenceAudio: true,
@@ -175,6 +286,10 @@ export const DEFAULTS: Settings = {
   sidebarStats: true,
   sidebarFollow: true,
   markKnown: false,
+  colorUnknown: '#e5806c',
+  colorLearning: '#d9a64a',
+  colorTracking: '#a78bfa',
+  colorKnown: '#63af97',
   dualSubtitles: true,
   subtitleSize: 100,
   subtitleBottom: 12,
@@ -216,7 +331,7 @@ export async function loadSettings(): Promise<Settings> {
   if (loaded) return cached;
   try {
     const got = await chrome.storage.sync.get(KEY);
-    cached = { ...DEFAULTS, ...(got[KEY] as Partial<Settings> | undefined) };
+    cached = withDefaults(got[KEY] as Partial<Settings> | undefined);
   } catch {
     cached = { ...DEFAULTS };
   }
@@ -238,6 +353,48 @@ export function onSettingsChange(fn: Listener): void {
   listeners.add(fn);
 }
 
+/**
+ * Stored settings over the defaults. Definitions used to follow the
+ * translation language, so one chosen before they were apart is kept.
+ */
+export function withDefaults(stored: Partial<Settings> | undefined): Settings {
+  const out = { ...DEFAULTS, ...stored };
+  if (!stored?.definitions && stored?.native && DEFINITION_LANGUAGES.some((l) => l.code === stored.native)) {
+    out.definitions = stored.native;
+  }
+  // A colour that is not one would paint no underline at all.
+  for (const key of UNDERLINE_KEYS) {
+    if (!/^#[0-9a-f]{6}$/i.test(out[key])) out[key] = DEFAULTS[key];
+  }
+  return out;
+}
+
+/** The settings that hold an underline colour, and the status each one marks. */
+export const UNDERLINES = {
+  colorUnknown: 'unknown',
+  colorLearning: 'learning',
+  colorTracking: 'tracking',
+  colorKnown: 'known',
+} as const;
+export type UnderlineKey = keyof typeof UNDERLINES;
+const UNDERLINE_KEYS = Object.keys(UNDERLINES) as UnderlineKey[];
+
+/**
+ * The underline colours as CSS custom properties — --lg-unknown and so on —
+ * for the host of a shadow root. They inherit across the shadow boundary, so
+ * one element carries them to everything inside.
+ */
+export function underlineVars(s: Settings): Record<string, string> {
+  const vars: Record<string, string> = {};
+  for (const key of UNDERLINE_KEYS) vars[`--lg-${UNDERLINES[key]}`] = s[key];
+  return vars;
+}
+
+/** Put underline colours on an element, from underlineVars. */
+export function applyVars(el: HTMLElement, vars: Record<string, string>): void {
+  for (const [name, value] of Object.entries(vars)) el.style.setProperty(name, value);
+}
+
 function same(a: Settings, b: Settings): boolean {
   const keys = new Set([...Object.keys(a), ...Object.keys(b)]) as Set<keyof Settings>;
   for (const k of keys) if (a[k] !== b[k]) return false;
@@ -248,7 +405,7 @@ function same(a: Settings, b: Settings): boolean {
 try {
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'sync' || !changes[KEY]) return;
-    const next = { ...DEFAULTS, ...(changes[KEY].newValue as Partial<Settings> | undefined) };
+    const next = withDefaults(changes[KEY].newValue as Partial<Settings> | undefined);
     // This tab's own write echoes back here after setSetting has already
     // applied and announced it. Announcing it twice ran every listener twice —
     // including the one that re-reads the whole Anki collection.

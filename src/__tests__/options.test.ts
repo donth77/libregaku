@@ -24,6 +24,17 @@ vi.mock('../content/settings-panel', () => {
       }
       deck.addEventListener('change', () => void setSetting('deck', deck.value));
       root.appendChild(deck);
+      // Sections for the contents to list, as the real panel groups its settings.
+      for (const [id, title] of [['lg-anki', 'Anki'], ['lg-cards', 'Cards'], ['lg-data', 'Data']]) {
+        const section = document.createElement('section');
+        section.className = 'grp-section';
+        section.id = id!;
+        const h = document.createElement('h2');
+        h.className = 'grp';
+        h.textContent = title!;
+        section.appendChild(h);
+        root.appendChild(section);
+      }
       return root;
     },
   };
@@ -42,6 +53,7 @@ const PAGE = `
     <button id="confirmLang"></button>
     <button id="confirmDeck" hidden></button>
   </section>
+  <nav class="toc"></nav>
   <section id="settings"></section>`;
 
 async function open(settings: Record<string, unknown>, chosen?: string): Promise<void> {
@@ -75,6 +87,50 @@ const setup = (): HTMLElement => document.getElementById('setup') as HTMLElement
 
 beforeEach(() => {
   document.body.replaceChildren();
+});
+
+describe('the contents', () => {
+  const link = (name: string): HTMLAnchorElement =>
+    Array.from(document.querySelectorAll<HTMLAnchorElement>('.toc a')).find((a) => a.textContent === name)!;
+  const marked = (): string[] =>
+    Array.from(document.querySelectorAll('.toc a[aria-current="true"]')).map((a) => a.textContent ?? '');
+  const frame = (): Promise<void> => new Promise((r) => requestAnimationFrame(() => r()));
+
+  it('works out the section being read from where the sections sit', async () => {
+    await open({ configured: true, deck: 'Default' }, 'Default');
+    const { readingIndex } = await import('../options');
+    expect(readingIndex([-500, -100, 300, 900], 900, false)).toBe(2);
+    expect(readingIndex([40, 700, 1600], 900, false)).toBe(0);
+    // Scrolled as far as it goes: the last, though it never reached the line.
+    expect(readingIndex([-900, 200, 520], 900, true)).toBe(2);
+    expect(readingIndex([], 900, false)).toBe(-1);
+  });
+
+  it('marks a section picked from them at once, and keeps it until the page is moved by hand', async () => {
+    await open({ configured: true, deck: 'Default' }, 'Default');
+    // Anki at the top of the window; Cards and Data below the reading line, as at the foot of the page.
+    const tops: Record<string, number> = { 'lg-anki': 0, 'lg-cards': 600, 'lg-data': 900 };
+    for (const s of Array.from(document.querySelectorAll<HTMLElement>('.grp-section'))) {
+      s.getBoundingClientRect = () => ({ top: tops[s.id] ?? 0 }) as DOMRect;
+    }
+    window.dispatchEvent(new Event('scroll'));
+    await frame();
+    expect(marked()).toEqual(['Anki']);
+
+    link('Data').click();
+    expect(marked()).toEqual(['Data']);
+    expect(document.getElementById('lg-data')!.classList.contains('landed')).toBe(true);
+    // The scroll the pick starts does not undo it.
+    window.dispatchEvent(new Event('scroll'));
+    await frame();
+    expect(marked()).toEqual(['Data']);
+
+    // Once that scroll is over, moving the page is the reader's doing.
+    window.dispatchEvent(new Event('scrollend'));
+    window.dispatchEvent(new Event('scroll'));
+    await frame();
+    expect(marked()).toEqual(['Anki']);
+  });
 });
 
 describe('the deck step', () => {
@@ -114,5 +170,22 @@ describe('the deck step', () => {
     await open({ configured: true, deck: '' });
     expect(step().classList.contains('done')).toBe(false);
     expect(keep().hidden).toBe(true);
+  });
+});
+
+describe('settings kept from before definitions had a setting of their own', () => {
+  it('takes the definitions language from the translation one, where the dictionary has it', async () => {
+    const { withDefaults } = await import('../settings');
+    expect(withDefaults({ native: 'fr' }).definitions).toBe('fr');
+    expect(withDefaults({ native: 'ja' }).definitions).toBe('en');
+    expect(withDefaults({ native: 'fr', definitions: 'de' }).definitions).toBe('de');
+    expect(withDefaults(undefined).definitions).toBe('en');
+  });
+
+  it('keeps a chosen underline colour, and drops one that is not a colour', async () => {
+    const { withDefaults } = await import('../settings');
+    expect(withDefaults({ colorTracking: '#3366FF' }).colorTracking).toBe('#3366FF');
+    expect(withDefaults({ colorTracking: 'red; background: url(x)' }).colorTracking).toBe('#a78bfa');
+    expect(withDefaults({ colorKnown: '' }).colorKnown).toBe('#63af97');
   });
 });

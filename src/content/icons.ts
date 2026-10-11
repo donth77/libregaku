@@ -4,6 +4,8 @@
  */
 
 const ICONS: Record<string, string> = {
+  keyboard:
+    '<path d="M10 8h.01"/><path d="M12 12h.01"/><path d="M14 8h.01"/><path d="M16 12h.01"/><path d="M18 8h.01"/><path d="M6 8h.01"/><path d="M7 16h10"/><path d="M8 12h.01"/><rect width="20" height="16" x="2" y="4" rx="2"/>',
   volume:
     '<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.364 18.364a9 9 0 0 0 0-12.728"/>',
   copy:
@@ -23,14 +25,34 @@ const ICONS: Record<string, string> = {
     '<rect width="18" height="14" x="3" y="5" rx="2"/><path d="M7 15h4"/><path d="M15 15h2"/><path d="M7 11h2"/><path d="M13 11h4"/>',
   ruby:
     '<path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/>',
+  /* Furigana's three states, drawn: two words, with a reading over both, one, or neither. */
+  rubyAll:
+    '<path d="M3 13h7"/><path d="M6.5 13v7"/><path d="M14 13h7"/><path d="M17.5 13v7"/><path d="M4 7.5h5"/><path d="M15 7.5h5"/>',
+  rubySome:
+    '<path d="M3 13h7"/><path d="M6.5 13v7"/><path d="M14 13h7"/><path d="M17.5 13v7"/><path d="M15 7.5h5"/>',
+  rubyOff:
+    '<path d="M3 13h7"/><path d="M6.5 13v7"/><path d="M14 13h7"/><path d="M17.5 13v7"/>',
   bookmark:
     '<path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>',
   chevronsUp:
     '<path d="m17 11-5-5-5 5"/><path d="m17 18-5-5-5 5"/>',
   plus:
     '<path d="M5 12h14"/><path d="M12 5v14"/>',
+  /* A line of dialogue, added: message-square-plus. */
+  linePlus:
+    '<path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/><path d="M12 8v6"/><path d="M9 11h6"/>',
   check:
     '<path d="M20 6 9 17l-5-5"/>',
+  arrowRight:
+    '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+  chevronDown:
+    '<path d="m6 9 6 6 6-6"/>',
+  circleCheck:
+    '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+  target:
+    '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+  ban:
+    '<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',
   settings:
     '<path d="M14 17H5"/><path d="M19 7h-9"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/>',
   x:
