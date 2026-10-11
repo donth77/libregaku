@@ -20,6 +20,8 @@ export const zhHant: Translation = {
   common: {
     furigana: (mode: Settings['ruby']): string => `振假名：${RUBY[mode]}`,
     pinyin: (mode: Settings['ruby']): string => `拼音：${RUBY[mode]}`,
+    mandarin: '普通話',
+    jyutping: (mode: Settings['ruby']): string => `Jyutping：${RUBY[mode]}`,
     sentenceGap: '',
   },
 
@@ -31,6 +33,7 @@ export const zhHant: Translation = {
     targetLimited: (language: string): string => `${language}（有限支援）`,
     supportFull: '完整支援，包括讀音和振假名。',
     supportPinyin: '完整支援，包括拼音。釋義為英文。',
+    supportJyutping: '完整支援，包括 Jyutping。釋義為英文。',
     supportWords: '完整支援。釋義為英文。',
     script: '文字',
     scriptHint: '影片兩種都有時，使用這一種。',
@@ -82,6 +85,8 @@ export const zhHant: Translation = {
     rubyHint: '在漢字上方標示讀音。觀看時按 R 切換。',
     pinyin: '拼音',
     pinyinHint: '在漢字上方標示讀音。觀看時按 R 切換。',
+    jyutping: 'Jyutping',
+    jyutpingHint: '在漢字上方標示讀音。觀看時按 R 切換。',
     blurPrimary: '模糊字幕',
     blurPrimaryHint: '用於聽力練習：字幕會保持模糊，游標指向時才顯示。按 H 切換。',
     subtitleSize: '文字大小',
@@ -98,6 +103,8 @@ export const zhHant: Translation = {
     dualSubtitles: '顯示翻譯',
     dualSubtitlesHint:
       '在學習語言的字幕下方，顯示母語字幕。這些字幕來自網站本身，不是機器翻譯，而且影片需要有完整的轉錄稿。',
+    singleKeys: '單鍵快速鍵',
+    singleKeysHint: 'A、R 等字母鍵在觀看時可單獨使用。關閉時，需同時按住 Alt 和 Shift。方向鍵一律可用。',
 
     // Underlines
     underlinesHeading: '底線',
@@ -129,6 +136,11 @@ export const zhHant: Translation = {
     languageBadgeCode: '代碼',
     badgeFlag: '徽章國旗',
     badgeFlagDefault: '預設',
+    flagSearch: '搜尋…',
+    flagSearchLabel: '搜尋國家/地區',
+    flagSuggested: '建議',
+    flagAll: '所有國家/地區',
+    flagNone: (query: string): string => `找不到符合「${query}」的國家/地區。`,
     badgeFlagHint: '代表學習語言的國旗。每種語言分別儲存。',
     languageBadgeHint: '頂端列顯示學習語言的方式。',
     sidebarStats: '統計生詞',
@@ -219,7 +231,13 @@ export const zhHant: Translation = {
       '由 jmdict-simplified 重新封裝為 JSON。',
     creditLindera: '將日文、韓文和中文切分成單字。MIT 授權；IPADIC、mecab-ko-dic 和 CC-CEDICT 各有其授權條款。',
     creditCedict: '中文字典 © MDBG 及其貢獻者，依 CC BY-SA 4.0 授權使用。',
-    creditWiktionary: '韓文和西班牙文字典，來自 Wiktionary，經由 kaikki.org 和 wiktionary-to-yomitan 轉換。CC BY-SA 4.0。',
+    creditWiktionary:
+      '韓文和西班牙文字典，以及部分以你母語釋義的字典，來自 Wiktionary，經由 kaikki.org 和 wiktionary-to-yomitan 轉換。CC BY-SA 4.0。',
+    creditKrdict:
+      '以你的母語解釋韓文詞語。© National Institute of Korean Language，依 CC BY-SA 2.0 KR 授權使用。檔案由 Lyroxide 製作。',
+    creditCfdict: '以法文解釋中文。CFDICT © chine.in，由 CxDICT 持續更新。CC BY-SA 4.0。',
+    creditCanto: '粵語字典，以及 CC-CEDICT 詞條的 Jyutping 讀音。© Pleco Inc.，依 CC BY-SA 3.0 授權使用。',
+    creditHandedict: '以德文解釋中文。© HanDeDict 及其貢獻者，依 CC BY-SA 3.0 授權使用。',
     creditUnihan: '決定漢字優先顯示哪個讀音。© Unicode, Inc.，依 Unicode License 授權使用。',
     creditJotoba: '字典下載期間用於查詢。兩者都使用 JMdict。',
     creditLucide: '圖示。ISC 授權。',
@@ -237,6 +255,7 @@ export const zhHant: Translation = {
     keyKnown: '將視窗中的單字標為已知',
     keyFurigana: `切換振假名：${RUBY.never}、${RUBY.unknown}、${RUBY.always}`,
     keyPinyin: `切換拼音：${RUBY.never}、${RUBY.unknown}、${RUBY.always}`,
+    keyJyutping: `切換 Jyutping：${RUBY.never}、${RUBY.unknown}、${RUBY.always}`,
     keyBlur: '模糊或取消模糊字幕',
     keySave: '儲存目前的句子',
     keyTranscript: '顯示或隱藏轉錄稿面板',
@@ -258,6 +277,7 @@ export const zhHant: Translation = {
     stepAnki: '連接 Anki，並為新卡片選擇牌組',
     ankiOptional: 'Anki 不是必要的：沒有 Anki，也能使用字幕、查詢和振假名。Anki 的作用是記住你已經會哪些單字。',
     nextSteps: '接著開啟有學習語言字幕的影片，將游標停在單字上。轉錄稿面板中的鍵盤按鈕會列出鍵盤快速鍵。',
+    stepDone: '已完成',
     confirmLanguages: '語言設定正確',
     keepDeck: (deck: string): string => `新卡片使用 ${deck}`,
   },
@@ -303,15 +323,17 @@ export const zhHant: Translation = {
   },
 
   sidebar: {
+    panelLabel: '轉錄稿面板',
+    resizeLabel: '調整面板大小',
+
     // The tabs, and the icon buttons beside them
     tabsLabel: '清單',
     transcriptTab: '轉錄稿',
     savedTab: '已儲存',
-    wordsTab: '單字',
     settings: '設定',
     shortcuts: '鍵盤快速鍵',
     close: '關閉',
-    closeLabel: '收合面板',
+    closeLabel: '關閉面板',
     openTip: '轉錄稿',
     openLabel: '顯示轉錄稿',
     help: '說明',
@@ -341,6 +363,7 @@ export const zhHant: Translation = {
     empty: '未載入轉錄稿。',
     currentLine: '目前句子',
     lineNew: (n: number): string => `${n} 個生詞`,
+    playFrom: (time: string): string => `從 ${time} 開始播放`,
     saveLine: '儲存句子',
     unsave: '取消儲存',
     addSentence: '新增句子',
@@ -362,6 +385,7 @@ export const zhHant: Translation = {
     // The Saved tab
     savedEmpty: '還沒有儲存任何句子。點選轉錄稿中任一句的書籤（或按 B），就能保留想回頭再看的句子。',
     thisVideo: '這部影片',
+    openAt: (time: string): string => `在 ${time} 處開啟影片`,
     remove: '移除',
     removeLabel: '從已儲存中移除',
     copySavedAbout: '將所有已儲存的句子複製為以 Tab 分隔的文字',
@@ -386,18 +410,20 @@ export const zhHant: Translation = {
     downloadBlocked: '這個網頁封鎖了下載，請改用「複製」。',
 
     // The Words tab
-    listsLabel: '單字清單',
+    listsLabel: '選擇清單',
+    listLines: '句子',
     listTracked: '追蹤中',
     listKnown: '已知',
     listIgnored: '已忽略',
-    findPlaceholder: '尋找單字',
-    findLabel: '在這份清單中尋找單字',
+    findPlaceholder: '搜尋…',
+    findLabel: '在這份清單中搜尋',
     copyWordsAbout: '將這份清單複製為以 Tab 分隔的文字',
     exportWordsAbout: '將這份清單儲存成 Anki 可匯入、以 Tab 分隔的檔案',
     wordsCopied: (n: number): string => `已複製 ${n} 個單字。`,
-    nothingToExport: '這份清單中沒有可匯出的單字。',
+    nothingToExport: '這份清單中沒有可匯出的內容。',
     lookingUp: '正在查詢讀音和意思…',
     noWordMatches: (query: string): string => `這份清單中沒有符合「${query}」的單字。`,
+    noLineMatches: (query: string): string => `沒有符合「${query}」的已儲存句子。`,
     wordsMatching: (shown: number, total: number): string => `${total} 個單字中有 ${shown} 個符合。`,
     trackedEmpty: '還沒有追蹤任何單字。「追蹤」會為單字加上底線，讓你注意到它，但不會製作卡片。' +
       '請在「設定」的「單字視窗」中開啟這個按鈕。',
@@ -476,6 +502,7 @@ export const zhHant: Translation = {
     adding: '新增中…',
     undoing: '復原中…',
     added: '已新增',
+    addedUndo: '已新增——復原',
     inAnki: '已在 Anki 中',
     showInAnki: '在 Anki 中顯示',
     waiting: '等待中',
@@ -516,13 +543,13 @@ export const zhHant: Translation = {
     unblurSubtitle: '取消模糊字幕',
     showTranslation: '顯示翻譯',
     hideTranslation: '隱藏翻譯',
+    translation: '翻譯',
     transcript: '轉錄稿',
     pinHeader: '固定頂端列',
     unpinHeader: '取消固定頂端列',
     settings: '設定',
 
     showHeader: '顯示頂端列',
-    showHeaderLabel: '顯示頂端列',
   },
 
   player: {
@@ -546,7 +573,7 @@ export const zhHant: Translation = {
     marked: (word: string, status: OverrideStatus, refused: boolean): string => {
       const done = { known: '已標為已知', tracking: '已追蹤', ignored: '已忽略', unknown: '已標為生詞' }[status];
       if (refused) return `${word} · ${done}，未製作卡片。Anki 拒絕了這個標記，稍後會再試一次`;
-      return `${word} · ${done}，未製作卡片${status === 'tracking' ? '。請見面板的「單字」分頁' : ''}`;
+      return `${word} · ${done}，未製作卡片${status === 'tracking' ? '。請見面板的「已儲存」分頁' : ''}`;
     },
 
     // A word's card

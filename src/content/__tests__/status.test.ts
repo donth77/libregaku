@@ -437,7 +437,7 @@ describe('the transcript button', () => {
     const selected = (): string | null | undefined => side.querySelector('[role=tab][aria-selected="true"]')?.getAttribute('data-mode');
     // Closed while showing Saved, from the panel's own close button.
     side.querySelector<HTMLButtonElement>('[role=tab][data-mode="saved"]')!.click();
-    side.querySelector<HTMLButtonElement>('button[aria-label="Collapse the panel"]')!.click();
+    side.querySelector<HTMLButtonElement>('button[aria-label="Close the panel"]')!.click();
     expect(panel().style.display).toBe('none');
 
     bar.querySelector<HTMLButtonElement>('button[aria-keyshortcuts="S"]')!.click();
@@ -446,7 +446,7 @@ describe('the transcript button', () => {
 
     // The same from the panel's tab at the player's edge.
     side.querySelector<HTMLButtonElement>('[role=tab][data-mode="saved"]')!.click();
-    side.querySelector<HTMLButtonElement>('button[aria-label="Collapse the panel"]')!.click();
+    side.querySelector<HTMLButtonElement>('button[aria-label="Close the panel"]')!.click();
     side.querySelector<HTMLButtonElement>('button.tab')!.click();
     expect(panel().style.display).not.toBe('none');
     expect(selected()).toBe('transcript');
@@ -499,15 +499,20 @@ describe('K on a word Anki already knows', () => {
 });
 
 describe('each language keeps its own', () => {
-  /** How many words the panel's Words tab says are marked. */
-  const marked = (): string => root('.libregaku-sidebar').querySelector('[data-mode="words"] .n')?.textContent ?? '';
+  /** How many words the panel's Saved tab lists as known. */
+  const marked = async (): Promise<string> => {
+    const panel = root('.libregaku-sidebar');
+    panel.querySelector<HTMLButtonElement>('[role=tab][data-mode="saved"]')?.click();
+    await flush();
+    return panel.querySelector('.wchip[data-show="known"] .n')?.textContent ?? '';
+  };
 
   it('shows a mark only while the language it was made in is being learned', async () => {
     const popup = await openWord();
     popup.querySelector<HTMLButtonElement>('.mk.known')!.click();
     await flush();
     expect(token().dataset.s).toBe('known');
-    expect(marked()).toBe('1');
+    expect(await marked()).toBe('1');
     expect(local['libregaku.marks.byLanguage']).toEqual({ ja: { 食べる: 'known' } });
 
     // French, on a video that has it: its lists start empty, and Japanese's mark is none of its business.
@@ -517,13 +522,13 @@ describe('each language keeps its own', () => {
     await setSetting('target', 'fr');
     await vi.advanceTimersByTimeAsync(1500);
     expect(token().textContent).toBe('chat');
-    expect(marked()).toBe('');
+    expect(await marked()).toBe('');
     expect(token().dataset.s).toBe('unknown');
 
     // And back: the mark was Japanese's all along.
     await setSetting('target', 'ja');
     await vi.advanceTimersByTimeAsync(1500);
-    expect(marked()).toBe('1');
+    expect(await marked()).toBe('1');
     expect(token().dataset.s).toBe('known');
     expect(local['libregaku.marks.byLanguage']).toEqual({ ja: { 食べる: 'known' } });
   });
@@ -566,7 +571,7 @@ describe('what a mark says it did', () => {
   it('says what happened to the word, that no card was made, and where tracked words are', async () => {
     const { markSaid } = await import('../index');
     expect(markSaid('食べる', 'known', { marks: new Map(), error: undefined } as never)).toBe('食べる · marked known, no card');
-    expect(markSaid('食べる', 'tracking', null)).toBe("食べる · tracked, no card. See the panel's Words tab");
+    expect(markSaid('食べる', 'tracking', null)).toBe('食べる · tracked, no card. See Saved in the panel');
     expect(markSaid('食べる', 'ignored', 'here')).toBe('食べる · ignored, no card');
     expect(markSaid('食べる', 'ignored', { marks: new Map(), error: 'refused' } as never))
       .toBe('食べる · ignored, no card — Anki refused it; trying again later');

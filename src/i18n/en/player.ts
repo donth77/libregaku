@@ -54,14 +54,14 @@ export const player = {
   markOff: (word: string): string => `${word} · mark taken off`,
   /**
    * `word` was marked. `status` is the mark: 'known'; 'tracking', listed in
-   * the Tracked list in the panel's Words tab; 'ignored'; or 'unknown', marked new. `refused`
+   * the Tracked list under the panel's Saved tab; 'ignored'; or 'unknown', marked new. `refused`
    * is true when Anki refused the mark: it is kept in the browser and tried
    * again later.
    */
   marked: (word: string, status: OverrideStatus, refused: boolean): string => {
     const done = { known: 'marked known', tracking: 'tracked', ignored: 'ignored', unknown: 'marked new' }[status];
     if (refused) return `${word} · ${done}, no card — Anki refused it; trying again later`;
-    return `${word} · ${done}, no card${status === 'tracking' ? ". See the panel's Words tab" : ''}`;
+    return `${word} · ${done}, no card${status === 'tracking' ? ". See Saved in the panel" : ''}`;
   },
 
   // A word's card: what Add, A, or Add to Anki on the Tracked list says happened

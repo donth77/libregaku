@@ -208,6 +208,9 @@ function sideOf(mark: string, tight: boolean): string {
 /** Statuses whose readings show when furigana is on for new words only. */
 const isNew = (status: string): boolean => status === 'unknown' || status === 'learning';
 
+/** Nothing on the page has focus: what had it was taken away, and nothing took it since. */
+const focusIsNowhere = (): boolean => !document.activeElement || document.activeElement === document.body;
+
 export class Overlay {
   #host: HTMLElement;
   #root: ShadowRoot;
@@ -230,6 +233,11 @@ export class Overlay {
   #ruby: (t: Token) => RubySegment[] = (t) => [{ text: t.surface }];
   #bottomPercent = 12;
   #bottomInset = 0;
+  /**
+   * A word had focus when its line went with no line after it (clear): the
+   * next line takes focus back, if nothing else has taken it since.
+   */
+  #refocus = false;
 
   constructor(mount: HTMLElement) {
     this.#host = document.createElement('div');
@@ -268,6 +276,49 @@ export class Overlay {
       if (!el || !this.#onToken) return;
       const raw = el.dataset.tok;
       if (raw) this.#onToken(JSON.parse(raw) as Token, el);
+    });
+
+    /*
+     * The keyboard. Enter or Space on a word does what a click does, and ← →
+     * go from word to word in the order the line reads: in a line written
+     * right to left, ← is the next word. Kept from the page, where Space
+     * pauses the video and the arrows seek.
+     */
+    this.#primary.addEventListener('keydown', (e) => {
+      const el = (e.target as HTMLElement).closest?.('.t') as HTMLElement | null;
+      if (!el || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        e.stopPropagation();
+        const raw = el.dataset.tok;
+        if (raw && !e.repeat) {
+          // As a click does: the video waits while the word is read, where that is set.
+          this.#onPress?.();
+          this.#onToken?.(JSON.parse(raw) as Token, el);
+        }
+        return;
+      }
+      const words = Array.from(this.#primary.querySelectorAll<HTMLElement>('.t'));
+      // Home and End, to the line's first and last word: on the page they would seek the video.
+      if (e.key === 'Home' || e.key === 'End') {
+        e.preventDefault();
+        e.stopPropagation();
+        (e.key === 'Home' ? words[0] : words[words.length - 1])?.focus();
+        return;
+      }
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      e.preventDefault();
+      e.stopPropagation();
+      // The line's own direction, as dir=auto found it from its text.
+      const rtl = getComputedStyle(this.#primary).direction === 'rtl';
+      const forward = (e.key === 'ArrowRight') !== rtl;
+      words[words.indexOf(el) + (forward ? 1 : -1)]?.focus();
+    });
+    // One word of the line is in the tab order, the one focused last.
+    this.#primary.addEventListener('focusin', (e) => {
+      const el = (e.target as HTMLElement).closest?.('.t') as HTMLElement | null;
+      if (!el) return;
+      for (const w of this.#primary.querySelectorAll<HTMLElement>('.t')) w.tabIndex = w === el ? 0 : -1;
     });
 
     // A selection across words is a phrase (src/content/phrase.ts).
@@ -481,6 +532,11 @@ export class Overlay {
         );
       });
     }
+    // A word with focus goes with its line. Focus moves on to the new line's
+    // first word rather than falling out to the page.
+    const refocus = this.#hasFocus() || (this.#refocus && focusIsNowhere());
+    this.#refocus = false;
+    let first: HTMLElement | null = null;
     this.#primary.replaceChildren();
     // Whether this line needs headroom at all.
     const annotated = tokens.filter((t) => !t.punct && this.#ruby(t).some((x) => x.ruby));
@@ -521,7 +577,10 @@ export class Overlay {
       el.className = 't';
       el.dataset.s = this.#statusOf(tok);
       el.dataset.tok = JSON.stringify(tok);
-      el.tabIndex = 0;
+      el.setAttribute('role', 'button');
+      // Tab reaches the line once, at its first word; ← → go along it from there.
+      el.tabIndex = first ? -1 : 0;
+      first ??= el;
 
       if (!annotated) {
         el.textContent = tok.surface;
@@ -547,11 +606,21 @@ export class Overlay {
     } else {
       this.#secondary.classList.add('hidden');
     }
+    if (!refocus) return;
+    // A line of punctuation alone has no word to take focus: the next line does.
+    if (first) first.focus({ preventScroll: true });
+    else this.#refocus = true;
   }
 
   clear(): void {
+    if (this.#hasFocus()) this.#refocus = true;
     this.#primary.replaceChildren();
     this.#secondary.classList.add('hidden');
+  }
+
+  /** Whether one of the line's words has focus. Focus in here shows on the page as the host. */
+  #hasFocus(): boolean {
+    return document.activeElement === this.#host && this.#primary.contains(this.#root.activeElement);
   }
 
   destroy(): void {

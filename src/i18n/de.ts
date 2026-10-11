@@ -40,6 +40,8 @@ export const de: Translation = {
   common: {
     furigana: (mode: Settings['ruby']): string => `Furigana: ${RUBY[mode]}`,
     pinyin: (mode: Settings['ruby']): string => `Pinyin: ${RUBY[mode]}`,
+    mandarin: 'Chinesisch (Mandarin)',
+    jyutping: (mode: Settings['ruby']): string => `Jyutping: ${RUBY[mode]}`,
     sentenceGap: ' ',
   },
 
@@ -51,6 +53,7 @@ export const de: Translation = {
     targetLimited: (language: string): string => `${language} – eingeschränkt`,
     supportFull: 'Volle Unterstützung, mit Lesungen und Furigana.',
     supportPinyin: 'Volle Unterstützung, mit Pinyin. Definitionen sind auf Englisch.',
+    supportJyutping: 'Volle Unterstützung, mit Jyutping. Definitionen sind auf Englisch.',
     supportWords: 'Volle Unterstützung. Definitionen sind auf Englisch.',
     script: 'Schriftzeichen',
     scriptHint: 'Werden verwendet, wenn ein Video beide hat.',
@@ -106,6 +109,8 @@ export const de: Translation = {
     rubyHint: 'Lesungen über Kanji. Drücke R, um beim Schauen umzuschalten.',
     pinyin: 'Pinyin',
     pinyinHint: 'Lesungen über den Schriftzeichen. Drücke R, um beim Schauen umzuschalten.',
+    jyutping: 'Jyutping',
+    jyutpingHint: 'Lesungen über den Schriftzeichen. Drücke R, um beim Schauen umzuschalten.',
     blurPrimary: 'Untertitel weichzeichnen',
     blurPrimaryHint:
       'Fürs Hörverstehen: Untertitel bleiben weichgezeichnet, bis du darauf zeigst. Drücke H zum Umschalten.',
@@ -125,6 +130,10 @@ export const de: Translation = {
     dualSubtitlesHint:
       'Zeigt Untertitel in deiner Sprache unter denen, die du lernst. Sie kommen von der Website, ' +
       'nicht aus maschineller Übersetzung, und brauchen ein vollständiges Transkript des Videos.',
+    singleKeys: 'Kürzel mit einer Taste',
+    singleKeysHint:
+      'Buchstabentasten wie A und R funktionieren beim Schauen ohne weitere Taste. Wenn aus, halte Alt und Shift dazu gedrückt. ' +
+      'Die Pfeiltasten funktionieren immer.',
 
     // Unterstreichungen
     underlinesHeading: 'Unterstreichungen',
@@ -154,8 +163,13 @@ export const de: Translation = {
     languageBadge: 'Sprachanzeige',
     languageBadgeFlag: 'Flagge',
     languageBadgeCode: 'Kürzel',
-    badgeFlag: 'Flaggen-Emoji',
+    badgeFlag: 'Flagge der Sprachanzeige',
     badgeFlagDefault: 'Standard',
+    flagSearch: 'Suchen…',
+    flagSearchLabel: 'Länder durchsuchen',
+    flagSuggested: 'Vorschläge',
+    flagAll: 'Alle Länder',
+    flagNone: (query: string): string => `Kein Land passt zu „${query}“.`,
     badgeFlagHint: 'Die Flagge für die Sprache, die du lernst. Jede Sprache behält ihre eigene.',
     languageBadgeHint: 'Wie die Kopfleiste die Sprache zeigt, die du lernst.',
     sidebarStats: 'Neue Wörter zählen',
@@ -255,7 +269,15 @@ export const de: Translation = {
       'haben eigene Bedingungen.',
     creditCedict: 'Chinesisches Wörterbuch © MDBG und Mitwirkende, verwendet unter CC BY-SA 4.0.',
     creditWiktionary:
-      'Wörterbücher für Koreanisch und Spanisch, aus Wiktionary über kaikki.org und wiktionary-to-yomitan. CC BY-SA 4.0.',
+      'Wörterbücher für Koreanisch und Spanisch sowie einige in deiner eigenen Sprache, aus Wiktionary über kaikki.org und ' +
+      'wiktionary-to-yomitan. CC BY-SA 4.0.',
+    creditKrdict:
+      'Koreanische Wörter, in deiner eigenen Sprache erklärt. © National Institute of Korean Language, verwendet unter ' +
+      'CC BY-SA 2.0 KR. Dateien von Lyroxide.',
+    creditCfdict: 'Chinesisch, auf Französisch erklärt. CFDICT © chine.in, von CxDICT aktuell gehalten. CC BY-SA 4.0.',
+    creditCanto:
+      'Kantonesisches Wörterbuch und Jyutping-Lesungen für CC-CEDICT. © Pleco Inc., verwendet unter CC BY-SA 3.0.',
+    creditHandedict: 'Chinesisch, auf Deutsch erklärt. © HanDeDict und Mitwirkende, verwendet unter CC BY-SA 3.0.',
     creditUnihan:
       'Welche Lesung eines chinesischen Schriftzeichens zuerst erscheint. © Unicode, Inc., verwendet unter der Unicode License.',
     creditJotoba: 'Zum Nachschlagen, solange das Wörterbuch lädt. Beide nutzen JMdict.',
@@ -274,6 +296,7 @@ export const de: Translation = {
     keyKnown: 'Wort im Pop-up als bekannt markieren',
     keyFurigana: 'Furigana umschalten: aus, neue Wörter, alle',
     keyPinyin: 'Pinyin umschalten: aus, neue Wörter, alle',
+    keyJyutping: 'Jyutping umschalten: aus, neue Wörter, alle',
     keyBlur: 'Untertitel weichzeichnen oder scharf stellen',
     keySave: 'Aktuelle Zeile speichern',
     keyTranscript: 'Transkriptleiste ein-/ausblenden',
@@ -297,6 +320,7 @@ export const de: Translation = {
     nextSteps:
       'Öffne dann ein Video mit Untertiteln in der Sprache, die du lernst, und zeige mit der Maus auf ein Wort. ' +
       'Das Tastatursymbol in der Transkriptleiste listet die Tastenkombinationen auf.',
+    stepDone: 'Erledigt',
     confirmLanguages: 'Diese Sprachen stimmen',
     keepDeck: (deck: string): string => `${deck} für neue Karten verwenden`,
   },
@@ -336,15 +360,17 @@ export const de: Translation = {
   },
 
   sidebar: {
+    panelLabel: 'Transkriptleiste',
+    resizeLabel: 'Größe der Leiste ändern',
+
     // Die Tabs und die Schaltflächen daneben
     tabsLabel: 'Listen',
     transcriptTab: 'Transkript',
     savedTab: 'Gespeichert',
-    wordsTab: 'Wörter',
     settings: 'Einstellungen',
     shortcuts: 'Tastenkombinationen',
     close: 'Schließen',
-    closeLabel: 'Leiste einklappen',
+    closeLabel: 'Schließen – Transkriptleiste',
     openTip: 'Transkript',
     openLabel: 'Transkript anzeigen',
     help: 'Hilfe',
@@ -374,6 +400,7 @@ export const de: Translation = {
     empty: 'Kein Transkript geladen.',
     currentLine: 'Aktuelle Zeile',
     lineNew: (n: number): string => `${n} neu`,
+    playFrom: (time: string): string => `Ab ${time} abspielen`,
     saveLine: 'Zeile speichern',
     unsave: 'Lesezeichen entfernen',
     addSentence: 'Satz hinzufügen',
@@ -397,6 +424,7 @@ export const de: Translation = {
       'Noch nichts gespeichert. Nutze das Lesezeichen an einer Transkriptzeile – oder drücke B –, um einen Satz ' +
       'aufzuheben, zu dem du zurückkehren willst.',
     thisVideo: 'dieses Video',
+    openAt: (time: string): string => `Video bei ${time} öffnen`,
     remove: 'Entfernen',
     removeLabel: 'Aus den gespeicherten Zeilen entfernen',
     copySavedAbout: 'Alle gespeicherten Zeilen als tabulatorgetrennten Text kopieren',
@@ -421,18 +449,20 @@ export const de: Translation = {
     downloadBlocked: 'Diese Seite hat den Download blockiert – nutze stattdessen „Kopieren“.',
 
     // Wörter
-    listsLabel: 'Welche Wörter',
+    listsLabel: 'Welche Liste',
+    listLines: 'Zeilen',
     listTracked: 'Beobachtet',
     listKnown: 'Bekannt',
     listIgnored: 'Ignoriert',
-    findPlaceholder: 'Wort suchen',
-    findLabel: 'Wort in dieser Liste suchen',
+    findPlaceholder: 'Suchen…',
+    findLabel: 'Diese Liste durchsuchen',
     copyWordsAbout: 'Diese Liste als tabulatorgetrennten Text kopieren',
     exportWordsAbout: 'Diese Liste als tabulatorgetrennte Datei speichern, die Anki importieren kann',
     wordsCopied: (n: number): string => `${words(n)} kopiert.`,
-    nothingToExport: 'In dieser Liste gibt es keine Wörter zum Exportieren.',
+    nothingToExport: 'In dieser Liste gibt es nichts zu exportieren.',
     lookingUp: 'Lesungen und Bedeutungen werden nachgeschlagen…',
     noWordMatches: (query: string): string => `Kein Wort in dieser Liste passt zu „${query}“.`,
+    noLineMatches: (query: string): string => `Keine gespeicherte Zeile passt zu „${query}“.`,
     wordsMatching: (shown: number, total: number): string =>
       `${shown} von ${total} ${total === 1 ? 'Wort' : 'Wörtern'}.`,
     trackedEmpty:
@@ -529,6 +559,7 @@ export const de: Translation = {
     adding: 'Wird hinzugefügt…',
     undoing: 'Wird rückgängig gemacht…',
     added: 'Hinzugefügt',
+    addedUndo: 'Hinzugefügt – rückgängig machen',
     inAnki: 'In Anki',
     showInAnki: 'In Anki zeigen',
     waiting: 'Wartet',
@@ -568,12 +599,12 @@ export const de: Translation = {
     unblurSubtitle: 'Untertitel scharf stellen',
     showTranslation: 'Übersetzung anzeigen',
     hideTranslation: 'Übersetzung ausblenden',
+    translation: 'Übersetzung',
     transcript: 'Transkript',
     pinHeader: 'Kopfleiste anpinnen',
     unpinHeader: 'Kopfleiste loslösen',
     settings: 'Einstellungen',
     showHeader: 'Kopfleiste anzeigen',
-    showHeaderLabel: 'Kopfleiste anzeigen',
   },
 
   player: {
@@ -599,7 +630,7 @@ export const de: Translation = {
         known: 'als bekannt markiert', tracking: 'beobachtet', ignored: 'ignoriert', unknown: 'als neu markiert',
       }[status];
       if (refused) return `${word} · ${done}, keine Karte – Anki hat abgelehnt; neuer Versuch später`;
-      return `${word} · ${done}, keine Karte${status === 'tracking' ? '. Siehe den Tab „Wörter“ in der Leiste' : ''}`;
+      return `${word} · ${done}, keine Karte${status === 'tracking' ? '. Siehe den Tab „Gespeichert“ in der Leiste' : ''}`;
     },
 
     // Die Karte eines Wortes

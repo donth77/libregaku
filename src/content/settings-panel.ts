@@ -3,8 +3,8 @@ import { browseMarks, browseOurCards, createDeck, probe, type AnkiState } from '
 import { ADDON_CODE, ADDON_URL, ANKI_PORT, ANKI_URL, extensionOrigin } from '../anki/endpoint';
 import { defaultDeck } from '../anki/model';
 import { cardAudio } from '../audio/card-audio';
-import { flagChoices } from '../flags';
-import { fill, languageLabel, languageName, ownName, ui, uiLocale } from '../i18n';
+import { flagChoices, type FlagChoice } from '../flags';
+import { fill, languageLabel, languageName, learningLabel, ownName, ui, uiLocale } from '../i18n';
 import { markSites, siteInfo, SITE_INFO_STYLE } from '../site-info';
 import { copyText } from './share';
 import {
@@ -84,6 +84,49 @@ export const PANEL_STYLE = `
     font-size: 12.5px; line-height: 1.5; color: #A3ACC4;
   }
   .set > .hint.warn { color: #E2B866; }
+
+  /*
+   * The badge's flag: a button that shows it, and under the row a grid of
+   * flags with a search above it, as an emoji picker has.
+   */
+  .flagbtn {
+    justify-self: end; display: inline-flex; align-items: center; gap: 8px; max-width: 190px; min-width: 0;
+    padding: 5px 10px; font: inherit; font-size: 13px; color: #E8ECF6;
+    text-transform: none; letter-spacing: normal;
+    background: #12172A; border: 1px solid #2A3348; border-radius: 6px; cursor: pointer;
+  }
+  .flagbtn:hover { border-color: #4A5470; }
+  .flagbtn:focus-visible { outline: 2px solid #F2F5FC; outline-offset: 1px; }
+  .flagbtn .fl, .fopt { font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
+  .flagbtn .fl { font-size: 18px; line-height: 1; }
+  .flagbtn .fl svg { display: block; height: 15px; width: auto; border-radius: 2px; }
+  .flagbtn .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .flagbtn .caret { color: #9AA4BF; font-size: 11px; }
+  .flagpop {
+    grid-column: 1 / -1; margin-top: 8px; padding: 10px;
+    background: #12172A; border: 1px solid #2A3348; border-radius: 10px;
+  }
+  .flagpop[hidden] { display: none; }
+  .flagfind {
+    width: 100%; box-sizing: border-box; padding: 8px 12px; font: inherit; font-size: 14px;
+    color: #E8ECF6; background: #1A2133; border: 1px solid #2A3348; border-radius: 8px;
+  }
+  .flagfind::placeholder { color: #A3ACC4; }
+  .flagfind:focus-visible { outline: 2px solid #F2F5FC; outline-offset: 1px; }
+  .flaglist { max-height: 236px; overflow-y: auto; margin-top: 6px; }
+  .flaghead { margin: 8px 2px 4px; font-size: 12px; font-weight: 600; color: #A3ACC4; }
+  .flaggrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 2px; }
+  .fopt {
+    display: flex; align-items: center; justify-content: center; height: 38px; padding: 0;
+    border: 0; border-radius: 8px; background: none; color: #E8ECF6; cursor: pointer; font-size: 22px; line-height: 1;
+  }
+  .fopt svg { display: block; height: 17px; width: auto; border-radius: 2px; }
+  .fopt:hover, .fopt.act { background: #263048; }
+  /* The flag in use, ringed; the one the arrow keys are on, outlined. */
+  .fopt.on { box-shadow: inset 0 0 0 2px #9AA4BF; }
+  .fopt.act { outline: 2px solid #F2F5FC; outline-offset: -2px; }
+  .flagnone { margin: 8px 2px 2px; font-size: 13px; color: #A3ACC4; }
+  .flagnone:empty { display: none; }
 
   /* Native select, own chrome: the platform menu stays, the platform box goes. */
   .set select {
@@ -275,7 +318,7 @@ export function syncSettingsControls(root: ParentNode): void {
   // The flag menu is the language's own, and only means something while the
   // badge is a flag; a change made in another tab arrives here.
   redrawFlags(root);
-  const flagRow = root.querySelector('select[name=badgeFlag]')?.closest<HTMLElement>('.set');
+  const flagRow = root.querySelector('.flagbtn')?.closest<HTMLElement>('.set');
   if (flagRow) flagRow.hidden = cur.languageBadge !== 'flag';
 }
 
@@ -319,45 +362,265 @@ function swatch(input: HTMLInputElement): void {
   input.closest<HTMLElement>('.set')?.style.setProperty('--c', input.value);
 }
 
-/** What each flag menu was last drawn for: the language, the interface's language and the flag picked. */
-const flagsDrawn = new WeakMap<HTMLSelectElement, string>();
+/** How to draw each flag picker again: the language being learned, or its flag, changed elsewhere. */
+const flagPickers = new WeakMap<Element, () => void>();
 
 function redrawFlags(root: ParentNode): void {
-  const list = root.querySelector<HTMLSelectElement>('select[name=badgeFlag]');
-  if (list) fillFlags(list);
+  const picker = root.querySelector('.flagbtn');
+  if (picker) flagPickers.get(picker)?.();
 }
 
+/** Text as the flag search compares it: no case, no accents ("Peru" finds Perú). */
+const folded = (text: string): string => text.normalize('NFKD').replace(/\p{M}/gu, '').toLocaleLowerCase();
+
 /**
- * The badge's flags for the language being learned: its own first, then the
- * countries where it is spoken, then every other country by name, each as
- * its flag and the country's name. Drawn again only when the language, the
- * interface's language or the flag picked has changed.
+ * The badge's flag, picked from a grid of flags that a search narrows, as an
+ * emoji picker works: a menu of 249 countries was too long to look through.
+ *
+ * The language's own country is its default, listed once, as itself; a
+ * language whose own flag is no country's (Arabic's, the Arab League's) has
+ * Default first. The countries where it is spoken come next, then every
+ * other by its name in the interface language.
+ *
+ * A combobox: the search box keeps the focus, and the arrow keys move
+ * through the flags under it (aria-activedescendant), so typing and
+ * choosing never fight over it. Enter picks, Escape closes.
  */
-function fillFlags(sel: HTMLSelectElement): void {
-  const { target, badgeFlag } = settings();
-  const picked = badgeFlag[target] ?? '';
-  const drawn = [target, uiLocale(), picked].join('\n');
-  if (flagsDrawn.get(sel) === drawn) return;
-  flagsDrawn.set(sel, drawn);
-  sel.replaceChildren();
-  const add = (value: string, text: string): HTMLOptionElement => {
-    const o = document.createElement('option');
-    o.value = value;
-    o.textContent = text;
-    sel.appendChild(o);
-    return o;
+function flagPicker(labelId: string, hintId: string, onChange: () => void): { button: HTMLButtonElement; pop: HTMLElement } {
+  const t = ui.settings;
+  const id = `lg-flags-${++seq}`;
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'flagbtn';
+  button.setAttribute('aria-haspopup', 'listbox');
+  button.setAttribute('aria-expanded', 'false');
+  button.setAttribute('aria-controls', id);
+  button.setAttribute('aria-describedby', hintId);
+  const shown = document.createElement('span');
+  shown.className = 'fl';
+  shown.setAttribute('aria-hidden', 'true');
+  const name = document.createElement('span');
+  name.className = 'nm';
+  name.id = `${id}-now`;
+  const caret = document.createElement('span');
+  caret.className = 'caret';
+  caret.setAttribute('aria-hidden', 'true');
+  caret.textContent = '▾';
+  button.append(shown, name, caret);
+  // Read as the row's name, then the flag it holds: "Badge flag, Japan".
+  button.setAttribute('aria-labelledby', `${labelId} ${name.id}`);
+
+  const pop = document.createElement('div');
+  pop.className = 'flagpop';
+  pop.hidden = true;
+  const find = document.createElement('input');
+  find.type = 'search';
+  find.className = 'flagfind';
+  find.autocomplete = 'off';
+  find.spellcheck = false;
+  find.setAttribute('role', 'combobox');
+  find.setAttribute('aria-controls', id);
+  find.setAttribute('aria-expanded', 'true');
+  find.setAttribute('aria-autocomplete', 'list');
+  const list = document.createElement('div');
+  list.className = 'flaglist';
+  list.id = id;
+  list.setAttribute('role', 'listbox');
+  list.setAttribute('aria-labelledby', labelId);
+  const none = document.createElement('p');
+  none.className = 'flagnone';
+  none.setAttribute('role', 'status');
+  pop.append(find, list, none);
+
+  /** The flags showing, in order, and which one the arrow keys are on. */
+  let showing: HTMLElement[] = [];
+  let active = -1;
+
+  /** The language's own flag and the flag picked for it; the own one picked counts as the default. */
+  const state = (): { target: string; own: string; svg: string; value: string } => {
+    const { target, badgeFlag } = settings();
+    const lang = TARGET_LANGUAGES.find((l) => l.code === target);
+    const own = lang?.flag ?? '';
+    const picked = badgeFlag[target] ?? '';
+    return { target, own, svg: lang?.flagSvg ?? '', value: picked === own ? '' : picked };
   };
-  // A language whose own flag is a picture (flagSvg) gets the word alone: a menu shows only text.
-  const own = TARGET_LANGUAGES.find((l) => l.code === target)?.flag;
-  add('', own ? `${own} ${ui.settings.badgeFlagDefault}` : ui.settings.badgeFlagDefault);
-  const { spoken, others } = flagChoices(target, uiLocale());
-  // A flag typed in before there was a menu, and not one on it, stays offered, so it is never silently changed.
-  if (picked && ![...spoken, ...others].some((c) => c.flag === picked)) add(picked, picked);
-  for (const c of spoken) add(c.flag, `${c.flag} ${c.name}`);
-  // A rule between the two groups, which cannot be picked.
-  add('-', '──────────').disabled = true;
-  for (const c of others) add(c.flag, `${c.flag} ${c.name}`);
-  sel.value = picked;
+
+  /** A flag as the button and the grid draw it: the emoji, or the language's own picture. */
+  const draw = (into: HTMLElement, flag: string, svg: string): void => {
+    // The picture is the build's own file (src/flags/), never anything typed in.
+    if (!flag && svg) into.innerHTML = svg;
+    else into.textContent = flag;
+  };
+
+  const paintButton = (): void => {
+    const { target, own, svg, value } = state();
+    const { spoken, others } = flagChoices(target, uiLocale());
+    const flag = value || own;
+    draw(shown, flag, svg);
+    name.textContent = [...spoken, ...others].find((c) => c.flag === flag)?.name ?? (value || t.badgeFlagDefault);
+  };
+
+  const setActive = (i: number): void => {
+    showing[active]?.classList.remove('act');
+    showing[active]?.setAttribute('aria-selected', 'false');
+    active = Math.max(0, Math.min(i, showing.length - 1));
+    const el = showing[active];
+    if (!el) {
+      find.removeAttribute('aria-activedescendant');
+      return;
+    }
+    el.classList.add('act');
+    el.setAttribute('aria-selected', 'true');
+    find.setAttribute('aria-activedescendant', el.id);
+    el.scrollIntoView?.({ block: 'nearest' });
+  };
+
+  const choose = (value: string): void => {
+    const { target, own } = state();
+    const next = { ...settings().badgeFlag };
+    // The default keeps nothing, so the language's own flag shows.
+    if (value && value !== own) next[target] = value;
+    else delete next[target];
+    void setSetting('badgeFlag', next).then(paintButton);
+    close();
+    button.focus();
+    onChange();
+  };
+
+  /** The flags the search matches: by name, or by the country's two-letter code. */
+  const fillList = (): void => {
+    const { target, own, svg, value } = state();
+    const q = folded(find.value.trim());
+    const { spoken, others } = flagChoices(target, uiLocale());
+    const match = (c: FlagChoice): boolean => !q || folded(c.name).includes(q) || folded(c.code) === q;
+    list.replaceChildren();
+    showing = [];
+    let n = 0;
+    const option = (flag: string, label: string, picture = ''): HTMLElement => {
+      const o = document.createElement('button');
+      o.type = 'button';
+      o.tabIndex = -1;
+      o.className = 'fopt';
+      o.id = `${id}-${n++}`;
+      o.setAttribute('role', 'option');
+      o.setAttribute('aria-selected', 'false');
+      o.setAttribute('aria-label', label);
+      o.title = label;
+      draw(o, flag, picture);
+      // The flag it is now: the default when none is picked.
+      const mine = flag === own || (!flag && !own) ? '' : flag;
+      if (mine === value) o.classList.add('on');
+      o.addEventListener('click', () => choose(mine));
+      showing.push(o);
+      return o;
+    };
+    const group = (heading: string, items: HTMLElement[]): void => {
+      if (!items.length) return;
+      const g = document.createElement('div');
+      g.setAttribute('role', 'group');
+      const h = document.createElement('div');
+      h.className = 'flaghead';
+      h.id = `${id}-g${n++}`;
+      h.textContent = heading;
+      g.setAttribute('aria-labelledby', h.id);
+      const grid = document.createElement('div');
+      grid.className = 'flaggrid';
+      grid.append(...items);
+      g.append(h, grid);
+      list.appendChild(g);
+    };
+    const first: HTMLElement[] = [];
+    // A language whose own flag is a picture has Default, the picture, ahead of its countries.
+    if (!own && (!q || folded(t.badgeFlagDefault).includes(q))) first.push(option('', t.badgeFlagDefault, svg));
+    // A flag typed in before there was a picker, and not a country's, stays offered rather than changed unasked.
+    if (value && ![...spoken, ...others].some((c) => c.flag === value) && !q) first.push(option(value, value));
+    for (const c of spoken.filter(match)) first.push(option(c.flag, c.name));
+    group(t.flagSuggested, first);
+    group(t.flagAll, others.filter(match).map((c) => option(c.flag, c.name)));
+    none.textContent = showing.length ? '' : t.flagNone(find.value.trim());
+    const on = showing.findIndex((o) => o.classList.contains('on'));
+    setActive(q ? 0 : Math.max(0, on));
+  };
+
+  const open = (): void => {
+    pop.hidden = false;
+    button.setAttribute('aria-expanded', 'true');
+    find.value = '';
+    fillList();
+    find.focus();
+  };
+  const close = (): void => {
+    pop.hidden = true;
+    button.setAttribute('aria-expanded', 'false');
+  };
+
+  /** The flag above or below, as the grid lays them out: the nearest in the next row that way. */
+  const vertical = (dir: 1 | -1): number => {
+    const from = showing[active]?.getBoundingClientRect();
+    if (!from) return active;
+    const x = from.left + from.width / 2;
+    let best = active;
+    let bestRow = Infinity;
+    let bestX = Infinity;
+    showing.forEach((o, i) => {
+      const r = o.getBoundingClientRect();
+      const dy = (r.top - from.top) * dir;
+      if (dy < 2) return;
+      const dx = Math.abs(r.left + r.width / 2 - x);
+      if (dy < bestRow - 2 || (Math.abs(dy - bestRow) <= 2 && dx < bestX)) {
+        best = i;
+        bestRow = dy;
+        bestX = dx;
+      }
+    });
+    return best;
+  };
+
+  button.addEventListener('click', () => (pop.hidden ? open() : close()));
+  find.addEventListener('input', fillList);
+  find.addEventListener('keydown', (e) => {
+    const empty = !find.value;
+    let to: number | null = null;
+    if (e.key === 'ArrowDown') to = vertical(1);
+    else if (e.key === 'ArrowUp') to = vertical(-1);
+    // Left and right move the caret while there is text to move it in.
+    else if (e.key === 'ArrowRight' && empty) to = active + 1;
+    else if (e.key === 'ArrowLeft' && empty) to = active - 1;
+    else if (e.key === 'Home' && empty) to = 0;
+    else if (e.key === 'End' && empty) to = showing.length - 1;
+    else if (e.key === 'Enter') {
+      e.preventDefault();
+      showing[active]?.click();
+      return;
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      close();
+      button.focus();
+      return;
+    }
+    if (to === null) return;
+    e.preventDefault();
+    setActive(to);
+  });
+  // Closed when the focus goes elsewhere: a click outside, or Tab on.
+  pop.addEventListener('focusout', (e) => {
+    const to = e.relatedTarget as Node | null;
+    if (to && (pop.contains(to) || to === button)) return;
+    window.setTimeout(() => {
+      const now = (pop.getRootNode() as Document | ShadowRoot).activeElement;
+      if (!pop.hidden && !(now && pop.contains(now))) close();
+    }, 0);
+  });
+
+  find.placeholder = t.flagSearch;
+  find.setAttribute('aria-label', t.flagSearchLabel);
+  paintButton();
+  flagPickers.set(button, () => {
+    paintButton();
+    if (!pop.hidden) fillList();
+  });
+  return { button, pop };
 }
 
 /** A setting only some languages have a use for, such as Furigana. */
@@ -381,7 +644,8 @@ function showFor(root: ParentNode, target: string, native = settings().native): 
   // Two rows are named for what the language has: furigana or pinyin above
   // its words, kanji or simply characters on a card.
   const t = ui.settings;
-  named(root, 'ruby', has.readings === 'pinyin' ? [t.pinyin, t.pinyinHint] : [t.ruby, t.rubyHint]);
+  named(root, 'ruby', has.readings === 'pinyin' ? [t.pinyin, t.pinyinHint]
+    : has.readings === 'jyutping' ? [t.jyutping, t.jyutpingHint] : [t.ruby, t.rubyHint]);
   named(root, 'cardKanji', has.characters === 'hanzi' ? [t.cardHanzi, t.cardHanziHint] : [t.cardKanji, t.cardKanjiHint]);
   // Definitions follow your language; a language of their own only where the dictionary has none in it.
   const defs = root.querySelector('select[name=definitions]')?.closest<HTMLElement>('.set');
@@ -404,7 +668,8 @@ export function tierNote(code: string): string {
   const tier = TARGET_LANGUAGES.find((l) => l.code === code)?.tier ?? 0;
   if (tier === 0) return ui.settings.supportBasic;
   const readings = featuresOf(code).readings;
-  return ui.settings[readings === 'furigana' ? 'supportFull' : readings === 'pinyin' ? 'supportPinyin' : 'supportWords'];
+  return ui.settings[readings === 'furigana' ? 'supportFull' : readings === 'pinyin' ? 'supportPinyin'
+    : readings === 'jyutping' ? 'supportJyutping' : 'supportWords'];
 }
 
 let seq = 0;
@@ -462,13 +727,19 @@ export function buildSettings(onChange: Rerender, opts: SettingsPanelOptions = {
   /**
    * One row: the label names the control, the hint describes it. Both are
    * wired for assistive tech, not just laid out to look related.
+   *
+   * Named by its name alone. The <label> around the row still makes a click
+   * anywhere on it reach the control, but as the name it would take in the
+   * hint too, which was then read a second time as the description.
    */
   const row = (name: string, control: HTMLElement, hint?: string): HTMLElement => {
     const el = document.createElement('label');
     el.className = 'set';
     const label = document.createElement('span');
     label.className = 'name';
+    label.id = `lg-name-${++seq}`;
     label.textContent = name;
+    control.setAttribute('aria-labelledby', label.id);
     el.append(label, control);
     if (hint) {
       const h = document.createElement('span');
@@ -558,7 +829,7 @@ export function buildSettings(onChange: Rerender, opts: SettingsPanelOptions = {
   group('languages', t.languagesHeading, t.languagesAbout);
   const target = select('target', t.target,
     // Limited is boundaries alone: no dictionary forms, so no lookups and no matching a word to its card.
-    TARGET_LANGUAGES.map((l) => [l.code, l.tier > 0 ? languageLabel(l.code) : t.targetLimited(languageLabel(l.code))]),
+    TARGET_LANGUAGES.map((l) => [l.code, l.tier > 0 ? learningLabel(l.code) : t.targetLimited(learningLabel(l.code))]),
     tierNote(settings().target));
   target.addEventListener('change', () => {
     const hint = target.closest('.set')?.querySelector('.hint');
@@ -611,13 +882,16 @@ export function buildSettings(onChange: Rerender, opts: SettingsPanelOptions = {
   needs(ruby, 'readings');
   check('blurPrimary', t.blurPrimary, t.blurPrimaryHint);
   select('subtitleSize', t.subtitleSize,
-    ['70', '85', '100', '120', '140', '160'].map((v) => [v, t.subtitleSizeOption(Number(v))]),
+    // Up to twice the size: text has to reach 200% (WCAG 1.4.4).
+    ['70', '85', '100', '120', '140', '160', '180', '200'].map((v) => [v, t.subtitleSizeOption(Number(v))]),
     t.subtitleSizeHint);
   select('subtitleBottom', t.subtitleBottom, [
     ['4', t.subtitleBottomLowest], ['8', t.subtitleBottomLow], ['12', t.subtitleBottomNormal],
     ['18', t.subtitleBottomRaised], ['25', t.subtitleBottomHigh], ['33', t.subtitleBottomHighest],
   ], t.subtitleBottomHint);
   check('dualSubtitles', t.dualSubtitles, t.dualSubtitlesHint);
+  // The keys that act on the subtitle, and the rest of the player's letters with them.
+  check('singleKeys', t.singleKeys, t.singleKeysHint);
 
   group('underlines', t.underlinesHeading, t.underlinesAbout);
   check('underlines', t.underlines, t.underlinesHint);
@@ -650,22 +924,23 @@ export function buildSettings(onChange: Rerender, opts: SettingsPanelOptions = {
   check('headerBar', t.headerBar, t.headerBarHint);
   const badge = select('languageBadge', t.languageBadge, [['flag', t.languageBadgeFlag], ['code', t.languageBadgeCode]],
     t.languageBadgeHint);
-  // Only meaningful while the badge is a flag, so it is shown only then. No
-  // data-setting: the setting holds a flag for each language, not one value for
-  // syncSettingsControls to write back, so fillFlags keeps the menu in step.
-  const flags = document.createElement('select');
-  flags.name = 'badgeFlag';
-  fillFlags(flags);
-  flags.addEventListener('change', () => {
-    const { target, badgeFlag } = settings();
-    const next = { ...badgeFlag };
-    // The default keeps nothing, so the language's own flag shows.
-    if (flags.value) next[target] = flags.value;
-    else delete next[target];
-    void setSetting('badgeFlag', next);
-    onChange();
-  });
-  const flagSet = row(t.badgeFlag, flags, t.badgeFlagHint);
+  // Only meaningful while the badge is a flag, so it is shown only then. Not a
+  // <label>, as other rows are: a click anywhere in the picker under it would
+  // count as a click on its button. No data-setting either: the setting holds a
+  // flag for each language, which the picker keeps in step itself.
+  const flagSet = document.createElement('div');
+  flagSet.className = 'set';
+  const flagName = document.createElement('span');
+  flagName.className = 'name';
+  flagName.id = `lg-name-${++seq}`;
+  flagName.textContent = t.badgeFlag;
+  const flagHint = document.createElement('span');
+  flagHint.className = 'hint';
+  flagHint.id = `lg-hint-${++seq}`;
+  flagHint.textContent = t.badgeFlagHint;
+  const picker = flagPicker(flagName.id, flagHint.id, onChange);
+  flagSet.append(flagName, picker.button, flagHint, picker.pop);
+  add(flagSet);
   flagSet.hidden = settings().languageBadge !== 'flag';
   badge.addEventListener('change', () => { flagSet.hidden = badge.value !== 'flag'; });
   check('sidebarStats', t.sidebarStats, t.sidebarStatsHint);
@@ -1103,6 +1378,8 @@ function keyList(): HTMLElement {
   const dl = document.createElement('dl');
   dl.className = 'keys';
   const t = ui.settings;
+  // A letter as it is pressed now: alone, or with Alt and Shift while single-key shortcuts are off.
+  const letter = (k: string): string[] => (settings().singleKeys ? [k] : ['Alt', 'Shift', k]);
   const KEYS: Array<[string[], string]> = [
     [['←', '→'], t.keyLine],
     [['↓'], t.keyReplay],
@@ -1110,15 +1387,15 @@ function keyList(): HTMLElement {
     ...(settings().interaction === 'shift'
       ? [[['Shift'], t.keyShiftLookup]] as Array<[string[], string]>
       : []),
-    [['A'], t.keyAdd],
-    [['K'], t.keyKnown],
+    [letter('A'), t.keyAdd],
+    [letter('K'), t.keyKnown],
     // Named for what the language draws above its words; no key where it draws nothing.
     ...(featuresOf(settings().target).readings
-      ? [[['R'], featuresOf(settings().target).readings === 'pinyin' ? t.keyPinyin : t.keyFurigana]] as Array<[string[], string]>
+      ? [[letter('R'), { pinyin: t.keyPinyin, jyutping: t.keyJyutping, furigana: t.keyFurigana }[featuresOf(settings().target).readings || 'furigana']]] as Array<[string[], string]>
       : []),
-    [['H'], t.keyBlur],
-    [['B'], t.keySave],
-    [['S'], t.keyTranscript],
+    [letter('H'), t.keyBlur],
+    [letter('B'), t.keySave],
+    [letter('S'), t.keyTranscript],
     [['Esc'], t.keyClose],
   ];
   for (const [keys, what] of KEYS) {
@@ -1157,6 +1434,10 @@ function credits(): HTMLElement {
   entry('JMdict · KANJIDIC2', 'https://www.edrdg.org/jmdict/j_jmdict.html', ui.settings.creditJmdict);
   entry('CC-CEDICT', 'https://www.mdbg.net/chinese/dictionary?page=cc-cedict', ui.settings.creditCedict);
   entry('Wiktionary', 'https://kaikki.org/', ui.settings.creditWiktionary);
+  entry('한국어기초사전 · KRDict', 'https://krdict.korean.go.kr/', ui.settings.creditKrdict);
+  entry('CFDICT · CxDICT', 'https://github.com/licryle/CxDICT', ui.settings.creditCfdict);
+  entry('HanDeDict', 'https://handedict.zydeo.net/', ui.settings.creditHandedict);
+  entry('CC-Canto', 'https://cantonese.org/', ui.settings.creditCanto);
   entry('Lindera · IPADIC · mecab-ko-dic', 'https://github.com/lindera/lindera', ui.settings.creditLindera);
   entry('Unihan', 'https://www.unicode.org/reports/tr38/', ui.settings.creditUnihan);
   entry('Jotoba · Jisho', 'https://jotoba.de/', ui.settings.creditJotoba);

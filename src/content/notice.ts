@@ -26,7 +26,7 @@ const STYLE = `
     display: flex; align-items: flex-start; gap: 12px;
     max-width: 460px; padding: 12px 14px;
     background: #161B2E; color: #E8ECF6;
-    border: 1px solid #2A3348; border-left: 3px solid #E5806C;
+    border: 1px solid #2A3348; border-inline-start: 3px solid #E5806C;
     border-radius: 8px;
     font: 13px/1.5 system-ui, -apple-system, sans-serif;
     box-shadow: 0 8px 32px -8px rgba(0,0,0,.7);
@@ -41,7 +41,7 @@ const STYLE = `
   button {
     flex: none; background: none; border: 0; cursor: pointer;
     color: #838DA8; font: 600 11px/1 ui-monospace, monospace;
-    letter-spacing: .08em; text-transform: uppercase; padding: 3px 5px;
+    letter-spacing: .08em; text-transform: uppercase; padding: 6px 8px; min-height: 24px;
   }
   button:hover { color: #E8ECF6; }
   button:focus-visible { outline: 2px solid #F2F5FC; outline-offset: 2px; border-radius: 3px; }
@@ -87,10 +87,14 @@ export function showNotice(mount: HTMLElement, id: string, detail?: string): voi
 
   const card = document.createElement('div');
   card.className = 'card';
-  card.setAttribute('role', 'status');
 
   const body = document.createElement('div');
   body.className = 'body';
+
+  // The message is what is announced; Dismiss, and the id under it, are not part of it.
+  const message = document.createElement('div');
+  message.setAttribute('role', 'status');
+  body.appendChild(message);
 
   // Its words are read now, in the interface language: src/i18n/en/notices.ts.
   const key = NOTICES[id];
@@ -99,13 +103,13 @@ export function showNotice(mount: HTMLElement, id: string, detail?: string): voi
   title.textContent = key ? ui.notices[key] : ui.notices.unexpected;
   shown = { id, title: title.textContent };
 
-  body.appendChild(title);
+  const words: HTMLElement[] = [title];
 
   if (detail) {
     const d = document.createElement('div');
     d.className = 'detail';
     d.textContent = detail;
-    body.appendChild(d);
+    words.push(d);
   }
 
   // Surfacing the id makes a user report actionable without a debug session.
@@ -126,4 +130,7 @@ export function showNotice(mount: HTMLElement, id: string, detail?: string): voi
   card.append(body, close);
   root.append(style, card);
   mount.appendChild(host);
+  // A screen reader announces a change to a region it already knows, not a
+  // region arriving with its words: these go in a frame after the region.
+  requestAnimationFrame(() => message.append(...words));
 }

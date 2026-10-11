@@ -34,6 +34,8 @@ export const options = {
   nextSteps:
     'Then open a video with subtitles in the language you are learning, and hover a ' +
     'word. The keyboard button in the transcript panel lists the keyboard shortcuts.',
+  /** Before a finished step, for screen readers alone: on screen, a tick and a line through it say so. */
+  stepDone: 'Done',
   /** Button: step 1 is done, with the languages as they are. */
   confirmLanguages: 'These languages are right',
   /** Button: step 2 is done, keeping the deck already set. `deck` is its name, from Anki. */

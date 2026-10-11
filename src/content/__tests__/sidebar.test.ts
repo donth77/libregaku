@@ -43,6 +43,8 @@ import type { SidebarDeps } from '../sidebar';
 import { Transcript } from '../transcript';
 import { closePopup, showPopup } from '../popup';
 import { setSetting } from '../../settings';
+import { loadUiLanguage } from '../../i18n';
+import * as bookmarks from '../bookmarks';
 import { furigana } from '../../morphology/furigana';
 import type { Segmenter, Token } from '../../morphology/types';
 import type { LookupResult } from '../../dict/client';
@@ -109,6 +111,11 @@ const filterButton = (root: ShadowRoot, label: string): HTMLElement =>
 /** Rows a filter leaves showing. Filtered rows are hidden in place, not removed. */
 const shown = (root: ShadowRoot): NodeListOf<HTMLElement> => root.querySelectorAll('.line:not(.hide)');
 
+/** A key pressed on a control, as the keyboard sends it: out through the shadow root to the page. */
+const pressKey = (el: Element, key: string): void => {
+  el.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, composed: true, cancelable: true }));
+};
+
 beforeEach(() => {
   scrollTo = vi.fn();
   scrollIntoView = vi.fn();
@@ -135,14 +142,14 @@ describe('tooltips in the panel', () => {
     const { root } = await build({ onAddLine: async () => {} });
     expect(root.querySelector('[title]')).toBeNull();
     // Icon buttons carry a tip; a button with words on it needs none.
-    for (const sel of ['header .controls button', '.fab', '.line .save', '.line .addline', '.tab']) {
+    for (const sel of ['.head .controls button', '.fab', '.line .save', '.line .addline', '.tab']) {
       const found = Array.from(root.querySelectorAll<HTMLElement>(sel));
       expect(found.length, sel).toBeGreaterThan(0);
       for (const b of found) expect(b.dataset.tip, sel).toBeTruthy();
     }
     expect(root.querySelector<HTMLElement>('.tab')?.dataset.key).toBe('S');
 
-    const gear = root.querySelector<HTMLElement>('header button[aria-label="Settings"]')!;
+    const gear = root.querySelector<HTMLElement>('.head button[aria-label="Settings"]')!;
     gear.dispatchEvent(new MouseEvent('pointerover', { bubbles: true }));
     await new Promise((r) => setTimeout(r, 400));
     const tip = root.querySelector<HTMLElement>('.tip')!;
@@ -159,13 +166,20 @@ describe('picking a phrase in the transcript', () => {
   });
 });
 
-describe('the marked words', () => {
+describe('the marked words, under Saved', () => {
   type Mark = { word: string; status: 'tracking' | 'known' | 'ignored' | 'unknown' };
   const rows = (root: ShadowRoot): HTMLElement[] => Array.from(root.querySelectorAll<HTMLElement>('.trow'));
   const listed = (root: ShadowRoot): Array<string | null | undefined> =>
     rows(root).map((r) => r.querySelector('.tw')?.textContent);
   const chip = (root: ShadowRoot, show: string): HTMLButtonElement =>
     root.querySelector<HTMLButtonElement>(`.wchip[data-show="${show}"]`)!;
+  /** Saved, open on one of its lists. */
+  const open = async (root: ShadowRoot, show: string): Promise<void> => {
+    root.querySelector<HTMLButtonElement>('[role=tab][data-mode="saved"]')!.click();
+    await flush();
+    chip(root, show).click();
+    await flush();
+  };
 
   it('lists the tracked ones first, and each can become a card or stop being tracked', async () => {
     const marks: Mark[] = [
@@ -174,9 +188,12 @@ describe('the marked words', () => {
     const unmark = vi.fn(async (w: string) => { marks.splice(marks.findIndex((m) => m.word === w), 1); });
     const addWord = vi.fn(async (w: string) => `${w} · added to Vocabulary`);
     const { sidebar, root } = await build({ marked: () => [...marks], unmark, addWord });
-    const button = root.querySelector<HTMLButtonElement>('[role=tab][data-mode="words"]')!;
-    expect(button.textContent).toBe('Words3');
-    button.click();
+    const button = root.querySelector<HTMLButtonElement>('[role=tab][data-mode="saved"]')!;
+    await flush();
+    // The tab counts what waits for you: saved lines and tracked words, not ignored ones.
+    expect(button.textContent).toBe('Saved2');
+    expect(root.querySelector('[role=tab][data-mode="words"]')).toBeNull();
+    await open(root, 'tracking');
     expect(button.getAttribute('aria-selected')).toBe('true');
     expect(chip(root, 'tracking').getAttribute('aria-pressed')).toBe('true');
     expect(chip(root, 'tracking').textContent).toBe('Tracked2');
@@ -204,9 +221,7 @@ describe('the marked words', () => {
     ];
     const unmark = vi.fn(async (w: string) => { marks.splice(marks.findIndex((m) => m.word === w), 1); });
     const { sidebar, root } = await build({ marked: () => [...marks], unmark, addWord: async () => '' });
-    root.querySelector<HTMLButtonElement>('[role=tab][data-mode="words"]')!.click();
-
-    chip(root, 'ignored').click();
+    await open(root, 'ignored');
     expect(chip(root, 'ignored').getAttribute('aria-pressed')).toBe('true');
     expect(listed(root)).toEqual(['田中', 'へえ']);
     expect(root.querySelector('.tintro')?.textContent).toBe('2 words never underlined or counted.');
@@ -220,6 +235,7 @@ describe('the marked words', () => {
     expect(listed(root)).toEqual(['へえ']);
 
     chip(root, 'known').click();
+    await flush();
     expect(listed(root)).toEqual(['猫']);
     expect(rows(root)[0]!.querySelector('.btnrow button')?.textContent).toBe('Unmark known');
   });
@@ -236,8 +252,7 @@ describe('the marked words', () => {
       return { state: 'ok', entries: [{ id: t.surface, word: t.surface, reading, common: true, senses: [{ pos: ['n'], glosses: [gloss] }] }] };
     });
     const { root } = await build({ marked: () => [...marks], unmark: async () => {}, lookup });
-    root.querySelector<HTMLButtonElement>('[role=tab][data-mode="words"]')!.click();
-    chip(root, 'known').click();
+    await open(root, 'known');
     const find = root.querySelector<HTMLInputElement>('.wfind')!;
     const search = async (q: string): Promise<void> => {
       find.value = q;
@@ -255,7 +270,7 @@ describe('the marked words', () => {
     await search('いぬ');
     expect(listed(root)).toEqual(['犬']);
     await search('horse');
-    expect(root.querySelector('.wordsview .empty')?.textContent).toBe('No word in this list matches “horse”.');
+    expect(root.querySelector('.savedview .empty')?.textContent).toBe('No word in this list matches “horse”.');
     await search('');
     expect(listed(root)).toEqual(['保つ', '猫', '犬']);
   });
@@ -269,7 +284,7 @@ describe('the marked words', () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
     const { root } = await build({ marked: () => [...marks], unmark: async () => {}, addWord: async () => '', lookup });
-    root.querySelector<HTMLButtonElement>('[role=tab][data-mode="words"]')!.click();
+    await open(root, 'tracking');
     const copy = Array.from(root.querySelectorAll<HTMLButtonElement>('.wbar button')).find((b) => b.textContent === 'Copy')!;
     copy.click();
     await flush();
@@ -279,16 +294,58 @@ describe('the marked words', () => {
     expect(root.querySelector('.wsaid')?.textContent).toBe('2 words copied.');
   });
 
-  it('says what each list is for when it is empty, and has no tab without marks to show', async () => {
-    let { root } = await build({ marked: () => [] });
-    root.querySelector<HTMLButtonElement>('[role=tab][data-mode="words"]')!.click();
-    expect(root.querySelector('.wordsview .empty')?.textContent).toContain('Settings, under Word popup');
+  it('says what each list is for when it is empty', async () => {
+    const { root } = await build({ marked: () => [] });
+    await open(root, 'lines');
+    expect(root.querySelector('.savedview .empty')?.textContent).toContain('Nothing saved yet');
+    chip(root, 'tracking').click();
+    await flush();
+    expect(root.querySelector('.savedview .empty')?.textContent).toContain('Settings, under Word popup');
     chip(root, 'ignored').click();
-    expect(root.querySelector('.wordsview .empty')?.textContent).toContain('never underlined or counted');
-    sidebars.splice(0).forEach((s) => s.destroy());
-    document.body.replaceChildren();
-    ({ root } = await build());
-    expect(root.querySelector('[role=tab][data-mode="words"]')).toBeNull();
+    await flush();
+    expect(root.querySelector('.savedview .empty')?.textContent).toContain('never underlined or counted');
+  });
+
+  it('keeps its lists, search and buttons in a bar above the list, which scrolls on its own', async () => {
+    const { root } = await build({ marked: () => [{ word: '猫', status: 'known' }] });
+    await open(root, 'known');
+    const head = root.querySelector('.savedview > .svhead')!;
+    expect(head.querySelector('.wchips')).not.toBeNull();
+    expect(head.querySelector('.wfind')).not.toBeNull();
+    expect(Array.from(head.querySelectorAll('.wbar button')).map((b) => b.textContent)).toEqual(['Copy', 'Export file']);
+    expect(root.querySelector('.savedview > .svlist .trow')).not.toBeNull();
+    expect(root.querySelector('style')!.textContent).toMatch(/\.svlist \{[^}]*overflow-y: auto/);
+  });
+
+  it('draws a long list a block at a time, as it comes into view', async () => {
+    const observers: Array<{ cb: IntersectionObserverCallback; els: Element[] }> = [];
+    const realIO = globalThis.IntersectionObserver;
+    vi.stubGlobal('IntersectionObserver', class {
+      els: Element[] = [];
+      cb: IntersectionObserverCallback;
+      constructor(cb: IntersectionObserverCallback) {
+        this.cb = cb;
+        observers.push(this);
+      }
+      observe(el: Element): void { this.els.push(el); }
+      unobserve(): void {}
+      disconnect(): void {}
+    });
+    try {
+      const marks = Array.from({ length: 100 }, (_, i) => ({ word: `w${i}`, status: 'known' as const }));
+      const { root } = await build({ marked: () => marks });
+      await open(root, 'known');
+      // Three blocks: the first, in view, drawn at once; the others boxes of about their height.
+      expect(root.querySelectorAll('.svlist .blk')).toHaveLength(3);
+      expect(rows(root)).toHaveLength(40);
+      expect(listed(root)[0]).toBe('w0');
+      const io = observers[observers.length - 1]!;
+      expect(io.els).toHaveLength(2);
+      io.cb([{ isIntersecting: true, target: io.els[0]! } as unknown as IntersectionObserverEntry], io as unknown as IntersectionObserver);
+      expect(rows(root)).toHaveLength(80);
+    } finally {
+      vi.stubGlobal('IntersectionObserver', realIO);
+    }
   });
 });
 
@@ -710,6 +767,416 @@ describe('Sidebar keys and focus', () => {
     await flush();
     expect(added).not.toHaveBeenCalled();
     added.mockRestore();
+  });
+});
+
+/*
+ * Everything the mouse does here, the keyboard does too, and a screen reader
+ * is told what each control is: tabs that act as tabs, a transcript that is
+ * one Tab stop with the arrows inside it, a grip that resizes, and focus that
+ * never drops to the page when what held it goes away.
+ */
+describe('Sidebar from the keyboard', () => {
+  const tabsOf = (root: ShadowRoot): HTMLElement[] => Array.from(root.querySelectorAll<HTMLElement>('[role=tab]'));
+  const timeOf = (root: ShadowRoot, i: number): HTMLElement =>
+    root.querySelector<HTMLElement>(`.line[data-i="${i}"] .meta .seek`)!;
+  const byId = (root: ShadowRoot, id: string | null): Element | null => root.querySelector(`[id="${id}"]`);
+  /** The transcript's Tab stops, by line. */
+  const stops = (root: ShadowRoot): Array<string | undefined> =>
+    Array.from(root.querySelectorAll('.lines [tabindex="0"]')).map((el) => el.closest<HTMLElement>('.line')?.dataset.i);
+
+  it('is one landmark, named, with no banner inside it', async () => {
+    const { root } = await build();
+    const panel = root.querySelector('.panel')!;
+    expect(panel.getAttribute('role')).toBe('complementary');
+    expect(panel.getAttribute('aria-label')).toBe('Transcript panel');
+    expect(root.querySelector('header')).toBeNull();
+    // Named as its tooltip reads, so it can be asked for by the word on it.
+    const close = root.querySelector<HTMLElement>('.head .controls button[data-key="S"]')!;
+    expect(close.dataset.tip).toBe('Close');
+    expect(close.getAttribute('aria-label')).toBe('Close the panel');
+  });
+
+  it('moves between the tabs with the arrows, Home and End, showing each', async () => {
+    const { sidebar, root } = await build();
+    const [transcript, saved] = tabsOf(root) as [HTMLElement, HTMLElement];
+    const view = root.querySelector<HTMLElement>('[role=tabpanel]')!;
+    // One Tab stop, on the tab showing; both tabs control the panel, which the tab showing names.
+    expect(tabsOf(root).map((t) => t.tabIndex)).toEqual([0, -1]);
+    expect(tabsOf(root).map((t) => t.getAttribute('aria-controls'))).toEqual([view.id, view.id]);
+    expect(view.getAttribute('aria-labelledby')).toBe(transcript.id);
+    expect(view.contains(root.querySelector('.lines'))).toBe(true);
+    expect(view.contains(root.querySelector('.search input'))).toBe(true);
+
+    transcript.focus();
+    pressKey(transcript, 'ArrowRight');
+    expect(root.activeElement).toBe(saved);
+    expect(sidebar.mode).toBe('saved');
+    expect(saved.getAttribute('aria-selected')).toBe('true');
+    expect(tabsOf(root).map((t) => t.tabIndex)).toEqual([-1, 0]);
+    expect(view.getAttribute('aria-labelledby')).toBe(saved.id);
+    expect(view.querySelector('.savedview')).not.toBeNull();
+
+    pressKey(saved, 'ArrowRight');          // round from the last to the first
+    expect(root.activeElement).toBe(transcript);
+    expect(sidebar.mode).toBe('transcript');
+    pressKey(transcript, 'End');
+    expect(sidebar.mode).toBe('saved');
+    pressKey(saved, 'Home');
+    expect(sidebar.mode).toBe('transcript');
+    pressKey(transcript, 'ArrowLeft');
+    expect(root.activeElement).toBe(saved);
+    expect(sidebar.mode).toBe('saved');
+
+    // Settings is not a tab: none is selected, and the first keeps the row in reach.
+    sidebar.setMode('settings');
+    expect(tabsOf(root).map((t) => t.getAttribute('aria-selected'))).toEqual(['false', 'false']);
+    expect(tabsOf(root).map((t) => t.tabIndex)).toEqual([0, -1]);
+    expect(root.querySelector('[role=tabpanel]')).toBeNull();
+  });
+
+  it('swaps ← and → right to left, on the tabs and on the grip', async () => {
+    const { sidebar, root } = await build();
+    const [transcript, saved] = tabsOf(root) as [HTMLElement, HTMLElement];
+    const grip = root.querySelector<HTMLElement>('[role=separator]')!;
+    await loadUiLanguage('ar');
+    try {
+      transcript.focus();
+      pressKey(transcript, 'ArrowLeft');
+      expect(root.activeElement).toBe(saved);
+      expect(sidebar.mode).toBe('saved');
+      // The panel sits on the left: → is toward the video, and widens it.
+      pressKey(grip, 'ArrowRight');
+      expect(grip.getAttribute('aria-valuenow')).toBe('420');
+      pressKey(grip, 'ArrowLeft');
+      pressKey(grip, 'ArrowLeft');
+      expect(grip.getAttribute('aria-valuenow')).toBe('380');
+    } finally {
+      await loadUiLanguage('en');
+    }
+  });
+
+  it('resizes from the keyboard by the grip, saving the width as a drag does', async () => {
+    const { root } = await build();
+    const grip = root.querySelector<HTMLElement>('.grip')!;
+    const panel = root.querySelector<HTMLElement>('.panel')!;
+    expect(grip.getAttribute('role')).toBe('separator');
+    expect(grip.tabIndex).toBe(0);
+    expect(grip.getAttribute('aria-orientation')).toBe('vertical');
+    expect(grip.getAttribute('aria-label')).toBe('Resize panel');
+    expect(['aria-valuemin', 'aria-valuenow', 'aria-valuemax'].map((a) => grip.getAttribute(a))).toEqual(['280', '400', '680']);
+
+    writes.mockClear();
+    pressKey(grip, 'ArrowLeft');            // toward the video: wider
+    expect(panel.style.width).toBe('420px');
+    expect(grip.getAttribute('aria-valuenow')).toBe('420');
+    expect(writes).not.toHaveBeenCalled();  // a held key repeats; the width is kept once it is let go
+    grip.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowLeft', bubbles: true, composed: true }));
+    expect(writes).toHaveBeenCalledWith({ 'libregaku.sidebar.width': 420 });
+
+    pressKey(grip, 'ArrowRight');
+    pressKey(grip, 'ArrowRight');
+    expect(panel.style.width).toBe('380px');
+    for (let i = 0; i < 30; i++) pressKey(grip, 'ArrowLeft');
+    expect(grip.getAttribute('aria-valuenow')).toBe('680');   // no wider than a drag goes
+  });
+
+  it("plays a line from its time: a button named for that, and described by the line", async () => {
+    const { root } = await build({ onAddLine: async () => {} });
+    const row = root.querySelector<HTMLElement>('.line[data-i="1"]')!;
+    const time = timeOf(root, 1);
+    expect(time.tagName).toBe('BUTTON');
+    expect(time.textContent).toBe('00:04');
+    expect(row.querySelector('.meta')!.textContent).toContain('00:04 – 00:07');
+    expect(time.getAttribute('aria-label')).toBe('Play from 00:04');
+    const text = byId(root, time.getAttribute('aria-describedby'))!;
+    expect(text.textContent).toBe('b new');
+    // Every row's buttons have the same names: each is described by its own line.
+    const buttons = Array.from(row.querySelectorAll('.meta .save, .meta .addline'));
+    expect(buttons).toHaveLength(2);
+    for (const b of buttons) expect(b.getAttribute('aria-describedby')).toBe(text.id);
+
+    time.click();
+    expect(seek).toHaveBeenCalledWith(4);
+  });
+
+  it('keeps the save button one name, pressed or not', async () => {
+    const { sidebar, root, transcript } = await build();
+    const save = root.querySelector<HTMLElement>('.line[data-i="0"] .save')!;
+    try {
+      await sidebar.saveLine(transcript.lines[0]!);
+      expect(save.getAttribute('aria-pressed')).toBe('true');
+      expect(save.getAttribute('aria-label')).toBe('Save line');
+      expect(save.dataset.tip).toBe('Unsave');
+    } finally {
+      await bookmarks.clear();
+    }
+  });
+
+  it('gives a saved line a button that plays it here, or opens the video it is from', async () => {
+    const { sidebar, root, transcript } = await build();
+    try {
+      await sidebar.saveLine(transcript.lines[1]!);
+      await bookmarks.add({
+        id: 'test:other:1000', site: 'test', video: 'other', title: 'Another', url: 'https://example.com/other',
+        text: 'elsewhere', start: 1, end: 2, lang: 'ja', savedAt: 0,
+      });
+      tabsOf(root)[1]!.click();
+      await flush();
+      await flush();
+      const rows = Array.from(root.querySelectorAll<HTMLElement>('.sv'));
+      const [here, there] = ['b new', 'elsewhere'].map((t) => rows.find((r) => r.querySelector('.tx')?.textContent === t)!);
+      expect(there!.querySelector('.seek')?.getAttribute('aria-label')).toBe('Open the video at 00:01');
+      const time = here!.querySelector<HTMLElement>('.seek')!;
+      expect(time.getAttribute('aria-label')).toBe('Play from 00:04');
+      expect(byId(root, time.getAttribute('aria-describedby'))?.textContent).toBe('b new');
+      expect(here!.querySelector('.save')?.getAttribute('aria-describedby')).toBe(time.getAttribute('aria-describedby'));
+
+      // Pressed from the keyboard, it plays the line, and focus goes to the tabs, not the page.
+      time.focus();
+      time.click();
+      expect(seek).toHaveBeenCalledWith(4);
+      expect(sidebar.mode).toBe('transcript');
+      expect(root.activeElement).toBe(tabsOf(root)[0]);
+    } finally {
+      await bookmarks.clear();
+    }
+  });
+
+  it('shows a saved line of this video with the translation it has now, and one from elsewhere with its own', async () => {
+    // Saved while the second line was English; the learner's language has changed since.
+    const transcript = new Transcript();
+    transcript.setFull([{ start: 4, end: 7, text: '外国に行きたい', secondary: 'Quiero ir al extranjero' }]);
+    const { root } = await build({ transcript });
+    try {
+      await bookmarks.add({
+        id: bookmarks.idFor('test', 'v', 4), site: 'test', video: 'v', title: 't', url: 'u',
+        text: '外国に行きたい', secondary: 'I want to go abroad', start: 4, end: 7, lang: 'ja', savedAt: 0,
+      });
+      await bookmarks.add({
+        id: 'test:other:1000', site: 'test', video: 'other', title: 'Another', url: 'https://example.com/other',
+        text: 'elsewhere', secondary: 'over there', start: 1, end: 2, lang: 'ja', savedAt: 0,
+      });
+      root.querySelector<HTMLButtonElement>('[role=tab][data-mode="saved"]')!.click();
+      await flush();
+      await flush();
+      const second = (text: string): string | null | undefined => Array.from(root.querySelectorAll('.sv'))
+        .find((r) => r.querySelector('.tx')?.textContent === text)?.querySelector('.sec')?.textContent;
+      expect(second('外国に行きたい')).toBe('Quiero ir al extranjero');
+      expect(second('elsewhere')).toBe('over there');
+    } finally {
+      await bookmarks.clear();
+    }
+  });
+
+  it('keeps focus in the saved list when a line is taken out of it', async () => {
+    const { sidebar, root, transcript } = await build();
+    try {
+      await sidebar.saveLine(transcript.lines[0]!);
+      await sidebar.saveLine(transcript.lines[1]!);
+      root.querySelector<HTMLButtonElement>('[role=tab][data-mode="saved"]')!.click();
+      await flush();
+      await flush();
+      expect(root.querySelectorAll('.sv')).toHaveLength(2);
+      const remove = root.querySelector<HTMLButtonElement>('.sv .save.on')!;
+      remove.focus();
+      remove.click();
+      for (let i = 0; i < 4; i++) await flush();
+      expect(root.querySelectorAll('.sv')).toHaveLength(1);
+      expect(root.activeElement?.closest('.sv')).not.toBeNull();
+    } finally {
+      await bookmarks.clear();
+    }
+  });
+
+  it('marks the line being spoken for screen readers, and Tab comes into the list there', async () => {
+    const { sidebar, root } = await build();
+    // Before anything plays, the first line is the way in.
+    expect(stops(root)).toEqual(['0']);
+    sidebar.setActive(2);
+    expect(root.querySelector('.line[data-i="2"]')!.getAttribute('aria-current')).toBe('true');
+    expect(root.querySelectorAll('[aria-current]')).toHaveLength(1);
+    expect(stops(root)).toEqual(['2']);
+    sidebar.setActive(3);
+    expect(root.querySelector('.line[data-i="2"]')!.hasAttribute('aria-current')).toBe(false);
+    expect(root.querySelector('.line[data-i="3"]')!.getAttribute('aria-current')).toBe('true');
+    expect(stops(root)).toEqual(['3']);
+  });
+
+  it('goes from line to line with ↑ and ↓, and along a line with ← and →, as one Tab stop', async () => {
+    const onWordClick = vi.fn();
+    const transcript = new Transcript();
+    transcript.setFull([
+      { start: 0, end: 3, text: '勉強 です' },
+      { start: 4, end: 7, text: '食べる' },
+      { start: 8, end: 11, text: 'もう 一度' },
+    ]);
+    await setSetting('sidebarHover', false);
+    const { sidebar, root } = await build({ transcript, segmenter: () => segmenter, onWordClick, onAddLine: async () => {} });
+    sidebar.setActive(1);
+    expect(stops(root)).toEqual(['1']);
+
+    timeOf(root, 1).focus();
+    pressKey(timeOf(root, 1), 'ArrowDown');
+    expect(root.activeElement).toBe(timeOf(root, 2));
+    pressKey(timeOf(root, 2), 'ArrowDown');   // the last line: nowhere further
+    expect(root.activeElement).toBe(timeOf(root, 2));
+    pressKey(timeOf(root, 2), 'Home');
+    expect(root.activeElement).toBe(timeOf(root, 0));
+    pressKey(timeOf(root, 0), 'End');
+    expect(root.activeElement).toBe(timeOf(root, 2));
+    pressKey(timeOf(root, 2), 'ArrowUp');
+    expect(root.activeElement).toBe(timeOf(root, 1));
+    expect(stops(root)).toEqual(['1']);
+    // Moving through the lines is reading elsewhere: following waits, as it does after a
+    // scroll, and the Tab stop stays where focus is.
+    scrollTo.mockClear();
+    sidebar.setActive(0);
+    expect(scrollTo).not.toHaveBeenCalled();
+    expect(stops(root)).toEqual(['1']);
+
+    // Along a line: its words, then its time and its buttons, and no further.
+    pressKey(timeOf(root, 1), 'ArrowUp');
+    const row = root.querySelector<HTMLElement>('.line[data-i="0"]')!;
+    const words = Array.from(row.querySelectorAll<HTMLElement>('.w'));
+    expect(words.map((w) => w.getAttribute('role'))).toEqual(['button', 'button']);
+    // Words take focus from the keyboard alone: none has a tabindex until it is reached.
+    expect(words.some((w) => w.hasAttribute('tabindex'))).toBe(false);
+    pressKey(timeOf(root, 0), 'ArrowLeft');
+    expect(root.activeElement).toBe(words[1]);
+    pressKey(words[1]!, 'ArrowLeft');
+    expect(root.activeElement).toBe(words[0]);
+    pressKey(words[0]!, 'ArrowLeft');
+    expect(root.activeElement).toBe(words[0]);
+    expect(stops(root)).toEqual(['0']);
+    expect(words[0]!.getAttribute('tabindex')).toBe('0');
+    pressKey(words[0]!, 'ArrowRight');
+    pressKey(words[1]!, 'ArrowRight');
+    expect(root.activeElement).toBe(timeOf(root, 0));
+    expect(words.some((w) => w.hasAttribute('tabindex'))).toBe(false);
+    pressKey(timeOf(root, 0), 'ArrowRight');
+    expect(root.activeElement).toBe(row.querySelector('.addline'));
+    pressKey(row.querySelector('.addline')!, 'ArrowRight');
+    expect(root.activeElement).toBe(row.querySelector('.save'));
+    pressKey(row.querySelector('.save')!, 'ArrowRight');
+    expect(root.activeElement).toBe(row.querySelector('.save'));
+    expect(root.querySelectorAll('.lines [tabindex="0"]')).toHaveLength(1);
+
+    // Enter or Space on a word does what a click does.
+    pressKey(row.querySelector('.save')!, 'Home');
+    pressKey(timeOf(root, 0), 'ArrowLeft');
+    pressKey(words[1]!, 'Enter');
+    expect(onWordClick).toHaveBeenLastCalledWith(
+      expect.objectContaining({ surface: 'です' }), words[1], '勉強 です', expect.objectContaining({ start: 0, end: 3 }),
+    );
+    pressKey(words[1]!, 'ArrowLeft');
+    pressKey(words[0]!, ' ');
+    expect(onWordClick).toHaveBeenLastCalledWith(
+      expect.objectContaining({ surface: '勉強' }), words[0], '勉強 です', expect.objectContaining({ start: 0, end: 3 }),
+    );
+    expect(seek).not.toHaveBeenCalled();
+  });
+
+  it('previews a word that has focus, as it does one under the pointer', async () => {
+    const transcript = new Transcript();
+    transcript.setFull([{ start: 0, end: 3, text: '食べる 勉強' }]);
+    const { root } = await build({ transcript, segmenter: () => segmenter, statusOf: () => 'unknown' });
+    const card = root.querySelector<HTMLElement>('.hover')!;
+    const time = timeOf(root, 0);
+    time.focus();
+    pressKey(time, 'ArrowLeft');
+    const word = root.activeElement as HTMLElement;
+    expect(word.classList.contains('w')).toBe(true);
+    await wait(200);
+    expect(dict.pending.map((p) => p.surface)).toEqual(['勉強']);
+    dict.pending[0]!.answer();
+    await flush();
+    expect(card.classList.contains('on')).toBe(true);
+    expect(card.querySelector('.hw')?.textContent).toBe('勉強');
+    // Focus moves off it: the card goes.
+    pressKey(word, 'ArrowRight');
+    expect(root.activeElement).toBe(time);
+    expect(card.classList.contains('on')).toBe(false);
+  });
+
+  it('keeps the keys it uses from the player it sits in, which would seek on them too', async () => {
+    const { root } = await build({ segmenter: () => segmenter });
+    const player = (root.host as HTMLElement).parentElement!;
+    const heard: string[] = [];
+    const onKey = (e: KeyboardEvent): void => { heard.push(e.key); };
+    player.addEventListener('keydown', onKey);
+    const send = (el: Element, key: string): KeyboardEvent => {
+      const e = new KeyboardEvent('keydown', { key, bubbles: true, composed: true, cancelable: true });
+      el.dispatchEvent(e);
+      return e;
+    };
+    try {
+      const used = [
+        send(root.querySelector('[role=separator]')!, 'ArrowLeft'),
+        send(timeOf(root, 0), 'ArrowDown'),
+        send(timeOf(root, 1), 'End'),
+        send(root.querySelector('.line[data-i="1"] .w')!, 'Enter'),
+        send(root.querySelector('.line[data-i="1"] .w')!, ' '),
+        send(tabsOf(root)[0]!, 'ArrowRight'),
+      ];
+      expect(used.map((e) => e.defaultPrevented)).toEqual(used.map(() => true));
+      // A button's own Enter is left to press it, but kept from the player all the same.
+      expect(send(timeOf(root, 2), 'Enter').defaultPrevented).toBe(false);
+      send(root.querySelector('.fab')!, 'ArrowLeft');   // no arrows of its own: the player's
+    } finally {
+      player.removeEventListener('keydown', onKey);
+    }
+    expect(heard).toEqual(['ArrowLeft']);
+  });
+
+  it('hands focus to the edge tab when the panel closes, and back to the tabs when it opens', async () => {
+    const { sidebar, root } = await build();
+    const close = root.querySelector<HTMLElement>('.head .controls button[data-key="S"]')!;
+    const edge = root.querySelector<HTMLElement>('.tab')!;
+    close.focus();
+    close.click();
+    expect(sidebar.isOpen).toBe(false);
+    expect(root.activeElement).toBe(edge);
+    edge.click();
+    expect(sidebar.isOpen).toBe(true);
+    expect(root.activeElement).toBe(tabsOf(root)[0]);
+    // A click, which gives a button no focus here, moves none.
+    tabsOf(root)[0]!.blur();
+    close.click();
+    expect(root.activeElement).toBeNull();
+  });
+
+  it('opens the filter menu on the filter in use, and hands focus back to its button', async () => {
+    const { root } = await build();
+    const fab = root.querySelector<HTMLElement>('.fab')!;
+    const menu = root.querySelector<HTMLElement>('.filters')!;
+    // The button comes before its menu, so Tab goes on from one into the other.
+    expect(fab.nextElementSibling).toBe(menu);
+
+    fab.focus();
+    fab.click();
+    expect(root.activeElement).toBe(filterButton(root, 'All lines'));
+    pressKey(filterButton(root, 'All lines'), 'Escape');
+    expect(menu.classList.contains('open')).toBe(false);
+    expect(root.activeElement).toBe(fab);
+
+    fab.click();
+    filterButton(root, 'Has new words').focus();
+    filterButton(root, 'Has new words').click();
+    expect(menu.classList.contains('open')).toBe(false);
+    expect(root.activeElement).toBe(fab);
+    fab.click();
+    expect(root.activeElement).toBe(filterButton(root, 'Has new words'));
+  });
+
+  it('hands focus from the current-line button to the line it brings back', async () => {
+    const { sidebar, root, list } = await build();
+    list.dispatchEvent(new Event('wheel'));
+    sidebar.setActive(2);
+    const now = root.querySelector<HTMLElement>('.now')!;
+    now.focus();
+    now.click();
+    expect(root.activeElement).toBe(timeOf(root, 2));
   });
 });
 
@@ -1234,6 +1701,21 @@ describe('Sidebar at the length of a film', { timeout: 30_000 }, () => {
     expect(root.querySelector<HTMLElement>('.line.cur')?.dataset.i).toBe('1805');
   });
 
+  it('goes to the last line from the keyboard, making its block and nothing between', async () => {
+    seek = vi.fn<(t: number) => void>();
+    const { root } = openNow({ segmenter: () => counted() });
+    const made = root.querySelectorAll('.line').length;
+    const first = root.querySelector<HTMLElement>('.line[data-i="0"] .seek')!;
+    first.focus();
+    pressKey(first, 'End');
+    const last = root.querySelector<HTMLElement>(`.line[data-i="${LENGTH - 1}"]`)!;
+    expect(root.activeElement).toBe(last.querySelector('.seek'));
+    expect(root.querySelectorAll('.line')).toHaveLength(made + 10);
+    expect(last.querySelector('.w')).not.toBeNull();     // built on arrival, for ← and →
+    pressKey(last.querySelector('.seek')!, 'ArrowUp');
+    expect(root.activeElement).toBe(root.querySelector(`.line[data-i="${LENGTH - 2}"] .seek`));
+  });
+
   it('measures once per follow step, before building, and not again while it builds', async () => {
     const seg = counted();
     const { sidebar, root } = await build({ transcript: film(), segmenter: () => seg });
@@ -1365,7 +1847,7 @@ describe('Sidebar phrases, clicked again', () => {
 describe('Sidebar keys', () => {
   it('shows the keys in a view of their own, and goes back to the transcript', async () => {
     const { root } = await build();
-    const button = root.querySelector<HTMLButtonElement>('header button[aria-label="Keyboard shortcuts"]')!;
+    const button = root.querySelector<HTMLButtonElement>('.head button[aria-label="Keyboard shortcuts"]')!;
     button.click();
     expect(root.querySelector('.viewtitle')?.textContent).toBe('Keyboard shortcuts');
     expect(root.querySelectorAll('.keysview .keys dt')).toHaveLength(10);

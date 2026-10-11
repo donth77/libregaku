@@ -74,7 +74,7 @@ whether the tokenizer works.
 ## Layout
 
 ```
-build.mjs               esbuild build — ten entry points, no plugin framework
+build.mjs               esbuild build — eleven entry points, no plugin framework
 src/manifest.json       MV3 manifest
 src/assumptions.ts      every live-site assumption, and the notices shown when one breaks
 src/settings.ts         settings, defaults, and which languages get which tier

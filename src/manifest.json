@@ -36,6 +36,7 @@
     "https://huggingface.co/*",
     "https://*.hf.co/*",
     "https://www.mdbg.net/*",
+    "https://cantonese.org/*",
     "http://127.0.0.1/*"
   ],
   "background": {

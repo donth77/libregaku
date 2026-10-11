@@ -23,6 +23,8 @@ export const zh: Translation = {
   common: {
     furigana: (mode: Settings['ruby']): string => `假名注音：${rubyMode(mode)}`,
     pinyin: (mode: Settings['ruby']): string => `拼音：${rubyMode(mode)}`,
+    mandarin: '普通话',
+    jyutping: (mode: Settings['ruby']): string => `Jyutping：${rubyMode(mode)}`,
     sentenceGap: '',
   },
 
@@ -34,6 +36,7 @@ export const zh: Translation = {
     targetLimited: (language: string): string => `${language}（有限支持）`,
     supportFull: '完整支持，包括读音和假名注音。',
     supportPinyin: '完整支持，包括拼音。释义为英文。',
+    supportJyutping: '完整支持，包括 Jyutping。释义为英文。',
     supportWords: '完整支持。释义为英文。',
     script: '文字',
     scriptHint: '视频两种都有时，使用这一种。',
@@ -85,6 +88,8 @@ export const zh: Translation = {
     rubyHint: '在汉字上方标注读音。观看时按 R 切换。',
     pinyin: '拼音',
     pinyinHint: '在汉字上方标注读音。观看时按 R 切换。',
+    jyutping: 'Jyutping',
+    jyutpingHint: '在汉字上方标注读音。观看时按 R 切换。',
     blurPrimary: '模糊字幕',
     blurPrimaryHint: '用于听力练习：字幕保持模糊，指针移上去才显示。按 H 切换。',
     subtitleSize: '字号',
@@ -100,6 +105,8 @@ export const zh: Translation = {
     subtitleBottomHint: '字幕的高度。同一播放器上的其他字幕扩展会显示在它下方。',
     dualSubtitles: '显示翻译',
     dualSubtitlesHint: '在学习语言的字幕下方显示母语字幕。字幕来自网站本身，不是机器翻译，并且需要能获取视频的完整字幕。',
+    singleKeys: '单键快捷键',
+    singleKeysHint: 'A、R 等字母键在观看时可单独使用。关闭时，需同时按住 Alt 和 Shift。方向键始终可用。',
 
     // Underlines
     underlinesHeading: '下划线',
@@ -131,6 +138,11 @@ export const zh: Translation = {
     languageBadgeCode: '代码',
     badgeFlag: '标识国旗',
     badgeFlagDefault: '默认',
+    flagSearch: '搜索…',
+    flagSearchLabel: '搜索国家/地区',
+    flagSuggested: '推荐',
+    flagAll: '所有国家/地区',
+    flagNone: (query: string): string => `没有与“${query}”匹配的国家/地区。`,
     badgeFlagHint: '为学习语言显示的国旗。每种语言分别保存。',
     languageBadgeHint: '顶栏如何显示学习语言。',
     sidebarStats: '统计生词',
@@ -219,7 +231,13 @@ export const zh: Translation = {
       '由 jmdict-simplified 重新打包为 JSON。',
     creditLindera: '将日语、韩语和中文切分为单词。MIT 许可；IPADIC、mecab-ko-dic 和 CC-CEDICT 各有其条款。',
     creditCedict: '中文词典 © MDBG 及其贡献者，依据 CC BY-SA 4.0 使用。',
-    creditWiktionary: '韩语和西班牙语词典，来自 Wiktionary，经 kaikki.org 和 wiktionary-to-yomitan 转换。CC BY-SA 4.0。',
+    creditWiktionary:
+      '韩语和西班牙语词典，以及部分用你母语释义的词典，来自 Wiktionary，经 kaikki.org 和 wiktionary-to-yomitan 转换。CC BY-SA 4.0。',
+    creditKrdict:
+      '用你的母语解释韩语词语。© National Institute of Korean Language，依据 CC BY-SA 2.0 KR 使用。文件由 Lyroxide 制作。',
+    creditCfdict: '用法语解释中文。CFDICT © chine.in，由 CxDICT 持续更新。CC BY-SA 4.0。',
+    creditCanto: '粤语词典，以及 CC-CEDICT 词条的 Jyutping 读音。© Pleco Inc.，依据 CC BY-SA 3.0 使用。',
+    creditHandedict: '用德语解释中文。© HanDeDict 及其贡献者，依据 CC BY-SA 3.0 使用。',
     creditUnihan: '决定汉字优先显示哪个读音。© Unicode, Inc.，依据 Unicode License 使用。',
     creditJotoba: '词典下载期间用于查词。两者都使用 JMdict。',
     creditLucide: '图标。ISC 许可。',
@@ -237,6 +255,7 @@ export const zh: Translation = {
     keyKnown: '将弹窗中的单词标为已掌握',
     keyFurigana: '切换假名注音：关闭、仅生词、全部',
     keyPinyin: '切换拼音：关闭、仅生词、全部',
+    keyJyutping: '切换 Jyutping：关闭、仅生词、全部',
     keyBlur: '模糊或取消模糊字幕',
     keySave: '收藏当前句',
     keyTranscript: '显示或隐藏侧边栏',
@@ -256,6 +275,7 @@ export const zh: Translation = {
     stepAnki: '连接 Anki，并为新卡片选择牌组',
     ankiOptional: 'Anki 不是必需的——没有它，字幕、查词和假名注音都能正常使用。它的作用是记住你已掌握哪些单词。',
     nextSteps: '然后打开一个带有学习语言字幕的视频，将指针悬停在单词上。侧边栏中的键盘按钮会列出键盘快捷键。',
+    stepDone: '已完成',
     confirmLanguages: '确认语言',
     keepDeck: (deck: string): string => `新卡片添加到“${deck}”`,
   },
@@ -292,15 +312,17 @@ export const zh: Translation = {
   },
 
   sidebar: {
+    panelLabel: '侧边栏',
+    resizeLabel: '调整侧边栏大小',
+
     // The tabs, and the icon buttons beside them
     tabsLabel: '列表',
     transcriptTab: '字幕',
     savedTab: '收藏',
-    wordsTab: '单词',
     settings: '设置',
     shortcuts: '键盘快捷键',
     close: '关闭',
-    closeLabel: '收起侧边栏',
+    closeLabel: '关闭侧边栏',
     openTip: '侧边栏',
     openLabel: '显示侧边栏',
     help: '帮助',
@@ -330,6 +352,7 @@ export const zh: Translation = {
     empty: '未加载字幕。',
     currentLine: '回到当前句',
     lineNew: (n: number): string => `${n} 个生词`,
+    playFrom: (time: string): string => `从 ${time} 开始播放`,
     saveLine: '收藏此句',
     unsave: '取消收藏',
     addSentence: '添加句子',
@@ -351,6 +374,7 @@ export const zh: Translation = {
     // The Saved tab
     savedEmpty: '还没有收藏。点击任意一句字幕上的书签（或按 B），即可收藏想回头再看的句子。',
     thisVideo: '当前视频',
+    openAt: (time: string): string => `在 ${time} 处打开视频`,
     remove: '移除',
     removeLabel: '从收藏中移除',
     copySavedAbout: '将所有收藏的句子复制为制表符分隔的文本',
@@ -375,18 +399,20 @@ export const zh: Translation = {
     downloadBlocked: '此网页阻止了下载，请改用“复制”。',
 
     // The Words tab
-    listsLabel: '单词类别',
+    listsLabel: '选择列表',
+    listLines: '句子',
     listTracked: '已关注',
     listKnown: '已掌握',
     listIgnored: '已忽略',
-    findPlaceholder: '查找单词',
-    findLabel: '在此列表中查找单词',
+    findPlaceholder: '搜索…',
+    findLabel: '在此列表中搜索',
     copyWordsAbout: '将此列表复制为制表符分隔的文本',
     exportWordsAbout: '将此列表保存为 Anki 可导入的制表符分隔文件',
     wordsCopied: (n: number): string => `已复制 ${n} 个单词。`,
-    nothingToExport: '此列表中没有可导出的单词。',
+    nothingToExport: '此列表中没有可导出的内容。',
     lookingUp: '正在查询读音和释义…',
     noWordMatches: (query: string): string => `此列表中没有与“${query}”匹配的单词。`,
+    noLineMatches: (query: string): string => `没有与“${query}”匹配的收藏句子。`,
     wordsMatching: (shown: number, total: number): string => `找到 ${shown} 个（共 ${total} 个单词）。`,
     trackedEmpty: '还没有关注的单词。“关注”会给单词加下划线，让你注意到它，但不会制作卡片。' +
       '可在设置的“单词弹窗”中打开这个按钮。',
@@ -465,6 +491,7 @@ export const zh: Translation = {
     adding: '正在添加…',
     undoing: '正在撤销…',
     added: '已添加',
+    addedUndo: '已添加——撤销',
     inAnki: '已在 Anki 中',
     showInAnki: '在 Anki 中查看',
     waiting: '等待中',
@@ -504,12 +531,12 @@ export const zh: Translation = {
     unblurSubtitle: '取消模糊字幕',
     showTranslation: '显示翻译',
     hideTranslation: '隐藏翻译',
+    translation: '翻译',
     transcript: '侧边栏',
     pinHeader: '固定顶栏',
     unpinHeader: '取消固定顶栏',
     settings: '设置',
     showHeader: '显示顶栏',
-    showHeaderLabel: '显示顶栏',
   },
 
   player: {
@@ -533,7 +560,7 @@ export const zh: Translation = {
     marked: (word: string, status: OverrideStatus, refused: boolean): string => {
       const done = { known: '已标为已掌握', tracking: '已关注', ignored: '已忽略', unknown: '已标为生词' }[status];
       if (refused) return `${word} · ${done}，未制作卡片——Anki 拒绝了此标记，稍后会重试`;
-      return `${word} · ${done}，未制作卡片${status === 'tracking' ? '。可在侧边栏的“已关注”列表中查看' : ''}`;
+      return `${word} · ${done}，未制作卡片${status === 'tracking' ? '。可在侧边栏的“收藏”标签页中查看' : ''}`;
     },
 
     // A word's card

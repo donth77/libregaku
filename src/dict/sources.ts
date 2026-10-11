@@ -1,4 +1,4 @@
-import { keysFor as cedictKeys, parseLine, rank as cedictRank, toEntry as cedictEntry } from './cedict';
+import { keysFor as cedictKeys, parseLine, rank as cedictRank, toEntry as cedictEntry, type CedictRow } from './cedict';
 import { fetchBytes, gunzipText } from './download';
 import type { Entry, RankHint } from './jmdict';
 import type { CharacterInfo } from './kanji';
@@ -39,6 +39,7 @@ export const CEDICT: Source = {
   db: 'libregaku-dict-cedict',
   release: 'mdbg',
   format: 1,
+  readsLines: true,
   rank: cedictRank,
   async read(_edition, onDownload) {
     const lines = (await gunzipText(await fetchBytes(CEDICT_URL, onDownload))).split('\n');
@@ -59,35 +60,44 @@ export const CEDICT: Source = {
    * Each character of a word, from its own entry: 学 "to learn", 校 "school".
    * Its readings stand where a kanji's do on the card — the commonest first.
    */
-  async characters(chars) {
-    const found = await Promise.all(
-      chars.slice(0, CHARACTERS).map(async (char): Promise<CharacterInfo | null> => {
-        const entries = await lookup(char, undefined, CEDICT);
-        const top = entries[0];
-        if (!top) return null;
-        const readings = [...new Set(entries.map((e) => e.reading).filter((r): r is string => Boolean(r)))];
-        return { char, meanings: top.senses.flatMap((s) => s.glosses).slice(0, 4), on: readings.slice(0, 3), kun: [] };
-      }),
-    );
-    return found.filter((c): c is CharacterInfo => c !== null);
-  },
+  characters: (chars) => charactersFrom(CEDICT, chars),
 };
+
+/**
+ * Each character of a word, from its own entry in `source`: 学 "to learn",
+ * 校 "school". Its readings stand where a kanji's do on the card — the
+ * commonest first.
+ */
+async function charactersFrom(source: Source, chars: string[]): Promise<CharacterInfo[]> {
+  const found = await Promise.all(
+    chars.slice(0, CHARACTERS).map(async (char): Promise<CharacterInfo | null> => {
+      const entries = await lookup(char, undefined, source);
+      const top = entries[0];
+      if (!top) return null;
+      const readings = [...new Set(entries.map((e) => e.reading).filter((r): r is string => Boolean(r)))];
+      return { char, meanings: top.senses.flatMap((s) => s.glosses).slice(0, 4), on: readings.slice(0, 3), kun: [] };
+    }),
+  );
+  return found.filter((c): c is CharacterInfo => c !== null);
+}
 
 /* ── Wiktionary, by way of kaikki.org and wiktionary-to-yomitan ───── */
 
 /**
- * The commit of the published files this build reads, pinned as JMdict's
+ * The release of the published files this build reads, pinned as JMdict's
  * release is: the files under "latest" are replaced with every update, and a
- * commit is not. A bump here is a deliberate data update, and FORMAT below
- * goes with it only if the reader (wty.ts) had to change.
+ * dated tag is not. A tag rather than a commit: the publisher squashes the
+ * history now and then, and a commit can go with it. A bump here is a
+ * deliberate data update, and FORMAT below goes with it only if the reader
+ * (wty.ts) had to change.
  */
-const WTY_COMMIT = '2f21ac1b3bf2e7b9a7339f13cf601a68a950036c';
+const WTY_TAG = '2026-10-04';
 const WTY_REVISION = '2026.10.04';
 
 /** A Wiktionary dictionary: `target` words explained in `native`. */
 export function wtyUrl(target: string, native: string): string {
   return (
-    `https://huggingface.co/datasets/daxida/wty-release/resolve/${WTY_COMMIT}/` +
+    `https://huggingface.co/datasets/daxida/wty-release/resolve/${WTY_TAG}/` +
     `latest/dict/${target}/${native}/wty-${target}-${native}.zip`
   );
 }
@@ -228,6 +238,9 @@ const PARTICLE: Record<string, RegExp> = { ko: /^J/ };
  */
 const ofParticle = (row: Entry): boolean => row.kind?.[0] === 'ptcl';
 
+/** A word written out with its reading and nothing else: 大臣【だいじん】. */
+const POINTER = /^[\p{Script=Han}々〆ヶ\p{Script=Hiragana}\p{Script=Katakana}ー]+【[\p{Script=Hiragana}\p{Script=Katakana}ー]+】$/u;
+
 /**
  * One Wiktionary dictionary as a source.
  *
@@ -239,6 +252,14 @@ const ofParticle = (row: Entry): boolean => row.kind?.[0] === 'ptcl';
  */
 function wty(target: string, native: string): Source {
   const id = `wty-${target}-${native}`;
+  /*
+   * Japanese Wiktionary in Chinese gives a third of its words only as the
+   * word and its reading, 大臣【だいじん】: no meaning, and asked first, it
+   * would stand in for one. Such an entry is left out, and the language's
+   * own dictionary answers for the word instead.
+   */
+  const pointerOnly = (e: Entry): boolean =>
+    native !== 'en' && e.senses.length > 0 && e.senses.every((s) => s.glosses.every((g) => POINTER.test(g)));
   const particle = PARTICLE[target];
   /** The token is one the analyser calls a particle. */
   const isParticle = (hint?: RankHint): boolean => Boolean(particle && hint?.pos && particle.test(hint.pos));
@@ -267,8 +288,9 @@ function wty(target: string, native: string): Source {
       return (async function* (): AsyncGenerator<Batch> {
         let n = 0;
         // First, what the file leaves out: numbered ahead of its rows, so a
-        // meaning given here leads the entry it is merged into.
-        const gaps = GAPS[target] ?? [];
+        // meaning given here leads the entry it is merged into. In English,
+        // as they are written: a French edition is not given English meanings.
+        const gaps = native === 'en' ? GAPS[target] ?? [] : [];
         if (gaps.length) {
           yield {
             entries: gaps.map((gap) => ({
@@ -292,7 +314,9 @@ function wty(target: string, native: string): Source {
             for (const raw of rows.slice(i, i + ROWS) as unknown[]) {
               const row = readRow(raw, idOf(n++));
               if (!row) continue;
-              if ('entry' in row) batch.entries.push({ entry: row.entry, keys: [row.entry.word] });
+              if ('entry' in row) {
+                if (!pointerOnly(row.entry)) batch.entries.push({ entry: row.entry, keys: [row.entry.word] });
+              }
               else batch.inflections.push(row.inflection);
             }
             const within = Math.min(1, (i + ROWS) / rows.length);
@@ -304,9 +328,329 @@ function wty(target: string, native: string): Source {
   };
 }
 
+/* ── Chinese in other languages, written as CC-CEDICT is ─────────── */
+
+/**
+ * A dictionary written line for line as CC-CEDICT is, with its meanings in
+ * another language: CxDICT, which is CFDICT kept up to date (French), and
+ * HanDeDict (German). Plain text rather than gzipped. CxDICT's lines may end
+ * in CR, and HanDeDict keeps each entry's history in # lines, which are not
+ * entries.
+ */
+function cedictIn(id: string, url: string, release: string): Source {
+  return {
+    id,
+    db: `libregaku-dict-${id}`,
+    release,
+    format: 1,
+    rank: cedictRank,
+    async read(_edition, onDownload) {
+      const text = new TextDecoder().decode(await fetchBytes(url, onDownload)).replace(/^\uFEFF/, '');
+      const lines = text.split('\n');
+      if (lines.length < 1000) throw new Error('libregaku: dictionary contained no words');
+      return (async function* (): AsyncGenerator<Batch> {
+        for (let i = 0; i < lines.length; i += ROWS) {
+          const end = Math.min(i + ROWS, lines.length);
+          const entries: Batch['entries'] = [];
+          for (let j = i; j < end; j++) {
+            const row = parseLine((lines[j] ?? '').replace(/\r$/, ''));
+            if (row) entries.push({ entry: cedictEntry(row, idOf(j)), keys: cedictKeys(row) });
+          }
+          yield { entries, percent: Math.round((end / lines.length) * 100) };
+        }
+      })();
+    },
+  };
+}
+
+/** CxDICT's French file: CFDICT, from chine.in, kept up to date by its users. Its release tag moves with each update. */
+export const CXDICT_URL = 'https://github.com/licryle/CxDICT/releases/download/latest-fr/CxDICT-French-Human.u8';
+/** HanDeDict, from handedict.zydeo.net, as its maintainer keeps it on GitHub. */
+export const HANDEDICT_URL = 'https://raw.githubusercontent.com/gugray/HanDeDict/master/handedict.u8';
+
+/* ── Korean: the National Institute of Korean Language's dictionary for learners ── */
+
+/**
+ * 한국어기초사전 (krdict), the dictionary for learners of the National
+ * Institute of Korean Language: 50,000 words, each explained in eleven
+ * languages, from Lyroxide's Yomitan files (github.com/Lyroxide/yomitan-ko-dic),
+ * one a language. The Institute's own download takes only a browser's
+ * User-Agent and lets no other site read it; a GitHub release takes neither.
+ * The text is CC BY-SA 2.0 KR; its recordings are licensed apart, and not used.
+ */
+const KRDICT_FILES: Record<string, string> = {
+  ar: 'AR', en: 'EN', es: 'ES', fr: 'FR', id: 'ID', ja: 'JA', ru: 'RU', th: 'TH', vi: 'VI', zh: 'ZH', 'zh-Hant': 'ZH',
+};
+
+export function krdictUrl(lang: string): string {
+  return `https://github.com/Lyroxide/yomitan-ko-dic/releases/download/1.0.0/KO-${KRDICT_FILES[lang] ?? 'EN'}.KRDICT.No.Examples.zip`;
+}
+
+/**
+ * What each language's file calls a particle: the word kind the analyser's
+ * particle tags (ko-dic's J…) are answered by, as for Wiktionary (PARTICLE).
+ */
+const KRDICT_PARTICLE = new Set([
+  'Postpositional Particle', '助詞', '助词', 'Particule', 'Posposición', 'Partikel', 'Trợ từ',
+  'падежное окончание', 'คำชี้', 'كلمة ملحقة',
+]);
+
+type Node = Record<string, unknown>;
+const isNode = (x: unknown): x is Node => typeof x === 'object' && x !== null && !Array.isArray(x);
+const kids = (content: unknown): unknown[] =>
+  Array.isArray(content) ? content : content === undefined || content === null ? [] : [content];
+const textOf = (content: unknown): string =>
+  kids(content).map((c) => (typeof c === 'string' ? c : isNode(c) ? textOf(c.content) : '')).join('');
+
+/**
+ * A krdict row's meanings. Under the headword, each sense opens with a line
+ * holding the word in the learner's language — after a bold "1. " where the
+ * word has more than one sense — then a line that explains it, then labelled
+ * lines, sentence patterns, which are left out.
+ */
+export function krdictSenses(definitions: unknown): string[][] {
+  const senses: string[][] = [];
+  const top = kids(isNode(kids(definitions)[0]) ? (kids(definitions)[0] as Node).content : definitions);
+  /** A label set on a shaded ground: 文型, a sentence pattern, and the like. */
+  const label = (x: unknown): boolean => isNode(x) && isNode(x.style) && 'backgroundColor' in x.style;
+  for (const block of top) {
+    if (!isNode(block) || block.tag !== 'div') continue;
+    for (const line of kids(block.content)) {
+      if (!isNode(line)) continue;
+      const parts = kids(line.content);
+      const head = parts[0];
+      if (typeof line.content !== 'string' && parts.length && !label(head)) {
+        const numbered = isNode(head) && /^\d+\.\s*$/.test(textOf(head.content));
+        const word = textOf(numbered ? parts.slice(1) : parts).trim();
+        senses.push(word ? [word] : []);
+      } else if (typeof line.content === 'string' && senses.length) {
+        // The line that explains it, in the learner's language.
+        const said = line.content.trim();
+        const last = senses[senses.length - 1]!;
+        if (said && last.length < 2) last.push(said);
+      }
+    }
+  }
+  return senses.filter((s) => s.length);
+}
+
+const KRDICT: Source = {
+  id: 'krdict',
+  db: 'libregaku-dict-krdict',
+  release: '1.0.0',
+  // Bumped when krdictSenses reads a row differently.
+  format: 2,
+  rank: (entries: Entry[], key: string, hint?: RankHint) => {
+    const rows = entries.filter((e) => e.word === key);
+    const ofParticle = (e: Entry): boolean => KRDICT_PARTICLE.has(e.kind?.[0] ?? '');
+    // A particle is answered by a particle's entry, or not at all; any other word by the others first.
+    if (hint?.pos && PARTICLE.ko?.test(hint.pos)) return rows.filter(ofParticle);
+    return [...rows.filter((e) => !ofParticle(e)), ...rows.filter(ofParticle)];
+  },
+  followsForms: () => false,
+  async read(edition, onDownload) {
+    const number = (name: string): number => Number(/(\d+)\.json$/.exec(name)?.[1] ?? 0);
+    const banks = zipFiles(await fetchBytes(krdictUrl(edition), onDownload))
+      .filter((f) => /^term_bank_\d+\.json$/.test(f.name))
+      .sort((a, b) => number(a.name) - number(b.name));
+    if (!banks.length) throw new Error('libregaku: dictionary contained no words');
+    const HAN = /\p{Script=Han}/u;
+    return (async function* (): AsyncGenerator<Batch> {
+      let n = 0;
+      for (const [at, bank] of banks.entries()) {
+        const rows = JSON.parse(new TextDecoder().decode(await bank.bytes())) as unknown;
+        if (!Array.isArray(rows)) continue;
+        const entries: Batch['entries'] = [];
+        for (const raw of rows as unknown[]) {
+          if (!Array.isArray(raw) || typeof raw[0] !== 'string') continue;
+          const word = raw[0];
+          // The same entry is filed again under its Chinese characters, which no Korean line is written in.
+          if (!word || HAN.test(word)) continue;
+          const label = typeof raw[2] === 'string' ? raw[2] : '';
+          const kind = label.replace(/⭐/g, '').trim();
+          const senses = krdictSenses(raw[5]);
+          if (!senses.length) continue;
+          entries.push({
+            entry: {
+              id: idOf(n++), word,
+              // Stars grade the words a learner meets first; any is common.
+              common: label.includes('⭐'),
+              ...(kind ? { kind: [kind] } : {}),
+              senses: senses.map((glosses) => ({ pos: kind ? [kind] : [], glosses })),
+            },
+            keys: [word],
+          });
+        }
+        yield { entries, percent: Math.round(((at + 1) / banks.length) * 100) };
+      }
+    })();
+  },
+};
+
+/* ── Cantonese: CC-CEDICT's words read in Cantonese, and CC-Canto's own ── */
+
+/**
+ * Pleco's Cantonese data, from cantonese.org (CC BY-SA 3.0): CC-Canto, the
+ * words of spoken Cantonese CC-CEDICT lacks — 佢哋, 咗, 冇 — with their
+ * Jyutping and meanings; and a Jyutping reading for each CC-CEDICT word, so
+ * the whole of CC-CEDICT reads in Cantonese. Both are pinned by their date
+ * in the file name, and neither has changed in years.
+ */
+export const CANTO_URLS = {
+  words: 'https://cantonese.org/cccanto-170202.zip',
+  readings: 'https://cantonese.org/cccedict-canto-readings-150923.zip',
+};
+
+/** A line of CC-Canto, or of the readings: 佢哋 渠哋 [qu2 di4] {keoi5 dei6} /they/ # a note. The meanings are not in the readings. */
+const CANTO_LINE = /^(\S+) (\S+) \[([^\]]*)\] \{([^}]*)\}(?: \/(.*)\/)?(?:\s*#.*)?\s*$/;
+
+interface CantoRow {
+  traditional: string;
+  simplified: string;
+  pinyin: string;
+  jyutping: string;
+  glosses: string[];
+}
+
+export function parseCanto(line: string): CantoRow | null {
+  const [, traditional, simplified, pinyin, jyutping, body] = CANTO_LINE.exec(line.replace(/\r$/, '')) ?? [];
+  if (!traditional || !simplified || pinyin === undefined || !jyutping) return null;
+  const glosses = (body ?? '').split('/').map((g) => g.trim()).filter(Boolean);
+  return { traditional, simplified, pinyin, jyutping: jyutping.trim(), glosses };
+}
+
+/**
+ * The everyday reading of characters spoken all the time, where the files
+ * list a rarer one first — the one a line would otherwise be read with: 嘅
+ * is ge3 far more often than koi3, 食 sik6 rather than ji6. Each was checked
+ * against the files' order; only these were wrong.
+ */
+const CANTO_USUAL: Record<string, string> = {
+  嘅: 'ge3', 噉: 'gam2', 會: 'wui5', 㗎: 'gaa3', 喎: 'wo3', 乜: 'mat1', 咪: 'mai6', 靚: 'leng3', 食: 'sik6', 畀: 'bei2',
+};
+
+/** Words of everyday speech the files lack altogether. */
+const CANTO_GAPS: Array<{ word: string; reading: string; glosses: string[] }> = [
+  { word: '喺', reading: 'hai2', glosses: ['at, in, on (a place)', 'to be at (a place)'] },
+  { word: '噃', reading: 'bo3', glosses: ['sentence-final particle: as a reminder, or advice'] },
+  { word: '乜', reading: 'mat1', glosses: ['what (乜嘢, what thing)'] },
+];
+
+/** Which CC-CEDICT line a reading is for: both spellings and the pinyin, its spaces and case aside. */
+const cantoKey = (traditional: string, simplified: string, pinyin: string): string =>
+  `${traditional}\t${simplified}\t${pinyin.replace(/\s+/g, '').toLowerCase()}`;
+
+/** The one text file in a zip, as text. */
+async function zippedText(url: string, onDownload?: (loaded: number, total: number) => void): Promise<string> {
+  const file = zipFiles(await fetchBytes(url, onDownload)).find((f) => /\.txt$/.test(f.name));
+  if (!file) throw new Error('libregaku: dictionary contained no words');
+  return new TextDecoder().decode(await file.bytes()).replace(/^\uFEFF/, '');
+}
+
+/**
+ * Cantonese: CC-Canto's words first, then CC-CEDICT's, every one with its
+ * reading in Jyutping, which is what is drawn above the words. A word read
+ * two ways — 佢, keoi5 and heoi5 — has its commonest first, as the files do.
+ */
+export const CANTO: Source = {
+  id: 'canto',
+  db: 'libregaku-dict-canto',
+  release: 'cccanto-170202+150923',
+  // Bumped when what is stored changes: the words added (CANTO_GAPS), how a reading is chosen.
+  format: 2,
+  readsLines: true,
+  rank: (entries: Entry[], key: string) => {
+    const rows = entries.filter((e) => e.word === key || e.alt === key);
+    // A character's everyday reading first, where the files lead with a rarer one.
+    const usual = CANTO_USUAL[key];
+    return usual ? [...rows.filter((e) => e.reading === usual), ...rows.filter((e) => e.reading !== usual)] : rows;
+  },
+  characters: (chars) => charactersFrom(CANTO, chars),
+  async read(_edition, onDownload) {
+    const [words, readings, cedict] = await Promise.all([
+      zippedText(CANTO_URLS.words, onDownload),
+      zippedText(CANTO_URLS.readings),
+      fetchBytes(CEDICT_URL).then(gunzipText),
+    ]);
+    const jyutping = new Map<string, string>();
+    /** Each character's commonest reading, for a word the readings do not have. */
+    const ofChar = new Map<string, string>();
+    for (const row of [...readings.split('\n'), ...words.split('\n')].map(parseCanto)) {
+      if (!row) continue;
+      const key = cantoKey(row.traditional, row.simplified, row.pinyin);
+      if (!jyutping.has(key)) jyutping.set(key, row.jyutping);
+      for (const char of [row.traditional, row.simplified]) {
+        if ([...char].length === 1 && !ofChar.has(char)) ofChar.set(char, row.jyutping);
+      }
+    }
+    /**
+     * A word newer than the readings (2015), read a character at a time: right
+     * for most, and for the rest a character read its usual way, which is what
+     * a learner would guess. Nothing where any character has no reading.
+     */
+    const spelt = (word: string): string | undefined => {
+      const each = [...word].map((c) => CANTO_USUAL[c] ?? ofChar.get(c));
+      return each.every(Boolean) ? each.join(' ') : undefined;
+    };
+    const own = words.split('\n');
+    const lines = cedict.split('\n');
+    if (own.length < 1000 || lines.length < 1000 || jyutping.size < 1000) throw new Error('libregaku: dictionary contained no words');
+    return (async function* (): AsyncGenerator<Batch> {
+      let n = 0;
+      const total = own.length + lines.length;
+      const entryOf = (row: CedictRow, reading: string | undefined): Batch['entries'][number] => {
+        const entry = cedictEntry(row, idOf(n++));
+        // Jyutping as the files write it, numbers and all, in place of CC-CEDICT's pinyin.
+        if (reading) entry.reading = reading;
+        else delete entry.reading;
+        return { entry, keys: cedictKeys(row) };
+      };
+      // What the files lack, then CC-Canto's own words: what is said in Cantonese leads what is written in Mandarin.
+      yield {
+        entries: CANTO_GAPS.map((gap) => ({
+          entry: { id: idOf(n++), word: gap.word, reading: gap.reading, common: true, senses: [{ pos: [], glosses: gap.glosses }] },
+          keys: [gap.word],
+        })),
+        percent: 0,
+      };
+      for (let i = 0; i < own.length; i += ROWS) {
+        const entries: Batch['entries'] = [];
+        for (const line of own.slice(i, i + ROWS)) {
+          const row = parseCanto(line);
+          if (row?.glosses.length) entries.push(entryOf(row, row.jyutping));
+        }
+        yield { entries, percent: Math.round((Math.min(i + ROWS, own.length) / total) * 100) };
+      }
+      for (let i = 0; i < lines.length; i += ROWS) {
+        const entries: Batch['entries'] = [];
+        for (const line of lines.slice(i, i + ROWS)) {
+          const row = parseLine(line);
+          if (row) {
+            const reading = jyutping.get(cantoKey(row.traditional, row.simplified, row.pinyin)) ?? spelt(row.traditional);
+            entries.push(entryOf(row, reading));
+          }
+        }
+        yield { entries, percent: Math.round(((own.length + Math.min(i + ROWS, lines.length)) / total) * 100) };
+      }
+    })();
+  },
+};
+
 export const SOURCES: Record<string, Source> = {
   [JMDICT.id]: JMDICT,
   [CEDICT.id]: CEDICT,
   'wty-ko-en': wty('ko', 'en'),
   'wty-es-en': wty('es', 'en'),
+  // In the learner's own language (settings.ts, OWN_DICTIONARIES).
+  'wty-ja-zh': wty('ja', 'zh'),
+  'wty-ja-ko': wty('ja', 'ko'),
+  'wty-es-fr': wty('es', 'fr'),
+  'wty-es-zh': wty('es', 'zh'),
+  'wty-es-pl': wty('es', 'pl'),
+  'wty-zh-ja': wty('zh', 'ja'),
+  'wty-zh-ko': wty('zh', 'ko'),
+  'cxdict-fr': cedictIn('cxdict-fr', CXDICT_URL, 'latest-fr'),
+  handedict: cedictIn('handedict', HANDEDICT_URL, 'master'),
+  [KRDICT.id]: KRDICT,
+  [CANTO.id]: CANTO,
 };

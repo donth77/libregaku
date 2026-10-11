@@ -223,6 +223,15 @@ export function languageLabel(code: string): string {
 }
 
 /**
+ * A language being learned, as a menu item: as Intl names it, but for one
+ * whose name covers another language that can be learned too. Intl calls
+ * Mandarin "Chinese", and Cantonese is Chinese as well.
+ */
+export function learningLabel(code: string): string {
+  return code === 'zh' ? ui.common.mandarin : languageLabel(code);
+}
+
+/**
  * The languages of a video's tracks, named for a sentence: each once, in the
  * order the reader's language sorts them, and past `most` a count of the
  * rest ("+24"). Netflix lists thirty-odd tracks, several to a language, and

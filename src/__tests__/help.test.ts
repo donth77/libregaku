@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { HELP_EN, helpFor } from '../help/content';
 import { inline, matches, renderHelp, terms } from '../help';
 
@@ -108,6 +108,45 @@ describe('the help', () => {
     expect(main.querySelector('#add-card .tip')?.textContent).toContain('Click Added within a few minutes');
     expect(main.querySelectorAll('#get-started .steps li')).toHaveLength(3);
     expect(matches(allTopics.find((t) => t.id === 'keys')!, terms('ESC'))).toBe(true);
+  });
+
+  // A span has no name to give, so aria-label="then" on the › was read as "›", or not at all.
+  it('says "then" for each › in a path, and shows the › alone', () => {
+    const path = inline('{Settings → Anki → Picture}', [], 'then')
+      .find((n) => (n as HTMLElement).className === 'path') as HTMLElement;
+    const seps = Array.from(path.querySelectorAll('.sep'));
+    expect(seps).toHaveLength(2);
+    for (const sep of seps) {
+      expect(sep.hasAttribute('aria-label')).toBe(false);
+      expect(sep.querySelector('[aria-hidden="true"]')?.textContent).toBe('›');
+      expect(sep.querySelector('.vh')?.textContent).toBe(' then ');
+    }
+    // In the help's own language.
+    const es = inline('{Ajustes → Anki}', [], 'luego').find((n) => (n as HTMLElement).className === 'path') as HTMLElement;
+    expect(es.querySelector('.sep .vh')?.textContent).toBe(' luego ');
+  });
+
+  it('marks the chapter being read as the current one, and no other', () => {
+    let report: (entries: Array<{ target: Element; isIntersecting: boolean }>) => void = () => {};
+    vi.stubGlobal('IntersectionObserver', class {
+      constructor(callback: typeof report) {
+        report = callback;
+      }
+      observe(): void {}
+      disconnect(): void {}
+    });
+    try {
+      const { main, toc } = page();
+      const chapters = Array.from(main.querySelectorAll('.chapter'));
+      const links = Array.from(toc.querySelectorAll('a'));
+      report([{ target: chapters[1]!, isIntersecting: true }]);
+      expect(links.map((a) => a.getAttribute('aria-current'))).toEqual(links.map((_, i) => (i === 1 ? 'true' : null)));
+      report([{ target: chapters[1]!, isIntersecting: false }, { target: chapters[2]!, isIntersecting: true }]);
+      expect(links[1]!.hasAttribute('aria-current')).toBe(false);
+      expect(links[2]!.getAttribute('aria-current')).toBe('true');
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('links a web address, in a new tab, shown without its https://', () => {

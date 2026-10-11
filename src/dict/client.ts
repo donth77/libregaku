@@ -50,15 +50,20 @@ function worded(res: { error?: string; reason?: string }): string | undefined {
 /**
  * Have the offscreen document load a dictionary, downloading it the first
  * time: `source` names it (settings.ts, DICTIONARIES), and `edition` says
- * which language its definitions are in, where it comes in several.
+ * which language its definitions are in, where it comes in several. `own` is
+ * a dictionary in the learner's own language (settings.ts, ownDictionaryOf),
+ * loaded after it and asked before it.
  */
-export async function ensureDictionary(edition: string, source = 'jmdict'): Promise<DictStatus> {
+export async function ensureDictionary(
+  edition: string, source = 'jmdict', own: { source: string; edition: string } | null = null,
+): Promise<DictStatus> {
   await chrome.runtime.sendMessage({ type: 'ensure-offscreen' });
   const res = (await chrome.runtime.sendMessage({
     target: 'offscreen',
     type: 'dict-load',
     source,
     edition,
+    own,
   })) as DictStatus | undefined;
   return (
     res ?? {

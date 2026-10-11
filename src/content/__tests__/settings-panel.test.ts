@@ -93,13 +93,25 @@ describe('settings panel selects', () => {
     const controls = Array.from(root.querySelectorAll<HTMLElement>('select, input'));
     expect(controls.length).toBeGreaterThan(10);
     for (const c of controls) {
-      expect(c.closest('label.set')?.querySelector('.name')?.textContent).toBeTruthy();
+      // Named by its row; the flag search, in a row that is not a label, by a name of its own.
+      expect(c.closest('label.set')?.querySelector('.name')?.textContent || c.getAttribute('aria-label')).toBeTruthy();
       const by = c.getAttribute('aria-describedby');
       if (by) expect(root.querySelector(`#${by}`)?.textContent).toBeTruthy();
     }
     for (const box of Array.from(root.querySelectorAll('input[type=checkbox]'))) {
       expect(box.getAttribute('role')).toBe('switch');
     }
+    // A row's control is named by its name alone: as the <label> around it,
+    // the hint was in the name, then read again as the description.
+    for (const c of controls.filter((x) => x.closest('label.set'))) {
+      const name = c.closest('label.set')!.querySelector('.name')!;
+      expect(name.id).toMatch(/^lg-name-\d+$/);
+      expect(c.getAttribute('aria-labelledby')).toBe(name.id);
+    }
+    // The flag button reads as its row's name and the flag it holds.
+    const flag = root.querySelector<HTMLButtonElement>('.flagbtn')!;
+    const names = (flag.getAttribute('aria-labelledby') ?? '').split(' ').map((id) => root.querySelector(`#${id}`)?.textContent);
+    expect(names).toEqual(['Badge flag', 'Japan']);
   });
 
   it('gives the Anki dropdowns the same row as every other setting, hidden until there is a deck to pick', () => {
@@ -292,6 +304,9 @@ describe('settings panel selects', () => {
     // Limited is a language with word boundaries and nothing more.
     const limited = TARGET_LANGUAGES.find((l) => l.tier === 0);
     expect(optionText(menu(root, 'target'), 'es')).toBe('Spanish');
+    // Mandarin by the name that tells it from Cantonese, which sits beside it.
+    expect(optionText(menu(root, 'target'), 'zh')).toBe('Chinese (Mandarin)');
+    expect(optionText(menu(root, 'target'), 'yue')).toBe('Cantonese');
     if (limited) expect(optionText(menu(root, 'target'), limited.code)).toBe(`${limited.label} — limited`);
     expect(optionText(menu(root, 'definitions'), 'hu')).toBe('Hungarian');
 
@@ -325,6 +340,31 @@ describe('settings panel selects', () => {
     const keys = Array.from(root.querySelectorAll('.keys dt')).map((dt) => dt.textContent);
     expect(keys).toEqual(['←→', '↓', '↑', 'A', 'K', 'R', 'H', 'B', 'S', 'Esc']);
     expect(root.querySelector('.keys dd')?.textContent).toBe('Previous or next line');
+  });
+
+  it('offers text up to twice its size', () => {
+    const sizes = Array.from(selectFor(buildSettings(() => {}), 'Text size').options).map((o) => o.value);
+    expect(sizes.slice(-3)).toEqual(['160', '180', '200']);
+  });
+
+  it('lets the letter keys be turned off alone, and the keys view says how to press them then', async () => {
+    const root = buildSettings(() => {});
+    const box = switchFor(root, 'Single-key shortcuts');
+    expect(box.checked).toBe(true);
+    expect(box.closest('#lg-subtitles')).not.toBeNull();
+    const pressed = (): string[] => Array.from(keysView().querySelectorAll('.keys dt'))
+      .map((dt) => Array.from(dt.querySelectorAll('kbd')).map((k) => k.textContent).join('+'));
+    expect(pressed()).toContain('A');
+    box.checked = false;
+    box.dispatchEvent(new Event('change'));
+    try {
+      expect(settings().singleKeys).toBe(false);
+      expect(pressed()).toEqual([
+        '←+→', '↓', '↑', 'Alt+Shift+A', 'Alt+Shift+K', 'Alt+Shift+R', 'Alt+Shift+H', 'Alt+Shift+B', 'Alt+Shift+S', 'Esc',
+      ]);
+    } finally {
+      await setSetting('singleKeys', true);
+    }
   });
 
   it('lists Shift among the keys only while cards open on it', async () => {
@@ -362,7 +402,7 @@ describe('settings panel selects', () => {
     expect(switchFor(root, 'Screenshot').checked).toBe(true);
   });
 
-  it('sends the transcript panel to the settings page for the Netflix permission, which it cannot ask for', async () => {
+  it('sends the transcript panel to the settings page for the tab-capture permission, which it cannot ask for', async () => {
     const sent: unknown[] = [];
     const runtime = (globalThis as unknown as { chrome: { runtime: Record<string, unknown> } }).chrome.runtime;
     runtime.sendMessage = async (msg: unknown) => { sent.push(msg); return { ok: true, granted: false }; };
@@ -663,70 +703,105 @@ describe('settings panel decks', () => {
   });
 });
 
-describe('the badge flag menu', () => {
-  const flagMenu = (root: HTMLElement): HTMLSelectElement => root.querySelector<HTMLSelectElement>('select[name=badgeFlag]')!;
-  /** The flags either side of the rule: where the language is spoken, then every other country. */
-  const groups = (menu: HTMLSelectElement): [HTMLOptionElement[], HTMLOptionElement[]] => {
-    const options = Array.from(menu.options);
-    const rule = options.findIndex((o) => o.disabled);
-    return [options.slice(1, rule), options.slice(rule + 1)];
+describe('the badge flag picker', () => {
+  const pickerOf = (root: HTMLElement): { button: HTMLButtonElement; find: HTMLInputElement; pop: HTMLElement } => {
+    const button = root.querySelector<HTMLButtonElement>('.flagbtn')!;
+    const pop = button.closest('.set')!.querySelector<HTMLElement>('.flagpop')!;
+    return { button, find: pop.querySelector<HTMLInputElement>('.flagfind')!, pop };
   };
-  const texts = (options: HTMLOptionElement[]): string[] => options.map((o) => o.textContent ?? '');
+  /** The flags offered, as their names, in each group: where it is spoken, then every other country. */
+  const offered = (pop: HTMLElement): string[][] =>
+    Array.from(pop.querySelectorAll('[role=group]')).map((g) =>
+      Array.from(g.querySelectorAll('[role=option]')).map((o) => o.getAttribute('aria-label') ?? ''));
+  const type = (find: HTMLInputElement, text: string): void => {
+    find.value = text;
+    find.dispatchEvent(new Event('input'));
+  };
+  const key = (find: HTMLInputElement, k: string): void => {
+    find.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
+  };
 
-  it('offers the language\'s own flag, then the countries where it is spoken, then every other by name', async () => {
+  it("shows the language's flag on a button, and opens a grid of flags with a search", async () => {
     await setSetting('target', 'es');
     try {
-      const menu = flagMenu(buildSettings(() => {}));
-      expect(menu.options[0]?.textContent).toBe('🇪🇸 Default');
-      expect(menu.value).toBe('');
-      const [spoken, others] = groups(menu);
-      expect(texts(spoken).slice(0, 4)).toEqual(['🇪🇸 Spain', '🇲🇽 Mexico', '🇦🇷 Argentina', '🇨🇴 Colombia']);
-      const names = texts(others).map((t) => t.replace(/^\S+ /, ''));
-      expect(names).toEqual([...names].sort(new Intl.Collator('en').compare));
-      expect(texts(others)).not.toContain('🇲🇽 Mexico');
+      const root = buildSettings(() => {});
+      document.body.appendChild(root);
+      const { button, find, pop } = pickerOf(root);
+      expect(button.textContent).toContain('🇪🇸');
+      expect(button.textContent).toContain('Spain');
+      expect(button.getAttribute('aria-expanded')).toBe('false');
+      expect(pop.hidden).toBe(true);
 
-      await setSetting('target', 'en');
-      const english = groups(flagMenu(buildSettings(() => {})))[0];
-      expect(texts(english).slice(0, 3)).toEqual(['🇺🇸 United States', '🇬🇧 United Kingdom', '🇨🇦 Canada']);
+      button.click();
+      expect(pop.hidden).toBe(false);
+      expect(button.getAttribute('aria-expanded')).toBe('true');
+      expect(document.activeElement === find || root.contains(document.activeElement)).toBe(true);
+      expect(find.getAttribute('role')).toBe('combobox');
+      const [spoken, others] = offered(pop);
+      // Spain once: it is the default, not offered again beside a Default.
+      expect(spoken!.slice(0, 4)).toEqual(['Spain', 'Mexico', 'Argentina', 'Colombia']);
+      expect([...spoken!, ...others!].filter((n) => n === 'Spain')).toHaveLength(1);
+      expect(others).toEqual([...others!].sort(new Intl.Collator('en').compare));
+      expect(spoken!.length + others!.length).toBe(249);
+      root.remove();
     } finally {
       await setSetting('target', 'ja');
     }
   });
 
-  it('offers only country flags, each country once, named beside its flag', () => {
-    const [spoken, others] = groups(flagMenu(buildSettings(() => {})));
-    const flags = [...spoken, ...others];
-    expect(flags).toHaveLength(249);
-    expect(new Set(flags.map((o) => o.value)).size).toBe(flags.length);
-    for (const o of flags) {
-      expect(o.value).toMatch(/^\p{Regional_Indicator}{2}$/u);
-      expect(o.textContent?.startsWith(`${o.value} `)).toBe(true);
-      expect(o.textContent!.length).toBeGreaterThan(o.value.length + 1);
-    }
+  it('narrows the flags as you type, by name or code, and says when nothing matches', () => {
+    const root = buildSettings(() => {});
+    const { button, find, pop } = pickerOf(root);
+    button.click();
+    type(find, 'peru');
+    expect(offered(pop).flat()).toEqual(['Peru']);
+    type(find, 'gb');
+    expect(offered(pop).flat()).toEqual(['United Kingdom']);
+    type(find, 'atlantis');
+    expect(offered(pop).flat()).toEqual([]);
+    expect(pop.querySelector('.flagnone')?.textContent).toBe('No country matches “atlantis”.');
   });
 
-  it('keeps a flag for each language, and shows the one for the language being learned', async () => {
+  it('picks with the keys, keeps a flag for each language, and the own flag is the default', async () => {
     await setSetting('target', 'es');
     try {
       const root = buildSettings(() => {});
-      const menu = flagMenu(root);
-      choose(menu, '🇲🇽');
+      const { button, find, pop } = pickerOf(root);
+      button.click();
+      type(find, 'mex');
+      // The first match is the one the keys are on, and the box says so.
+      const first = pop.querySelector<HTMLElement>('[role=option][aria-selected=true]')!;
+      expect(first.getAttribute('aria-label')).toBe('Mexico');
+      expect(find.getAttribute('aria-activedescendant')).toBe(first.id);
+      key(find, 'Enter');
+      await flush();
       expect(settings().badgeFlag).toEqual({ es: '🇲🇽' });
+      expect(pop.hidden).toBe(true);
+      expect(button.textContent).toContain('Mexico');
 
-      // Japanese, chosen on this page, has none of its own: the default, and Japan first.
+      // Japanese, chosen on this page, has none of its own: Japan, its default.
       const learning = selectFor(root, "I'm learning");
       learning.value = 'ja';
       learning.dispatchEvent(new Event('change', { bubbles: true }));
-      expect(menu.value).toBe('');
-      expect(texts(Array.from(menu.options)).slice(0, 2)).toEqual(['🇯🇵 Default', '🇯🇵 Japan']);
+      expect(button.textContent).toContain('Japan');
 
       // Spanish again, chosen somewhere else and brought in step here: its flag is still there.
       await setSetting('target', 'es');
       syncSettingsControls(root);
-      expect(menu.value).toBe('🇲🇽');
+      expect(button.textContent).toContain('Mexico');
 
-      // The default keeps nothing.
-      choose(menu, '');
+      // Spain is the default, which keeps nothing.
+      button.click();
+      type(find, 'spain');
+      key(find, 'Enter');
+      await flush();
+      expect(settings().badgeFlag).toEqual({});
+
+      // Escape closes without picking.
+      button.click();
+      key(find, 'ArrowRight');
+      key(find, 'Escape');
+      expect(pop.hidden).toBe(true);
       expect(settings().badgeFlag).toEqual({});
     } finally {
       await setSetting('badgeFlag', {});
@@ -734,22 +809,40 @@ describe('the badge flag menu', () => {
     }
   });
 
+  it('gives Arabic, whose own flag is no country\'s, a Default first', async () => {
+    await setSetting('target', 'ar');
+    try {
+      const root = buildSettings(() => {});
+      const { button, pop } = pickerOf(root);
+      expect(button.textContent).toContain('Default');
+      button.click();
+      expect(offered(pop)[0]!.slice(0, 3)).toEqual(['Default', 'Saudi Arabia', 'Egypt']);
+    } finally {
+      await setSetting('target', 'ja');
+    }
+  });
+
   it('names the countries in the interface language', () => {
     setUiLanguage('es');
     try {
-      const menu = flagMenu(buildSettings(() => {}));
-      expect(texts(Array.from(menu.options)).slice(0, 2)).toEqual(['🇯🇵 Predeterminada', '🇯🇵 Japón']);
+      const root = buildSettings(() => {});
+      const { button, pop } = pickerOf(root);
+      expect(button.textContent).toContain('Japón');
+      button.click();
+      expect(offered(pop)[0]![0]).toBe('Japón');
     } finally {
       setUiLanguage('en');
     }
   });
 
-  it('keeps offering a flag typed in before there was a menu, rather than changing it unasked', async () => {
+  it('keeps offering a flag typed in before there was a picker, rather than changing it unasked', async () => {
     await setSetting('badgeFlag', { ja: '🇪🇺' });
     try {
-      const menu = flagMenu(buildSettings(() => {}));
-      expect(menu.value).toBe('🇪🇺');
-      expect(menu.options[1]?.textContent).toBe('🇪🇺');
+      const root = buildSettings(() => {});
+      const { button, pop } = pickerOf(root);
+      expect(button.textContent).toContain('🇪🇺');
+      button.click();
+      expect(offered(pop)[0]![0]).toBe('🇪🇺');
     } finally {
       await setSetting('badgeFlag', {});
     }

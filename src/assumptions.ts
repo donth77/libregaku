@@ -154,8 +154,29 @@ export const ASSUMPTIONS: Assumption[] = [
   {
     id: 'dict.wty-release',
     site: 'external',
-    claim: 'The pinned commit of the wiktionary-to-yomitan files on Hugging Face (src/dict/sources.ts) still serves wty-<language>-en.zip, every redirect hop is a host in host_permissions, and a term bank is rows of [term, reading, tags, rules, score, definitions, …] with an inflected form tagged non-lemma and pointing at its word; a word\'s meanings are the list items of the node marked glosses, their labels sit in a div marked tags, and another spelling of a word is filed under the word, marked alt-of',
+    claim: 'The pinned dated release of the wiktionary-to-yomitan files on Hugging Face (src/dict/sources.ts) still serves wty-<language>-<language>.zip, every redirect hop is a host in host_permissions, and a term bank is rows of [term, reading, tags, rules, score, definitions, …] with an inflected form tagged non-lemma and pointing at its word; a word\'s meanings are the list items of the node marked glosses, their labels sit in a div marked tags, and another spelling of a word is filed under the word, marked alt-of',
     breaks: 'The Korean or Spanish dictionary never downloads: no definitions, and Spanish words are never traced to their dictionary forms, so none matches its card',
+    fallback: null,
+  },
+  {
+    id: 'dict.krdict',
+    site: 'external',
+    claim: 'Lyroxide\'s Yomitan files of krdict, the National Institute of Korean Language\'s dictionary for learners, are still a GitHub release (1.0.0) of KO-<LANG>.KRDICT.No.Examples.zip, and a row is [word, reading, kind ⭐…, rules, score, definitions], each sense a bold "1. " and its word, then a line that explains it',
+    breaks: 'Korean words are explained in English (Wiktionary) instead of the learner\'s own language',
+    fallback: 'Wiktionary in English',
+  },
+  {
+    id: 'dict.own-cedict',
+    site: 'external',
+    claim: 'CxDICT\'s French file (GitHub release latest-fr) and HanDeDict (gugray/HanDeDict on GitHub) are still CC-CEDICT\'s line format at their URLs',
+    breaks: 'Chinese words are explained in English (CC-CEDICT) instead of French or German',
+    fallback: 'CC-CEDICT in English',
+  },
+  {
+    id: 'dict.canto',
+    site: 'external',
+    claim: 'cantonese.org still serves cccanto-170202.zip and cccedict-canto-readings-150923.zip, each one text file of CC-CEDICT lines with the Jyutping in braces: 佢哋 渠哋 [qu2 di4] {keoi5 dei6} /they/',
+    breaks: 'The Cantonese dictionary never downloads: no definitions, and no Jyutping above the words',
     fallback: null,
   },
   {

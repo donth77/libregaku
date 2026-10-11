@@ -26,6 +26,8 @@ export const vi: Translation = {
   common: {
     furigana: (mode: Settings['ruby']): string => `Furigana: ${RUBY[mode]}`,
     pinyin: (mode: Settings['ruby']): string => `Pinyin: ${RUBY[mode]}`,
+    mandarin: 'Tiếng Trung (Quan thoại)',
+    jyutping: (mode: Settings['ruby']): string => `Jyutping: ${RUBY[mode]}`,
     sentenceGap: ' ',
   },
 
@@ -37,6 +39,7 @@ export const vi: Translation = {
     targetLimited: (language: string): string => `${language} (hạn chế)`,
     supportFull: 'Hỗ trợ đầy đủ, gồm cả cách đọc và furigana.',
     supportPinyin: 'Hỗ trợ đầy đủ, gồm cả pinyin. Nghĩa được viết bằng tiếng Anh.',
+    supportJyutping: 'Hỗ trợ đầy đủ, gồm cả Jyutping. Nghĩa được viết bằng tiếng Anh.',
     supportWords: 'Hỗ trợ đầy đủ. Nghĩa được viết bằng tiếng Anh.',
     script: 'Chữ viết',
     scriptHint: 'Được dùng khi video có cả hai.',
@@ -89,6 +92,8 @@ export const vi: Translation = {
     rubyHint: 'Cách đọc phía trên chữ kanji. Nhấn R để chuyển khi đang xem.',
     pinyin: 'Pinyin',
     pinyinHint: 'Cách đọc phía trên chữ Hán. Nhấn R để chuyển khi đang xem.',
+    jyutping: 'Jyutping',
+    jyutpingHint: 'Cách đọc phía trên chữ Hán. Nhấn R để chuyển khi đang xem.',
     blurPrimary: 'Làm mờ phụ đề',
     blurPrimaryHint: 'Để luyện nghe: phụ đề bị làm mờ cho đến khi bạn trỏ vào. Nhấn H để chuyển.',
     subtitleSize: 'Cỡ chữ',
@@ -106,6 +111,10 @@ export const vi: Translation = {
     dualSubtitlesHint:
       'Hiện phụ đề bằng ngôn ngữ của bạn bên dưới phụ đề của ngôn ngữ bạn đang học. Phụ đề này lấy từ trang web, ' +
       'không phải dịch máy, và cần có bản chép lời đầy đủ của video.',
+    singleKeys: 'Phím tắt một phím',
+    singleKeysHint:
+      'Các phím chữ cái như A và R tự hoạt động khi đang xem. Khi tắt: giữ Alt và Shift cùng với chúng. ' +
+      'Các phím mũi tên vẫn hoạt động dù bật hay tắt.',
 
     // Gạch dưới
     underlinesHeading: 'Gạch dưới',
@@ -137,6 +146,11 @@ export const vi: Translation = {
     languageBadgeCode: 'Mã',
     badgeFlag: 'Cờ trên huy hiệu',
     badgeFlagDefault: 'Mặc định',
+    flagSearch: 'Tìm kiếm…',
+    flagSearchLabel: 'Tìm quốc gia',
+    flagSuggested: 'Đề xuất',
+    flagAll: 'Tất cả quốc gia',
+    flagNone: (query: string): string => `Không có quốc gia nào khớp với “${query}”.`,
     badgeFlagHint: 'Lá cờ hiển thị cho ngôn ngữ bạn đang học. Mỗi ngôn ngữ giữ lá cờ riêng.',
     languageBadgeHint: 'Cách thanh tiêu đề hiện ngôn ngữ bạn đang học.',
     sidebarStats: 'Đếm từ mới',
@@ -229,7 +243,17 @@ export const vi: Translation = {
       'có điều khoản riêng.',
     creditCedict: 'Từ điển tiếng Trung © MDBG và những người đóng góp, dùng theo giấy phép CC BY-SA 4.0.',
     creditWiktionary:
-      'Từ điển tiếng Hàn và tiếng Tây Ban Nha, lấy từ Wiktionary qua kaikki.org và wiktionary-to-yomitan. CC BY-SA 4.0.',
+      'Từ điển tiếng Hàn và tiếng Tây Ban Nha, cùng một số từ điển bằng ngôn ngữ của bạn, lấy từ Wiktionary qua ' +
+      'kaikki.org và wiktionary-to-yomitan. CC BY-SA 4.0.',
+    creditKrdict:
+      'Từ tiếng Hàn được giải thích bằng ngôn ngữ của bạn. © National Institute of Korean Language, dùng theo giấy phép ' +
+      'CC BY-SA 2.0 KR. Các tệp do Lyroxide tạo.',
+    creditCfdict:
+      'Tiếng Trung được giải thích bằng tiếng Pháp. CFDICT © chine.in, được CxDICT cập nhật thường xuyên. CC BY-SA 4.0.',
+    creditCanto:
+      'Từ điển tiếng Quảng Đông và cách đọc Jyutping cho CC-CEDICT. © Pleco Inc., dùng theo giấy phép CC BY-SA 3.0.',
+    creditHandedict:
+      'Tiếng Trung được giải thích bằng tiếng Đức. © HanDeDict và những người đóng góp, dùng theo giấy phép CC BY-SA 3.0.',
     creditUnihan: 'Cách đọc nào của chữ Hán được hiện trước. © Unicode, Inc., dùng theo Unicode License.',
     creditJotoba: 'Dùng để tra từ trong lúc từ điển đang tải. Cả hai đều dùng JMdict.',
     creditLucide: 'Biểu tượng. Giấy phép ISC.',
@@ -247,6 +271,7 @@ export const vi: Translation = {
     keyKnown: 'Đánh dấu từ trong cửa sổ tra từ là đã biết',
     keyFurigana: 'Chuyển furigana: tắt, từ mới, tất cả',
     keyPinyin: 'Chuyển pinyin: tắt, từ mới, tất cả',
+    keyJyutping: 'Chuyển Jyutping: tắt, từ mới, tất cả',
     keyBlur: 'Làm mờ hoặc bỏ làm mờ phụ đề',
     keySave: 'Lưu dòng hiện tại',
     keyTranscript: 'Hiện hoặc ẩn bảng chép lời',
@@ -270,6 +295,7 @@ export const vi: Translation = {
     nextSteps:
       'Sau đó, mở một video có phụ đề bằng ngôn ngữ bạn đang học và di chuột qua một từ. ' +
       'Nút bàn phím trong bảng chép lời liệt kê các phím tắt.',
+    stepDone: 'Đã xong',
     confirmLanguages: 'Xác nhận ngôn ngữ',
     keepDeck: (deck: string): string => `Dùng ${deck} cho thẻ mới`,
   },
@@ -308,15 +334,17 @@ export const vi: Translation = {
   },
 
   sidebar: {
+    panelLabel: 'Bảng chép lời',
+    resizeLabel: 'Đổi kích thước bảng',
+
     // Các tab, và các nút bên cạnh
     tabsLabel: 'Danh sách',
     transcriptTab: 'Bản chép lời',
     savedTab: 'Đã lưu',
-    wordsTab: 'Từ',
     settings: 'Cài đặt',
     shortcuts: 'Phím tắt',
     close: 'Đóng',
-    closeLabel: 'Thu gọn bảng',
+    closeLabel: 'Đóng bảng',
     openTip: 'Bản chép lời',
     openLabel: 'Hiện bản chép lời',
     help: 'Trợ giúp',
@@ -346,6 +374,7 @@ export const vi: Translation = {
     empty: 'Chưa tải bản chép lời.',
     currentLine: 'Dòng hiện tại',
     lineNew: (n: number): string => `${n} mới`,
+    playFrom: (time: string): string => `Phát từ ${time}`,
     saveLine: 'Lưu dòng',
     unsave: 'Bỏ lưu',
     addSentence: 'Thêm câu',
@@ -369,6 +398,7 @@ export const vi: Translation = {
       'Chưa lưu gì. Dùng dấu trang trên bất kỳ dòng nào của bản chép lời — hoặc nhấn B — để giữ lại câu bạn muốn ' +
       'xem lại.',
     thisVideo: 'video này',
+    openAt: (time: string): string => `Mở video tại ${time}`,
     remove: 'Xóa',
     removeLabel: 'Xóa khỏi mục đã lưu',
     copySavedAbout: 'Sao chép mọi dòng đã lưu dưới dạng văn bản phân cách bằng tab',
@@ -393,18 +423,20 @@ export const vi: Translation = {
     downloadBlocked: 'Trang này đã chặn tải xuống — hãy dùng “Sao chép”.',
 
     // Từ
-    listsLabel: 'Nhóm từ',
+    listsLabel: 'Chọn danh sách',
+    listLines: 'Dòng',
     listTracked: 'Đang theo dõi',
     listKnown: 'Đã biết',
     listIgnored: 'Đã bỏ qua',
-    findPlaceholder: 'Tìm từ',
-    findLabel: 'Tìm từ trong danh sách này',
+    findPlaceholder: 'Tìm kiếm…',
+    findLabel: 'Tìm trong danh sách này',
     copyWordsAbout: 'Sao chép danh sách này dưới dạng văn bản phân cách bằng tab',
     exportWordsAbout: 'Lưu danh sách này thành tệp phân cách bằng tab mà Anki có thể nhập',
     wordsCopied: (n: number): string => `Đã sao chép ${n} từ.`,
-    nothingToExport: 'Danh sách này không có từ nào để xuất.',
+    nothingToExport: 'Danh sách này không có gì để xuất.',
     lookingUp: 'Đang tra cách đọc và nghĩa…',
     noWordMatches: (query: string): string => `Không có từ nào trong danh sách này khớp với “${query}”.`,
+    noLineMatches: (query: string): string => `Không có dòng đã lưu nào khớp với “${query}”.`,
     wordsMatching: (shown: number, total: number): string => `${shown} trên ${total} từ.`,
     trackedEmpty:
       'Chưa theo dõi từ nào. “Theo dõi” sẽ gạch dưới một từ để bạn để ý, mà không tạo thẻ. ' +
@@ -495,6 +527,7 @@ export const vi: Translation = {
     adding: 'Đang thêm…',
     undoing: 'Đang hoàn tác…',
     added: 'Đã thêm',
+    addedUndo: 'Đã thêm — hoàn tác',
     inAnki: 'Có trong Anki',
     showInAnki: 'Xem trong Anki',
     waiting: 'Đang chờ',
@@ -534,12 +567,12 @@ export const vi: Translation = {
     unblurSubtitle: 'Bỏ làm mờ phụ đề',
     showTranslation: 'Hiện bản dịch',
     hideTranslation: 'Ẩn bản dịch',
+    translation: 'Bản dịch',
     transcript: 'Bản chép lời',
     pinHeader: 'Ghim thanh tiêu đề',
     unpinHeader: 'Bỏ ghim thanh tiêu đề',
     settings: 'Cài đặt',
     showHeader: 'Hiện thanh tiêu đề',
-    showHeaderLabel: 'Hiện thanh tiêu đề',
   },
 
   player: {
@@ -565,7 +598,7 @@ export const vi: Translation = {
         known: 'đã đánh dấu đã biết', tracking: 'đã theo dõi', ignored: 'đã bỏ qua', unknown: 'đã đánh dấu là từ mới',
       }[status];
       if (refused) return `${word} · ${done}, không tạo thẻ — Anki đã từ chối; sẽ thử lại sau`;
-      return `${word} · ${done}, không tạo thẻ${status === 'tracking' ? '. Xem trong tab “Từ” của bảng' : ''}`;
+      return `${word} · ${done}, không tạo thẻ${status === 'tracking' ? '. Xem trong tab “Đã lưu” của bảng' : ''}`;
     },
 
     // Thẻ của một từ

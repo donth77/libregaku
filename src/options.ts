@@ -65,6 +65,30 @@ export function readingIndex(tops: readonly number[], viewport: number, atEnd: b
   return at;
 }
 
+/**
+ * A step of "Get started", done or still to do. Done shows as a tick and a
+ * line through its words, neither of which a screen reader says, so "Done"
+ * is said ahead of it, in words kept off screen.
+ */
+function drawStep(li: HTMLElement, done: boolean, n: string): void {
+  li.classList.toggle('done', done);
+  const tick = li.querySelector<HTMLElement>('.tick');
+  if (tick) tick.textContent = done ? '✓' : n;
+  let said = li.querySelector<HTMLElement>('.said');
+  if (!said) {
+    said = document.createElement('span');
+    said.className = 'said';
+    // Off screen as a visually hidden class keeps it; options.css has none to give.
+    Object.assign(said.style, {
+      position: 'absolute', width: '1px', height: '1px', margin: '-1px', padding: '0', border: '0',
+      overflow: 'hidden', clipPath: 'inset(50%)', whiteSpace: 'nowrap',
+    });
+    if (tick) tick.after(said);
+    else li.prepend(said);
+  }
+  said.textContent = done ? ui.options.stepDone : '';
+}
+
 /** A section arrived at says so: it may be one the page could barely move to. */
 function land(section: HTMLElement): void {
   section.classList.remove('landed');
@@ -308,10 +332,8 @@ async function main(): Promise<void> {
     const cur = settings();
     const langDone = Boolean(cur.configured);
     const ankiDone = deckStepDone(chosen);
-    stepLang.classList.toggle('done', langDone);
-    stepAnki.classList.toggle('done', ankiDone);
-    (stepLang.querySelector('.tick') as HTMLElement).textContent = langDone ? '✓' : '1';
-    (stepAnki.querySelector('.tick') as HTMLElement).textContent = ankiDone ? '✓' : '2';
+    drawStep(stepLang, langDone, '1');
+    drawStep(stepAnki, ankiDone, '2');
     confirm.hidden = langDone;
     // The deck to keep: the one set, or the language's own until one is.
     confirmDeck.hidden = ankiDone;

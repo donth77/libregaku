@@ -49,6 +49,8 @@ export const ru: Translation = {
   common: {
     furigana: (mode: Settings['ruby']): string => `Фуригана: ${RUBY[mode]}`,
     pinyin: (mode: Settings['ruby']): string => `Пиньинь: ${RUBY[mode]}`,
+    mandarin: 'Китайский (путунхуа)',
+    jyutping: (mode: Settings['ruby']): string => `Jyutping: ${RUBY[mode]}`,
     sentenceGap: ' ',
   },
 
@@ -60,6 +62,7 @@ export const ru: Translation = {
     targetLimited: (language: string): string => `${language} — ограниченно`,
     supportFull: 'Полная поддержка, включая чтения и фуригану.',
     supportPinyin: 'Полная поддержка, включая пиньинь. Определения на английском.',
+    supportJyutping: 'Полная поддержка, включая Jyutping. Определения на английском.',
     supportWords: 'Полная поддержка. Определения на английском.',
     script: 'Письменность',
     scriptHint: 'Используется, когда в видео есть обе.',
@@ -113,6 +116,8 @@ export const ru: Translation = {
     rubyHint: 'Чтения над кандзи. Нажмите R, чтобы переключать во время просмотра.',
     pinyin: 'Пиньинь',
     pinyinHint: 'Чтения над иероглифами. Нажмите R, чтобы переключать во время просмотра.',
+    jyutping: 'Jyutping',
+    jyutpingHint: 'Чтения над иероглифами. Нажмите R, чтобы переключать во время просмотра.',
     blurPrimary: 'Размывать субтитры',
     blurPrimaryHint:
       'Для тренировки восприятия на слух: субтитры размыты, пока вы не наведёте на них указатель. Нажмите H, чтобы переключить.',
@@ -131,6 +136,10 @@ export const ru: Translation = {
     dualSubtitlesHint:
       'Показывает субтитры на вашем языке под субтитрами на изучаемом. Они берутся с сайта, а не из машинного ' +
       'перевода, и для них нужна полная расшифровка видео.',
+    singleKeys: 'Быстрые клавиши без Alt и Shift',
+    singleKeysHint:
+      'Буквенные клавиши, например A и R, работают сами по себе во время просмотра. ' +
+      'Если выключено, удерживайте с ними Alt и Shift. Клавиши со стрелками работают в любом случае.',
 
     // Подчёркивание
     underlinesHeading: 'Подчёркивание',
@@ -162,6 +171,11 @@ export const ru: Translation = {
     languageBadgeCode: 'Код',
     badgeFlag: 'Флаг на значке',
     badgeFlagDefault: 'По умолчанию',
+    flagSearch: 'Поиск…',
+    flagSearchLabel: 'Поиск страны',
+    flagSuggested: 'Рекомендуемые',
+    flagAll: 'Все страны',
+    flagNone: (query: string): string => `Нет стран по запросу «${query}».`,
     badgeFlagHint: 'Флаг, который показывается для изучаемого языка. Для каждого языка сохраняется свой.',
     languageBadgeHint: 'Как верхняя панель показывает изучаемый язык.',
     sidebarStats: 'Считать новые слова',
@@ -256,7 +270,16 @@ export const ru: Translation = {
       'Делит японский, корейский и китайский текст на слова. Лицензия MIT; у IPADIC, mecab-ko-dic и CC-CEDICT ' +
       'свои условия.',
     creditCedict: 'Китайский словарь © MDBG и участники проекта, по лицензии CC BY-SA 4.0.',
-    creditWiktionary: 'Корейский и испанский словари из Wiktionary через kaikki.org и wiktionary-to-yomitan. CC BY-SA 4.0.',
+    creditWiktionary:
+      'Корейский и испанский словари, а также некоторые на вашем языке, из Wiktionary через kaikki.org и ' +
+      'wiktionary-to-yomitan. CC BY-SA 4.0.',
+    creditKrdict:
+      'Корейские слова с объяснениями на вашем языке. © National Institute of Korean Language, по лицензии ' +
+      'CC BY-SA 2.0 KR. Автор файлов — Lyroxide.',
+    creditCfdict:
+      'Китайский с объяснениями на французском. CFDICT © chine.in, обновляется проектом CxDICT. CC BY-SA 4.0.',
+    creditCanto: 'Кантонский словарь и чтения Jyutping для CC-CEDICT. © Pleco Inc., по лицензии CC BY-SA 3.0.',
+    creditHandedict: 'Китайский с объяснениями на немецком. © HanDeDict и участники проекта, по лицензии CC BY-SA 3.0.',
     creditUnihan: 'Какое чтение китайского иероглифа показывать первым. © Unicode, Inc., по лицензии Unicode License.',
     creditJotoba: 'Используются для поиска, пока загружается словарь. Оба основаны на JMdict.',
     creditLucide: 'Значки. Лицензия ISC.',
@@ -274,6 +297,7 @@ export const ru: Translation = {
     keyKnown: 'Отметить слово из всплывающего окна как известное',
     keyFurigana: 'Переключить фуригану: выкл., новые слова, все',
     keyPinyin: 'Переключить пиньинь: выкл., новые слова, все',
+    keyJyutping: 'Переключить Jyutping: выкл., новые слова, все',
     keyBlur: 'Размыть субтитры или убрать размытие',
     keySave: 'Сохранить текущую строку',
     keyTranscript: 'Показать или скрыть панель расшифровки',
@@ -297,6 +321,7 @@ export const ru: Translation = {
     nextSteps:
       'Затем откройте видео с субтитрами на изучаемом языке и наведите указатель на слово. ' +
       'Кнопка с клавиатурой на панели расшифровки покажет быстрые клавиши.',
+    stepDone: 'Выполнено',
     confirmLanguages: 'Языки выбраны верно',
     keepDeck: (deck: string): string => `Использовать ${deck} для новых карточек`,
   },
@@ -335,15 +360,17 @@ export const ru: Translation = {
   },
 
   sidebar: {
+    panelLabel: 'Панель расшифровки',
+    resizeLabel: 'Изменить размер панели',
+
     // Вкладки и кнопки рядом с ними
     tabsLabel: 'Списки',
     transcriptTab: 'Расшифровка',
     savedTab: 'Сохранённые',
-    wordsTab: 'Слова',
     settings: 'Настройки',
     shortcuts: 'Быстрые клавиши',
     close: 'Закрыть',
-    closeLabel: 'Свернуть панель',
+    closeLabel: 'Закрыть панель',
     openTip: 'Расшифровка',
     openLabel: 'Показать расшифровку',
     help: 'Справка',
@@ -373,6 +400,7 @@ export const ru: Translation = {
     empty: 'Расшифровка не загружена.',
     currentLine: 'Текущая строка',
     lineNew: (n: number): string => `${n} ${form(n, 'новое', 'новых', 'новых')}`,
+    playFrom: (time: string): string => `Воспроизвести с ${time}`,
     saveLine: 'Сохранить строку',
     unsave: 'Убрать из сохранённых',
     addSentence: 'Добавить предложение',
@@ -396,6 +424,7 @@ export const ru: Translation = {
       'Пока ничего не сохранено. Нажмите на закладку у любой строки расшифровки или клавишу B, чтобы сохранить ' +
       'предложение, к которому хотите вернуться.',
     thisVideo: 'это видео',
+    openAt: (time: string): string => `Открыть видео на ${time}`,
     remove: 'Убрать',
     removeLabel: 'Убрать из сохранённых',
     copySavedAbout: 'Скопировать все сохранённые строки как текст с разделителями-табуляциями',
@@ -422,18 +451,20 @@ export const ru: Translation = {
     downloadBlocked: 'Страница заблокировала скачивание — используйте «Копировать».',
 
     // Слова
-    listsLabel: 'Какие слова',
+    listsLabel: 'Какой список',
+    listLines: 'Строки',
     listTracked: 'Отслеживаемые',
     listKnown: 'Известные',
     listIgnored: 'Игнорируемые',
-    findPlaceholder: 'Найти слово',
-    findLabel: 'Найти слово в этом списке',
+    findPlaceholder: 'Поиск…',
+    findLabel: 'Поиск по этому списку',
     copyWordsAbout: 'Скопировать список как текст с разделителями-табуляциями',
     exportWordsAbout: 'Сохранить список в файл с разделителями-табуляциями, который можно импортировать в Anki',
     wordsCopied: (n: number): string => `Скопировано ${words(n)}.`,
-    nothingToExport: 'В этом списке нет слов для экспорта.',
+    nothingToExport: 'В этом списке нечего экспортировать.',
     lookingUp: 'Ищем чтения и значения…',
     noWordMatches: (query: string): string => `В этом списке нет слов по запросу «${query}».`,
+    noLineMatches: (query: string): string => `Нет сохранённых строк по запросу «${query}».`,
     wordsMatching: (shown: number, total: number): string =>
       `${shown} из ${total} ${form(total, 'слова', 'слов', 'слов')}.`,
     trackedEmpty:
@@ -532,6 +563,7 @@ export const ru: Translation = {
     adding: 'Добавление…',
     undoing: 'Отмена…',
     added: 'Добавлено',
+    addedUndo: 'Добавлено — отменить',
     inAnki: 'В Anki',
     showInAnki: 'Показать в Anki',
     waiting: 'Ожидание',
@@ -571,12 +603,12 @@ export const ru: Translation = {
     unblurSubtitle: 'Убрать размытие',
     showTranslation: 'Показать перевод',
     hideTranslation: 'Скрыть перевод',
+    translation: 'Перевод',
     transcript: 'Расшифровка',
     pinHeader: 'Закрепить панель',
     unpinHeader: 'Открепить панель',
     settings: 'Настройки',
     showHeader: 'Показать панель',
-    showHeaderLabel: 'Показать верхнюю панель',
   },
 
   player: {
@@ -602,7 +634,7 @@ export const ru: Translation = {
         known: 'отмечено как известное', tracking: 'отслеживается', ignored: 'игнорируется', unknown: 'отмечено как новое',
       }[status];
       if (refused) return `${word} · ${done}, без карточки — Anki отклонил отметку, повторим попытку позже`;
-      return `${word} · ${done}, без карточки${status === 'tracking' ? '. Смотрите вкладку «Слова» на панели' : ''}`;
+      return `${word} · ${done}, без карточки${status === 'tracking' ? '. Смотрите вкладку «Сохранённые» на панели' : ''}`;
     },
 
     // Карточка слова

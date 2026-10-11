@@ -14,6 +14,7 @@ import { applyVars, onSettingsChange, setSetting, settings, underlineVars, type 
 import { markPhrase, phraseAt, phraseToken, selectWhole, selectedWords, textFrom } from './phrase';
 import { rubyOf } from '../morphology/ruby';
 import { PANEL_STYLE, buildSettings, keysView, syncSettingsControls } from './settings-panel';
+import { letterKey } from './keys';
 import { partsOfSpeech, popupIsOpen } from './popup';
 import type { Transcript, Line } from './transcript';
 import { TokenCache, countWords, estimateRowHeight, nextFrame, now, whenIdle, type Count } from './transcript-work';
@@ -44,6 +45,10 @@ const HOVER_DELAY = 180;
 const HOVER_WIDTH = 298;
 /** Keys that scroll a list from the keyboard. */
 const NAV_KEYS = new Set(['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ']);
+/** Keys that move within the tabs, the resize grip, and the transcript's lines and words. */
+const MOVE_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End']);
+/** How far ← or → moves the resize grip, in px. */
+const WIDTH_STEP = 20;
 
 /*
  * The list's budget. A film is 1,500–5,000 lines; the panel shows six or so.
@@ -87,13 +92,23 @@ const filterText = (key: Filter): { label: string; about: string } => ({
 })[key];
 
 /** What the panel is showing: the transcript, or one of the views over it. */
-type PanelMode = 'transcript' | 'settings' | 'saved' | 'keys' | 'words';
+type PanelMode = 'transcript' | 'settings' | 'saved' | 'keys';
 
-/** The marks the Words view lists, one list each. */
+/** The marks the Saved view lists, one list each. */
 type WordMark = 'tracking' | 'known' | 'ignored';
 
+/**
+ * The Saved view's lists: lines kept from the transcript, then words by
+ * their mark. Saved lines and tracked words were two tabs doing one job —
+ * keeping something to come back to — and they worked differently.
+ */
+type SavedList = 'lines' | WordMark;
+
 /** The lists, in the order their buttons show. */
-const WORD_LISTS: readonly WordMark[] = ['tracking', 'known', 'ignored'];
+const SAVED_LISTS: readonly SavedList[] = ['lines', 'tracking', 'known', 'ignored'];
+
+/** Rows drawn at a time in a long list (lazyRows). */
+const LIST_BLOCK = 40;
 
 /** A marked word's reading and first meaning, from the dictionary. */
 interface WordInfo {
@@ -103,9 +118,6 @@ interface WordInfo {
 
 /** Each list's name in a file saved from it. */
 const WORD_FILE: Record<WordMark, string> = { tracking: 'tracked', known: 'known', ignored: 'ignored' };
-
-const isListed = (status: OverrideStatus): status is WordMark =>
-  status === 'tracking' || status === 'known' || status === 'ignored';
 
 /**
  * What each list is called and says, and what taking its mark off is called
@@ -176,8 +188,9 @@ const clampWidth = (w: number): number => Math.min(Math.max(MIN_WIDTH, w), MAX_W
  * Whether the control a key was pressed in uses that key itself.
  *
  * Text fields and selects use every key. Buttons and switches use only the
- * two that press them. Anything else — including a button that merely had
- * focus — leaves the key to the player.
+ * two that press them. The tabs, the resize grip and the transcript also use
+ * the arrows, Home and End, which move between them. Anything else —
+ * including a button that merely had focus — leaves the key to the player.
  */
 function consumesKey(target: EventTarget | undefined, key: string): boolean {
   const el = target as HTMLElement | undefined;
@@ -189,7 +202,14 @@ function consumesKey(target: EventTarget | undefined, key: string): boolean {
   if (tag === 'input') {
     return /^(checkbox|radio|button|submit|reset)$/.test((el as HTMLInputElement).type) ? presses : true;
   }
+  if (MOVE_KEYS.has(key) && el.closest('[role=tablist], [role=separator], .lines')) return true;
   return (tag === 'button' || el.getAttribute('role') === 'button') && presses;
+}
+
+/** Whether ← moves forward from here: in right-to-left text, what comes next is to the left. */
+function rtlAt(el: Element): boolean {
+  const dir = getComputedStyle(el).direction;
+  return dir ? dir === 'rtl' : uiDirection() === 'rtl';
 }
 
 /**
@@ -248,7 +268,7 @@ const STYLE = `
     border: 1px solid #2A3348; border-right: 0;
     border-radius: 8px 0 0 8px;
     cursor: pointer; backdrop-filter: blur(6px);
-    opacity: .35; transition: opacity .18s, background .18s, color .18s;
+    opacity: .7; transition: opacity .18s, background .18s, color .18s;
   }
   .tab:hover, .tab:focus-visible { opacity: 1; background: #141A2A; color: #E8ECF6; }
   :host(.active) .tab { opacity: .9; }
@@ -268,6 +288,7 @@ const STYLE = `
     cursor: col-resize; z-index: 2;
   }
   .grip:hover { background: rgba(242,245,252,.28); }
+  .grip:focus-visible { background: rgba(242,245,252,.28); outline: 2px solid #F2F5FC; outline-offset: -2px; }
   /*
    * Right to left (Arabic): the panel on the player's left, where the
    * interface starts, with its tab, edge and resize grip, and what floats
@@ -278,7 +299,8 @@ const STYLE = `
   :host([dir=rtl]) .tab svg { transform: scaleX(-1); }
   :host([dir=rtl]) .panel { right: auto; left: 0; border-left: 0; border-right: 1px solid #2A3348; }
   :host([dir=rtl]) .grip { left: auto; right: -3px; }
-  header {
+  /* A div, not a header: inside the panel, a header read as the page's banner. */
+  .head {
     display: flex; align-items: center; justify-content: space-between; gap: 8px;
     padding: 12px 14px; border-bottom: 1px solid #212939;
     font: 600 11px/1.4 ui-monospace, monospace; letter-spacing: .12em;
@@ -293,8 +315,8 @@ const STYLE = `
   button:focus-visible { outline: 2px solid #F2F5FC; outline-offset: 2px; border-radius: 3px; }
   /* Header controls are icons: three text buttons crowded a 340px column and
      read as a toolbar rather than as chrome. */
-  header { gap: 10px; padding: 8px 10px 0 8px; align-items: flex-end; text-transform: none; letter-spacing: normal; }
-  header .controls { display: flex; align-items: center; gap: 2px; padding-bottom: 6px; }
+  .head { gap: 10px; padding: 8px 10px 0 8px; align-items: flex-end; text-transform: none; letter-spacing: normal; }
+  .head .controls { display: flex; align-items: center; gap: 2px; padding-bottom: 6px; }
   /* The lists, as tabs: the one showing underlined, each with what it holds. */
   .tabs { display: flex; align-items: flex-end; gap: 2px; min-width: 0; }
   .tabbtn {
@@ -305,7 +327,7 @@ const STYLE = `
   }
   .tabbtn:hover { color: #E8ECF6; }
   .tabbtn[aria-selected="true"] { color: #F2F5FC; border-bottom-color: #F2F5FC; }
-  .tabbtn .n { font: 600 11px/1 ui-monospace, monospace; color: #7A84A0; font-variant-numeric: tabular-nums; }
+  .tabbtn .n { font: 600 11px/1 ui-monospace, monospace; color: #8A94AF; font-variant-numeric: tabular-nums; }
   .tabbtn[aria-selected="true"] .n { color: #C7CFE2; }
   .tabbtn:focus-visible { outline: 2px solid #F2F5FC; outline-offset: -2px; border-radius: 6px; }
   .ico[aria-pressed="true"] { background: rgba(242, 245, 252, .1); color: #F2F5FC; }
@@ -314,12 +336,14 @@ const STYLE = `
     font: 700 17px/1.25 system-ui, -apple-system, sans-serif; color: #F2F5FC; letter-spacing: -.01em;
   }
   .viewtitle[hidden] { display: none; }
+  /* What the tabs show: the transcript and its controls, or another view. */
+  .view { display: flex; flex-direction: column; flex: 1; min-height: 0; }
   .ico {
     display: flex; align-items: center; justify-content: center;
     width: 30px; height: 30px; padding: 0; border-radius: 6px;
   }
   .ico:hover { background: #212939; color: #E8ECF6; }
-  .ico[aria-pressed="false"] { color: #5A6480; }
+  .ico[aria-pressed="false"] { color: #838DA8; }
   .ico svg { display: block; }
   .search {
     display: flex; align-items: center; gap: 8px;
@@ -330,13 +354,17 @@ const STYLE = `
     flex: none; white-space: nowrap;
     font: 12px/1 ui-monospace, monospace; color: #838DA8; font-variant-numeric: tabular-nums;
   }
-  .search .count:empty { display: none; }
+  /* Empty, it stays rendered, out of the way: a live region shown only once it has words is not read out. */
+  .search .count:empty { margin-inline-start: -8px; }
   input {
     width: 100%; box-sizing: border-box; padding: 8px 11px;
-    background: #12172A; border: 1px solid #2A3348; border-radius: 6px;
+    background: #12172A; border: 1px solid #6B7490; border-radius: 6px;
     color: #E8ECF6; font: 14px system-ui, sans-serif;
   }
+  input::placeholder { color: #8A94AF; }
   input:focus { outline: none; border-color: #8A94AF; }
+  /* A ring, as on the buttons: with the border this light at rest, a lighter border alone barely shows. */
+  input:focus-visible { outline: 2px solid #F2F5FC; outline-offset: 1px; }
   .filters { display: flex; gap: 5px; padding: 0 12px 9px; flex: none; }
   .f {
     font: 600 10px/1 ui-monospace, monospace; letter-spacing: .06em;
@@ -424,6 +452,7 @@ const STYLE = `
   /* Square corners: a rounded box bent each underline up at its ends. */
   .w { cursor: pointer; padding: 0 1px 3px; }
   .w:hover { background: #262F45; }
+  .w:focus-visible { outline: 2px solid #F2F5FC; outline-offset: 1px; }
   .tx .p { padding: 0 0 3px; }
   /* A phrase: one band across its words and the marks between, as on the subtitle. */
   .tx.phrased ::selection { background: transparent; }
@@ -457,9 +486,15 @@ const STYLE = `
   .meta {
     display: flex; align-items: center; gap: 10px;
     margin-top: 7px;
-    font: 12px/1.4 ui-monospace, monospace; color: #5A6480;
+    font: 12px/1.4 ui-monospace, monospace; color: #8A94AF;
     font-variant-numeric: tabular-nums;
   }
+  /* A line's time is the button that plays from it, and looks like the time it is. */
+  .meta .seek {
+    padding: 0; border-radius: 3px; color: inherit;
+    font: inherit; letter-spacing: normal; text-transform: none;
+  }
+  .meta .seek:hover { color: #E8ECF6; }
   /* The row's buttons at the right of its time; the count is up in its corner. */
   .line .meta > button:first-of-type { margin-inline-start: auto; }
   .line > .x {
@@ -478,7 +513,7 @@ const STYLE = `
   .x.one { color: #D9A64A; font-weight: 600; }
 
   .sec { display: block; font-size: 14.5px; line-height: 1.6; color: #838DA8; margin-top: 6px; }
-  .empty { padding: 20px 14px; color: #6B7490; font-size: 13.5px; }
+  .empty { padding: 20px 14px; color: #8A94AF; font-size: 13.5px; }
 
   /*
    * Filters float rather than occupying a permanent strip. They matter while
@@ -538,7 +573,7 @@ const STYLE = `
   .hover.on { display: block; }
   .hw { font-size: 17px; font-weight: 600; }
   .hr { font: 500 11px ui-monospace, monospace; color: #B8C0D4; margin-inline-start: 6px; }
-  .hp { font: 11px ui-monospace, monospace; color: #6B7490; margin: 2px 0 4px; letter-spacing: .05em; }
+  .hp { font: 11px ui-monospace, monospace; color: #8A94AF; margin: 2px 0 4px; letter-spacing: .05em; }
   .hd { font-size: 13.5px; color: #C7CFE2; }
   .hg { margin-top: 6px; font-size: 12.5px; color: #A3ACC4; }
   .save, .addline {
@@ -558,14 +593,12 @@ const STYLE = `
   .save:hover, .addline:hover { background: rgba(255,255,255,.08); color: #C7CFE2; }
   .save.on { color: #F2F5FC; }
   .save.on svg { fill: currentColor; }
-  .savedview { overflow-y: auto; padding: 0 0 14px; flex: 1; }
-  /*
-   * Saved lines are only worth keeping if they can leave. Anki when it is
-   * connected; a file or the clipboard when it is not, so a sentence is
-   * never trapped in this panel.
-   */
-  .savedbar { padding: 11px 14px 12px; border-bottom: 1px solid #212939; }
-  .savedbar .btnrow { padding: 0; border-top: 0; }
+  /* The Saved view: its buttons, search and actions stay put while the list scrolls under them. */
+  .savedview { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+  .svhead { flex: none; padding-bottom: 12px; border-bottom: 1px solid #212939; }
+  .svlist { flex: 1; min-height: 0; overflow-y: auto; padding: 0 0 14px; }
+  /* A drawn block of rows, which the browser skips while it is off screen. */
+  .svlist .blk { content-visibility: auto; contain-intrinsic-size: auto 600px; }
   .said { margin-top: 9px; font-size: 12px; line-height: 1.5; color: #8A94AF; }
   .said:empty { display: none; }
   .savedview .empty { margin: 16px 16px 0; font-size: 14px; line-height: 1.55; color: #8992AD; }
@@ -585,7 +618,7 @@ const STYLE = `
   .tw[data-s="ignored"] { color: #A3ACC4; }
   /* The learner has turned underlines off: in the transcript and in the saved lists. */
   .panel.no-underlines .w[data-s], .panel.no-underlines .tw[data-s] { box-shadow: none; }
-  /* Which marks the Words view lists: one list at a time, each with its count. */
+  /* Which list the Saved view shows: one at a time, each with its count. */
   .wchips { display: flex; flex-wrap: wrap; gap: 6px; padding: 14px 16px 2px; }
   .wchip {
     display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border-radius: 999px; cursor: pointer;
@@ -596,8 +629,8 @@ const STYLE = `
   .wchip[aria-pressed="true"] { background: #E8ECF6; border-color: #E8ECF6; color: #0D111C; }
   .wchip .n { font-variant-numeric: tabular-nums; opacity: .7; }
   .wchip .n:empty { display: none; }
-  .wbar { display: flex; align-items: center; gap: 8px; padding: 10px 16px 0; }
-  .wbar .wfind { flex: 1; min-width: 0; }
+  .wbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 16px 0; }
+  .wbar .wfind { flex: 1 1 150px; min-width: 0; }
   .wbar .btnrow { padding: 0; border-top: 0; flex: none; flex-wrap: nowrap; }
   .wsaid { margin: 8px 16px 0; }
   .tr { font: 500 12px/1.4 ui-monospace, monospace; color: #B8C0D4; }
@@ -622,6 +655,9 @@ const STYLE = `
   .sv .sec { display: block; margin-top: 3px; font-size: 14px; color: #97A0BA; }
   @media (prefers-reduced-motion: no-preference) { .lines { scroll-behavior: smooth; } }
 ${PANEL_STYLE}
+  /* The settings' fields, edged as the search boxes are here, where the panel sits over video. */
+  .set select, .flagfind { border-color: #6B7490; }
+  .set select:hover:not(:disabled) { border-color: #8A94AF; }
 ${TIP_STYLE}
 `;
 
@@ -705,17 +741,32 @@ export class Sidebar {
   #hoverSeq = 0;
   #idle = 0;
   #mode: PanelMode = 'transcript';
-  /** Which marks the Words view is listing. */
-  #wordsShow: WordMark = 'tracking';
-  /** Fills in the rows of the Words view as they come near the view. */
-  #wordsSeen: IntersectionObserver | null = null;
-  /** What the Words view's search is narrowing its list to. */
-  #wordsQuery = '';
-  /** The Words view's rows, rebuilt as the search changes; the search box stays. */
-  #wordsRows: HTMLElement | null = null;
+  /** Which list the Saved view shows. */
+  #savedShow: SavedList = 'lines';
+  /** What the Saved view's search narrows its list to. */
+  #savedQuery = '';
+  /** The Saved view's list, drawn again as the search changes; the bar above it stays. */
+  #savedRows: HTMLElement | null = null;
+  /** Draws the list's blocks as they come near the view. */
+  #savedSeen: IntersectionObserver | null = null;
+  /** The bar's status line: what Copy, Export and Add to Anki did. */
+  #savedSaid: HTMLElement | null = null;
   /** Readings and meanings of marked words, looked up once, for the rows, the search and the export. */
   #wordInfo = new Map<string, WordInfo | null>();
   #settingsEl: HTMLElement | null = null;
+  /** What the tabs show, as their one tabpanel: the transcript and its controls, or another view. */
+  #view!: HTMLElement;
+  #grip!: HTMLElement;
+  /**
+   * The one control in the transcript that Tab stops at. ↑ and ↓ move it from
+   * line to line and ← and → along a line; while focus is elsewhere it follows
+   * the line being spoken, so Tab comes back in there. A word has a tabindex
+   * only while it holds it: otherwise a click on a word would take focus, and
+   * with it the arrow keys, from the player.
+   */
+  #stop: HTMLElement | null = null;
+  /** For ids, which tie a row's buttons to its line. */
+  #ids = 0;
   #fab!: HTMLButtonElement;
   #close!: HTMLButtonElement;
   #searchInput!: HTMLInputElement;
@@ -830,9 +881,11 @@ export class Sidebar {
 
     this.#panel = document.createElement('div');
     this.#panel.className = 'panel';
+    this.#panel.setAttribute('role', 'complementary');
 
     const grip = document.createElement('div');
     grip.className = 'grip';
+    this.#grip = grip;
     this.#installResize(grip);
 
     /*
@@ -842,7 +895,8 @@ export class Sidebar {
      * player bar keeps to the video; it used to open Saved lines too, while
      * Tracked words opened from here, and the two lists worked differently.
      */
-    const head = document.createElement('header');
+    const head = document.createElement('div');
+    head.className = 'head';
     const tabs = document.createElement('nav');
     tabs.className = 'tabs';
     tabs.setAttribute('role', 'tablist');
@@ -850,7 +904,9 @@ export class Sidebar {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'tabbtn';
+      b.id = `lg-tab-${mode}`;
       b.setAttribute('role', 'tab');
+      b.setAttribute('aria-controls', 'lg-view');
       b.dataset.mode = mode;
       const name = document.createElement('span');
       const n = document.createElement('span');
@@ -862,7 +918,25 @@ export class Sidebar {
     };
     tab('transcript');
     tab('saved');
-    if (this.#deps.marked) tab('words');
+    // One Tab stop for the row: ← and → (the other way round right to left),
+    // Home and End go from tab to tab and show it.
+    tabs.addEventListener('keydown', (e) => {
+      const all = Array.from(tabs.querySelectorAll<HTMLElement>('[role=tab]'));
+      const at = all.indexOf(e.target as HTMLElement);
+      if (at < 0 || e.altKey || e.ctrlKey || e.metaKey) return;
+      let to: number;
+      if (e.key === 'Home') to = 0;
+      else if (e.key === 'End') to = all.length - 1;
+      else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+        to = at + ((e.key === 'ArrowRight') === (uiDirection() === 'rtl') ? -1 : 1);
+      } else return;
+      // Ours alone: the player this sits in would seek on the same arrow.
+      e.preventDefault();
+      e.stopPropagation();
+      const next = all[(to + all.length) % all.length]!;
+      next.focus();
+      this.setMode(next.dataset.mode as PanelMode);
+    });
     this.#tabs = tabs;
     // What a view that is not a list is, under the tabs.
     const title = document.createElement('div');
@@ -885,7 +959,6 @@ export class Sidebar {
     const close = document.createElement('button');
     close.className = 'ico';
     close.replaceChildren(icon('x', 18));
-    close.dataset.key = 'S';
     close.addEventListener('click', () => this.toggle(false));
     this.#close = close;
     controls.append(keys, gear, close);
@@ -904,6 +977,8 @@ export class Sidebar {
     fab.addEventListener('click', () => {
       const open = filters.classList.toggle('open');
       fab.setAttribute('aria-expanded', String(open));
+      // Opened from the keyboard, the menu takes focus, on the filter in use.
+      if (open && this.#root.activeElement === fab) filters.querySelector<HTMLElement>('[aria-pressed="true"]')?.focus();
     });
 
     for (const key of FILTERS) {
@@ -972,7 +1047,13 @@ export class Sidebar {
     const now = document.createElement('button');
     now.className = 'now';
     now.append(icon('forward', 13), document.createTextNode(''));
-    now.addEventListener('click', () => this.#resume());
+    now.addEventListener('click', () => {
+      // It goes once it has done its job; pressed from the keyboard, focus
+      // goes on to the line it brought back rather than to the page.
+      const had = this.#root.activeElement === now;
+      this.#resume();
+      if (had) (this.#curRow?.querySelector<HTMLElement>('.seek') ?? this.#stop)?.focus({ preventScroll: true });
+    });
     this.#now = now;
 
     this.#hover = document.createElement('div');
@@ -981,11 +1062,15 @@ export class Sidebar {
     this.#tab = document.createElement('button');
     this.#tab.className = 'tab';
     this.#tab.replaceChildren(icon('back', 16));
-    this.#tab.dataset.key = 'S';
     this.#tab.addEventListener('click', () => this.toggleTranscript());
 
     this.#search = search;
-    this.#panel.append(grip, head, title, search, summary, this.#note, this.#wait, this.#list, filters, fab, now);
+    // The filter button before its menu, so Tab reaches the menu from it.
+    this.#view = document.createElement('div');
+    this.#view.className = 'view';
+    this.#view.id = 'lg-view';
+    this.#view.append(search, summary, this.#note, this.#wait, this.#list, fab, filters, now);
+    this.#panel.append(grip, head, title, this.#view);
     this.#root.append(style, this.#panel, this.#tab, this.#hover);
     mount.appendChild(this.#host);
     // Kept inside the panel while it is open; the tab alone has the player.
@@ -1003,6 +1088,7 @@ export class Sidebar {
     deps.transcript.onChange(() => this.#refreshTranscript());
     this.#installHover();
     this.#installClicks();
+    this.#installListKeys();
     // Counting starts once construction is over: the header wants the numbers
     // even while the panel is closed, but not at the cost of the first frame.
     this.#countTimer = window.setTimeout(() => this.#countAll(), 0);
@@ -1096,6 +1182,125 @@ export class Sidebar {
   }
 
   /**
+   * The transcript from the keyboard, as one Tab stop. ↑ and ↓ go from line
+   * to line, Home and End to the first and the last, and ← and → along a
+   * line's words, its time and its buttons. Enter or Space on a word does what
+   * a click does, and focus on one previews it as the pointer does. Lines are
+   * found from the transcript and their rows made as they are reached: nothing
+   * here walks the rows.
+   */
+  #installListKeys(): void {
+    const list = this.#list;
+    // Every key used here stops here: the player this sits in has its own
+    // for the arrows, Home, End and Space, and would act on them as well.
+    const take = (e: KeyboardEvent): void => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    list.addEventListener('keydown', (e) => {
+      const el = e.target as HTMLElement;
+      const row = el.closest<HTMLElement>('.line');
+      const line = row ? this.#lineOf.get(row) : undefined;
+      if (!row || !line || e.altKey || e.ctrlKey || e.metaKey) return;
+      if (e.key === 'Enter' || e.key === ' ') {
+        if (el.classList.contains('w')) {
+          take(e);
+          el.click();
+        } else if (el.tagName === 'BUTTON') {
+          e.stopPropagation();   // not cancelled: the key's own action is what presses a button
+        }
+        return;
+      }
+      if (e.shiftKey) return;   // Shift and an arrow extend a selection
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        take(e);
+        const items = Array.from(row.querySelectorAll<HTMLElement>('.tx .w, .meta button'));
+        // One way along the whole line, the way its text runs: where that is not the
+        // interface's, the words and the buttons under them would pull opposite ways.
+        const back = (e.key === 'ArrowRight') === rtlAt(row.querySelector('.tx') ?? el);
+        const next = items[items.indexOf(el) + (back ? -1 : 1)];
+        if (!next) return;
+        this.#setStop(next);
+        next.focus();
+        return;
+      }
+      const lines = this.#deps.transcript.lines;
+      const i = this.#indexOf.get(line) ?? -1;
+      const to = e.key === 'ArrowDown' ? this.#nextShown(i, 1)
+        : e.key === 'ArrowUp' ? this.#nextShown(i, -1)
+          : e.key === 'Home' ? this.#nextShown(-1, 1)
+            : e.key === 'End' ? this.#nextShown(lines.length, -1)
+              : undefined;
+      if (to === undefined) return;
+      take(e);
+      if (to) this.#focusRow(to);
+    });
+    list.addEventListener('focusin', (e) => {
+      const el = e.target as HTMLElement;
+      if (!el.matches('.line .w, .line .meta button')) return;
+      this.#setStop(el);
+      if (el.classList.contains('w') && settings().sidebarHover) this.#previewSoon(el);
+    });
+    list.addEventListener('focusout', (e) => {
+      if ((e.target as HTMLElement).classList.contains('w')) this.#hideHover();
+    });
+  }
+
+  /** Make this the transcript's one Tab stop. */
+  #setStop(el: HTMLElement | null): void {
+    const old = this.#stop;
+    if (old === el) return;
+    if (old?.classList.contains('w')) old.removeAttribute('tabindex');
+    else if (old) old.tabIndex = -1;
+    this.#stop = el;
+    if (el) el.tabIndex = 0;
+  }
+
+  /**
+   * Keep the transcript reachable with Tab: the line being spoken, unless a
+   * filter hides it, and then the first line it shows. Read from the lines;
+   * only the row found is made.
+   */
+  #ensureStop(): void {
+    const stop = this.#stop;
+    if (stop?.isConnected && !stop.closest('.line.hide')) return;
+    if (this.#countWaiting()) {
+      this.#setStop(null);   // nothing is shown until the counts are in
+      return;
+    }
+    const lines = this.#deps.transcript.lines;
+    let row = this.#shownRow(this.#active);
+    for (let i = 0; !row && i < lines.length; i++) row = this.#shownRow(i);
+    this.#setStop(row?.querySelector<HTMLElement>('.seek') ?? null);
+  }
+
+  /** The row of the nearest line the filter shows, from this one either way. */
+  #nextShown(from: number, dir: 1 | -1): HTMLElement | null {
+    const lines = this.#deps.transcript.lines;
+    for (let i = from + dir; i >= 0 && i < lines.length; i += dir) {
+      if (this.#isShown(lines[i]!)) return this.#row(i);
+    }
+    return null;
+  }
+
+  /**
+   * Focus a line's time, with its words and buttons built for ← and →, and
+   * bring the line into view by scrolling the list alone, as following does.
+   */
+  #focusRow(row: HTMLElement): void {
+    this.#build(row);
+    const seek = row.querySelector<HTMLElement>('.seek');
+    if (!seek) return;
+    this.#setStop(seek);
+    seek.focus({ preventScroll: true });
+    const r = row.getBoundingClientRect();
+    const l = this.#list.getBoundingClientRect();
+    // The foot of the list is under the floating buttons.
+    if (r.top < l.top || r.bottom > l.bottom - 64) this.#reveal(row);
+    else this.#queueAround(row);
+  }
+
+  /**
    * Keys belong to the control that uses them, and a click leaves nothing
    * holding focus that did not need it.
    *
@@ -1151,12 +1356,24 @@ export class Sidebar {
    * `ui` as it is shown. A new interface language builds a new panel
    * (restart() in index.ts), since your language changes its lines too.
    */
+  /** The S key on the buttons it presses, as it is pressed now: alone, or with Alt and Shift. */
+  #paintKeys(): void {
+    const { shown, aria } = letterKey('S', settings().singleKeys);
+    for (const b of [this.#close, this.#tab]) {
+      b.dataset.key = shown;
+      b.setAttribute('aria-keyshortcuts', aria);
+    }
+  }
+
   #paintLabels(): void {
+    this.#paintKeys();
     const s = ui.sidebar;
     this.#host.lang = uiLocale();
     this.#host.dir = uiDirection();
+    this.#panel.setAttribute('aria-label', s.panelLabel);
+    this.#grip.setAttribute('aria-label', s.resizeLabel);
     this.#tabs.setAttribute('aria-label', s.tabsLabel);
-    const names: Partial<Record<PanelMode, string>> = { transcript: s.transcriptTab, saved: s.savedTab, words: s.wordsTab };
+    const names: Partial<Record<PanelMode, string>> = { transcript: s.transcriptTab, saved: s.savedTab };
     for (const b of Array.from(this.#tabs.querySelectorAll<HTMLElement>('[data-mode]'))) {
       const name = b.firstElementChild;
       if (name) name.textContent = names[b.dataset.mode as PanelMode] ?? '';
@@ -1183,6 +1400,7 @@ export class Sidebar {
 
   #settingsChanged(s: Settings, here = true): void {
     if (this.#destroyed) return;
+    this.#paintKeys();
     this.#applyAppearance(s);
     if (s.sidebarStats !== this.#stats) {
       this.#stats = s.sidebarStats;
@@ -1225,8 +1443,11 @@ export class Sidebar {
   }
 
   #closeFilters(): void {
+    // Closed with focus in it — Escape, or a filter picked from the keyboard — it hands focus back to its button.
+    const back = this.#open && this.#filterMenu.contains(this.#root.activeElement);
     this.#filterMenu.classList.remove('open');
     this.#fab.setAttribute('aria-expanded', 'false');
+    if (back) this.#fab.focus();
   }
 
   /**
@@ -1262,12 +1483,25 @@ export class Sidebar {
 
   #applyWidth(): void {
     this.#panel.style.width = `${this.#width}px`;
+    this.#grip.setAttribute('aria-valuenow', String(this.#width));
     this.#onLayout?.();
   }
 
+  /** The panel's edge: dragged, or moved with ← and → once it has focus. */
   #installResize(grip: HTMLElement): void {
+    grip.tabIndex = 0;
+    grip.setAttribute('role', 'separator');
+    grip.setAttribute('aria-orientation', 'vertical');
+    grip.setAttribute('aria-valuemin', String(MIN_WIDTH));
+    grip.setAttribute('aria-valuemax', String(MAX_WIDTH));
+    grip.setAttribute('aria-valuenow', String(this.#width));
+    const save = (): void => {
+      void chrome.storage.sync.set({ [WIDTH_KEY]: this.#width }).catch(() => {});
+    };
     let startX = 0;
     let startW = 0;
+    /** Whether the grip had focus before a drag. */
+    let had = false;
     const move = (e: PointerEvent): void => {
       // Toward the video widens the panel: leftward here, rightward when it sits on the left.
       const moved = uiDirection() === 'rtl' ? e.clientX - startX : startX - e.clientX;
@@ -1277,10 +1511,30 @@ export class Sidebar {
     const up = (): void => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
-      void chrome.storage.sync.set({ [WIDTH_KEY]: this.#width }).catch(() => {});
+      // A drag leaves focus where it was, as a click on a button does: kept
+      // here, the arrow keys would go on resizing the panel, not the player.
+      if (!had && this.#root.activeElement === grip) grip.blur();
+      save();
     };
+    grip.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      e.preventDefault();
+      e.stopPropagation();   // not the player's seek as well
+      const wider = (e.key === 'ArrowLeft') !== (uiDirection() === 'rtl');
+      this.#width = clampWidth(this.#width + (wider ? WIDTH_STEP : -WIDTH_STEP));
+      this.#applyWidth();
+    });
+    // Saved once the key is let go, as a drag is once it is dropped: a held
+    // key repeats faster than storage takes writes.
+    grip.addEventListener('keyup', (e) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      e.preventDefault();
+      e.stopPropagation();
+      save();
+    });
     grip.addEventListener('pointerdown', (e) => {
       e.preventDefault();
+      had = this.#root.activeElement === grip;
       startX = e.clientX;
       startW = this.#width;
       const signal = this.#abort.signal;
@@ -1328,7 +1582,10 @@ export class Sidebar {
   refreshStatus(): void {
     if (this.#destroyed) return;
     this.#paintTabs();
-    if (this.#mode === 'words') this.#renderWords();
+    if (this.#mode === 'saved') {
+      this.#paintSavedChips();
+      if (this.#savedShow !== 'lines') void this.#renderSavedRows();
+    }
     // A different analyser means different words, which this cannot cover.
     if (this.#deps.segmenter() !== this.#tokens.segmenter) {
       this.refreshAnalysis();
@@ -1411,6 +1668,10 @@ export class Sidebar {
     const next = new Set(mine.map((b) => b.id));
     const same = next.size === this.#saved.size && [...next].every((id) => this.#saved.has(id));
     this.#saved = next;
+    if (this.#mode === 'saved') {
+      this.#paintSavedChips();
+      if (this.#savedShow === 'lines') void this.#renderSavedRows();
+    }
     if (same) return;
     for (const row of this.#dressed) this.#paintSave(row);
     if (this.#filter === 'saved') this.render();
@@ -1448,18 +1709,34 @@ export class Sidebar {
     return on;
   }
 
-  /** How many each list holds, on its tab. */
+  /**
+   * Which tab is showing, and how many each list holds. The tab showing is the
+   * row's one Tab stop — the first while Settings or the keys are showing,
+   * which are not tabs — and names the panel they share.
+   */
   #paintTabs(): void {
-    for (const b of Array.from(this.#tabs.querySelectorAll<HTMLElement>('[role=tab]'))) {
-      b.setAttribute('aria-selected', String(b.dataset.mode === this.#mode));
+    const all = Array.from(this.#tabs.querySelectorAll<HTMLElement>('[role=tab]'));
+    const selected = all.find((b) => b.dataset.mode === this.#mode);
+    for (const b of all) {
+      b.setAttribute('aria-selected', String(b === selected));
+      b.tabIndex = b === (selected ?? all[0]) ? 0 : -1;
+    }
+    if (selected) {
+      this.#view.setAttribute('role', 'tabpanel');
+      this.#view.setAttribute('aria-labelledby', selected.id);
+    } else {
+      this.#view.removeAttribute('role');
+      this.#view.removeAttribute('aria-labelledby');
     }
     const set = (mode: PanelMode, n: number | null): void => {
       const el = this.#tabs.querySelector<HTMLElement>(`[data-mode="${mode}"] .n`);
       if (el) el.textContent = n ? String(n) : '';
     };
-    set('words', this.#deps.marked?.().filter((m) => isListed(m.status)).length ?? null);
-    // The lines saved in the language being learned, which is what the view lists.
-    void bookmarks.inLanguage(settings().target).then((mine) => set('saved', mine.length), () => {});
+    // What was kept to come back to: the lines saved in the language being
+    // learned, and the words tracked. Known and ignored words wait for
+    // nothing, and can run to thousands.
+    const tracked = this.#deps.marked?.().filter((m) => m.status === 'tracking').length ?? 0;
+    void bookmarks.inLanguage(settings().target).then((mine) => set('saved', mine.length + tracked), () => set('saved', tracked));
   }
 
   /** The line as a card, from its row's button: busy while it goes, then a tick. */
@@ -1482,9 +1759,9 @@ export class Sidebar {
     if (!b || !line) return;
     const on = this.#saved.has(this.#idFor(line.start));
     b.classList.toggle('on', on);
-    const title = on ? ui.sidebar.unsave : ui.sidebar.saveLine;
-    b.dataset.tip = title;
-    b.setAttribute('aria-label', title);
+    // One name, pressed or not, as a toggle has; the tip says what a click will do.
+    b.dataset.tip = on ? ui.sidebar.unsave : ui.sidebar.saveLine;
+    b.setAttribute('aria-label', ui.sidebar.saveLine);
     b.setAttribute('aria-pressed', String(on));
   }
 
@@ -1504,43 +1781,24 @@ export class Sidebar {
    * Keeping them was never the point; getting them somewhere they are
    * reviewed is. Anki when it is connected, and a file or the clipboard when
    * it is not — a saved line should never depend on this panel to survive.
+   * As far as the search narrows them.
    */
-  #savedActions(lines: Bookmark[]): HTMLElement {
-    const box = document.createElement('div');
-    box.className = 'savedbar';
-    const row = document.createElement('div');
-    row.className = 'btnrow';
-    const said = document.createElement('div');
-    said.className = 'said';
-    said.setAttribute('role', 'status');
-
-    const button = (label: string, title: string, onClick: (b: HTMLButtonElement) => void): HTMLButtonElement => {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.textContent = label;
-      b.setAttribute('aria-description', title);
-      b.addEventListener('click', () => onClick(b));
-      row.appendChild(b);
-      return b;
-    };
-
-    button(ui.sidebar.copy, ui.sidebar.copySavedAbout, () => {
-      void copyText(savedTsv(lines)).then((ok) => {
-        said.textContent = ok ? ui.sidebar.linesCopied(lines.length) : ui.sidebar.noClipboard;
-      });
-    });
-
-    button(ui.sidebar.exportFile, ui.sidebar.exportSavedAbout, () => {
+  async #lineAction(how: 'copy' | 'file' | 'anki', b: HTMLButtonElement): Promise<void> {
+    const said = this.#savedSaid;
+    if (!said) return;
+    const lines = (await this.#lineGroups()).flatMap((g) => g.lines);
+    if (!lines.length) {
+      said.textContent = ui.sidebar.nothingToExport;
+      return;
+    }
+    if (how === 'anki') {
+      await this.#savedToAnki(lines, said, b);
+    } else if (how === 'copy') {
+      said.textContent = (await copyText(savedTsv(lines))) ? ui.sidebar.linesCopied(lines.length) : ui.sidebar.noClipboard;
+    } else {
       const ok = downloadText(`libregaku-saved-${fileStamp()}.tsv`, savedTsv(lines), 'text/tab-separated-values');
       said.textContent = ok ? ui.sidebar.downloaded : ui.sidebar.downloadBlocked;
-    });
-
-    button(ui.sidebar.addToAnki, ui.sidebar.addSavedAbout, (b) => {
-      void this.#savedToAnki(lines, said, b);
-    });
-
-    box.append(row, said);
-    return box;
+    }
   }
 
   /**
@@ -1615,37 +1873,42 @@ export class Sidebar {
   }
 
   /**
-   * The words marked by hand — tracked, known, ignored — read from the marks,
-   * so the lists are the same on every device. A mark comes off here as it
-   * does on the word's card, and a tracked word can become a card, which
-   * takes it off the list: a card speaks for it now. A list can be searched,
-   * and copied or saved as a file, as saved lines can.
+   * What was kept to come back to: lines saved from the transcript, and
+   * words tracked, known or ignored — one list at a time, chosen with a row
+   * of buttons. The buttons, the search and what the list can be done with
+   * stay at the top; the list scrolls under them, drawn as it comes into view.
+   *
+   * The words are read from the marks, so the lists are the same on every
+   * device. A mark comes off here as it does on the word's card, and a
+   * tracked word can become a card, which takes it off the list: a card
+   * speaks for it now.
    */
-  #renderWords(): void {
+  async #renderSaved(): Promise<void> {
     const host = this.#settingsEl;
     if (!host) return;
-    const all = (this.#deps.marked?.() ?? []).filter((m) => isListed(m.status));
     host.replaceChildren();
+    const head = document.createElement('div');
+    head.className = 'svhead';
 
     const chips = document.createElement('div');
     chips.className = 'wchips';
     chips.setAttribute('role', 'group');
     chips.setAttribute('aria-label', ui.sidebar.listsLabel);
-    for (const show of WORD_LISTS) {
+    for (const show of SAVED_LISTS) {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'wchip';
       b.dataset.show = show;
-      b.setAttribute('aria-pressed', String(show === this.#wordsShow));
+      b.setAttribute('aria-pressed', String(show === this.#savedShow));
       const name = document.createElement('span');
-      name.textContent = wordList(show).name;
+      name.textContent = show === 'lines' ? ui.sidebar.listLines : wordList(show).name;
       const n = document.createElement('span');
       n.className = 'n';
-      n.textContent = String(all.filter((m) => m.status === show).length || '');
       b.append(name, n);
       b.addEventListener('click', () => {
-        this.#wordsShow = show;
-        this.#renderWords();
+        if (show === this.#savedShow) return;
+        this.#savedShow = show;
+        void this.#renderSaved();
       });
       chips.appendChild(b);
     }
@@ -1657,60 +1920,146 @@ export class Sidebar {
     find.className = 'wfind';
     find.placeholder = ui.sidebar.findPlaceholder;
     find.setAttribute('aria-label', ui.sidebar.findLabel);
-    find.value = this.#wordsQuery;
+    find.value = this.#savedQuery;
     find.addEventListener('input', () => {
-      this.#wordsQuery = find.value;
-      this.#renderWordRows();
+      this.#savedQuery = find.value;
+      void this.#renderSavedRows();
     });
     const actions = document.createElement('div');
     actions.className = 'btnrow';
     const said = document.createElement('div');
     said.className = 'said wsaid';
     said.setAttribute('role', 'status');
-    const button = (label: string, title: string, run: (b: HTMLButtonElement) => void): void => {
+    this.#savedSaid = said;
+    const button = (label: string, about: string, run: (b: HTMLButtonElement) => Promise<void>): void => {
       const b = document.createElement('button');
       b.type = 'button';
       b.textContent = label;
-      b.setAttribute('aria-description', title);
-      b.addEventListener('click', () => run(b));
+      b.setAttribute('aria-description', about);
+      b.addEventListener('click', () => void run(b));
       actions.appendChild(b);
     };
-    button(ui.sidebar.copy, ui.sidebar.copyWordsAbout, (b) => void this.#exportWords('copy', said, b));
-    button(ui.sidebar.exportFile, ui.sidebar.exportWordsAbout, (b) => void this.#exportWords('file', said, b));
+    const show = this.#savedShow;
+    if (show === 'lines') {
+      button(ui.sidebar.copy, ui.sidebar.copySavedAbout, (b) => this.#lineAction('copy', b));
+      button(ui.sidebar.exportFile, ui.sidebar.exportSavedAbout, (b) => this.#lineAction('file', b));
+      button(ui.sidebar.addToAnki, ui.sidebar.addSavedAbout, (b) => this.#lineAction('anki', b));
+    } else {
+      button(ui.sidebar.copy, ui.sidebar.copyWordsAbout, (b) => this.#exportWords('copy', said, b));
+      button(ui.sidebar.exportFile, ui.sidebar.exportWordsAbout, (b) => this.#exportWords('file', said, b));
+    }
     bar.append(find, actions);
+    head.append(chips, bar, said);
 
     const rows = document.createElement('div');
-    rows.className = 'wrows';
-    host.append(chips, bar, said, rows);
-    this.#wordsRows = rows;
-    this.#renderWordRows();
+    rows.className = 'svlist';
+    host.append(head, rows);
+    this.#savedRows = rows;
+    this.#paintSavedChips();
+    await this.#renderSavedRows();
   }
 
-  /** The open list's rows, narrowed to what the search matches. */
-  #renderWordRows(): void {
-    const rows = this.#wordsRows;
+  /** Each list's count, on its button. */
+  #paintSavedChips(): void {
+    const host = this.#settingsEl;
+    if (!host || this.#mode !== 'saved') return;
+    const set = (show: SavedList, n: number): void => {
+      const el = host.querySelector<HTMLElement>(`.wchip[data-show="${show}"] .n`);
+      if (el) el.textContent = n ? String(n) : '';
+    };
+    const marked = this.#deps.marked?.() ?? [];
+    for (const show of SAVED_LISTS) if (show !== 'lines') set(show, marked.filter((m) => m.status === show).length);
+    void bookmarks.inLanguage(settings().target).then((mine) => set('lines', mine.length), () => {});
+  }
+
+  /**
+   * The saved lines a search matches, by their text or their translation,
+   * grouped by video. A line of the video on screen carries the translation
+   * it has now, which follows your language: one saved while your language
+   * was English kept English under it after you changed it. A line of another
+   * video keeps the one it was saved with until that video is open.
+   */
+  async #lineGroups(): Promise<Array<{ site: string; video: string; title: string; lines: Bookmark[] }>> {
+    // Only the language being learned: its lines, for its deck.
+    const here = this.#deps.context();
+    const now = new Map<string, string>();
+    for (const line of this.#deps.transcript.lines) {
+      if (line.secondary) now.set(bookmarks.idFor(here.site, here.video, line.start), line.secondary);
+    }
+    const groups = (await bookmarks.grouped(settings().target)).map((g) => ({
+      ...g,
+      lines: g.lines.map((b) => (now.has(b.id) ? { ...b, secondary: now.get(b.id) } : b)),
+    }));
+    const q = fold(this.#savedQuery.trim());
+    if (!q) return groups;
+    return groups
+      .map((g) => ({ ...g, lines: g.lines.filter((b) => fold(b.text).includes(q) || fold(b.secondary ?? '').includes(q)) }))
+      .filter((g) => g.lines.length);
+  }
+
+  /** The open list as the search narrows it, drawn a block at a time as it comes into view. */
+  async #renderSavedRows(): Promise<void> {
+    // A redraw takes its rows with it. Focus that was on one goes to the row
+    // now in its place — the next, once a line is removed or a mark taken
+    // off — and not to the page.
+    const rows = this.#savedRows;
+    const active = this.#root.activeElement as HTMLElement | null;
+    const row = (el: Element | null): Element | null => el?.closest('.sv, .trow') ?? null;
+    const was = rows && active && rows.contains(active) ? Array.from(rows.querySelectorAll('.sv, .trow')).indexOf(row(active)!) : -1;
+    await this.#drawSavedRows();
+    if (was < 0 || !rows?.isConnected || rows !== this.#savedRows) return;
+    const now = Array.from(rows.querySelectorAll<HTMLElement>('.sv, .trow'));
+    const target = now[Math.min(was, now.length - 1)]?.querySelector<HTMLElement>('button');
+    if (target) {
+      target.focus();
+    } else {
+      rows.tabIndex = -1;
+      rows.focus();
+    }
+  }
+
+  async #drawSavedRows(): Promise<void> {
+    const rows = this.#savedRows;
     if (!rows?.isConnected) return;
-    this.#wordsSeen?.disconnect();
-    rows.replaceChildren();
-    const show = this.#wordsShow;
-    const list = wordList(show);
-    const words = this.#listed(show);
+    const show = this.#savedShow;
+    const query = this.#savedQuery.trim();
     const say = (cls: string, text: string): void => {
       const p = document.createElement('p');
       p.className = cls;
       p.textContent = text;
       rows.appendChild(p);
     };
+
+    if (show === 'lines') {
+      const groups = await this.#lineGroups();
+      // A newer search, or another list, got there first.
+      if (rows !== this.#savedRows || show !== this.#savedShow || query !== this.#savedQuery.trim()) return;
+      this.#savedSeen?.disconnect();
+      rows.replaceChildren();
+      if (!groups.length) {
+        say('empty', query ? ui.sidebar.noLineMatches(query) : ui.sidebar.savedEmpty);
+        return;
+      }
+      const here = this.#deps.context();
+      const items = groups.flatMap((g) => [{ group: g }, ...g.lines.map((line) => ({ line }))]);
+      this.#savedSeen = lazyRows(rows, items, (item) =>
+        'group' in item ? this.#groupHead(item.group, here) : this.#savedRow(item.line, here), 64);
+      return;
+    }
+
+    const list = wordList(show);
+    const words = this.#listed(show);
+    this.#savedSeen?.disconnect();
+    rows.replaceChildren();
     if (!words.length) {
       say('empty', list.empty);
       return;
     }
-    const query = this.#wordsQuery.trim();
     const shown = this.#matching(words);
     if (query) {
       // The search reaches readings and meanings not looked up yet: fetch them, then look again.
       void this.#lookUpAll(words).then((more) => {
-        if (more && this.#wordsQuery.trim() === query) this.#renderWordRows();
+        if (more && this.#savedQuery.trim() === query && this.#savedShow === show) void this.#renderSavedRows();
       });
     }
     if (!shown.length) {
@@ -1718,85 +2067,135 @@ export class Sidebar {
       return;
     }
     say('tintro', query ? ui.sidebar.wordsMatching(shown.length, words.length) : list.intro(words.length));
+    this.#savedSeen = lazyRows(rows, shown, (word) => this.#wordRow(word, show), 92);
+  }
 
-    // Readings and meanings only for rows coming into view: a list of known
-    // words can run to thousands, and each is a dictionary lookup.
-    const fills = new Map<Element, () => void>();
-    const seen = typeof IntersectionObserver === 'function'
-      ? new IntersectionObserver((entries) => {
-        for (const e of entries) {
-          if (!e.isIntersecting) continue;
-          seen?.unobserve(e.target);
-          fills.get(e.target)?.();
-          fills.delete(e.target);
-        }
-      }, { rootMargin: '300px 0px' })
-      : null;
-    this.#wordsSeen = seen;
-
-    for (const word of shown) {
-      const row = document.createElement('div');
-      row.className = 'trow';
-      const head = document.createElement('div');
-      head.className = 'tword';
-      const w = document.createElement('span');
-      w.className = 'tw';
-      w.dataset.s = show;
-      w.lang = settings().target;
-      w.textContent = word;
-      const r = document.createElement('span');
-      r.className = 'tr';
-      r.lang = settings().target;
-      head.append(w, r);
-      const meaning = document.createElement('div');
-      meaning.className = 'tm';
-      const said = document.createElement('div');
-      said.className = 'said';
-      said.setAttribute('role', 'status');
-      const actions = document.createElement('div');
-      actions.className = 'btnrow';
-      const button = (label: string, run: () => Promise<string | void>): void => {
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.textContent = label;
-        b.addEventListener('click', () => {
-          if (b.disabled) return;
-          b.disabled = true;
-          void run().then(
-            (msg) => {
-              if (msg) said.textContent = msg;
-            },
-            (e: unknown) => {
-              said.textContent = e instanceof Error ? e.message : String(e);
-              b.disabled = false;
-            },
-          );
-        });
-        actions.appendChild(b);
-      };
-      if (show === 'tracking' && this.#deps.addWord) button(ui.sidebar.addToAnki, () => this.#deps.addWord!(word));
-      if (this.#deps.unmark) button(list.unmark, () => this.#deps.unmark!(word));
-      row.append(head, meaning, actions, said);
-      rows.appendChild(row);
-      // Its reading and first meaning, from the same lookup the cards use.
-      const fill = (): void => void this.#infoFor(word).then((info) => {
-        if (!info || !row.isConnected) return;
-        r.textContent = info.reading !== word ? info.reading : '';
-        meaning.textContent = info.meaning;
-      });
-      if (seen) {
-        fills.set(row, fill);
-        seen.observe(row);
-      } else {
-        fill();
-      }
+  /** A video's heading over its saved lines. */
+  #groupHead(g: { site: string; video: string; title: string }, here: { site: string; video: string }): HTMLElement {
+    const head = document.createElement('div');
+    head.className = 'gh';
+    head.textContent = g.title || g.video;
+    if (g.site === here.site && g.video === here.video) {
+      const badge = document.createElement('span');
+      badge.textContent = ui.sidebar.thisVideo;
+      head.appendChild(badge);
     }
+    return head;
+  }
+
+  /**
+   * A saved line. Lines from the video on screen seek; lines from elsewhere
+   * open that video at the right second, which is the whole reason the url is
+   * stored alongside the text.
+   */
+  #savedRow(b: Bookmark, here: { site: string; video: string }): HTMLElement {
+    const row = document.createElement('div');
+    row.className = 'sv';
+    const tx = document.createElement('span');
+    tx.className = 'tx';
+    tx.id = this.#newId();
+    tx.lang = b.lang;
+    tx.textContent = b.text;
+    row.appendChild(tx);
+    if (b.secondary) {
+      const sec = document.createElement('span');
+      sec.className = 'sec';
+      sec.lang = settings().native;
+      sec.textContent = b.secondary;
+      row.appendChild(sec);
+    }
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    // The row's click, as a button: it seeks here, or opens the video the line is from.
+    const thisVideo = b.site === here.site && b.video === here.video;
+    const at = stamp(b.start);
+    const time = this.#timeButton(at, thisVideo ? ui.sidebar.playFrom(at) : ui.sidebar.openAt(at), tx.id);
+    const del = document.createElement('button');
+    del.className = 'save on';
+    del.replaceChildren(icon('x', 15));
+    del.dataset.tip = ui.sidebar.remove;
+    del.setAttribute('aria-label', ui.sidebar.removeLabel);
+    del.setAttribute('aria-describedby', tx.id);
+    del.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await bookmarks.remove(b.id);
+      this.#saved.delete(b.id);
+      this.#onSavedChange?.();
+      this.#paintSavedChips();
+      void this.#renderSavedRows();
+    });
+    meta.append(time, del);
+    row.appendChild(meta);
+    row.addEventListener('click', () => {
+      if (thisVideo) {
+        this.#userScrolled = false;
+        this.#deps.seek(b.start);
+        this.setMode('transcript');
+      } else {
+        window.open(b.url, '_blank', 'noopener');
+      }
+    });
+    return row;
+  }
+
+  /** A marked word, its reading and first meaning, and what can be done with it. */
+  #wordRow(word: string, show: WordMark): HTMLElement {
+    const list = wordList(show);
+    const row = document.createElement('div');
+    row.className = 'trow';
+    const head = document.createElement('div');
+    head.className = 'tword';
+    const w = document.createElement('span');
+    w.className = 'tw';
+    w.dataset.s = show;
+    w.lang = settings().target;
+    w.textContent = word;
+    const r = document.createElement('span');
+    r.className = 'tr';
+    r.lang = settings().target;
+    head.append(w, r);
+    const meaning = document.createElement('div');
+    meaning.className = 'tm';
+    const said = document.createElement('div');
+    said.className = 'said';
+    said.setAttribute('role', 'status');
+    const actions = document.createElement('div');
+    actions.className = 'btnrow';
+    const button = (label: string, run: () => Promise<string | void>): void => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = label;
+      b.addEventListener('click', () => {
+        if (b.disabled) return;
+        b.disabled = true;
+        void run().then(
+          (msg) => {
+            if (msg) said.textContent = msg;
+          },
+          (e: unknown) => {
+            said.textContent = e instanceof Error ? e.message : String(e);
+            b.disabled = false;
+          },
+        );
+      });
+      actions.appendChild(b);
+    };
+    if (show === 'tracking' && this.#deps.addWord) button(ui.sidebar.addToAnki, () => this.#deps.addWord!(word));
+    if (this.#deps.unmark) button(list.unmark, () => this.#deps.unmark!(word));
+    row.append(head, meaning, actions, said);
+    // Its reading and first meaning, from the same lookup the cards use —
+    // made now, as the row comes into view, not for every word in the list.
+    void this.#infoFor(word).then((info) => {
+      if (!info || !row.isConnected) return;
+      r.textContent = info.reading !== word ? info.reading : '';
+      meaning.textContent = info.meaning;
+    });
+    return row;
   }
 
   /** The words a search matches: by the word, its reading or its meaning, as far as they are known. */
   #matching(words: string[]): string[] {
-    const fold = (t: string): string => t.normalize('NFKC').toLocaleLowerCase();
-    const q = fold(this.#wordsQuery.trim());
+    const q = fold(this.#savedQuery.trim());
     if (!q) return words;
     return words.filter((w) => {
       const info = this.#wordInfo.get(w);
@@ -1835,7 +2234,8 @@ export class Sidebar {
    * while they come.
    */
   async #exportWords(how: 'copy' | 'file', said: HTMLElement, b: HTMLButtonElement): Promise<void> {
-    const show = this.#wordsShow;
+    const show = this.#savedShow;
+    if (show === 'lines') return;
     const words = this.#matching(this.#listed(show));
     if (!words.length) {
       said.textContent = ui.sidebar.nothingToExport;
@@ -1860,94 +2260,13 @@ export class Sidebar {
     }
   }
 
-  async #renderSaved(): Promise<void> {
-    const host = this.#settingsEl;
-    if (!host) return;
-    // Only the language being learned: its lines, for its deck.
-    const groups = await bookmarks.grouped(settings().target);
-    host.replaceChildren();
-
-    if (!groups.length) {
-      const empty = document.createElement('p');
-      empty.className = 'empty';
-      empty.textContent = ui.sidebar.savedEmpty;
-      host.appendChild(empty);
-      return;
-    }
-
-    host.appendChild(this.#savedActions(groups.flatMap((g) => g.lines)));
-
-    const here = this.#deps.context();
-    for (const g of groups) {
-      const head = document.createElement('div');
-      head.className = 'gh';
-      head.textContent = g.title || g.video;
-      if (g.site === here.site && g.video === here.video) {
-        const badge = document.createElement('span');
-        badge.textContent = ui.sidebar.thisVideo;
-        head.appendChild(badge);
-      }
-      host.appendChild(head);
-
-      for (const b of g.lines) {
-        const row = document.createElement('div');
-        row.className = 'sv';
-
-        const tx = document.createElement('span');
-        tx.className = 'tx';
-        tx.lang = b.lang;
-        tx.textContent = b.text;
-        row.appendChild(tx);
-
-        if (b.secondary) {
-          const sec = document.createElement('span');
-          sec.className = 'sec';
-          sec.lang = settings().native;
-          sec.textContent = b.secondary;
-          row.appendChild(sec);
-        }
-
-        const meta = document.createElement('div');
-        meta.className = 'meta';
-        const time = document.createElement('span');
-        time.textContent = stamp(b.start);
-        const del = document.createElement('button');
-        del.className = 'save on';
-        del.replaceChildren(icon('x', 15));
-        del.dataset.tip = ui.sidebar.remove;
-        del.setAttribute('aria-label', ui.sidebar.removeLabel);
-        del.addEventListener('click', async (e) => {
-          e.stopPropagation();
-          await bookmarks.remove(b.id);
-          this.#saved.delete(b.id);
-          this.#onSavedChange?.();
-          void this.#renderSaved();
-        });
-        meta.append(time, del);
-        row.appendChild(meta);
-
-        row.addEventListener('click', () => {
-          if (b.site === here.site && b.video === here.video) {
-            this.#userScrolled = false;
-            this.#deps.seek(b.start);
-            this.setMode('transcript');
-          } else {
-            window.open(b.url, '_blank', 'noopener');
-          }
-        });
-
-        host.appendChild(row);
-      }
-    }
-  }
-
   setMode(mode: PanelMode): void {
+    // A view that goes while it has focus — a saved line played from the
+    // keyboard — hands focus to the tabs rather than dropping it on the page.
+    const lost = this.#settingsEl?.contains(this.#root.activeElement) ?? false;
     this.#mode = mode;
     const showing = mode !== 'transcript';
 
-    for (const b of Array.from(this.#tabs.querySelectorAll<HTMLElement>('[role=tab]'))) {
-      b.setAttribute('aria-selected', String(b.dataset.mode === mode));
-    }
     const other = mode === 'settings' || mode === 'keys';
     this.#title.hidden = !other;
     this.#title.textContent = mode === 'settings' ? ui.sidebar.settings : mode === 'keys' ? ui.sidebar.shortcuts : '';
@@ -1977,24 +2296,25 @@ export class Sidebar {
         onAnkiConnected: () => this.#deps.onAnkiConnected?.(),
       });
       this.#settingsEl.prepend(helpLink(ui.sidebar.help));
-      this.#panel.appendChild(this.#settingsEl);
+      this.#view.appendChild(this.#settingsEl);
     } else if (mode === 'keys') {
       this.#settingsEl = keysView();
       this.#settingsEl.append(helpLink(ui.sidebar.help, 'keys'));
-      this.#panel.appendChild(this.#settingsEl);
+      this.#view.appendChild(this.#settingsEl);
     } else if (mode === 'saved') {
       this.#settingsEl = document.createElement('div');
       this.#settingsEl.className = 'savedview';
-      this.#panel.appendChild(this.#settingsEl);
+      this.#view.appendChild(this.#settingsEl);
       void this.#renderSaved();
-    } else if (mode === 'words') {
-      this.#settingsEl = document.createElement('div');
-      this.#settingsEl.className = 'savedview wordsview';
-      this.#panel.appendChild(this.#settingsEl);
-      this.#renderWords();
     } else {
       this.render();
     }
+    if (lost) this.#focusTabs();
+  }
+
+  /** Focus the tabs, on the one Tab reaches (#paintTabs). */
+  #focusTabs(): void {
+    this.#tabs.querySelector<HTMLElement>('[role=tab][tabindex="0"]')?.focus();
   }
 
   /**
@@ -2015,6 +2335,7 @@ export class Sidebar {
 
   toggle(open?: boolean): void {
     this.#open = open ?? !this.#open;
+    const focused = this.#root.activeElement;
     // The host always stays in the DOM: collapsed means the tab, never nothing.
     this.#panel.style.display = this.#open ? '' : 'none';
     this.#tab.style.display = this.#open ? 'none' : '';
@@ -2026,6 +2347,11 @@ export class Sidebar {
     }
     this.#onLayout?.();
     if (this.#open) this.render();
+    // Focus goes with what it was on: from the panel to the tab that opens it
+    // again, and from that tab to the panel's tabs. A click, which gives a
+    // button no focus here, moves none.
+    if (!this.#open && focused && this.#panel.contains(focused)) this.#tab.focus();
+    else if (this.#open && focused === this.#tab) this.#focusTabs();
     if (this.#open !== settings().sidebarOpen) void setSetting('sidebarOpen', this.#open);
   }
 
@@ -2079,9 +2405,22 @@ export class Sidebar {
   #markCurrent(): void {
     const el = this.#row(this.#active);
     if (el === this.#curRow) return;
+    this.#setCur(el);
+  }
+
+  /**
+   * Mark this row as the line being spoken, for the eye and for a screen
+   * reader. Tab into the list lands on it, unless focus is in the list already.
+   */
+  #setCur(el: HTMLElement | null): void {
     this.#curRow?.classList.remove('cur');
+    this.#curRow?.removeAttribute('aria-current');
     el?.classList.add('cur');
+    el?.setAttribute('aria-current', 'true');
     this.#curRow = el;
+    if (el && !el.classList.contains('hide') && !this.#list.contains(this.#root.activeElement)) {
+      this.#setStop(el.querySelector<HTMLElement>('.seek'));
+    }
   }
 
   /**
@@ -2105,7 +2444,8 @@ export class Sidebar {
       if (e.target === list) away();
     });
     list.addEventListener('keydown', (e) => {
-      if (NAV_KEYS.has(e.key)) away();
+      // Space on a button presses it; it scrolls nothing.
+      if (NAV_KEYS.has(e.key) && !(e.key === ' ' && consumesKey(e.target ?? undefined, e.key))) away();
     });
     list.addEventListener('scroll', () => {
       this.#hideHover();
@@ -2528,11 +2868,7 @@ export class Sidebar {
         row.classList.add('hit-cur');
         this.#hitCurRow = row;
       }
-      if (line === current) {
-        this.#curRow?.classList.remove('cur');
-        row.classList.add('cur');
-        this.#curRow = row;
-      }
+      if (line === current) this.#setCur(row);
       frag.appendChild(row);
     }
     block.el.appendChild(frag);
@@ -2569,13 +2905,14 @@ export class Sidebar {
     this.#scheduleFill();
   }
 
-  /** One line's row as it starts out: readable, and nothing more yet. */
+  /** One line's row as it starts out: readable, playable from its time, and nothing more yet. */
   #shell(line: Line): HTMLElement {
     const row = document.createElement('div');
     row.className = 'line';
     row.dataset.i = String(this.#indexOf.get(line) ?? -1);
     const tx = document.createElement('span');
     tx.className = 'tx';
+    tx.id = this.#newId();
     tx.dir = 'auto';
     // In the language learned, whatever the interface's: kanji are drawn as
     // Japanese draws them, not as a Chinese or Korean interface would.
@@ -2592,11 +2929,33 @@ export class Sidebar {
     }
     const meta = document.createElement('div');
     meta.className = 'meta';
-    meta.textContent = `${stamp(line.start)} – ${stamp(line.end)}`;
+    // The start is a button, for the keyboard: a click anywhere on the card plays the line too.
+    const when = document.createElement('span');
+    when.className = 'when';
+    const start = stamp(line.start);
+    const seek = this.#timeButton(start, ui.sidebar.playFrom(start), tx.id);
+    seek.tabIndex = -1;   // the list is one Tab stop (#stop)
+    when.append(seek, ` – ${stamp(line.end)}`);
+    meta.appendChild(when);
     row.appendChild(meta);
     this.#rowOf.set(line, row);
     this.#lineOf.set(row, line);
     return row;
+  }
+
+  /** A line's time as a button: named for what it does, and described by the line it is for. */
+  #timeButton(time: string, label: string, describedBy: string): HTMLButtonElement {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'seek';
+    b.textContent = time;
+    b.setAttribute('aria-label', label);
+    b.setAttribute('aria-describedby', describedBy);
+    return b;
+  }
+
+  #newId(): string {
+    return `lgt${++this.#ids}`;
   }
 
   /**
@@ -2650,6 +3009,7 @@ export class Sidebar {
     this.#hitRows.clear();
     this.#hitCurRow = null;
     this.#curRow = null;
+    this.#stop = null;
     this.#pin = null;
     this.#list.replaceChildren();
   }
@@ -2692,6 +3052,7 @@ export class Sidebar {
       }
       this.#sizeBlock(block);
     }
+    this.#ensureStop();
   }
 
   // ---- counting ----------------------------------------------------------
@@ -3026,12 +3387,19 @@ export class Sidebar {
     const x = document.createElement('span');
     x.className = 'x';
     row.prepend(x);
+    // Every row's buttons have the same names, so each is described by its
+    // line; ← and → reach them, Tab does not (#stop).
+    const of = row.querySelector('.tx')?.id ?? '';
     const save = document.createElement('button');
     save.className = 'save';
+    save.tabIndex = -1;
+    save.setAttribute('aria-describedby', of);
     save.replaceChildren(icon('bookmark', 15));
     if (this.#deps.onAddLine) {
       const add = document.createElement('button');
       add.className = 'addline';
+      add.tabIndex = -1;
+      add.setAttribute('aria-describedby', of);
       add.replaceChildren(icon('linePlus', 15));
       add.dataset.tip = ui.sidebar.addSentence;
       add.setAttribute('aria-label', ui.sidebar.addSentenceLabel);
@@ -3066,6 +3434,8 @@ export class Sidebar {
 
       const w = document.createElement('span');
       w.className = 'w';
+      // Pressed as a button is, with Enter or Space; ← and → reach it (#installListKeys).
+      w.setAttribute('role', 'button');
       w.dataset.tok = JSON.stringify(tok);
       w.dataset.line = text;
       const status = this.#deps.statusOf(tok);
@@ -3097,6 +3467,14 @@ export class Sidebar {
       }
       frag.appendChild(w);
     }
+    // A word holding the Tab stop goes with the old words: its line's time takes over, focus too.
+    const stop = this.#stop;
+    if (stop && into.contains(stop)) {
+      const seek = row.querySelector<HTMLElement>('.seek');
+      const focused = this.#root.activeElement === stop;
+      this.#setStop(seek);
+      if (focused) seek?.focus({ preventScroll: true });
+    }
     into.replaceChildren(frag);
     into.classList.toggle('has-ruby', ruby);
     into.classList.toggle('has-new-ruby', fresh);
@@ -3124,13 +3502,7 @@ export class Sidebar {
     this.#list.addEventListener('mouseover', (e) => {
       if (!settings().sidebarHover) return;
       const hit = (e.target as HTMLElement).closest('.w') as HTMLElement | null;
-      // A word in a marked phrase is the phrase, hovered as one: its last word stands for it.
-      const w = hit ? (phraseAt(hit, '.w')?.last ?? hit) : null;
-      // Moving onto a reading inside the same word is not a new hover.
-      if (!w || w === this.#hoverFor) return;
-      this.#hideHover();
-      this.#hoverFor = w;
-      this.#hoverTimer = window.setTimeout(() => void this.#showHover(w), HOVER_DELAY);
+      if (hit) this.#previewSoon(hit);
     });
     this.#list.addEventListener('mouseout', (e) => {
       const w = (e.target as HTMLElement).closest('.w') as HTMLElement | null;
@@ -3143,6 +3515,17 @@ export class Sidebar {
       if (w.classList.contains('inphrase') && (to as Element | null)?.closest?.('.inphrase')?.parentElement === w.parentElement) return;
       this.#hideHover();
     });
+  }
+
+  /** Preview a word, under the pointer or with focus, after a short wait. */
+  #previewSoon(hit: HTMLElement): void {
+    // A word in a marked phrase is the phrase, hovered as one: its last word stands for it.
+    const w = phraseAt(hit, '.w')?.last ?? hit;
+    // Moving onto a reading inside the same word is not a new hover.
+    if (w === this.#hoverFor) return;
+    this.#hideHover();
+    this.#hoverFor = w;
+    this.#hoverTimer = window.setTimeout(() => void this.#showHover(w), HOVER_DELAY);
   }
 
   /**
@@ -3283,6 +3666,53 @@ export class Sidebar {
  * without a click. Older versions treat them as comments and skip them, so
  * they cost nothing.
  */
+/** Text as a search compares it: the same whatever its width or case. */
+function fold(t: string): string {
+  return t.normalize('NFKC').toLocaleLowerCase();
+}
+
+/**
+ * A long list, drawn as it comes into view.
+ *
+ * The rows go in blocks of LIST_BLOCK, each block drawn only when it nears the
+ * view; until then it is an empty box about as tall as its rows will be. A
+ * list of known words runs to thousands, each with a dictionary lookup, and
+ * drawing them all at once is how opening it stalled. A drawn block is
+ * skipped by the browser while it is off screen (content-visibility).
+ */
+function lazyRows<T>(box: HTMLElement, items: readonly T[], draw: (item: T) => HTMLElement, guess: number): IntersectionObserver | null {
+  const blocks: Array<{ el: HTMLElement; from: number }> = [];
+  for (let i = 0; i < items.length; i += LIST_BLOCK) {
+    const el = document.createElement('div');
+    el.className = 'blk';
+    el.style.height = `${Math.min(LIST_BLOCK, items.length - i) * guess}px`;
+    box.appendChild(el);
+    blocks.push({ el, from: i });
+  }
+  const fill = (b: { el: HTMLElement; from: number }): void => {
+    b.el.style.removeProperty('height');
+    b.el.replaceChildren(...items.slice(b.from, b.from + LIST_BLOCK).map(draw));
+  };
+  // The top of the list is what opens in view: drawn at once, not a frame later.
+  const [first, ...rest] = blocks;
+  if (first) fill(first);
+  if (typeof IntersectionObserver !== 'function') {
+    rest.forEach(fill);
+    return null;
+  }
+  const byEl = new Map(rest.map((b) => [b.el, b] as const));
+  const seen = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      seen.unobserve(e.target);
+      const b = byEl.get(e.target as HTMLElement);
+      if (b) fill(b);
+    }
+  }, { root: box, rootMargin: '600px 0px' });
+  for (const b of rest) seen.observe(b.el);
+  return seen;
+}
+
 export function savedTsv(lines: Bookmark[]): string {
   const head = [
     '#separator:tab',

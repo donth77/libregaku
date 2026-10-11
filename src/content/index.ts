@@ -11,6 +11,7 @@ import { rubyOf } from '../morphology/ruby';
 import type { Segmenter, Token } from '../morphology/types';
 import { DomCaptionSource } from '../adapters/dom-captions';
 import { charactersOf, clearLookupCache, ensureDictionary, lookupToken, type Characters, type LookupResult } from '../dict/client';
+import { dictionarySite } from '../dict/sites';
 import { bottomOffset, namedMatches, occupiedBands } from './coexist';
 import {
   addNote, browseWord, createDeck, deckNames, ensureModel, isDuplicate, takeBack, type NewCard,
@@ -24,7 +25,7 @@ import { sourceField } from '../anki/source';
 import { buildStatusMap, lemmaReading, type OverrideStatus, type Status, type StatusMap } from '../anki/status';
 import { loadOverrides, marksIn, setMark, syncMarks, type MarkSync } from '../anki/marks';
 import {
-  DICTIONARIES, cardDeck, definitionLanguage, dictionaryOf, featuresOf, loadSettings, nextRuby,
+  DICTIONARIES, cardDeck, definitionLanguage, dictionaryOf, featuresOf, loadSettings, nextRuby, ownDictionaryOf, trackLanguageMatch,
   onSettingsChange, targetVariant,
   setSetting, settings, underlineVars,
 } from '../settings';
@@ -40,7 +41,7 @@ import {
   elementRecorder, extensionFor, isEncrypted, stillOf, tabCaptured, tabRecorder, type LineRecorder, type Media,
   type MissingMedia,
 } from './capture';
-import { isLineKey, isTyping, keyAction, type KeyAction } from './keys';
+import { isControlKey, isLineKey, isTyping, keyAction, type KeyAction } from './keys';
 import { Sidebar, type WordContext } from './sidebar';
 import { PlayerInset } from './player-inset';
 import * as bookmarks from './bookmarks';
@@ -64,7 +65,7 @@ const targetLang = (): string => settings().target;
 
 /** Whether the site has the language being learned only as pictures (Netflix's image-based subtitles). */
 const targetInPictures = (adapter: SubtitleSource): boolean =>
-  Boolean(adapter.pictureLanguages?.().some((l) => l.startsWith(targetLang())));
+  Boolean(adapter.pictureLanguages?.().some((l) => trackLanguageMatch(l, targetLang()) > 0));
 
 /**
  * Under "no subtitles in the language you are learning": that the site has
@@ -88,7 +89,8 @@ function noTargetDetail(adapter: SubtitleSource, tracks: TrackInfo[]): string {
  * choosing it — which reads as a video whose subtitles barely exist.
  */
 function wantedTracks(tracks: TrackInfo[]): { track: TrackInfo | undefined; second: TrackInfo | undefined } {
-  const inTarget = tracks.filter((t) => t.lang.startsWith(targetLang()) && !t.forced);
+  // The language's own tracks, and Hong Kong's for Cantonese, never Cantonese for Mandarin (trackLanguageMatch).
+  const inTarget = tracks.filter((t) => trackLanguageMatch(t.lang, targetLang()) > 0 && !t.forced);
   // An explicit pick from the toolbar wins over the automatic one: a person's
   // subtitles, in the script being learned (chooseTrack).
   const track =
@@ -420,7 +422,8 @@ async function makeSegmenter(): Promise<Segmenter | null> {
   if (dictionary) {
     void (async () => {
       try {
-        const d = await ensureDictionary(dictionary.edition, dictionary.source);
+        // And the one in the learner's own language where the pair has one: asked first.
+        const d = await ensureDictionary(dictionary.edition, dictionary.source, ownDictionaryOf(lang, settings()));
         // The learner may have switched language while this downloaded.
         if (segmenterFor !== lang) return;
         log(
@@ -586,7 +589,8 @@ function charactersFor(token: Token, result: LookupResult): Promise<Characters> 
 
 /** The language's dictionary site for a word, for its card — none where the language has none. */
 function dictionaryFor(token: Token, result: LookupResult): { name: string; url: string } | undefined {
-  const site = featuresOf(targetLang()).dictionary;
+  // A dictionary in the learner's own language where there is one on the web; the language's usual one otherwise.
+  const site = dictionarySite(targetLang(), settings().native) ?? featuresOf(targetLang()).dictionary;
   if (!site) return undefined;
   const word = (result.state === 'ok' ? result.entries[0]?.word : undefined) ?? token.lemma ?? token.surface;
   return { name: site.name, url: site.url(word) };
@@ -2070,7 +2074,10 @@ document.addEventListener(
       sidebar?.clearPhrase();
     }
     if (e.key === 'Shift' && !e.repeat && !isTyping(e)) lookUnderPointer();
-    const action = keyAction(e);
+    // A focused control of ours keeps its own keys: → moves along the panel's
+    // tabs, ↓ down the transcript, Enter presses a word, rather than the player's.
+    if (isControlKey(e)) return;
+    const action = keyAction(e, settings().singleKeys);
     if (!action || isTyping(e) || !keyApplies(action)) return;
     // Netflix and YouTube both treat stray letters and arrows as player shortcuts.
     e.preventDefault();

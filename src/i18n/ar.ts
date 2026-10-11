@@ -58,6 +58,8 @@ export const ar: Translation = {
   common: {
     furigana: (mode: Settings['ruby']): string => `فوريغانا: ${RUBY[mode]}`,
     pinyin: (mode: Settings['ruby']): string => `بينيين: ${RUBY[mode]}`,
+    mandarin: 'الصينية (الماندرين)',
+    jyutping: (mode: Settings['ruby']): string => `Jyutping: ${RUBY[mode]}`,
     sentenceGap: ' ',
   },
 
@@ -69,6 +71,7 @@ export const ar: Translation = {
     targetLimited: (language: string): string => `${language} — دعم محدود`,
     supportFull: 'دعم كامل، يشمل القراءات والفوريغانا.',
     supportPinyin: 'دعم كامل، يشمل البينيين. التعريفات بالإنجليزية.',
+    supportJyutping: 'دعم كامل، يشمل Jyutping. التعريفات بالإنجليزية.',
     supportWords: 'دعم كامل. التعريفات بالإنجليزية.',
     script: 'الكتابة',
     scriptHint: 'هي المستخدمة عندما يتوفّر الفيديو بالنوعين.',
@@ -121,6 +124,8 @@ export const ar: Translation = {
     rubyHint: 'قراءات فوق الكانجي. اضغط R للتبديل أثناء المشاهدة.',
     pinyin: 'بينيين',
     pinyinHint: 'قراءات فوق الحروف. اضغط R للتبديل أثناء المشاهدة.',
+    jyutping: 'Jyutping',
+    jyutpingHint: 'قراءات فوق الحروف. اضغط R للتبديل أثناء المشاهدة.',
     blurPrimary: 'تمويه الترجمة',
     blurPrimaryHint: 'للتدرّب على الاستماع: تبقى الترجمة مموّهة حتى تمرّر المؤشر فوقها. اضغط H للتبديل.',
     subtitleSize: 'حجم النص',
@@ -138,6 +143,10 @@ export const ar: Translation = {
     dualSubtitlesHint:
       'يعرض الترجمة بلغتك تحت ترجمة اللغة التي تتعلمها. وهي من الموقع نفسه، لا ترجمة آلية، ' +
       'وتتطلب توفّر نص الفيديو كاملًا.',
+    singleKeys: 'اختصارات بمفتاح واحد',
+    singleKeysHint:
+      'تعمل مفاتيح الحروف مثل A وR وحدها أثناء المشاهدة. إن أوقفته، اضغط مع الاستمرار على Alt وShift معها. ' +
+      'أما مفاتيح الأسهم فتعمل في الحالتين.',
 
     // التسطير
     underlinesHeading: 'التسطير',
@@ -169,6 +178,11 @@ export const ar: Translation = {
     languageBadgeCode: 'رمز',
     badgeFlag: 'علم الشارة',
     badgeFlagDefault: 'الافتراضي',
+    flagSearch: 'بحث…',
+    flagSearchLabel: 'البحث عن بلد',
+    flagSuggested: 'مقترحة',
+    flagAll: 'كل البلدان',
+    flagNone: (query: string): string => `لا يوجد بلد يطابق «${query}».`,
     badgeFlagHint: 'العلم الذي يمثّل اللغة التي تتعلمها. تحتفظ كل لغة بعلمها.',
     languageBadgeHint: 'كيف يعرض الشريط العلوي اللغة التي تتعلمها.',
     sidebarStats: 'عدّ الكلمات الجديدة',
@@ -260,7 +274,14 @@ export const ar: Translation = {
       'يقسّم اليابانية والكورية والصينية إلى كلمات. ترخيص MIT؛ ولكلٍّ من IPADIC وmecab-ko-dic وCC-CEDICT ' +
       'شروطه الخاصة.',
     creditCedict: 'القاموس الصيني © MDBG والمساهمون فيه، مستخدم بموجب ترخيص CC BY-SA 4.0.',
-    creditWiktionary: 'القاموسان الكوري والإسباني، من Wiktionary عبر kaikki.org وwiktionary-to-yomitan. CC BY-SA 4.0.',
+    creditWiktionary:
+      'القاموسان الكوري والإسباني، وبعض القواميس بلغتك، من Wiktionary عبر kaikki.org وwiktionary-to-yomitan. CC BY-SA 4.0.',
+    creditKrdict:
+      'كلمات كورية مشروحة بلغتك. © National Institute of Korean Language، مستخدم بموجب ترخيص CC BY-SA 2.0 KR. ' +
+      'الملفات من إعداد Lyroxide.',
+    creditCfdict: 'الصينية مشروحة بالفرنسية. CFDICT © chine.in، ويُبقيه CxDICT محدّثًا. CC BY-SA 4.0.',
+    creditCanto: 'القاموس الكانتوني وقراءات Jyutping لقاموس CC-CEDICT. © Pleco Inc.، مستخدم بموجب ترخيص CC BY-SA 3.0.',
+    creditHandedict: 'الصينية مشروحة بالألمانية. © HanDeDict والمساهمون فيه، مستخدم بموجب ترخيص CC BY-SA 3.0.',
     creditUnihan: 'أي قراءة للحرف الصيني تظهر أولًا. © Unicode, Inc.، مستخدم بموجب Unicode License.',
     creditJotoba: 'يُستخدمان للبحث أثناء تنزيل القاموس. كلاهما يعتمد على JMdict.',
     creditLucide: 'الرموز. ترخيص ISC.',
@@ -278,6 +299,7 @@ export const ar: Translation = {
     keyKnown: 'وضع علامة «معروفة» على الكلمة المعروضة في النافذة',
     keyFurigana: 'تبديل الفوريغانا: إيقاف، الكلمات الجديدة، الكل',
     keyPinyin: 'تبديل البينيين: إيقاف، الكلمات الجديدة، الكل',
+    keyJyutping: 'تبديل Jyutping: إيقاف، الكلمات الجديدة، الكل',
     keyBlur: 'تمويه الترجمة أو إلغاء تمويهها',
     keySave: 'حفظ السطر الحالي',
     keyTranscript: 'إظهار لوحة النص أو إخفاؤها',
@@ -301,6 +323,7 @@ export const ar: Translation = {
     nextSteps:
       'ثم افتح فيديو فيه ترجمة باللغة التي تتعلمها، ومرّر المؤشر فوق كلمة. ' +
       'يعرض زر لوحة المفاتيح في لوحة النص اختصارات لوحة المفاتيح.',
+    stepDone: 'مكتملة',
     confirmLanguages: 'هذه اللغات صحيحة',
     keepDeck: (deck: string): string => `استخدام «${deck}» للبطاقات الجديدة`,
   },
@@ -339,15 +362,17 @@ export const ar: Translation = {
   },
 
   sidebar: {
+    panelLabel: 'لوحة النص',
+    resizeLabel: 'تغيير حجم اللوحة',
+
     // علامات التبويب والأزرار بجانبها
     tabsLabel: 'القوائم',
     transcriptTab: 'النص',
     savedTab: 'المحفوظة',
-    wordsTab: 'الكلمات',
     settings: 'الإعدادات',
     shortcuts: 'اختصارات لوحة المفاتيح',
     close: 'إغلاق',
-    closeLabel: 'طيّ اللوحة',
+    closeLabel: 'إغلاق اللوحة',
     openTip: 'النص',
     openLabel: 'إظهار النص',
     help: 'مساعدة',
@@ -377,6 +402,7 @@ export const ar: Translation = {
     empty: 'لم يُحمَّل أي نص.',
     currentLine: 'السطر الحالي',
     lineNew: (n: number): string => `${n} جديدة`,
+    playFrom: (time: string): string => `تشغيل من ${time}`,
     saveLine: 'حفظ السطر',
     unsave: 'إلغاء الحفظ',
     addSentence: 'إضافة الجملة',
@@ -399,6 +425,7 @@ export const ar: Translation = {
     savedEmpty:
       'لم تحفظ شيئًا بعد. استخدم الإشارة المرجعية في أي سطر من النص — أو اضغط B — لتحتفظ بجملة تريد العودة إليها.',
     thisVideo: 'هذا الفيديو',
+    openAt: (time: string): string => `فتح الفيديو عند ${time}`,
     remove: 'إزالة',
     removeLabel: 'إزالة من المحفوظة',
     copySavedAbout: 'نسخ كل الأسطر المحفوظة كنص مفصول بعلامات الجدولة',
@@ -423,18 +450,20 @@ export const ar: Translation = {
     downloadBlocked: 'حظرت هذه الصفحة التنزيل — استخدم «نسخ» بدلًا من ذلك.',
 
     // الكلمات
-    listsLabel: 'أي الكلمات',
+    listsLabel: 'أي قائمة',
+    listLines: 'الأسطر',
     listTracked: 'قيد التتبّع',
     listKnown: 'معروفة',
     listIgnored: 'متجاهَلة',
-    findPlaceholder: 'البحث عن كلمة',
-    findLabel: 'البحث عن كلمة في هذه القائمة',
+    findPlaceholder: 'بحث…',
+    findLabel: 'البحث في هذه القائمة',
     copyWordsAbout: 'نسخ هذه القائمة كنص مفصول بعلامات الجدولة',
     exportWordsAbout: 'حفظ هذه القائمة في ملف مفصول بعلامات الجدولة يمكن لـ Anki استيراده',
     wordsCopied: (n: number): string => `تم نسخ ${count(n, WORD, true)}.`,
-    nothingToExport: 'لا توجد كلمات في هذه القائمة لتصديرها.',
+    nothingToExport: 'لا يوجد في هذه القائمة ما يمكن تصديره.',
     lookingUp: 'جارٍ البحث عن القراءات والمعاني…',
     noWordMatches: (query: string): string => `لا توجد كلمة في هذه القائمة تطابق «${query}».`,
+    noLineMatches: (query: string): string => `لا يوجد سطر محفوظ يطابق «${query}».`,
     wordsMatching: (shown: number, total: number): string => `${shown} من ${count(total, WORD, true)}.`,
     trackedEmpty:
       'لا شيء قيد التتبّع بعد. يضع «تتبّع» تسطيرًا تحت الكلمة لتنتبه إليها، دون إنشاء بطاقة. ' +
@@ -523,6 +552,7 @@ export const ar: Translation = {
     adding: 'جارٍ الإضافة…',
     undoing: 'جارٍ التراجع…',
     added: 'تمت الإضافة',
+    addedUndo: 'تمت الإضافة — تراجع',
     inAnki: 'في Anki',
     showInAnki: 'عرض في Anki',
     waiting: 'في الانتظار',
@@ -562,12 +592,12 @@ export const ar: Translation = {
     unblurSubtitle: 'إلغاء تمويه الترجمة',
     showTranslation: 'إظهار الترجمة بلغتك',
     hideTranslation: 'إخفاء الترجمة بلغتك',
+    translation: 'الترجمة بلغتك',
     transcript: 'النص',
     pinHeader: 'تثبيت الشريط العلوي',
     unpinHeader: 'إلغاء تثبيت الشريط العلوي',
     settings: 'الإعدادات',
     showHeader: 'إظهار الشريط العلوي',
-    showHeaderLabel: 'إظهار الشريط العلوي',
   },
 
   player: {
@@ -593,7 +623,7 @@ export const ar: Translation = {
         known: 'عُلِّمت كمعروفة', tracking: 'قيد التتبّع', ignored: 'متجاهَلة', unknown: 'عُلِّمت كجديدة',
       }[status];
       if (refused) return `${word} · ${done}، بلا بطاقة — رفضها Anki، وستُعاد المحاولة لاحقًا`;
-      return `${word} · ${done}، بلا بطاقة${status === 'tracking' ? '. انظر تبويب «الكلمات» في اللوحة' : ''}`;
+      return `${word} · ${done}، بلا بطاقة${status === 'tracking' ? '. انظر تبويب «المحفوظة» في اللوحة' : ''}`;
     },
 
     // بطاقة الكلمة

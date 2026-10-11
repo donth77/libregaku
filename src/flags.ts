@@ -50,6 +50,7 @@ export const SPOKEN_IN: Readonly<Record<string, readonly string[]>> = {
   ja: codes('JP'),
   ko: codes('KR'),
   zh: codes('CN TW HK SG MO'),
+  yue: codes('HK MO CN'),
   es: codes('ES MX AR CO CL PE VE CU EC GT BO DO HN PY NI SV CR PA UY PR GQ'),
   fr: codes('FR CA BE CH LU MC SN CI CM CD HT'),
   de: codes('DE AT CH LI LU'),
@@ -67,8 +68,9 @@ export function flagOf(code: string): string {
   return String.fromCodePoint(...Array.from(code, (letter) => 0x1f1e6 + letter.charCodeAt(0) - 0x41));
 }
 
-/** A flag the badge can show, and the country's name to read beside it. */
+/** A flag the badge can show, the country's code, and its name to read beside it. */
 export interface FlagChoice {
+  code: string;
   flag: string;
   name: string;
 }
@@ -80,7 +82,7 @@ export interface FlagChoice {
  */
 export function flagChoices(lang: string, locale: string): { spoken: FlagChoice[]; others: FlagChoice[] } {
   const names = new Intl.DisplayNames([locale], { type: 'region' });
-  const choice = (code: string): FlagChoice => ({ flag: flagOf(code), name: names.of(code) ?? code });
+  const choice = (code: string): FlagChoice => ({ code, flag: flagOf(code), name: names.of(code) ?? code });
   const spoken = SPOKEN_IN[lang] ?? [];
   const byName = new Intl.Collator(locale).compare;
   return {

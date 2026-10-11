@@ -20,9 +20,20 @@ import {
   closePopup, closePopupSoon, draftFor, placeCard, popupIsOpen, pressAdd, showPopup, type Box,
 } from '../popup';
 import type { LookupResult } from '../../dict/client';
+import { DEFAULTS, setSetting } from '../../settings';
 
 const box = (left: number, top: number, width: number, height: number): Box =>
   ({ left, top, width, height, bottom: top + height });
+
+/** The element with focus, inside whatever shadow roots it is in. */
+const focused = (): Element | null => {
+  let el = document.activeElement;
+  while (el?.shadowRoot?.activeElement) el = el.shadowRoot.activeElement;
+  return el;
+};
+
+const escape = (from: Element): boolean =>
+  from.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, composed: true, cancelable: true }));
 
 const RESULT: LookupResult = {
   state: 'ok',
@@ -32,12 +43,12 @@ const RESULT: LookupResult = {
   }],
 };
 
-function open(over: Partial<Parameters<typeof showPopup>[3]> = {}, surface = '勉強'): ShadowRoot {
+function open(over: Partial<Parameters<typeof showPopup>[3]> = {}, surface = '勉強', result = RESULT): ShadowRoot {
   const mount = document.createElement('div');
   const anchor = document.createElement('span');
   mount.appendChild(anchor);
   document.body.appendChild(mount);
-  showPopup(mount, anchor, RESULT, {
+  showPopup(mount, anchor, result, {
     token: { surface, start: surface.length, end: surface.length * 2 },
     sentence: '毎日勉強する',
     status: 'unknown',
@@ -194,6 +205,90 @@ describe('closing the card', () => {
   });
 });
 
+describe('focus', () => {
+  /**
+   * A word on a line drawn in a shadow root of its own, as the overlay draws
+   * one, with the panel after it in the player.
+   */
+  function word(): { mount: HTMLElement; anchor: HTMLElement } {
+    const mount = document.createElement('div');
+    const line = document.createElement('div');
+    mount.append(line, document.createElement('aside'));
+    const anchor = document.createElement('span');
+    anchor.tabIndex = 0;
+    line.attachShadow({ mode: 'open' }).appendChild(anchor);
+    document.body.appendChild(mount);
+    return { mount, anchor };
+  }
+  const ctx: Parameters<typeof showPopup>[3] = {
+    token: { surface: '勉強', start: 2, end: 4 },
+    sentence: '毎日勉強する',
+    status: 'unknown',
+    onMark: () => {},
+    onAddCard: async () => 'added',
+  };
+  const dialog = (): Element | null | undefined =>
+    document.querySelector('.libregaku-popup')?.shadowRoot?.querySelector('[role=dialog]');
+
+  it('goes into the card of a word that has it, clicked or pressed, and back to the word when the card goes', () => {
+    const { mount, anchor } = word();
+    anchor.focus();
+    showPopup(mount, anchor, RESULT, ctx);
+    // Right after the line in the page's order, not at the end of the player.
+    expect(document.querySelector('.libregaku-popup')?.previousElementSibling).toBe((anchor.getRootNode() as ShadowRoot).host);
+    expect(focused()).toBe(dialog());
+    closePopup();
+    expect(focused()).toBe(anchor);
+  });
+
+  it('stays where it is when the word does not have it: the card opened as the pointer rested on it', () => {
+    const { mount, anchor } = word();
+    const search = document.createElement('input');
+    document.body.appendChild(search);
+    search.focus();
+    showPopup(mount, anchor, RESULT, ctx);
+    expect(focused()).toBe(search);
+    closePopup();
+    expect(focused()).toBe(search);
+  });
+
+  it('goes into a card already open when its word is pressed', () => {
+    const { mount, anchor } = word();
+    showPopup(mount, anchor, RESULT, ctx);
+    expect(focused()).not.toBe(dialog());
+    anchor.focus();
+    showPopup(mount, anchor, RESULT, ctx);
+    expect(focused()).toBe(dialog());
+  });
+
+  it('is not taken back once it has left the card', () => {
+    const { mount, anchor } = word();
+    anchor.focus();
+    showPopup(mount, anchor, RESULT, ctx);
+    const search = document.createElement('input');
+    document.body.appendChild(search);
+    search.focus();
+    closePopup();
+    expect(focused()).toBe(search);
+  });
+
+  it('stays in the card when "more meanings" shows the rest and goes', () => {
+    const many: LookupResult = {
+      state: 'ok',
+      entries: [{
+        id: '2', word: '出来る', reading: 'できる', common: true,
+        senses: Array.from({ length: 5 }, (_, i) => ({ pos: ['v1'], glosses: [`sense ${i + 1}`] })),
+      }],
+    };
+    const { mount, anchor } = word();
+    showPopup(mount, anchor, many, ctx);
+    const more = dialog()!.querySelector<HTMLButtonElement>('.more-senses')!;
+    more.focus();
+    more.click();
+    expect(focused()?.textContent).toBe('sense 4');
+  });
+});
+
 describe('the status buttons', () => {
   it('wear the underline colours chosen in Settings', () => {
     const root = open({ colors: { '--lg-tracking': '#3366ff', '--lg-known': '#ffcc00' } });
@@ -252,6 +347,8 @@ describe('adding, and taking it back', () => {
       expect(add.dataset.state).toBe('added');
       expect(add.textContent).toBe('Added');
       expect(add.dataset.tip).toBe('Undo');
+      // Named by what it shows first, then by what pressing it does.
+      expect(add.getAttribute('aria-label')).toBe('Added — undo');
       // A second press straight after is impatience, not Undo.
       add.click();
       await vi.advanceTimersByTimeAsync(0);
@@ -262,6 +359,7 @@ describe('adding, and taking it back', () => {
       await vi.advanceTimersByTimeAsync(0);
       expect(undo).toHaveBeenCalledOnce();
       expect(add.dataset.state).toBe('add');
+      expect(add.getAttribute('aria-label')).toBe('Add to Anki');
       expect(card.querySelector('.toast')?.textContent).toBe('taken back out of Vocabulary');
     } finally {
       vi.useRealTimers();
@@ -296,7 +394,7 @@ describe('adding, and taking it back', () => {
 
 describe('the deck menu', () => {
   const items = (card: ShadowRoot): string[] =>
-    Array.from(card.querySelectorAll('.deckmenu [role=menuitem]')).map((b) => b.textContent ?? '');
+    Array.from(card.querySelectorAll('.deckmenu button')).map((b) => b.textContent ?? '');
 
   it('is not there unless settings ask for it', () => {
     expect(open().querySelector('.foot .more')).toBeNull();
@@ -313,12 +411,63 @@ describe('the deck menu', () => {
     expect(items(card)).toEqual(['Add to Japanese', 'Add to Test Deck', 'New deck…']);
     expect(more.getAttribute('aria-expanded')).toBe('true');
 
-    (Array.from(card.querySelectorAll<HTMLButtonElement>('.deckmenu [role=menuitem]'))[1])!.click();
+    (Array.from(card.querySelectorAll<HTMLButtonElement>('.deckmenu button'))[1])!.click();
     await flush();
     expect(onDeck).toHaveBeenCalledWith('Test Deck', false);
     expect(onAddCard).toHaveBeenCalledOnce();
     expect(card.querySelector<HTMLElement>('.deckmenu')!.hidden).toBe(true);
+    // Focus was in the list, which has gone: it is back on ▾.
+    expect(focused()).toBe(more);
     expect(card.querySelector('.toast')?.textContent).toBe('added to Test Deck');
+  });
+
+  it('is a list of buttons that ▾ shows and hides, not a menu, and takes focus when opened from the keyboard', async () => {
+    const card = open({ deck: 'Japanese', decks: Promise.resolve(['Japanese', 'Test Deck']), onDeck: async (deck) => ({ deck }) });
+    await flush();
+    const more = card.querySelector<HTMLButtonElement>('.foot .more')!;
+    expect(more.hasAttribute('aria-haspopup')).toBe(false);
+    expect(more.getAttribute('aria-controls')).toBe('deckmenu');
+    // A click no mouse made, as Enter or Space on the button makes one.
+    more.click();
+    const menu = card.querySelector<HTMLElement>('#deckmenu')!;
+    expect(menu.hidden).toBe(false);
+    expect(card.querySelector('[role=menu], [role=menuitem]')).toBeNull();
+    expect(focused()).toBe(menu.querySelector('button'));
+    // Right after ▾, so Tab goes from one into the other.
+    expect(more.nextElementSibling).toBe(menu);
+  });
+
+  it('leaves focus where it was when opened with the mouse, so Space still reaches the video', async () => {
+    const card = open({ deck: 'Japanese', decks: Promise.resolve(['Japanese']), onDeck: async (deck) => ({ deck }) });
+    await flush();
+    card.querySelector('.foot .more')!.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }));
+    expect(card.querySelector<HTMLElement>('.deckmenu')!.hidden).toBe(false);
+    expect(focused()).toBe(document.body);
+  });
+
+  it('goes away on Escape and leaves the card open, with focus back on ▾', async () => {
+    const card = open({ deck: 'Japanese', decks: Promise.resolve(['Japanese']), onDeck: async (deck) => ({ deck }) });
+    await flush();
+    const more = card.querySelector<HTMLButtonElement>('.foot .more')!;
+    more.click();
+    // The extension's own keys close the whole card on Escape, from the document (index.ts).
+    const keys = vi.fn((e: KeyboardEvent) => {
+      if (e.key === 'Escape') closePopup();
+    });
+    document.addEventListener('keydown', keys, true);
+    try {
+      escape(focused()!);
+      expect(card.querySelector<HTMLElement>('.deckmenu')!.hidden).toBe(true);
+      expect(more.getAttribute('aria-expanded')).toBe('false');
+      expect(keys).not.toHaveBeenCalled();
+      expect(popupIsOpen()).toBe(true);
+      expect(focused()).toBe(more);
+      // With the list away, Escape is the card's again.
+      escape(more);
+      expect(popupIsOpen()).toBe(false);
+    } finally {
+      document.removeEventListener('keydown', keys, true);
+    }
   });
 
   it('says so when the deck is one word status does not read', async () => {
@@ -326,7 +475,7 @@ describe('the deck menu', () => {
     const card = open({ deck: 'Japanese', decks: Promise.resolve(['Japanese', 'Test Deck']), onDeck });
     await flush();
     card.querySelector<HTMLButtonElement>('.foot .more')!.click();
-    (Array.from(card.querySelectorAll<HTMLButtonElement>('.deckmenu [role=menuitem]'))[1])!.click();
+    (Array.from(card.querySelectorAll<HTMLButtonElement>('.deckmenu button'))[1])!.click();
     await flush();
     expect(card.querySelector('.toast')?.textContent).toBe('added to Vocabulary — words you know are read from Japanese');
   });
@@ -340,7 +489,7 @@ describe('the deck menu', () => {
     await flush();
     const newDeck = (): HTMLButtonElement => {
       card.querySelector<HTMLButtonElement>('.foot .more')!.click();
-      return Array.from(card.querySelectorAll<HTMLButtonElement>('.deckmenu [role=menuitem]')).at(-1)!;
+      return Array.from(card.querySelectorAll<HTMLButtonElement>('.deckmenu button')).at(-1)!;
     };
     newDeck().click();
     await flush();
@@ -521,6 +670,9 @@ describe('tooltips on the card', () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(tip.textContent).toBe('Copy sentence');
     out(sentence!, null);
+    // A moment's grace, long enough to reach the tip itself; then it goes.
+    expect(tip.classList.contains('on')).toBe(true);
+    await vi.advanceTimersByTimeAsync(300);
     expect(tip.classList.contains('on')).toBe(false);
     vi.useRealTimers();
   });
@@ -659,5 +811,32 @@ describe('the meanings', () => {
     more.click();
     expect(shown()).toBe(7);
     expect(card.querySelector('.more-senses')).toBeNull();
+  });
+
+  it("say which language they are written in, which need not be the interface's", async () => {
+    const meanings = (lang: string, result?: LookupResult): string | undefined => {
+      const said = open({ lang }, '勉強', result).querySelector('ol')?.lang;
+      closePopup();
+      return said;
+    };
+    try {
+      // A learner whose own language is Arabic: JMdict has no Arabic, so its meanings are English.
+      await setSetting('native', 'ar');
+      expect(meanings('ja')).toBe('en');
+      // Or in the language chosen for them instead.
+      await setSetting('definitions', 'de');
+      expect(meanings('ja')).toBe('de');
+      // Korean's dictionary is in English, whatever JMdict's are in.
+      expect(meanings('ko')).toBe('en');
+      // An entry from a dictionary in the learner's own language says which itself.
+      const own: LookupResult = {
+        state: 'ok',
+        entries: [{ id: '1', word: '勉強', reading: 'べんきょう', common: true, lang: 'zh', senses: [{ pos: ['n'], glosses: ['学习'] }] }],
+      };
+      expect(meanings('ja', own)).toBe('zh');
+    } finally {
+      await setSetting('native', DEFAULTS.native);
+      await setSetting('definitions', DEFAULTS.definitions);
+    }
   });
 });

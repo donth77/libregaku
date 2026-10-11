@@ -27,6 +27,8 @@ export const ko: Translation = {
   common: {
     furigana: (mode: Settings['ruby']): string => `후리가나: ${RUBY[mode]}`,
     pinyin: (mode: Settings['ruby']): string => `병음: ${RUBY[mode]}`,
+    mandarin: '중국어(표준어)',
+    jyutping: (mode: Settings['ruby']): string => `Jyutping: ${RUBY[mode]}`,
     sentenceGap: ' ',
   },
 
@@ -38,6 +40,7 @@ export const ko: Translation = {
     targetLimited: (language: string): string => `${language} — 제한적`,
     supportFull: '읽는 법과 후리가나까지 모두 지원합니다.',
     supportPinyin: '병음까지 모두 지원합니다. 뜻은 영어로 나옵니다.',
+    supportJyutping: 'Jyutping까지 모두 지원합니다. 뜻은 영어로 나옵니다.',
     supportWords: '모두 지원합니다. 뜻은 영어로 나옵니다.',
     script: '문자',
     scriptHint: '영상에 둘 다 있으면 이쪽을 사용합니다.',
@@ -89,6 +92,8 @@ export const ko: Translation = {
     rubyHint: '한자 위에 읽는 법을 표시합니다. 시청 중에 R을 눌러 바꿀 수 있습니다.',
     pinyin: '병음',
     pinyinHint: '한자 위에 병음을 표시합니다. 시청 중에 R을 눌러 바꿀 수 있습니다.',
+    jyutping: 'Jyutping',
+    jyutpingHint: '한자 위에 Jyutping을 표시합니다. 시청 중에 R을 눌러 바꿀 수 있습니다.',
     blurPrimary: '자막 흐리게',
     blurPrimaryHint: '듣기 연습용: 마우스를 올리기 전까지 자막을 흐리게 보여 줍니다. H를 눌러 바꿀 수 있습니다.',
     subtitleSize: '글자 크기',
@@ -106,6 +111,10 @@ export const ko: Translation = {
     dualSubtitlesHint:
       '학습 언어 자막 아래에 내 언어 자막을 보여 줍니다. 기계 번역이 아니라 사이트의 자막이며, ' +
       '동영상 전체 스크립트가 있어야 합니다.',
+    singleKeys: '단일 키 단축키',
+    singleKeysHint:
+      'A, R 같은 문자 키는 시청 중에 단독으로 작동합니다. 끄면 Alt와 Shift를 함께 누른 채로 사용합니다. ' +
+      '화살표 키는 설정과 상관없이 작동합니다.',
 
     // Underlines
     underlinesHeading: '밑줄',
@@ -137,6 +146,11 @@ export const ko: Translation = {
     languageBadgeCode: '코드',
     badgeFlag: '배지 국기',
     badgeFlagDefault: '기본값',
+    flagSearch: '검색…',
+    flagSearchLabel: '국가 검색',
+    flagSuggested: '추천',
+    flagAll: '모든 국가',
+    flagNone: (query: string): string => `“${query}”에 맞는 국가가 없습니다.`,
     badgeFlagHint: '학습 언어에 표시할 국기입니다. 언어마다 따로 저장됩니다.',
     languageBadgeHint: '헤더에 학습 언어를 표시하는 방식입니다.',
     sidebarStats: '새 단어 세기',
@@ -228,7 +242,12 @@ export const ko: Translation = {
       '일본어, 한국어, 중국어를 단어로 나눕니다. MIT 라이선스이며, IPADIC, mecab-ko-dic, CC-CEDICT에는 각각 별도의 약관이 있습니다.',
     creditCedict: '중국어 사전 © MDBG 및 기여자. CC BY-SA 4.0에 따라 사용합니다.',
     creditWiktionary:
-      '한국어·스페인어 사전. Wiktionary에서 kaikki.org와 wiktionary-to-yomitan을 거쳐 가져왔습니다. CC BY-SA 4.0.',
+      '한국어·스페인어 사전과 내 언어로 된 일부 사전. Wiktionary에서 kaikki.org와 wiktionary-to-yomitan을 거쳐 가져왔습니다. ' +
+      'CC BY-SA 4.0.',
+    creditKrdict: '한국어 단어를 내 언어로 설명합니다. © 국립국어원. CC BY-SA 2.0 KR에 따라 사용합니다. 파일은 Lyroxide가 만들었습니다.',
+    creditCfdict: '중국어를 프랑스어로 설명합니다. CFDICT © chine.in. CxDICT가 최신 상태로 유지합니다. CC BY-SA 4.0.',
+    creditCanto: '광둥어 사전과 CC-CEDICT용 Jyutping 표기. © Pleco Inc., CC BY-SA 3.0에 따라 사용합니다.',
+    creditHandedict: '중국어를 독일어로 설명합니다. © HanDeDict 및 기여자. CC BY-SA 3.0에 따라 사용합니다.',
     creditUnihan: '한자의 여러 읽는 법 중 먼저 보여 줄 것을 정합니다. © Unicode, Inc., Unicode License에 따라 사용합니다.',
     creditJotoba: '사전을 다운로드하는 동안 단어 찾기에 사용합니다. 둘 다 JMdict를 씁니다.',
     creditLucide: '아이콘. ISC 라이선스.',
@@ -246,6 +265,7 @@ export const ko: Translation = {
     keyKnown: '팝업의 단어를 아는 단어로 표시',
     keyFurigana: '후리가나 전환: 끔, 새 단어, 항상',
     keyPinyin: '병음 전환: 끔, 새 단어, 항상',
+    keyJyutping: 'Jyutping 전환: 끔, 새 단어, 항상',
     keyBlur: '자막 흐리게/선명하게',
     keySave: '현재 줄 저장',
     keyTranscript: '스크립트 패널 표시/숨기기',
@@ -269,6 +289,7 @@ export const ko: Translation = {
     nextSteps:
       '그다음 학습 언어 자막이 있는 동영상을 열고 단어에 마우스를 올려 보세요. ' +
       '스크립트 패널의 키보드 버튼을 누르면 단축키 목록이 나옵니다.',
+    stepDone: '완료',
     confirmLanguages: '이 언어가 맞습니다',
     keepDeck: (deck: string): string => `새 카드에 ${deck} 덱 사용`,
   },
@@ -307,15 +328,17 @@ export const ko: Translation = {
   },
 
   sidebar: {
+    panelLabel: '스크립트 패널',
+    resizeLabel: '패널 크기 조절',
+
     // The tabs, and the icon buttons beside them
     tabsLabel: '목록',
     transcriptTab: '스크립트',
     savedTab: '저장됨',
-    wordsTab: '단어',
     settings: '설정',
     shortcuts: '단축키',
     close: '닫기',
-    closeLabel: '패널 접기',
+    closeLabel: '닫기 — 스크립트 패널',
     openTip: '스크립트',
     openLabel: '스크립트 표시',
     help: '도움말',
@@ -345,6 +368,7 @@ export const ko: Translation = {
     empty: '불러온 스크립트가 없습니다.',
     currentLine: '현재 줄',
     lineNew: (n: number): string => `새 단어 ${n}개`,
+    playFrom: (time: string): string => `${time}부터 재생`,
     saveLine: '줄 저장',
     unsave: '저장 취소',
     addSentence: '문장 추가',
@@ -366,6 +390,7 @@ export const ko: Translation = {
     // The Saved tab
     savedEmpty: '아직 저장한 줄이 없습니다. 다시 볼 문장은 스크립트 줄의 북마크를 누르거나 B를 눌러 저장하세요.',
     thisVideo: '이 동영상',
+    openAt: (time: string): string => `${time} 위치에서 동영상 열기`,
     remove: '삭제',
     removeLabel: '저장한 줄에서 삭제',
     copySavedAbout: '저장한 줄을 모두 탭으로 구분된 텍스트로 복사',
@@ -390,18 +415,20 @@ export const ko: Translation = {
     downloadBlocked: '이 페이지에서 다운로드가 차단되었습니다. 대신 복사를 이용하세요.',
 
     // The Words tab
-    listsLabel: '단어 종류',
+    listsLabel: '목록 선택',
+    listLines: '저장한 줄',
     listTracked: '관심 단어',
     listKnown: '아는 단어',
     listIgnored: '무시한 단어',
-    findPlaceholder: '단어 검색',
-    findLabel: '이 목록에서 단어 검색',
+    findPlaceholder: '검색…',
+    findLabel: '이 목록에서 검색',
     copyWordsAbout: '이 목록을 탭으로 구분된 텍스트로 복사',
     exportWordsAbout: '이 목록을 Anki에서 가져올 수 있는 탭 구분 파일로 저장',
     wordsCopied: (n: number): string => `단어 ${n}개를 복사했습니다.`,
-    nothingToExport: '이 목록에는 내보낼 단어가 없습니다.',
+    nothingToExport: '이 목록에는 내보낼 항목이 없습니다.',
     lookingUp: '읽는 법과 뜻을 찾는 중…',
     noWordMatches: (query: string): string => `“${query}”에 맞는 단어가 이 목록에 없습니다.`,
+    noLineMatches: (query: string): string => `“${query}”에 맞는 저장한 줄이 없습니다.`,
     wordsMatching: (shown: number, total: number): string => `단어 ${total}개 중 ${shown}개`,
     trackedEmpty:
       '아직 관심 단어가 없습니다. 관심 단어로 표시하면 카드를 만들지 않고도 단어에 밑줄이 생겨 눈에 잘 띕니다. ' +
@@ -482,6 +509,7 @@ export const ko: Translation = {
     adding: '추가 중…',
     undoing: '실행취소 중…',
     added: '추가됨',
+    addedUndo: '추가됨 — 실행취소',
     inAnki: 'Anki에 있음',
     showInAnki: 'Anki에서 보기',
     waiting: '대기 중',
@@ -521,12 +549,12 @@ export const ko: Translation = {
     unblurSubtitle: '자막 선명하게',
     showTranslation: '번역 표시',
     hideTranslation: '번역 숨기기',
+    translation: '번역',
     transcript: '스크립트',
     pinHeader: '헤더 고정',
     unpinHeader: '헤더 고정 해제',
     settings: '설정',
     showHeader: '헤더 표시',
-    showHeaderLabel: '헤더 표시',
   },
 
   player: {
@@ -550,7 +578,7 @@ export const ko: Translation = {
     marked: (word: string, status: OverrideStatus, refused: boolean): string => {
       const done = { known: '아는 단어로 표시됨', tracking: '관심 단어로 표시됨', ignored: '무시됨', unknown: '새 단어로 표시됨' }[status];
       if (refused) return `${word} · ${done} (카드 없음) — Anki가 거부해서 나중에 다시 시도합니다`;
-      return `${word} · ${done} (카드 없음)${status === 'tracking' ? '. 패널의 관심 단어 목록에서 볼 수 있습니다' : ''}`;
+      return `${word} · ${done} (카드 없음)${status === 'tracking' ? '. 패널의 저장됨 탭에서 볼 수 있습니다' : ''}`;
     },
 
     // A word's card

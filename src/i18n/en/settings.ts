@@ -26,6 +26,8 @@ export const settings = {
   supportFull: 'Full support, including readings and furigana.',
   /** Under "I'm learning", for Chinese: full support, with pinyin (the romanised reading) above the characters. */
   supportPinyin: 'Full support, including pinyin. Definitions are in English.',
+  /** Under "I'm learning", for Cantonese: full support, with Jyutping (its romanised reading) above the characters. */
+  supportJyutping: 'Full support, including Jyutping. Definitions are in English.',
   /** Under "I'm learning", for a language with a dictionary and no readings to show, such as Korean or Spanish. */
   supportWords: 'Full support. Definitions are in English.',
   /**
@@ -112,6 +114,9 @@ export const settings = {
   /** The same setting where the language being learned is Chinese: pinyin, the romanised reading, above the characters. */
   pinyin: 'Pinyin',
   pinyinHint: 'Readings above characters. Press R to switch while watching.',
+  /** The same setting where the language being learned is Cantonese: Jyutping, its romanised reading. */
+  jyutping: 'Jyutping',
+  jyutpingHint: 'Readings above characters. Press R to switch while watching.',
   blurPrimary: 'Blur subtitles',
   /** H is the key, shown as it is. */
   blurPrimaryHint: 'For listening practice: subtitles stay blurred until you point at them. Press H to switch.',
@@ -133,6 +138,12 @@ export const settings = {
   dualSubtitlesHint:
     "Shows subtitles in your language under the ones you're learning. They come from the site, " +
     'not machine translation, and need a full transcript of the video.',
+  /** The player's letter keys (A, K, R, H, B, S) working on their own, without Alt or Shift. */
+  singleKeys: 'Single-key shortcuts',
+  /** A and R are keys, and Alt and Shift the keyboard's keys, as the keyboard names them. */
+  singleKeysHint:
+    'Letter keys such as A and R work on their own while watching. Off: hold Alt and Shift with them. ' +
+    'The arrow keys work either way.',
 
   // Underlines: the colour under each word says how well it is known
   underlinesHeading: 'Underlines',
@@ -178,6 +189,16 @@ export const settings = {
   badgeFlag: 'Badge flag',
   /** Choice: the language's own flag, which is shown before the word. */
   badgeFlagDefault: 'Default',
+  /** Placeholder in the box that searches the flags, by country name. */
+  flagSearch: 'Search…',
+  /** That box's name for screen readers. */
+  flagSearchLabel: 'Search countries',
+  /** Over the flags of the countries where the language being learned is spoken. */
+  flagSuggested: 'Suggested',
+  /** Over every other country's flag. */
+  flagAll: 'All countries',
+  /** No country matches the search; `query` is what was typed. */
+  flagNone: (query: string): string => `No country matches “${query}”.`,
   badgeFlagHint: "The flag to show for the language you're learning. Each language keeps its own.",
   languageBadgeHint: "How the header shows the language you're learning.",
   sidebarStats: 'Count new words',
@@ -319,7 +340,18 @@ export const settings = {
   creditCedict: 'Chinese dictionary © MDBG and its contributors, used under CC BY-SA 4.0.',
   /** Under Wiktionary. kaikki.org and wiktionary-to-yomitan are the projects that turn Wiktionary into data files. */
   creditWiktionary:
-    'Korean and Spanish dictionaries, from Wiktionary through kaikki.org and wiktionary-to-yomitan. CC BY-SA 4.0.',
+    'Korean and Spanish dictionaries, and some in your own language, from Wiktionary through kaikki.org and ' +
+    'wiktionary-to-yomitan. CC BY-SA 4.0.',
+  /** Under 한국어기초사전 · KRDict, Korea's dictionary for learners. Lyroxide made the files Libregaku downloads. */
+  creditKrdict:
+    'Korean words explained in your own language. © National Institute of Korean Language, used under CC BY-SA 2.0 KR. ' +
+    'Files by Lyroxide.',
+  /** Under CFDICT · CxDICT, a Chinese–French dictionary. */
+  creditCfdict: 'Chinese explained in French. CFDICT © chine.in, kept up to date by CxDICT. CC BY-SA 4.0.',
+  /** Under CC-Canto, the Cantonese dictionary, made by Pleco. */
+  creditCanto: 'Cantonese dictionary and Jyutping readings for CC-CEDICT. © Pleco Inc., used under CC BY-SA 3.0.',
+  /** Under HanDeDict, a Chinese–German dictionary. */
+  creditHandedict: 'Chinese explained in German. © HanDeDict and its contributors, used under CC BY-SA 3.0.',
   /** Under Unihan, the Unicode database of Chinese characters. */
   creditUnihan: 'Which reading a Chinese character shows first. © Unicode, Inc., used under the Unicode License.',
   /** Under Jotoba · Jisho. */
@@ -356,6 +388,7 @@ export const settings = {
   keyFurigana: 'Switch furigana: off, new words, all',
   /** The same key where the language being learned is Chinese. */
   keyPinyin: 'Switch pinyin: off, new words, all',
+  keyJyutping: 'Switch Jyutping: off, new words, all',
   /** H. */
   keyBlur: 'Blur or unblur subtitles',
   /** B. Saves the line to the transcript panel's Saved tab. */

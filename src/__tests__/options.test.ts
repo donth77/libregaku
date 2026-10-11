@@ -147,6 +147,17 @@ describe('the deck step', () => {
     expect(keep().textContent).toBe('Use Default for new cards');
   });
 
+  it('says a finished step is done in words, not only with a tick and a line through it', async () => {
+    await open({ configured: true, deck: 'Default' });
+    const said = (id: string): HTMLElement | null => document.querySelector<HTMLElement>(`#${id} .said`);
+    expect(said('step-lang')?.textContent).toBe('Done');
+    expect(said('step-anki')?.textContent).toBe('');
+    // Kept off screen: the tick and the line through it are what is seen.
+    expect(said('step-lang')?.style.position).toBe('absolute');
+    keep().click();
+    expect(said('step-anki')?.textContent).toBe('Done');
+  });
+
   it('ticks once the learner keeps the deck already set', async () => {
     await open({ configured: true, deck: 'Default' });
     keep().click();
@@ -252,6 +263,25 @@ describe.each(['options.html', 'action.html'])('the words in %s', (file) => {
       expect(typeof english(path), path).toBe('string');
       expect(markup, path).toBe(english(path));
     }
+  });
+});
+
+describe('the markup of the pages', () => {
+  const read = async (file: string): Promise<DocumentFragment> => {
+    const { readFileSync } = await vi.importActual<Files>('node:fs');
+    const page = document.createElement('template');
+    page.innerHTML = readFileSync(`src/${file}`, 'utf8');
+    return page.content;
+  };
+
+  it("announces the toolbar popup's line on the page as it changes", async () => {
+    expect((await read('action.html')).querySelector('#status')?.getAttribute('role')).toBe('status');
+  });
+
+  it('names the settings as a region, which can carry a name where a plain div cannot', async () => {
+    const settings = (await read('options.html')).querySelector('#settings');
+    expect(settings?.getAttribute('role')).toBe('region');
+    expect(settings?.getAttribute('aria-label')).toBe('Settings');
   });
 });
 

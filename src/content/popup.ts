@@ -3,6 +3,8 @@ import { pronounce } from '../audio/pronounce';
 import type { Characters, LookupResult } from '../dict/client';
 import { grammarLabel, ui, uiDirection, uiLocale } from '../i18n';
 import type { Token } from '../morphology/types';
+import { definitionLanguage, dictionaryOf, featuresOf, settings } from '../settings';
+import { letterKey } from './keys';
 import { icon } from './icons';
 import { copyText } from './share';
 import { TIP_STYLE, tooltips } from './tooltip';
@@ -67,9 +69,11 @@ const STYLE = `
   }
   .tb svg { display: block; }
   .tb.busy { color: #F2F5FC; }
-  .tb.busy svg, .mk[data-state="busy"] svg { animation: spin 1s linear infinite; }
+  .tb.busy svg, .mk[data-state="busy"] svg, .add[data-state="busy"] svg { animation: spin 1s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  @media (prefers-reduced-motion: reduce) { .tb.busy svg, .mk[data-state="busy"] svg { animation: none; } }
+  @media (prefers-reduced-motion: reduce) {
+    .tb.busy svg, .mk[data-state="busy"] svg, .add[data-state="busy"] svg { animation: none; }
+  }
   .loading { padding: 16px; color: #D9A64A; font-size: 13.5px; }
   /* The marks: small toggles beside the word, each in its status colour, filled once made. */
   .marks { display: flex; gap: 6px; flex: none; margin-top: 2px; }
@@ -102,13 +106,17 @@ const STYLE = `
   }
   .add.done { background: #1B2234; color: #E8ECF6; border-color: #3A4560; }
   .add.has { background: #16281F; color: #63AF97; border-color: #2A5245; }
-  .add[data-state="busy"] svg { animation: spin 1s linear infinite; }
-  .more { width: 40px; padding: 0; border-radius: 0 8px 8px 0; border-left-color: rgba(13,17,28,.4); }
-  .foot:has(.more) .add { border-radius: 8px 0 0 8px; }
+  /* Add and ▾ as one split button, ▾ where the line ends: on the right, or on the left in Arabic. */
+  .more {
+    width: 40px; padding: 0; border-radius: 0;
+    border-start-end-radius: 8px; border-end-end-radius: 8px;
+    border-inline-start-color: rgba(13,17,28,.4);
+  }
+  .foot:has(.more) .add { border-start-end-radius: 0; border-end-end-radius: 0; }
   .add:hover, .more:hover { filter: brightness(1.08); }
   .add:focus-visible, .more:focus-visible { outline: 2px solid #F2F5FC; outline-offset: 2px; }
   .deckmenu {
-    position: absolute; right: 16px; bottom: 62px; z-index: 4;
+    position: absolute; inset-inline-end: 16px; bottom: 62px; z-index: 4;
     min-width: 200px; max-width: calc(100% - 32px); max-height: 240px; overflow-y: auto;
     padding: 6px; border-radius: 10px; background: #1B2234; border: 1px solid #2A3348;
     box-shadow: 0 10px 30px -8px rgba(0,0,0,.7);
@@ -116,14 +124,16 @@ const STYLE = `
   .deckmenu[hidden] { display: none; }
   .deckmenu button {
     display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 10px;
-    background: none; border: 0; border-radius: 6px; cursor: pointer; text-align: left;
+    background: none; border: 0; border-radius: 6px; cursor: pointer; text-align: start;
     color: #C7CFE2; font: 13.5px/1.3 system-ui, -apple-system, sans-serif;
   }
-  .deckmenu button:hover, .deckmenu button:focus-visible { background: #232C42; color: #E8ECF6; outline: none; }
+  .deckmenu button:hover, .deckmenu button:focus-visible { background: #232C42; color: #E8ECF6; }
+  .deckmenu button:focus-visible { outline: 2px solid #F2F5FC; outline-offset: -2px; }
   .deckmenu button.current { color: #E8ECF6; font-weight: 600; }
   .deckmenu-note { padding: 8px 10px; color: #8A94AF; font-size: 13px; }
   .tb:hover { border-color: #8A94AF; color: #E8ECF6; }
-  .tb:focus-visible, .mk:focus-visible { outline: 2px solid #F2F5FC; outline-offset: 2px; }
+  /* The card itself, when it takes focus from the word it is for. */
+  .card:focus-visible, .tb:focus-visible, .mk:focus-visible { outline: 2px solid #F2F5FC; outline-offset: 2px; }
   ol { margin: 0; padding: 12px 16px 12px 34px; }
   li[hidden] { display: none; }
   .more-senses {
@@ -135,7 +145,7 @@ const STYLE = `
   .fold { border-top: 1px solid #212939; }
   .fold-head {
     display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;
-    padding: 10px 16px; border: 0; background: none; cursor: pointer; text-align: left;
+    padding: 10px 16px; border: 0; background: none; cursor: pointer; text-align: start;
     color: #8A94AF; font: 600 11px/1.4 ui-monospace, monospace; letter-spacing: .07em; text-transform: uppercase;
   }
   .fold-head:hover { color: #E8ECF6; background: #161C2C; }
@@ -169,14 +179,14 @@ const STYLE = `
   .also-line {
     display: flex; gap: 10px; align-items: baseline; width: calc(100% + 12px);
     margin: 0 -6px; padding: 5px 6px; border: 0; border-radius: 6px;
-    background: none; color: #C7CFE2; text-align: left; cursor: pointer;
+    background: none; color: #C7CFE2; text-align: start; cursor: pointer;
     font: 14px/1.5 system-ui, -apple-system, "Hiragino Sans", sans-serif;
   }
   .also-line:hover { background: #1B2234; color: #E8ECF6; }
   .also-line:focus-visible { outline: 2px solid #F2F5FC; outline-offset: -2px; }
-  .also-line .at { flex: none; font: 500 11.5px/1 ui-monospace, monospace; color: #6B7490; font-variant-numeric: tabular-nums; }
+  .also-line .at { flex: none; font: 500 11.5px/1 ui-monospace, monospace; color: #8A94AF; font-variant-numeric: tabular-nums; }
   .also-line b { font-weight: 600; color: #E8ECF6; box-shadow: inset 0 -2px 0 #8A94AF; }
-  .also-more { font-size: 12px; color: #6B7490; padding: 4px 0 0; }
+  .also-more { font-size: 12px; color: #8A94AF; padding: 4px 0 0; }
   button.also-more {
     display: block; margin: 0; border: 0; background: none; cursor: pointer;
     font: 12.5px/1.4 system-ui, -apple-system, sans-serif; color: #8A94AF; padding: 6px 0 0;
@@ -219,6 +229,8 @@ let openFor: string | null = null;
 let hideTimer = 0;
 let overCard = false;
 let onClose: ((why: CloseReason) => void) | null = null;
+/** What had focus when the card opened: it has it back when the card goes with focus in it. */
+let returnFocus: HTMLElement | null = null;
 
 /**
  * Why a card went away. `replaced` means another card took its place, so
@@ -230,11 +242,16 @@ function dismiss(why: CloseReason): void {
   clearTimeout(hideTimer);
   const had = host !== null;
   const done = onClose;
+  // Focus in the card (on the page, its host) goes back to what had it
+  // before — the word, as a rule — if that is still there.
+  const back = host && document.activeElement === host ? returnFocus : null;
+  returnFocus = null;
   host?.remove();
   host = null;
   openFor = null;
   overCard = false;
   onClose = null;
+  if (back?.isConnected) back.focus({ preventScroll: true });
   if (!had || !done) return;
   try {
     done(why);
@@ -427,9 +444,15 @@ export function showPopup(
 ): void {
   const entries = result.state === 'ok' ? result.entries : [];
   const key = cardKey(ctx.token);
-  if (openFor === key) return;   // already showing this word
+  if (openFor === key) {
+    // Already showing this word. Clicked or pressed now, its card takes focus.
+    const open = host?.shadowRoot?.querySelector<HTMLElement>('.card');
+    if (open) focusCard(open, anchor);
+    return;
+  }
   dismiss('replaced');
   openFor = key;
+  returnFocus = focused();
 
   host = document.createElement('div');
   host.className = 'libregaku-popup';
@@ -703,8 +726,11 @@ export function showPopup(
     // are what is meant nearly always; the rest wait to be asked for.
     const ol = document.createElement('ol');
     // The meanings run in their own language's direction: English ones left
-    // to right, numbers on the left, under an Arabic interface too.
+    // to right, numbers on the left, under an Arabic interface too. And they
+    // say which language that is, rather than passing for the interface's.
     ol.dir = 'auto';
+    const said = top!.lang ?? meaningsLanguage(learned);
+    if (said) ol.lang = said;
     const senses = top!.senses.slice(0, MAX_SENSES);
     senses.forEach((sense, i) => {
       const li = document.createElement('li');
@@ -719,7 +745,14 @@ export function showPopup(
       more.className = 'more-senses';
       more.textContent = ui.popup.moreMeanings(senses.length - SENSES_SHOWN);
       more.addEventListener('click', () => {
-        for (const li of Array.from(ol.children) as HTMLElement[]) li.hidden = false;
+        const items = Array.from(ol.children) as HTMLElement[];
+        for (const li of items) li.hidden = false;
+        // Focus on the button goes to the first meaning it showed, not out of the card with the button.
+        const next = items[SENSES_SHOWN];
+        if (focused() === more && next) {
+          next.tabIndex = -1;
+          next.focus();
+        }
         more.remove();
       });
       body.appendChild(more);
@@ -811,7 +844,7 @@ export function showPopup(
   const add = document.createElement('button');
   add.className = 'add';
   // Its key, where someone hovering the button will see it (src/content/keys.ts).
-  shortcut(add, 'A', 'A');
+  letter(add, 'A');
   const show = (state: AddState, busyText = ui.popup.adding): void => {
     add.dataset.state = state;
     add.classList.toggle('has', state === 'in');
@@ -826,7 +859,9 @@ export function showPopup(
     } as const)[state];
     add.replaceChildren(icon(ico, 14), document.createTextNode(text));
     add.dataset.tip = tip;
-    add.setAttribute('aria-label', state === 'add' ? t.addToAnki : tip);
+    // Its name starts with what it shows: "Added — undo", not "Undo", so saying what is on it presses it.
+    const name = state === 'add' ? t.addToAnki : state === 'added' && back ? t.addedUndo : tip;
+    add.setAttribute('aria-label', name);
   };
   show(hasCard ? (ctx.queued ? 'waiting' : 'in') : 'add');
   /** Make the card, whatever the button shows — the deck menu adds to another deck even beside "In Anki". */
@@ -877,16 +912,18 @@ export function showPopup(
   // Picking one adds the card there, and new cards go there from then on.
   const onDeck = ctx.onDeck;
   if (onDeck) {
+    // A button that shows a list of buttons: a disclosure, not a menu, which
+    // would promise arrow keys and a screen reader's menu mode.
     const more = document.createElement('button');
     more.className = 'more';
     more.dataset.tip = ui.popup.otherDecks;
     more.setAttribute('aria-label', ui.popup.addToAnotherDeck);
-    more.setAttribute('aria-haspopup', 'menu');
     more.setAttribute('aria-expanded', 'false');
+    more.setAttribute('aria-controls', 'deckmenu');
     more.appendChild(icon('chevronDown', 16));
     const menu = document.createElement('div');
     menu.className = 'deckmenu';
-    menu.setAttribute('role', 'menu');
+    menu.id = 'deckmenu';
     menu.hidden = true;
     let decks: readonly string[] = [];
     const mine = host;
@@ -894,8 +931,26 @@ export function showPopup(
       if (host === mine) decks = d;
     }, () => {});
     const close = (): void => {
+      // Focus in the list goes back to the button that opened it, rather than out of the card with the list.
+      const within = menu.contains(focused());
       menu.hidden = true;
       more.setAttribute('aria-expanded', 'false');
+      window.removeEventListener('keydown', onEscape, true);
+      if (within) more.focus();
+    };
+    /*
+     * Escape puts the list away and leaves the card open. On the window, as
+     * the key comes down: the extension's own keys, on the document, close
+     * the whole card on Escape (index.ts), before anything in here hears it.
+     */
+    const onEscape = (e: KeyboardEvent): void => {
+      if (host !== mine) {
+        window.removeEventListener('keydown', onEscape, true);
+        return;
+      }
+      if (e.key !== 'Escape' || !e.composedPath().includes(card)) return;
+      e.stopPropagation();
+      close();
     };
     const pick = (name: string, create: boolean): void => {
       close();
@@ -910,13 +965,12 @@ export function showPopup(
     const item = (text: string, onPick: () => void, current = false): void => {
       const b = document.createElement('button');
       b.type = 'button';
-      b.setAttribute('role', 'menuitem');
       b.className = current ? 'current' : '';
       b.append(icon(current ? 'check' : 'plus', 13), document.createTextNode(text));
       b.addEventListener('click', onPick);
       menu.appendChild(b);
     };
-    more.addEventListener('click', () => {
+    more.addEventListener('click', (e) => {
       if (!menu.hidden) {
         close();
         return;
@@ -940,12 +994,18 @@ export function showPopup(
       }
       menu.hidden = false;
       more.setAttribute('aria-expanded', 'true');
+      window.addEventListener('keydown', onEscape, true);
+      // Opened from the keyboard — a click with no mouse behind it counts no
+      // presses, detail 0 — focus goes to the first deck. Opened with the
+      // mouse it stays where it was, as for every button here, so Space
+      // still reaches the video.
+      if (e.detail === 0) menu.querySelector('button')?.focus();
     });
     card.addEventListener('click', (e) => {
       if (!menu.hidden && !(e.target as Element | null)?.closest?.('.deckmenu, .more')) close();
     });
-    foot.append(more);
-    card.appendChild(menu);
+    // The list right after its button, so Tab goes from one into the other.
+    foot.append(more, menu);
   }
 
   /*
@@ -961,7 +1021,7 @@ export function showPopup(
     b.appendChild(icon(iconName, 17));
     b.dataset.tip = on ? unmarkTip(next) : markTip(next);
     b.setAttribute('aria-label', label);
-    if (next === 'known') shortcut(b, 'K', 'K');
+    if (next === 'known') letter(b, 'K');
     b.setAttribute('aria-pressed', String(on));
     b.addEventListener('click', () => {
       // Pressed again, the mark comes off. The card closes at once; where
@@ -980,10 +1040,36 @@ export function showPopup(
   card.appendChild(toast);
   tooltips(card, () => card.getBoundingClientRect());
   root.append(style, card);
-  mount.appendChild(host);
+  // Next to the word in the page's order, not after the panel and the bar:
+  // Tab from the word goes into its card.
+  const beside = anchor.getRootNode();
+  if (beside instanceof ShadowRoot && beside.host.parentElement === mount) beside.host.after(host);
+  else mount.appendChild(host);
   onClose = ctx.onClose ?? null;
 
   place(host, card, mount, anchor, ctx.keepClear ?? []);
+  focusCard(card, anchor);
+}
+
+/** The element with focus, inside whatever shadow roots it is in. */
+function focused(): HTMLElement | null {
+  let el = document.activeElement;
+  while (el?.shadowRoot?.activeElement) el = el.shadowRoot.activeElement;
+  return el instanceof HTMLElement ? el : null;
+}
+
+/**
+ * Move focus into the card when the word it is for has focus: the word was
+ * clicked, or pressed with Enter. A card that opens as the pointer rests on
+ * a word leaves focus where it is. Either way, focus in the card goes back
+ * to what had it when the card goes (dismiss).
+ */
+function focusCard(card: HTMLElement, anchor: HTMLElement): void {
+  const from = focused();
+  if (!from || !anchor.contains(from)) return;
+  returnFocus = from;
+  card.tabIndex = -1;
+  card.focus({ preventScroll: true });
 }
 
 /**
@@ -994,6 +1080,12 @@ export function showPopup(
 export function shortcut(b: HTMLElement, shown: string, aria: string): void {
   b.dataset.key = shown;
   b.setAttribute('aria-keyshortcuts', aria);
+}
+
+/** A letter key, as it is pressed now: alone, or with Alt and Shift where single keys are off. */
+function letter(b: HTMLElement, key: string): void {
+  const { shown, aria } = letterKey(key, settings().singleKeys);
+  shortcut(b, shown, aria);
 }
 
 /** The Add button's states (showPopup). */
@@ -1020,6 +1112,18 @@ const markTip = (mark: CardMark): string =>
 /** The same buttons once pressed: pressing again takes the mark off. */
 const unmarkTip = (mark: CardMark): string =>
   ({ known: ui.popup.unmarkKnownTip, tracking: ui.popup.stopTrackingTip, ignored: ui.popup.stopIgnoringTip })[mark];
+
+/**
+ * The language a word's meanings are written in, where its entry does not
+ * say: the one chosen for them where the dictionary comes in several, as
+ * JMdict does, and otherwise the one edition there is — English.
+ */
+function meaningsLanguage(learned: string): string {
+  const s = settings();
+  const dictionary = dictionaryOf(learned, s);
+  if (!dictionary) return '';
+  return featuresOf(learned).definitions ? definitionLanguage(s) : dictionary.edition;
+}
 
 /** What a language calls the characters it is written with, for the heading over a word's. */
 function characterName(id: string): string {

@@ -22,6 +22,8 @@ export const id: Translation = {
   common: {
     furigana: (mode: Settings['ruby']): string => `Furigana: ${RUBY[mode]}`,
     pinyin: (mode: Settings['ruby']): string => `Pinyin: ${RUBY[mode]}`,
+    mandarin: 'Tionghoa (Mandarin)',
+    jyutping: (mode: Settings['ruby']): string => `Jyutping: ${RUBY[mode]}`,
     sentenceGap: ' ',
   },
 
@@ -33,6 +35,7 @@ export const id: Translation = {
     targetLimited: (language: string): string => `${language} — terbatas`,
     supportFull: 'Dukungan penuh, termasuk cara baca dan furigana.',
     supportPinyin: 'Dukungan penuh, termasuk pinyin. Definisi dalam bahasa Inggris.',
+    supportJyutping: 'Dukungan penuh, termasuk Jyutping. Definisi dalam bahasa Inggris.',
     supportWords: 'Dukungan penuh. Definisi dalam bahasa Inggris.',
     script: 'Aksara',
     scriptHint: 'Yang dipakai saat video punya keduanya.',
@@ -85,6 +88,8 @@ export const id: Translation = {
     rubyHint: 'Cara baca di atas kanji. Tekan R untuk beralih saat menonton.',
     pinyin: 'Pinyin',
     pinyinHint: 'Cara baca di atas karakter. Tekan R untuk beralih saat menonton.',
+    jyutping: 'Jyutping',
+    jyutpingHint: 'Cara baca di atas karakter. Tekan R untuk beralih saat menonton.',
     blurPrimary: 'Buramkan subtitel',
     blurPrimaryHint:
       'Untuk latihan mendengar: subtitel tetap buram sampai Anda mengarahkan kursor ke sana. Tekan H untuk beralih.',
@@ -103,6 +108,10 @@ export const id: Translation = {
     dualSubtitlesHint:
       'Menampilkan subtitel dalam bahasa Anda di bawah subtitel yang Anda pelajari. Subtitel ini berasal dari situs, ' +
       'bukan terjemahan mesin, dan membutuhkan transkrip lengkap video.',
+    singleKeys: 'Pintasan satu tombol',
+    singleKeysHint:
+      'Tombol huruf seperti A dan R berfungsi tanpa tombol lain saat menonton. Nonaktif: tahan Alt dan Shift bersama tombol itu. ' +
+      'Tombol panah tetap berfungsi.',
 
     // Underlines
     underlinesHeading: 'Garis bawah',
@@ -134,6 +143,11 @@ export const id: Translation = {
     languageBadgeCode: 'Kode',
     badgeFlag: 'Bendera lencana',
     badgeFlagDefault: 'Default',
+    flagSearch: 'Telusuri…',
+    flagSearchLabel: 'Telusuri negara',
+    flagSuggested: 'Disarankan',
+    flagAll: 'Semua negara',
+    flagNone: (query: string): string => `Tidak ada negara yang cocok dengan “${query}”.`,
     badgeFlagHint: 'Bendera yang ditampilkan untuk bahasa yang Anda pelajari. Setiap bahasa menyimpan benderanya sendiri.',
     languageBadgeHint: 'Cara bilah atas menampilkan bahasa yang Anda pelajari.',
     sidebarStats: 'Hitung kata baru',
@@ -227,7 +241,18 @@ export const id: Translation = {
       'punya ketentuan sendiri.',
     creditCedict: 'Kamus bahasa Tionghoa © MDBG dan para kontributornya, digunakan dengan lisensi CC BY-SA 4.0.',
     creditWiktionary:
-      'Kamus bahasa Korea dan Spanyol, dari Wiktionary melalui kaikki.org dan wiktionary-to-yomitan. CC BY-SA 4.0.',
+      'Kamus bahasa Korea dan Spanyol, serta beberapa dalam bahasa Anda sendiri, dari Wiktionary melalui kaikki.org dan ' +
+      'wiktionary-to-yomitan. CC BY-SA 4.0.',
+    creditKrdict:
+      'Kata bahasa Korea dijelaskan dalam bahasa Anda sendiri. © National Institute of Korean Language, digunakan dengan ' +
+      'lisensi CC BY-SA 2.0 KR. File dibuat oleh Lyroxide.',
+    creditCfdict:
+      'Bahasa Tionghoa dijelaskan dalam bahasa Prancis. CFDICT © chine.in, terus diperbarui oleh CxDICT. CC BY-SA 4.0.',
+    creditCanto:
+      'Kamus bahasa Kanton dan cara baca Jyutping untuk CC-CEDICT. © Pleco Inc., digunakan dengan lisensi CC BY-SA 3.0.',
+    creditHandedict:
+      'Bahasa Tionghoa dijelaskan dalam bahasa Jerman. © HanDeDict dan para kontributornya, digunakan dengan lisensi ' +
+      'CC BY-SA 3.0.',
     creditUnihan: 'Cara baca karakter Tionghoa yang ditampilkan pertama. © Unicode, Inc., digunakan dengan Unicode License.',
     creditJotoba: 'Dipakai untuk pencarian selama kamus diunduh. Keduanya memakai JMdict.',
     creditLucide: 'Ikon. Lisensi ISC.',
@@ -245,6 +270,7 @@ export const id: Translation = {
     keyKnown: 'Tandai kata di pop-up sebagai dikenal',
     keyFurigana: 'Ganti furigana: nonaktif, kata baru, semua',
     keyPinyin: 'Ganti pinyin: nonaktif, kata baru, semua',
+    keyJyutping: 'Ganti Jyutping: nonaktif, kata baru, semua',
     keyBlur: 'Buramkan atau perjelas subtitel',
     keySave: 'Simpan baris saat ini',
     keyTranscript: 'Tampilkan atau sembunyikan panel transkrip',
@@ -268,6 +294,7 @@ export const id: Translation = {
     nextSteps:
       'Lalu buka video dengan subtitel dalam bahasa yang Anda pelajari, dan arahkan kursor ke sebuah kata. ' +
       'Ikon keyboard di panel transkrip menampilkan daftar pintasan keyboard.',
+    stepDone: 'Selesai',
     confirmLanguages: 'Bahasa ini sudah benar',
     keepDeck: (deck: string): string => `Gunakan ${deck} untuk kartu baru`,
   },
@@ -306,15 +333,17 @@ export const id: Translation = {
   },
 
   sidebar: {
+    panelLabel: 'Panel transkrip',
+    resizeLabel: 'Ubah ukuran panel',
+
     // The tabs, and the icon buttons beside them
     tabsLabel: 'Daftar',
     transcriptTab: 'Transkrip',
     savedTab: 'Tersimpan',
-    wordsTab: 'Kata',
     settings: 'Setelan',
     shortcuts: 'Pintasan keyboard',
     close: 'Tutup',
-    closeLabel: 'Ciutkan panel',
+    closeLabel: 'Tutup panel',
     openTip: 'Transkrip',
     openLabel: 'Tampilkan transkrip',
     help: 'Bantuan',
@@ -344,6 +373,7 @@ export const id: Translation = {
     empty: 'Tidak ada transkrip yang dimuat.',
     currentLine: 'Baris saat ini',
     lineNew: (n: number): string => `${n} baru`,
+    playFrom: (time: string): string => `Putar dari ${time}`,
     saveLine: 'Simpan baris',
     unsave: 'Batal simpan',
     addSentence: 'Tambahkan kalimat',
@@ -367,6 +397,7 @@ export const id: Translation = {
       'Belum ada yang disimpan. Gunakan penanda di baris transkrip mana pun — atau tekan B — untuk menyimpan kalimat ' +
       'yang ingin Anda buka lagi.',
     thisVideo: 'video ini',
+    openAt: (time: string): string => `Buka video di ${time}`,
     remove: 'Hapus',
     removeLabel: 'Hapus dari Tersimpan',
     copySavedAbout: 'Salin semua baris tersimpan sebagai teks yang dipisahkan tab',
@@ -391,18 +422,20 @@ export const id: Translation = {
     downloadBlocked: 'Halaman ini memblokir unduhan — gunakan Salin.',
 
     // The Words tab
-    listsLabel: 'Kata yang mana',
+    listsLabel: 'Daftar yang mana',
+    listLines: 'Baris',
     listTracked: 'Dipantau',
     listKnown: 'Dikenal',
     listIgnored: 'Diabaikan',
-    findPlaceholder: 'Cari kata',
-    findLabel: 'Cari kata di daftar ini',
+    findPlaceholder: 'Telusuri…',
+    findLabel: 'Telusuri daftar ini',
     copyWordsAbout: 'Salin daftar ini sebagai teks yang dipisahkan tab',
     exportWordsAbout: 'Simpan daftar ini sebagai file yang dipisahkan tab dan bisa diimpor Anki',
     wordsCopied: (n: number): string => `${n} kata disalin.`,
-    nothingToExport: 'Tidak ada kata di daftar ini untuk diekspor.',
+    nothingToExport: 'Tidak ada yang bisa diekspor dari daftar ini.',
     lookingUp: 'Mencari cara baca dan arti…',
     noWordMatches: (query: string): string => `Tidak ada kata di daftar ini yang cocok dengan “${query}”.`,
+    noLineMatches: (query: string): string => `Tidak ada baris tersimpan yang cocok dengan “${query}”.`,
     wordsMatching: (shown: number, total: number): string => `${shown} dari ${total} kata.`,
     trackedEmpty:
       'Belum ada yang dipantau. Pantau memberi garis bawah pada kata agar Anda memperhatikannya, tanpa membuat kartu. ' +
@@ -493,6 +526,7 @@ export const id: Translation = {
     adding: 'Menambahkan…',
     undoing: 'Mengurungkan…',
     added: 'Ditambahkan',
+    addedUndo: 'Ditambahkan — urungkan',
     inAnki: 'Ada di Anki',
     showInAnki: 'Tampilkan di Anki',
     waiting: 'Menunggu',
@@ -532,12 +566,12 @@ export const id: Translation = {
     unblurSubtitle: 'Perjelas subtitel',
     showTranslation: 'Tampilkan terjemahan',
     hideTranslation: 'Sembunyikan terjemahan',
+    translation: 'Terjemahan',
     transcript: 'Transkrip',
     pinHeader: 'Sematkan bilah atas',
     unpinHeader: 'Lepas sematan bilah atas',
     settings: 'Setelan',
     showHeader: 'Tampilkan bilah atas',
-    showHeaderLabel: 'Tampilkan bilah atas',
   },
 
   player: {
@@ -561,7 +595,7 @@ export const id: Translation = {
     marked: (word: string, status: OverrideStatus, refused: boolean): string => {
       const done = { known: 'ditandai dikenal', tracking: 'dipantau', ignored: 'diabaikan', unknown: 'ditandai baru' }[status];
       if (refused) return `${word} · ${done}, tanpa kartu — Anki menolaknya; akan dicoba lagi nanti`;
-      return `${word} · ${done}, tanpa kartu${status === 'tracking' ? '. Lihat tab Kata di panel' : ''}`;
+      return `${word} · ${done}, tanpa kartu${status === 'tracking' ? '. Lihat tab Tersimpan di panel' : ''}`;
     },
 
     // A word's card

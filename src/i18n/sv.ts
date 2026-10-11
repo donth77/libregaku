@@ -36,6 +36,8 @@ export const sv: Translation = {
   common: {
     furigana: (mode: Settings['ruby']): string => `Furigana: ${RUBY[mode]}`,
     pinyin: (mode: Settings['ruby']): string => `Pinyin: ${RUBY[mode]}`,
+    mandarin: 'Kinesiska (mandarin)',
+    jyutping: (mode: Settings['ruby']): string => `Jyutping: ${RUBY[mode]}`,
     sentenceGap: ' ',
   },
 
@@ -47,6 +49,7 @@ export const sv: Translation = {
     targetLimited: (language: string): string => `${language} – begränsat stöd`,
     supportFull: 'Fullt stöd, med läsningar och furigana.',
     supportPinyin: 'Fullt stöd, med pinyin. Definitionerna är på engelska.',
+    supportJyutping: 'Fullt stöd, med Jyutping. Definitionerna är på engelska.',
     supportWords: 'Fullt stöd. Definitionerna är på engelska.',
     script: 'Skrivtecken',
     scriptHint: 'Används när en video har båda.',
@@ -99,6 +102,8 @@ export const sv: Translation = {
     rubyHint: 'Läsningar ovanför kanji. Tryck på R för att växla medan du tittar.',
     pinyin: 'Pinyin',
     pinyinHint: 'Läsningar ovanför tecknen. Tryck på R för att växla medan du tittar.',
+    jyutping: 'Jyutping',
+    jyutpingHint: 'Läsningar ovanför tecknen. Tryck på R för att växla medan du tittar.',
     blurPrimary: 'Gör undertexter suddiga',
     blurPrimaryHint: 'För hörförståelse: undertexterna är suddiga tills du pekar på dem. Tryck på H för att växla.',
     subtitleSize: 'Textstorlek',
@@ -116,6 +121,10 @@ export const sv: Translation = {
     dualSubtitlesHint:
       'Visar undertexter på ditt språk under dem du lär dig. De kommer från webbplatsen, inte från ' +
       'maskinöversättning, och kräver en fullständig transkription av videon.',
+    singleKeys: 'Kortkommandon med en tangent',
+    singleKeysHint:
+      'Bokstavstangenter som A och R fungerar på egen hand medan du tittar. Av: håll ned Alt och Shift tillsammans med dem. ' +
+      'Piltangenterna fungerar i båda fallen.',
 
     // Understrykningar
     underlinesHeading: 'Understrykningar',
@@ -147,6 +156,11 @@ export const sv: Translation = {
     languageBadgeCode: 'Kod',
     badgeFlag: 'Flagga i märket',
     badgeFlagDefault: 'Standard',
+    flagSearch: 'Sök…',
+    flagSearchLabel: 'Sök efter land',
+    flagSuggested: 'Förslag',
+    flagAll: 'Alla länder',
+    flagNone: (query: string): string => `Inget land matchar ”${query}”.`,
     badgeFlagHint: 'Flaggan som visas för språket du lär dig. Varje språk behåller sin egen.',
     languageBadgeHint: 'Hur toppfältet visar språket du lär dig.',
     sidebarStats: 'Räkna nya ord',
@@ -239,7 +253,14 @@ export const sv: Translation = {
       'egna villkor.',
     creditCedict: 'Kinesisk ordbok © MDBG och bidragsgivarna, används under CC BY-SA 4.0.',
     creditWiktionary:
-      'Koreanska och spanska ordböcker, från Wiktionary via kaikki.org och wiktionary-to-yomitan. CC BY-SA 4.0.',
+      'Koreanska och spanska ordböcker, och några på ditt eget språk, från Wiktionary via kaikki.org och ' +
+      'wiktionary-to-yomitan. CC BY-SA 4.0.',
+    creditKrdict:
+      'Koreanska ord förklarade på ditt eget språk. © National Institute of Korean Language, används under ' +
+      'CC BY-SA 2.0 KR. Filer av Lyroxide.',
+    creditCfdict: 'Kinesiska förklarad på franska. CFDICT © chine.in, hålls uppdaterad av CxDICT. CC BY-SA 4.0.',
+    creditCanto: 'Kantonesisk ordbok och Jyutping-läsningar för CC-CEDICT. © Pleco Inc., används under CC BY-SA 3.0.',
+    creditHandedict: 'Kinesiska förklarad på tyska. © HanDeDict och bidragsgivarna, används under CC BY-SA 3.0.',
     creditUnihan: 'Vilken läsning av ett kinesiskt tecken som visas först. © Unicode, Inc., används under Unicode License.',
     creditJotoba: 'Används för uppslag medan ordboken laddas ned. Båda använder JMdict.',
     creditLucide: 'Ikoner. ISC-licens.',
@@ -257,6 +278,7 @@ export const sv: Translation = {
     keyKnown: 'Markera ordet i ordrutan som känt',
     keyFurigana: 'Växla furigana: av, nya ord, alla',
     keyPinyin: 'Växla pinyin: av, nya ord, alla',
+    keyJyutping: 'Växla Jyutping: av, nya ord, alla',
     keyBlur: 'Gör undertexter suddiga eller skarpa',
     keySave: 'Spara den aktuella raden',
     keyTranscript: 'Visa eller dölj transkriptionspanelen',
@@ -280,6 +302,7 @@ export const sv: Translation = {
     nextSteps:
       'Öppna sedan en video med undertexter på språket du lär dig och håll pekaren över ett ord. ' +
       'Tangentbordsknappen i transkriptionspanelen visar kortkommandona.',
+    stepDone: 'Klart',
     confirmLanguages: 'Språken stämmer',
     keepDeck: (deck: string): string => `Använd ${deck} för nya kort`,
   },
@@ -318,15 +341,17 @@ export const sv: Translation = {
   },
 
   sidebar: {
+    panelLabel: 'Transkriptionspanel',
+    resizeLabel: 'Ändra storlek på panelen',
+
     // Flikarna och knapparna bredvid dem
     tabsLabel: 'Listor',
     transcriptTab: 'Transkription',
     savedTab: 'Sparade',
-    wordsTab: 'Ord',
     settings: 'Inställningar',
     shortcuts: 'Kortkommandon',
     close: 'Stäng',
-    closeLabel: 'Fäll ihop panelen',
+    closeLabel: 'Stäng panelen',
     openTip: 'Transkription',
     openLabel: 'Visa transkriptionen',
     help: 'Hjälp',
@@ -356,6 +381,7 @@ export const sv: Translation = {
     empty: 'Ingen transkription laddad.',
     currentLine: 'Aktuell rad',
     lineNew: (n: number): string => `${n} ${one(n) ? 'nytt' : 'nya'}`,
+    playFrom: (time: string): string => `Spela upp från ${time}`,
     saveLine: 'Spara rad',
     unsave: 'Ta bort från sparade',
     addSentence: 'Lägg till mening',
@@ -379,6 +405,7 @@ export const sv: Translation = {
       'Inget sparat än. Använd bokmärket på en rad i transkriptionen – eller tryck på B – för att spara en mening ' +
       'du vill komma tillbaka till.',
     thisVideo: 'den här videon',
+    openAt: (time: string): string => `Öppna videon vid ${time}`,
     remove: 'Ta bort',
     removeLabel: 'Ta bort från sparade',
     copySavedAbout: 'Kopiera alla sparade rader som tabbavgränsad text',
@@ -404,18 +431,20 @@ export const sv: Translation = {
     downloadBlocked: 'Sidan blockerade nedladdningen – använd Kopiera i stället.',
 
     // Ord
-    listsLabel: 'Vilka ord',
+    listsLabel: 'Vilken lista',
+    listLines: 'Rader',
     listTracked: 'Följda',
     listKnown: 'Kända',
     listIgnored: 'Ignorerade',
-    findPlaceholder: 'Hitta ett ord',
-    findLabel: 'Hitta ett ord i listan',
+    findPlaceholder: 'Sök…',
+    findLabel: 'Sök i listan',
     copyWordsAbout: 'Kopiera listan som tabbavgränsad text',
     exportWordsAbout: 'Spara listan som en tabbavgränsad fil som Anki kan importera',
     wordsCopied: (n: number): string => `${words(n)} ${one(n) ? 'kopierat' : 'kopierade'}.`,
-    nothingToExport: 'Det finns inga ord i listan att exportera.',
+    nothingToExport: 'Det finns inget i listan att exportera.',
     lookingUp: 'Slår upp läsningar och betydelser…',
     noWordMatches: (query: string): string => `Inget ord i listan matchar ”${query}”.`,
+    noLineMatches: (query: string): string => `Ingen sparad rad matchar ”${query}”.`,
     wordsMatching: (shown: number, total: number): string => `${shown} av ${words(total)}.`,
     trackedEmpty:
       'Inga följda ord än. Följ stryker under ett ord så att du lägger märke till det, utan att skapa ett kort. ' +
@@ -508,6 +537,7 @@ export const sv: Translation = {
     adding: 'Lägger till…',
     undoing: 'Ångrar…',
     added: 'Tillagt',
+    addedUndo: 'Tillagt – ångra',
     inAnki: 'I Anki',
     showInAnki: 'Visa i Anki',
     waiting: 'Väntar',
@@ -547,12 +577,12 @@ export const sv: Translation = {
     unblurSubtitle: 'Gör undertexten skarp',
     showTranslation: 'Visa översättning',
     hideTranslation: 'Dölj översättning',
+    translation: 'Översättning',
     transcript: 'Transkription',
     pinHeader: 'Fäst toppfältet',
     unpinHeader: 'Lossa toppfältet',
     settings: 'Inställningar',
     showHeader: 'Visa toppfältet',
-    showHeaderLabel: 'Visa toppfältet',
   },
 
   player: {
@@ -578,7 +608,7 @@ export const sv: Translation = {
         known: 'markerat som känt', tracking: 'följt', ignored: 'ignorerat', unknown: 'markerat som nytt',
       }[status];
       if (refused) return `${word} · ${done}, inget kort – Anki nekade; försöker igen senare`;
-      return `${word} · ${done}, inget kort${status === 'tracking' ? '. Se fliken Ord i panelen' : ''}`;
+      return `${word} · ${done}, inget kort${status === 'tracking' ? '. Se fliken Sparade i panelen' : ''}`;
     },
 
     // Ett ords kort

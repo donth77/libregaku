@@ -103,10 +103,16 @@ export function inline(text: string, words: readonly string[], then = 'then'): N
       path.className = 'path';
       piece.slice(1, -1).split('→').map((s) => s.trim()).forEach((step, i) => {
         if (i) {
+          // Seen as ›, heard as "then": a span has no name of its own to give it.
           const sep = document.createElement('span');
           sep.className = 'sep';
-          sep.textContent = '›';
-          sep.setAttribute('aria-label', then);
+          const arrow = document.createElement('span');
+          arrow.setAttribute('aria-hidden', 'true');
+          arrow.textContent = '›';
+          const said = document.createElement('span');
+          said.className = 'vh';
+          said.textContent = ` ${then} `;
+          sep.append(arrow, said);
           path.appendChild(sep);
         }
         const s = document.createElement('span');
@@ -281,7 +287,11 @@ export function renderHelp(
       }
       const current = chapters.find((c) => seen.has(c.el));
       if (!current) return;
-      for (const c of chapters) c.link?.toggleAttribute('aria-current', c === current);
+      // "true", as the settings page marks its section: toggleAttribute wrote aria-current="", which means none.
+      for (const c of chapters) {
+        if (c === current) c.link?.setAttribute('aria-current', 'true');
+        else c.link?.removeAttribute('aria-current');
+      }
     }, { rootMargin: '-15% 0px -70% 0px' });
     for (const c of chapters) io.observe(c.el);
   }

@@ -388,6 +388,48 @@ describe('Chinese', () => {
   });
 });
 
+describe('a dictionary in your own language', () => {
+  const casa = { id: '1', word: 'casa', common: false, senses: [{ pos: ['n'], glosses: ['Maison.'] }] };
+
+  it('is asked first, its meanings marked with their language, and the language’s own after', async () => {
+    const { send, store } = await boot();
+    vi.mocked(store.isPopulated).mockResolvedValue(true);
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    const { SOURCES } = await import('../sources');
+    await send({ type: 'dict-load', source: 'wty-es-en', edition: 'en', own: { source: 'wty-es-fr', edition: 'fr' } });
+    await new Promise((r) => setTimeout(r, 0));   // loaded after the language's own
+    vi.mocked(store.lookup).mockImplementation(async (key: string, _hint?: unknown, source?: unknown) =>
+      (source === SOURCES['wty-es-fr'] && key === 'casa' ? [casa] : []));
+    expect(await send({ type: 'dict-lookup', key: 'casa' })).toEqual({ ok: true, entries: [{ ...casa, lang: 'fr' }], source: 'local' });
+    // A word French Wiktionary lacks: the English edition answers.
+    expect(await send({ type: 'dict-lookup', key: 'chévere' })).toMatchObject({ ok: true, entries: [], source: 'local' });
+    expect(store.lookup).toHaveBeenLastCalledWith('chévere', { reading: undefined, pos: undefined }, SOURCES['wty-es-en']);
+  });
+
+  it('while it downloads, answers from the other, which the page is told not to keep', async () => {
+    const { send, store } = await boot();
+    vi.mocked(store.isPopulated).mockImplementation(async (_e: string, source?: { id: string }) => source?.id === 'wty-es-en');
+    vi.mocked(store.build).mockReturnValue(new Promise(() => {}));   // French never finishes
+    await send({ type: 'dict-load', source: 'wty-es-en', edition: 'en', own: { source: 'wty-es-fr', edition: 'fr' } });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(await send({ type: 'dict-lookup', key: 'casa' })).toMatchObject({ ok: true, source: 'partial' });
+  });
+
+  it('is let go when the pair has none', async () => {
+    const { send, store } = await boot();
+    vi.mocked(store.isPopulated).mockResolvedValue(true);
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    const { SOURCES } = await import('../sources');
+    await send({ type: 'dict-load', source: 'wty-es-en', edition: 'en', own: { source: 'wty-es-fr', edition: 'fr' } });
+    await new Promise((r) => setTimeout(r, 0));
+    await send({ type: 'dict-load', source: 'wty-es-en', edition: 'en', own: null });
+    await new Promise((r) => setTimeout(r, 0));
+    await send({ type: 'dict-lookup', key: 'casa' });
+    expect(store.lookup).toHaveBeenCalledTimes(1);
+    expect(store.lookup).toHaveBeenCalledWith('casa', { reading: undefined, pos: undefined }, SOURCES['wty-es-en']);
+  });
+});
+
 describe('a dictionary for each language', () => {
   it('loads the one asked for, and lookups go to it', async () => {
     const { send, store } = await boot();

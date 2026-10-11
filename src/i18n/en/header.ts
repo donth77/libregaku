@@ -21,6 +21,11 @@ export const header = {
   showTranslation: 'Show translation',
   /** The same button while the translation shows. */
   hideTranslation: 'Hide translation',
+  /**
+   * That button's name for screen readers, the same whether the translation
+   * shows or not: they hear it as pressed or not pressed.
+   */
+  translation: 'Translation',
   /** Button: open or close the transcript, the panel beside the video that lists every subtitle line. */
   transcript: 'Transcript',
   /** Button: keep the bar showing, rather than only when the cursor nears the top of the player. */
@@ -33,6 +38,4 @@ export const header = {
   // The small tab at the top of the player, all that shows while the bar is away
   /** Its tooltip: clicking it brings the bar down. */
   showHeader: 'Show header',
-  /** Its name, for screen readers. */
-  showHeaderLabel: 'Show the header',
 };

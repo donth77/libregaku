@@ -26,6 +26,8 @@ export const th: Translation = {
   common: {
     furigana: (mode: Settings['ruby']): string => `ฟุริงานะ: ${RUBY[mode]}`,
     pinyin: (mode: Settings['ruby']): string => `พินอิน: ${RUBY[mode]}`,
+    mandarin: 'ภาษาจีนกลาง',
+    jyutping: (mode: Settings['ruby']): string => `Jyutping: ${RUBY[mode]}`,
     sentenceGap: ' ',
   },
 
@@ -37,6 +39,7 @@ export const th: Translation = {
     targetLimited: (language: string): string => `${language} — รองรับจำกัด`,
     supportFull: 'รองรับเต็มรูปแบบ รวมถึงคำอ่านและฟุริงานะ',
     supportPinyin: 'รองรับเต็มรูปแบบ รวมถึงพินอิน ความหมายเป็นภาษาอังกฤษ',
+    supportJyutping: 'รองรับเต็มรูปแบบ รวมถึง Jyutping ความหมายเป็นภาษาอังกฤษ',
     supportWords: 'รองรับเต็มรูปแบบ ความหมายเป็นภาษาอังกฤษ',
     script: 'ตัวอักษร',
     scriptHint: 'ใช้เมื่อวิดีโอมีทั้งสองแบบ',
@@ -89,6 +92,8 @@ export const th: Translation = {
     rubyHint: 'คำอ่านเหนือคันจิ กด R เพื่อสลับขณะดู',
     pinyin: 'พินอิน',
     pinyinHint: 'คำอ่านเหนืออักษร กด R เพื่อสลับขณะดู',
+    jyutping: 'Jyutping',
+    jyutpingHint: 'คำอ่านเหนืออักษร กด R เพื่อสลับขณะดู',
     blurPrimary: 'เบลอคำบรรยาย',
     blurPrimaryHint: 'สำหรับฝึกฟัง: คำบรรยายจะเบลออยู่จนกว่าจะชี้เมาส์ไปที่คำบรรยาย กด H เพื่อสลับ',
     subtitleSize: 'ขนาดข้อความ',
@@ -106,6 +111,10 @@ export const th: Translation = {
     dualSubtitlesHint:
       'แสดงคำบรรยายภาษาของคุณใต้คำบรรยายภาษาที่เรียน คำบรรยายนี้มาจากเว็บไซต์ ไม่ใช่การแปลด้วยเครื่อง ' +
       'และต้องมีข้อความถอดเสียงทั้งหมดของวิดีโอ',
+    singleKeys: 'แป้นพิมพ์ลัดแบบแป้นเดียว',
+    singleKeysHint:
+      'แป้นตัวอักษร เช่น A และ R ใช้ได้ทันทีขณะดู ถ้าปิด ให้กด Alt และ Shift ค้างไว้ด้วย ' +
+      'แป้นลูกศรใช้ได้ทั้งสองกรณี',
 
     // ขีดเส้นใต้
     underlinesHeading: 'ขีดเส้นใต้',
@@ -137,6 +146,11 @@ export const th: Translation = {
     languageBadgeCode: 'รหัส',
     badgeFlag: 'ธงบนป้าย',
     badgeFlagDefault: 'ค่าเริ่มต้น',
+    flagSearch: 'ค้นหา…',
+    flagSearchLabel: 'ค้นหาประเทศ',
+    flagSuggested: 'แนะนำ',
+    flagAll: 'ทุกประเทศ',
+    flagNone: (query: string): string => `ไม่มีประเทศที่ตรงกับ “${query}”`,
     badgeFlagHint: 'ธงที่แสดงสำหรับภาษาที่เรียน แต่ละภาษาเก็บธงของตัวเองไว้',
     languageBadgeHint: 'วิธีที่ส่วนหัวแสดงภาษาที่คุณเรียน',
     sidebarStats: 'นับคำใหม่',
@@ -226,7 +240,15 @@ export const th: Translation = {
       'แปลงเป็น JSON โดย jmdict-simplified',
     creditLindera: 'ตัดคำภาษาญี่ปุ่น เกาหลี และจีน สัญญาอนุญาต MIT ส่วน IPADIC, mecab-ko-dic และ CC-CEDICT มีเงื่อนไขของตัวเอง',
     creditCedict: 'พจนานุกรมภาษาจีน © MDBG และผู้ร่วมพัฒนา ใช้ภายใต้ CC BY-SA 4.0',
-    creditWiktionary: 'พจนานุกรมภาษาเกาหลีและสเปน จาก Wiktionary ผ่าน kaikki.org และ wiktionary-to-yomitan CC BY-SA 4.0',
+    creditWiktionary:
+      'พจนานุกรมภาษาเกาหลีและสเปน รวมถึงบางฉบับที่เป็นภาษาของคุณ จาก Wiktionary ผ่าน kaikki.org และ wiktionary-to-yomitan ' +
+      'CC BY-SA 4.0',
+    creditKrdict:
+      'คำภาษาเกาหลีพร้อมคำอธิบายเป็นภาษาของคุณ © National Institute of Korean Language ใช้ภายใต้ CC BY-SA 2.0 KR ' +
+      'ไฟล์จัดทำโดย Lyroxide',
+    creditCfdict: 'ภาษาจีนพร้อมคำอธิบายเป็นภาษาฝรั่งเศส CFDICT © chine.in อัปเดตต่อเนื่องโดย CxDICT CC BY-SA 4.0',
+    creditCanto: 'พจนานุกรมภาษากวางตุ้งและคำอ่าน Jyutping สำหรับ CC-CEDICT © Pleco Inc. ใช้ภายใต้ CC BY-SA 3.0',
+    creditHandedict: 'ภาษาจีนพร้อมคำอธิบายเป็นภาษาเยอรมัน © HanDeDict และผู้ร่วมพัฒนา ใช้ภายใต้ CC BY-SA 3.0',
     creditUnihan: 'คำอ่านที่แสดงก่อนของอักษรจีนแต่ละตัว © Unicode, Inc. ใช้ภายใต้ Unicode License',
     creditJotoba: 'ใช้ดูความหมายระหว่างที่พจนานุกรมกำลังดาวน์โหลด ทั้งสองใช้ JMdict',
     creditLucide: 'ไอคอน สัญญาอนุญาต ISC',
@@ -244,6 +266,7 @@ export const th: Translation = {
     keyKnown: 'ทำเครื่องหมายว่ารู้แล้วให้คำในป๊อปอัป',
     keyFurigana: 'สลับฟุริงานะ: ปิด, คำใหม่, ทั้งหมด',
     keyPinyin: 'สลับพินอิน: ปิด, คำใหม่, ทั้งหมด',
+    keyJyutping: 'สลับ Jyutping: ปิด, คำใหม่, ทั้งหมด',
     keyBlur: 'เบลอหรือเลิกเบลอคำบรรยาย',
     keySave: 'บันทึกบรรทัดปัจจุบัน',
     keyTranscript: 'แสดงหรือซ่อนแผงข้อความถอดเสียง',
@@ -267,6 +290,7 @@ export const th: Translation = {
     nextSteps:
       'จากนั้นเปิดวิดีโอที่มีคำบรรยายในภาษาที่คุณเรียน แล้ววางเมาส์บนคำ ' +
       'ปุ่มแป้นพิมพ์ในแผงข้อความถอดเสียงจะแสดงแป้นพิมพ์ลัดทั้งหมด',
+    stepDone: 'เสร็จแล้ว',
     confirmLanguages: 'ภาษาเหล่านี้ถูกต้อง',
     keepDeck: (deck: string): string => `ใช้ ${deck} สำหรับการ์ดใหม่`,
   },
@@ -305,15 +329,17 @@ export const th: Translation = {
   },
 
   sidebar: {
+    panelLabel: 'แผงข้อความถอดเสียง',
+    resizeLabel: 'ปรับขนาดแผง',
+
     // แท็บและปุ่มข้างๆ
     tabsLabel: 'รายการ',
     transcriptTab: 'ข้อความถอดเสียง',
     savedTab: 'ที่บันทึกไว้',
-    wordsTab: 'คำศัพท์',
     settings: 'การตั้งค่า',
     shortcuts: 'แป้นพิมพ์ลัด',
     close: 'ปิด',
-    closeLabel: 'ยุบแผง',
+    closeLabel: 'ปิดแผง',
     openTip: 'ข้อความถอดเสียง',
     openLabel: 'แสดงข้อความถอดเสียง',
     help: 'ความช่วยเหลือ',
@@ -343,6 +369,7 @@ export const th: Translation = {
     empty: 'ยังไม่ได้โหลดข้อความถอดเสียง',
     currentLine: 'บรรทัดปัจจุบัน',
     lineNew: (n: number): string => `ใหม่ ${n}`,
+    playFrom: (time: string): string => `เล่นจาก ${time}`,
     saveLine: 'บันทึกบรรทัด',
     unsave: 'เลิกบันทึก',
     addSentence: 'เพิ่มประโยค',
@@ -366,6 +393,7 @@ export const th: Translation = {
       'ยังไม่มีอะไรที่บันทึกไว้ ใช้ที่คั่นหน้าในบรรทัดใดก็ได้ของข้อความถอดเสียง หรือกด B ' +
       'เพื่อเก็บประโยคที่อยากกลับมาดูอีก',
     thisVideo: 'วิดีโอนี้',
+    openAt: (time: string): string => `เปิดวิดีโอที่ ${time}`,
     remove: 'นำออก',
     removeLabel: 'นำออกจากที่บันทึกไว้',
     copySavedAbout: 'คัดลอกบรรทัดที่บันทึกไว้ทั้งหมดเป็นข้อความที่คั่นด้วยแท็บ',
@@ -390,18 +418,20 @@ export const th: Translation = {
     downloadBlocked: 'หน้านี้บล็อกการดาวน์โหลด — ใช้ “คัดลอก” แทน',
 
     // แท็บคำศัพท์
-    listsLabel: 'คำประเภทไหน',
+    listsLabel: 'รายการไหน',
+    listLines: 'บรรทัด',
     listTracked: 'ติดตามอยู่',
     listKnown: 'รู้แล้ว',
     listIgnored: 'ละเว้น',
-    findPlaceholder: 'หาคำ',
-    findLabel: 'หาคำในรายการนี้',
+    findPlaceholder: 'ค้นหา…',
+    findLabel: 'ค้นหาในรายการนี้',
     copyWordsAbout: 'คัดลอกรายการนี้เป็นข้อความที่คั่นด้วยแท็บ',
     exportWordsAbout: 'บันทึกรายการนี้เป็นไฟล์ที่คั่นด้วยแท็บซึ่ง Anki นำเข้าได้',
     wordsCopied: (n: number): string => `คัดลอก ${n} คำแล้ว`,
-    nothingToExport: 'ไม่มีคำในรายการนี้ให้ส่งออก',
+    nothingToExport: 'ไม่มีอะไรในรายการนี้ให้ส่งออก',
     lookingUp: 'กำลังค้นหาคำอ่านและความหมาย…',
     noWordMatches: (query: string): string => `ไม่มีคำในรายการนี้ที่ตรงกับ “${query}”`,
+    noLineMatches: (query: string): string => `ไม่มีบรรทัดที่บันทึกไว้ซึ่งตรงกับ “${query}”`,
     wordsMatching: (shown: number, total: number): string => `${shown} จาก ${total} คำ`,
     trackedEmpty:
       'ยังไม่ได้ติดตามคำใด “ติดตาม” จะขีดเส้นใต้คำเพื่อให้คุณสังเกตเห็น โดยไม่สร้างการ์ด ' +
@@ -489,6 +519,7 @@ export const th: Translation = {
     adding: 'กำลังเพิ่ม…',
     undoing: 'กำลังเลิกทำ…',
     added: 'เพิ่มแล้ว',
+    addedUndo: 'เพิ่มแล้ว — เลิกทำ',
     inAnki: 'อยู่ใน Anki',
     showInAnki: 'แสดงใน Anki',
     waiting: 'รออยู่',
@@ -528,12 +559,12 @@ export const th: Translation = {
     unblurSubtitle: 'เลิกเบลอคำบรรยาย',
     showTranslation: 'แสดงคำแปล',
     hideTranslation: 'ซ่อนคำแปล',
+    translation: 'คำแปล',
     transcript: 'ข้อความถอดเสียง',
     pinHeader: 'ปักหมุดส่วนหัว',
     unpinHeader: 'เลิกปักหมุดส่วนหัว',
     settings: 'การตั้งค่า',
     showHeader: 'แสดงส่วนหัว',
-    showHeaderLabel: 'แสดงส่วนหัว',
   },
 
   player: {
@@ -559,7 +590,7 @@ export const th: Translation = {
         known: 'ทำเครื่องหมายว่ารู้แล้ว', tracking: 'ติดตามแล้ว', ignored: 'ละเว้นแล้ว', unknown: 'ทำเครื่องหมายว่าใหม่',
       }[status];
       if (refused) return `${word} · ${done} ไม่ได้สร้างการ์ด — Anki ปฏิเสธ จะลองใหม่ภายหลัง`;
-      return `${word} · ${done} ไม่ได้สร้างการ์ด${status === 'tracking' ? ' ดูได้ที่แท็บคำศัพท์ในแผง' : ''}`;
+      return `${word} · ${done} ไม่ได้สร้างการ์ด${status === 'tracking' ? ' ดูได้ที่แท็บ “ที่บันทึกไว้” ในแผง' : ''}`;
     },
 
     // การ์ดของคำ

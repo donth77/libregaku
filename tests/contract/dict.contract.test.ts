@@ -4,7 +4,8 @@ import { toEntries as jishoEntries } from '../../src/dict/jisho';
 import { toEntries as jotobaEntries } from '../../src/dict/jotoba';
 import { parseLine } from '../../src/dict/cedict';
 import { gunzipText } from '../../src/dict/download';
-import { CEDICT_URL, wtyUrl } from '../../src/dict/sources';
+import { CANTO_URLS, CEDICT_URL, CXDICT_URL, HANDEDICT_URL, krdictUrl, parseCanto, wtyUrl } from '../../src/dict/sources';
+import { zipFiles as unzip } from '../../src/dict/zip';
 import { jmdictUrl, kanjidicUrl } from '../../src/dict/store';
 import { readRow } from '../../src/dict/wty';
 import { zipFiles } from '../../src/dict/zip';
@@ -22,6 +23,36 @@ import { fetchCheckingHops } from './hosts';
  */
 
 describe('dictionary contract', () => {
+  it('dict.canto — the Cantonese files are still at cantonese.org, CC-CEDICT lines with Jyutping', async () => {
+    const why = describeFailure('dict.canto');
+    for (const url of [CANTO_URLS.words, CANTO_URLS.readings]) {
+      const res = await fetchCheckingHops(url, {}, why);
+      expect(res.ok, `${url} returned HTTP ${res.status}.\n${why}`).toBe(true);
+      const file = unzip(new Uint8Array(await res.arrayBuffer())).find((f) => /\.txt$/.test(f.name));
+      expect(file, `${url}: no text file inside.\n${why}`).toBeDefined();
+      const rows = new TextDecoder().decode(await file!.bytes()).split('\n').slice(0, 2000).map(parseCanto).filter(Boolean);
+      expect(rows.length, `${url}: no lines with Jyutping in its first 2000.\n${why}`).toBeGreaterThan(100);
+    }
+  }, 120_000);
+
+  it('dict.krdict — krdict in the learner’s languages is still a release on GitHub', async () => {
+    const why = describeFailure('dict.krdict');
+    for (const lang of ['ja', 'zh', 'fr', 'es', 'ru', 'vi'] as const) {
+      const res = await fetchCheckingHops(krdictUrl(lang), { method: 'HEAD' }, why);
+      expect(res.ok, `${krdictUrl(lang)} returned HTTP ${res.status}.\n${why}`).toBe(true);
+    }
+  }, 60_000);
+
+  it('dict.own-cedict — CFDICT (CxDICT) and HanDeDict are still CC-CEDICT lines at their addresses', async () => {
+    const why = describeFailure('dict.own-cedict');
+    for (const url of [CXDICT_URL, HANDEDICT_URL]) {
+      const res = await fetchCheckingHops(url, {}, why);
+      expect(res.ok, `${url} returned HTTP ${res.status}.\n${why}`).toBe(true);
+      const lines = (await res.text()).split('\n').slice(0, 3000).map((l) => parseLine(l.replace(/\r$/, ''))).filter(Boolean);
+      expect(lines.length, `${url}: no CC-CEDICT lines in its first 3000.\n${why}`).toBeGreaterThan(100);
+    }
+  }, 120_000);
+
   it('dict.jmdict-release — the pinned JMdict release is still downloadable', async () => {
     for (const edition of ['eng', 'all'] as const) {
       const res = await fetchCheckingHops(jmdictUrl(edition), { method: 'HEAD' }, describeFailure('dict.jmdict-release'));

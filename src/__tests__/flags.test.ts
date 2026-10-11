@@ -30,11 +30,11 @@ describe('the flags a badge can show', () => {
 
   it('go on with every other country, once, by its name in the interface language', () => {
     const { spoken, others } = flagChoices('pt', 'en');
-    expect(spoken.slice(0, 2)).toEqual([{ flag: '🇧🇷', name: 'Brazil' }, { flag: '🇵🇹', name: 'Portugal' }]);
+    expect(spoken.slice(0, 2)).toEqual([{ code: 'BR', flag: '🇧🇷', name: 'Brazil' }, { code: 'PT', flag: '🇵🇹', name: 'Portugal' }]);
     expect(spoken.length + others.length).toBe(COUNTRIES.length);
     expect(others.map((c) => c.flag)).not.toContain('🇧🇷');
     const names = others.map((c) => c.name);
     expect(names).toEqual([...names].sort(new Intl.Collator('en').compare));
-    expect(flagChoices('pt', 'es').spoken[0]).toEqual({ flag: '🇧🇷', name: 'Brasil' });
+    expect(flagChoices('pt', 'es').spoken[0]).toEqual({ code: 'BR', flag: '🇧🇷', name: 'Brasil' });
   });
 });

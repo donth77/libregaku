@@ -78,6 +78,12 @@ export interface Source {
    * entries: each character of a word, with its meanings and readings.
    */
   characters?(chars: string[]): Promise<CharacterInfo[]>;
+  /**
+   * Its entries carry the reading drawn above a word in a line — CC-CEDICT's
+   * pinyin, the Cantonese dictionary's Jyutping — so the analyser's words
+   * are read from it.
+   */
+  readsLines?: boolean;
 }
 
 /** What the store records about its contents once, and only once, complete. */

@@ -20,12 +20,7 @@ a { color: var(--ink); text-decoration-color: #5A6480; text-underline-offset: 3p
 a:hover { text-decoration-color: var(--ink); }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
-.page { max-width: 1120px; margin: 0 auto; padding: 40px 32px 140px; }
-.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 0 0 32px; }
-h1 { margin: 0; }
-h1 svg { display: block; margin-left: -4px; }
-.to-settings { font-size: 15px; color: var(--muted); }
-.to-settings:hover { color: var(--ink); }
+.page { max-width: 1120px; margin: 0 auto; padding: 32px 32px 140px; }
 
 /* Chapters down the side; the help beside them. */
 .layout { display: grid; grid-template-columns: 200px minmax(0, 720px); gap: 56px; align-items: start; }
@@ -97,6 +92,11 @@ h1 svg { display: block; margin-left: -4px; }
 /* The path to a setting, so it reads as a place to go. */
 .path { color: var(--ink); font-weight: 600; }
 .path .sep { color: var(--faint); font-weight: 400; padding: 0 2px; }
+/* Words for assistive tech alone, such as the "then" a › stands for. */
+.vh {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
 kbd {
   display: inline-block; min-width: 1.7em; padding: 0 6px; border-radius: 5px; text-align: center;
   background: #1C2436; border: 1px solid #343E58; border-bottom-width: 2px; color: var(--ink);
@@ -112,10 +112,13 @@ details.topic summary {
   font: 600 16.5px/1.4 system-ui, -apple-system, sans-serif; color: var(--ink);
 }
 details.topic summary::-webkit-details-marker { display: none; }
-details.topic summary::before { content: '+'; flex: none; width: 14px; color: var(--faint); font-weight: 600; }
-details.topic[open] summary::before { content: '–'; }
+/* The + and – are drawn, not read: a question's name is its words. */
+details.topic summary::before {
+  content: '+'; content: '+' / ''; flex: none; width: 14px; color: var(--faint); font-weight: 600;
+}
+details.topic[open] summary::before { content: '–'; content: '–' / ''; }
 details.topic summary:hover { color: #FFFFFF; }
-details.topic .body { padding: 0 0 14px 26px; }
+details.topic .body { padding: 0 0 14px; padding-inline-start: 26px; }
 
 @media (max-width: 980px) {
   .layout { grid-template-columns: minmax(0, 1fr); }

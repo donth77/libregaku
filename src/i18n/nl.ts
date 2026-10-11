@@ -40,6 +40,8 @@ export const nl: Translation = {
   common: {
     furigana: (mode: Settings['ruby']): string => `Furigana: ${RUBY[mode]}`,
     pinyin: (mode: Settings['ruby']): string => `Pinyin: ${RUBY[mode]}`,
+    mandarin: 'Chinees (Mandarijn)',
+    jyutping: (mode: Settings['ruby']): string => `Jyutping: ${RUBY[mode]}`,
     sentenceGap: ' ',
   },
 
@@ -51,6 +53,7 @@ export const nl: Translation = {
     targetLimited: (language: string): string => `${language} – beperkt`,
     supportFull: 'Volledige ondersteuning, met lezingen en furigana.',
     supportPinyin: 'Volledige ondersteuning, met pinyin. Definities zijn in het Engels.',
+    supportJyutping: 'Volledige ondersteuning, met Jyutping. Definities zijn in het Engels.',
     supportWords: 'Volledige ondersteuning. Definities zijn in het Engels.',
     script: 'Schrifttekens',
     scriptHint: 'Worden gebruikt als een video beide heeft.',
@@ -105,6 +108,8 @@ export const nl: Translation = {
     rubyHint: 'Lezingen boven kanji. Druk op R om tijdens het kijken te wisselen.',
     pinyin: 'Pinyin',
     pinyinHint: 'Lezingen boven karakters. Druk op R om tijdens het kijken te wisselen.',
+    jyutping: 'Jyutping',
+    jyutpingHint: 'Lezingen boven karakters. Druk op R om tijdens het kijken te wisselen.',
     blurPrimary: 'Ondertitels vervagen',
     blurPrimaryHint: 'Om luisteren te oefenen: ondertitels blijven vaag tot je ze aanwijst. Druk op H om te wisselen.',
     subtitleSize: 'Tekstgrootte',
@@ -122,6 +127,10 @@ export const nl: Translation = {
     dualSubtitlesHint:
       'Toont ondertitels in jouw taal onder die van de taal die je leert. Ze komen van de site, ' +
       'niet van een machinevertaling, en hebben een volledig transcript van de video nodig.',
+    singleKeys: 'Sneltoetsen met één toets',
+    singleKeysHint:
+      'Lettertoetsen zoals A en R werken tijdens het kijken op zichzelf. Uit: houd er Alt en Shift bij ingedrukt. ' +
+      'De pijltjestoetsen werken altijd.',
 
     // Onderstrepingen
     underlinesHeading: 'Onderstrepingen',
@@ -151,8 +160,13 @@ export const nl: Translation = {
     languageBadge: 'Taalaanduiding',
     languageBadgeFlag: 'Vlag',
     languageBadgeCode: 'Code',
-    badgeFlag: 'Vlag-emoji',
+    badgeFlag: 'Vlag van de taalaanduiding',
     badgeFlagDefault: 'Standaard',
+    flagSearch: 'Zoeken…',
+    flagSearchLabel: 'Landen doorzoeken',
+    flagSuggested: 'Suggesties',
+    flagAll: 'Alle landen',
+    flagNone: (query: string): string => `Geen land past bij “${query}”.`,
     badgeFlagHint: 'De vlag voor de taal die je leert. Je keuze wordt per taal bewaard.',
     languageBadgeHint: 'Hoe de bovenbalk de taal toont die je leert.',
     sidebarStats: 'Nieuwe woorden tellen',
@@ -252,7 +266,15 @@ export const nl: Translation = {
       'hun eigen voorwaarden.',
     creditCedict: 'Chinees woordenboek © MDBG en bijdragers, gebruikt onder CC BY-SA 4.0.',
     creditWiktionary:
-      'Woordenboeken voor Koreaans en Spaans, uit Wiktionary via kaikki.org en wiktionary-to-yomitan. CC BY-SA 4.0.',
+      'Woordenboeken voor Koreaans en Spaans, en enkele in je eigen taal, uit Wiktionary via kaikki.org en ' +
+      'wiktionary-to-yomitan. CC BY-SA 4.0.',
+    creditKrdict:
+      'Koreaanse woorden uitgelegd in je eigen taal. © National Institute of Korean Language, gebruikt onder ' +
+      'CC BY-SA 2.0 KR. Bestanden van Lyroxide.',
+    creditCfdict: 'Chinees uitgelegd in het Frans. CFDICT © chine.in, bijgehouden door CxDICT. CC BY-SA 4.0.',
+    creditCanto:
+      'Kantonees woordenboek en Jyutping-lezingen voor CC-CEDICT. © Pleco Inc., gebruikt onder CC BY-SA 3.0.',
+    creditHandedict: 'Chinees uitgelegd in het Duits. © HanDeDict en bijdragers, gebruikt onder CC BY-SA 3.0.',
     creditUnihan:
       'Welke lezing van een Chinees karakter eerst wordt getoond. © Unicode, Inc., gebruikt onder de Unicode License.',
     creditJotoba: 'Gebruikt voor opzoeken zolang het woordenboek downloadt. Beide gebruiken JMdict.',
@@ -271,6 +293,7 @@ export const nl: Translation = {
     keyKnown: 'Woord in de pop-up markeren als bekend',
     keyFurigana: 'Furigana wisselen: uit, nieuwe woorden, alle',
     keyPinyin: 'Pinyin wisselen: uit, nieuwe woorden, alle',
+    keyJyutping: 'Jyutping wisselen: uit, nieuwe woorden, alle',
     keyBlur: 'Ondertitels vervagen of scherp maken',
     keySave: 'Huidige regel opslaan',
     keyTranscript: 'Transcriptpaneel tonen of verbergen',
@@ -294,6 +317,7 @@ export const nl: Translation = {
     nextSteps:
       'Open daarna een video met ondertitels in de taal die je leert, en wijs met je muis een woord aan. ' +
       'De toetsenbordknop in het transcriptpaneel toont de sneltoetsen.',
+    stepDone: 'Voltooid',
     confirmLanguages: 'Deze talen kloppen',
     keepDeck: (deck: string): string => `${deck} gebruiken voor nieuwe kaarten`,
   },
@@ -332,15 +356,17 @@ export const nl: Translation = {
   },
 
   sidebar: {
+    panelLabel: 'Transcriptpaneel',
+    resizeLabel: 'Formaat van het paneel wijzigen',
+
     // De tabbladen en de knoppen ernaast
     tabsLabel: 'Lijsten',
     transcriptTab: 'Transcript',
     savedTab: 'Opgeslagen',
-    wordsTab: 'Woorden',
     settings: 'Instellingen',
     shortcuts: 'Sneltoetsen',
     close: 'Sluiten',
-    closeLabel: 'Paneel inklappen',
+    closeLabel: 'Sluiten – transcriptpaneel',
     openTip: 'Transcript',
     openLabel: 'Transcript tonen',
     help: 'Help',
@@ -370,6 +396,7 @@ export const nl: Translation = {
     empty: 'Geen transcript geladen.',
     currentLine: 'Huidige regel',
     lineNew: (n: number): string => `${n} nieuw`,
+    playFrom: (time: string): string => `Afspelen vanaf ${time}`,
     saveLine: 'Regel opslaan',
     unsave: 'Bladwijzer verwijderen',
     addSentence: 'Zin toevoegen',
@@ -393,6 +420,7 @@ export const nl: Translation = {
       'Nog niets opgeslagen. Gebruik de bladwijzer bij een regel in het transcript – of druk op B – om een zin te ' +
       'bewaren waar je naar terug wilt.',
     thisVideo: 'deze video',
+    openAt: (time: string): string => `Video openen op ${time}`,
     remove: 'Verwijderen',
     removeLabel: 'Verwijderen uit opgeslagen',
     copySavedAbout: 'Alle opgeslagen regels kopiëren als tekst met tabs',
@@ -417,18 +445,20 @@ export const nl: Translation = {
     downloadBlocked: 'Deze pagina heeft de download geblokkeerd – gebruik “Kopiëren”.',
 
     // Woorden
-    listsLabel: 'Welke woorden',
+    listsLabel: 'Welke lijst',
+    listLines: 'Regels',
     listTracked: 'Gevolgd',
     listKnown: 'Bekend',
     listIgnored: 'Genegeerd',
-    findPlaceholder: 'Woord zoeken',
-    findLabel: 'Woord zoeken in deze lijst',
+    findPlaceholder: 'Zoeken…',
+    findLabel: 'Deze lijst doorzoeken',
     copyWordsAbout: 'Deze lijst kopiëren als tekst met tabs',
     exportWordsAbout: 'Deze lijst opslaan als bestand met tabs dat Anki kan importeren',
     wordsCopied: (n: number): string => `${words(n)} gekopieerd.`,
-    nothingToExport: 'Er staan geen woorden in deze lijst om te exporteren.',
+    nothingToExport: 'Er staat niets in deze lijst om te exporteren.',
     lookingUp: 'Lezingen en betekenissen opzoeken…',
     noWordMatches: (query: string): string => `Geen woord in deze lijst past bij “${query}”.`,
+    noLineMatches: (query: string): string => `Geen opgeslagen regel past bij “${query}”.`,
     wordsMatching: (shown: number, total: number): string => `${shown} van ${words(total)}.`,
     trackedEmpty:
       'Je volgt nog niets. “Volgen” onderstreept een woord zodat het je opvalt, zonder een kaart te maken. ' +
@@ -526,6 +556,7 @@ export const nl: Translation = {
     adding: 'Toevoegen…',
     undoing: 'Ongedaan maken…',
     added: 'Toegevoegd',
+    addedUndo: 'Toegevoegd – ongedaan maken',
     inAnki: 'In Anki',
     showInAnki: 'Tonen in Anki',
     waiting: 'Wacht',
@@ -565,12 +596,12 @@ export const nl: Translation = {
     unblurSubtitle: 'Ondertitel scherp maken',
     showTranslation: 'Vertaling tonen',
     hideTranslation: 'Vertaling verbergen',
+    translation: 'Vertaling',
     transcript: 'Transcript',
     pinHeader: 'Bovenbalk vastzetten',
     unpinHeader: 'Bovenbalk losmaken',
     settings: 'Instellingen',
     showHeader: 'Bovenbalk tonen',
-    showHeaderLabel: 'De bovenbalk tonen',
   },
 
   player: {
@@ -596,7 +627,7 @@ export const nl: Translation = {
         known: 'gemarkeerd als bekend', tracking: 'gevolgd', ignored: 'genegeerd', unknown: 'gemarkeerd als nieuw',
       }[status];
       if (refused) return `${word} · ${done}, geen kaart – Anki weigerde het; later wordt het opnieuw geprobeerd`;
-      return `${word} · ${done}, geen kaart${status === 'tracking' ? '. Zie het tabblad “Woorden” in het paneel' : ''}`;
+      return `${word} · ${done}, geen kaart${status === 'tracking' ? '. Zie het tabblad “Opgeslagen” in het paneel' : ''}`;
     },
 
     // De kaart van een woord

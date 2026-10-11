@@ -274,6 +274,54 @@ const dict = {
 
 let dictLoading: Promise<void> | null = null;
 
+/**
+ * The dictionary in the learner's own language, where the language's own is
+ * in another (settings.ts, ownDictionaryOf): Chinese Wiktionary for a
+ * Japanese word, French for a Spanish one. A lookup asks it first and the
+ * language's own when it has nothing. It only ever answers lookups: what
+ * analysis asks of a dictionary, the language's own answers, as before.
+ * Loaded once the language's own is ready, so the two never download at once.
+ */
+let own: Source | null = null;
+const ownDict = { ready: false, error: null as string | null, source: '', edition: '' };
+let ownLoading: Promise<void> | null = null;
+
+function ensureOwn(id: string | undefined, edition: string | undefined): Promise<void> {
+  if (!id || !edition) {
+    own = null;
+    Object.assign(ownDict, { ready: false, error: null, source: '', edition: '' });
+    return Promise.resolve();
+  }
+  const source = SOURCES[id];
+  if (!source) {
+    own = null;
+    Object.assign(ownDict, { ready: false, error: `no dictionary called "${id}"`, source: id, edition });
+    return Promise.resolve();
+  }
+  if (ownDict.source === id && ownDict.edition === edition && (ownDict.ready || ownLoading)) {
+    return ownLoading ?? Promise.resolve();
+  }
+  own = source;
+  Object.assign(ownDict, { ready: false, error: null, source: id, edition });
+  const load = async (): Promise<void> => {
+    try {
+      if (!(await isPopulated(edition, source))) await buildDict(edition, () => {}, source);
+      // The learner may have changed language while it downloaded.
+      if (own === source && ownDict.edition === edition) ownDict.ready = true;
+      console.log(`[libregaku] ${id} ready — words in your own language first`);
+    } catch (e) {
+      if (own === source) ownDict.error = String(e);
+      console.warn(`[libregaku] ${id} failed to load; meanings come from the language's own dictionary:`, e);
+    }
+  };
+  const loading = load();
+  ownLoading = loading;
+  void loading.then(() => {
+    if (ownLoading === loading) ownLoading = null;
+  });
+  return loading;
+}
+
 async function buildNow(source: Source, edition: string): Promise<void> {
   dict.loading = true;
   dict.error = null;
@@ -387,7 +435,8 @@ async function finished(tokens: unknown[]): Promise<Analysis> {
     }
   }
   if (state.dict === 'cc-cedict') {
-    const source = SOURCES.cedict;
+    // The dictionary in use where its words carry a reading (Jyutping, for Cantonese); CC-CEDICT's pinyin otherwise.
+    const source = active.readsLines ? active : SOURCES.cedict;
     if (!source || !complete(source)) return { ...plain, complete: false };
     try {
       return { ...plain, tokens: await withReadings(tokens as Array<{ surface: string }>, source) };
@@ -513,9 +562,22 @@ const remote = remoteLookup({
 async function answerLookup(key: string, hint: RankHint): Promise<unknown> {
   const source = active;
   let failed: string | null = null;
+  // The learner's own language first, where it has a dictionary of its own.
+  const mine = own;
+  if (mine && ownDict.ready) {
+    try {
+      const entries = await lookup(key, hint, mine);
+      if (entries.length) return { ok: true, entries: entries.map((e) => ({ ...e, lang: ownDict.edition })), source: 'local' };
+    } catch (e) {
+      console.warn('[libregaku] lookup in your own language failed:', e);
+    }
+  }
+  // While that one still downloads, an answer from the other is not kept:
+  // the page asks again, and gets the meaning in its own language once it can.
+  const settled = !mine || ownDict.ready || Boolean(ownDict.error);
   if (dict.ready) {
     try {
-      return { ok: true, entries: await lookup(key, hint, source), source: 'local' };
+      return { ok: true, entries: await lookup(key, hint, source), source: settled ? 'local' : 'partial' };
     } catch (e) {
       console.warn('[libregaku] local lookup failed:', e);
       failed = String(e);
@@ -541,6 +603,8 @@ interface Message {
   chars?: string[];
   forms?: string[];
   native?: string;
+  /** dict-load: the dictionary in the learner's own language, asked before the other. */
+  own?: { source: string; edition: string } | null;
   tabId?: number;
   streamId?: string;
 }
@@ -589,6 +653,9 @@ chrome.runtime.onMessage.addListener((msg: Message, _s, respond) => {
       void ensureDict(msg.source ?? JMDICT.id, msg.edition ?? 'eng').then(ensureExtras).then(() => {
         respond({ ok: !dict.error, ...dict });
         if (dict.ready && active === JMDICT) void ensureKanji();
+        // Then the one in the learner's own language, if the pair has one.
+        if (dict.ready) void ensureOwn(msg.own?.source, msg.own?.edition);
+        else void ensureOwn(undefined, undefined);
       });
       return true;
 

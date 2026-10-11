@@ -30,6 +30,12 @@ export interface Form {
 
 export interface Entry {
   id: string;
+  /**
+   * The language its meanings are in, where that is not the dictionary's
+   * usual one: set on an entry from a dictionary in the learner's own
+   * language (settings.ts, ownDictionaryOf), so the card marks it up as such.
+   */
+  lang?: string;
   /** Preferred written form — the spelling people actually see. */
   word: string;
   /** Preferred reading, when the headword is kanji. */

@@ -106,9 +106,9 @@ describe('the registry', () => {
     expect(SOURCES.jmdict?.db).toBe('libregaku-dict');
   });
 
-  it('downloads the Wiktionary files from one pinned commit, never from "latest" alone', async () => {
+  it('downloads the Wiktionary files from one dated release, never from "latest" alone', async () => {
     const { wtyUrl } = await sources();
-    expect(wtyUrl('es', 'en')).toMatch(/^https:\/\/huggingface\.co\/datasets\/daxida\/wty-release\/resolve\/[0-9a-f]{40}\/latest\/dict\/es\/en\/wty-es-en\.zip$/);
+    expect(wtyUrl('es', 'en')).toMatch(/^https:\/\/huggingface\.co\/datasets\/daxida\/wty-release\/resolve\/\d{4}-\d{2}-\d{2}\/latest\/dict\/es\/en\/wty-es-en\.zip$/);
   });
 });
 
@@ -381,5 +381,137 @@ describe('CC-CEDICT', () => {
       { char: '学', meanings: ['to learn', 'to study', '-ology'], on: ['xué'], kun: [] },
       { char: '校', meanings: ['(bound form) school', 'college'], on: ['xiào', 'jiào'], kun: [] },
     ]);
+  });
+});
+
+describe('a dictionary in the learner’s own language', () => {
+  it('leaves out of a Wiktionary in another language the entries that only spell the word with its reading', async () => {
+    const { SOURCES, fetchBytes } = await sources();
+    fetchBytes.mockResolvedValue(zip({
+      'term_bank_1.json': JSON.stringify([lemma('大臣', '', '大臣【だいじん】'), lemma('食べる', 'v', '吃')]),
+    }));
+    const words = (await all(await SOURCES['wty-ja-zh']!.read('zh'))).flatMap((b) => b.entries.map((e) => e.entry.word));
+    expect(words).toEqual(['食べる']);
+  });
+
+  it('gives a French or Chinese Wiktionary no English meanings of its own', async () => {
+    const { SOURCES, fetchBytes } = await sources();
+    fetchBytes.mockResolvedValue(zip({ 'term_bank_1.json': JSON.stringify([lemma('casa', 'n', 'Maison.')]) }));
+    const words = (await all(await SOURCES['wty-es-fr']!.read('fr'))).flatMap((b) => b.entries.map((e) => e.entry));
+    // The English edition opens with muy, mi and the others (GAPS); this one does not.
+    expect(words.map((w) => w.word)).toEqual(['casa']);
+  });
+
+  it('reads CFDICT and HanDeDict as CC-CEDICT is written, whatever their line endings and history lines', async () => {
+    const { SOURCES, fetchBytes } = await sources();
+    const lines = Array.from({ length: 1200 }, (_, i) => `# history ${i}`);
+    fetchBytes.mockResolvedValue(utf8.encode(
+      '﻿# HanDeDict\r\n學習 学习 [xue2 xi2] /lernen/studieren/\r\n' + lines.join('\n') + '\n貓 猫 [mao1] /Katze/\n',
+    ));
+    const entries = (await all(await SOURCES.handedict!.read('de'))).flatMap((b) => b.entries);
+    expect(entries.map((e) => [e.entry.word, e.entry.senses.flatMap((x) => x.glosses)])).toEqual([
+      ['学习', ['lernen', 'studieren']], ['猫', ['Katze']],
+    ]);
+    expect(entries[0]?.keys).toEqual(['学习', '學習']);
+  });
+});
+
+describe('krdict, Korea’s dictionary for learners', () => {
+  /** A row as Lyroxide's files write it: the word, then each sense's word and explanation, then patterns. */
+  const row = (word: string, label: string, ...senses: Array<[string, string]>): unknown[] => [
+    word, '', label, '', 0,
+    [{ type: 'structured-content', content: [
+      { tag: 'span', content: [{ tag: 'span', style: { fontWeight: 'bold' }, content: word }] },
+      { tag: 'div', content: senses.flatMap(([meaning, explained], i) => [
+        { tag: 'div', content: [{ tag: 'span', style: { fontWeight: 'bold' }, content: `${i + 1}. ` }, { tag: 'span', content: meaning }] },
+        { tag: 'div', content: explained },
+        { tag: 'div', content: [{ tag: 'span', style: { backgroundColor: '#666666' }, content: '文型' }, { tag: 'span', content: `1이 ${word}` }] },
+      ]) },
+    ] }],
+    1, '',
+  ];
+
+  it('reads each sense as its word and the line that explains it, leaving the patterns out', async () => {
+    const { krdictSenses } = await import('../sources');
+    const [, , , , , definitions] = row('칙칙하다', '形容詞', ['くすんでいる', '色が明るくない。'], ['ぎっしりつまって', '隙間がない。']);
+    expect(krdictSenses(definitions)).toEqual([['くすんでいる', '色が明るくない。'], ['ぎっしりつまって', '隙間がない。']]);
+  });
+
+  it('reads a word with one sense, which has no number before it', async () => {
+    const { krdictSenses } = await import('../sources');
+    const one = [{ type: 'structured-content', content: [
+      { tag: 'span', content: [{ tag: 'span', style: { fontWeight: 'bold' }, content: '학교' }, { tag: 'span', content: ' 〔學校〕' }] },
+      { tag: 'div', content: [
+        { tag: 'div', content: [{ tag: 'span', content: 'がっこう【学校】' }] },
+        { tag: 'div', content: '教師が生徒を教える機関。' },
+      ] },
+    ] }];
+    expect(krdictSenses(one)).toEqual([['がっこう【学校】', '教師が生徒を教える機関。']]);
+  });
+
+  it('downloads the learner’s language, files each word under its Hangul, and answers a particle with a particle', async () => {
+    const { SOURCES, fetchBytes } = await sources();
+    const { krdictUrl } = await import('../sources');
+    fetchBytes.mockResolvedValue(zip({
+      'term_bank_1.json': JSON.stringify([
+        row('이', '名詞 ⭐⭐⭐', ['歯', '口の中の骨。']),
+        row('이', '助詞', ['が', '主語を表す。']),
+        row('親', '接辞 ⭐⭐', ['実の', '血縁の。']),
+      ]),
+    }));
+    const krdict = SOURCES.krdict!;
+    const entries = (await all(await krdict.read('ja'))).flatMap((b) => b.entries.map((e) => e.entry));
+    expect(fetchBytes.mock.calls[0]?.[0]).toBe(krdictUrl('ja'));
+    expect(krdictUrl('ja')).toMatch(/^https:\/\/github\.com\/Lyroxide\/yomitan-ko-dic\/releases\/download\/1\.0\.0\/KO-JA\.KRDICT\.No\.Examples\.zip$/);
+    expect(entries.map((e) => [e.word, e.kind, e.common])).toEqual([['이', ['名詞'], true], ['이', ['助詞'], false]]);
+    const particle = krdict.rank(entries as Entry[], '이', { pos: 'JKS' });
+    expect(particle.map((e) => e.kind)).toEqual([['助詞']]);
+    const noun = krdict.rank(entries as Entry[], '이', { pos: 'NNG' });
+    expect(noun.map((e) => e.kind)).toEqual([['名詞'], ['助詞']]);
+  });
+});
+
+describe('Cantonese', () => {
+  it('reads CC-Canto’s lines and the readings, with or without meanings and notes', async () => {
+    const { parseCanto } = await import('../sources');
+    expect(parseCanto('佢哋 渠哋 [qu2 di4] {keoi5 dei6} /(pronoun) they/')).toEqual({
+      traditional: '佢哋', simplified: '渠哋', pinyin: 'qu2 di4', jyutping: 'keoi5 dei6', glosses: ['(pronoun) they'],
+    });
+    expect(parseCanto('咗 咗 [zuo3] {zo2} /perfective particle/ # adapted from cc-cedict\r')?.glosses).toEqual(['perfective particle']);
+    expect(parseCanto('凄切 凄切 [qi1qie4] {cai1 cit3}')).toMatchObject({ jyutping: 'cai1 cit3', glosses: [] });
+    expect(parseCanto('# CC-Canto')).toBeNull();
+  });
+
+  it('puts CC-Canto’s own words first, and reads every CC-CEDICT word in Jyutping', async () => {
+    const { SOURCES, fetchBytes } = await sources();
+    const { CANTO_URLS } = await import('../sources');
+    const many = (make: (i: number) => string): string => Array.from({ length: 1100 }, (_, i) => make(i)).join('\n');
+    const files: Record<string, Uint8Array> = {
+      [CANTO_URLS.words]: zip({ 'cccanto-webdist.txt': '# CC-Canto\n冇 冇 [mao3] {mou5} /to not have/\n' + many((i) => `# ${i}`) }),
+      [CANTO_URLS.readings]: zip({ 'readings.txt': '學校 学校 [xue2xiao4] {hok6 haau6}\n未 未 [wei4] {mei6}\n讀 读 [du2] {duk6}\n' + many((i) => `字${i} 字${i} [zi4] {zi6}`) }),
+    };
+    fetchBytes.mockImplementation(async (url: string) =>
+      files[url] ?? gzip('學校 学校 [xue2 xiao4] /school/\n未讀 未读 [wei4 du2] /unread/\n讀者 读者 [du2 zhe3] /reader/\n' + many((i) => `# ${i}`)));
+    const entries = (await all(await SOURCES.canto!.read('en'))).flatMap((b) => b.entries.map((e) => e.entry));
+    expect(entries.filter((e) => e.word !== '喺' && e.word !== '噃' && e.word !== '乜').map((e) => [e.word, e.reading, e.senses[0]?.glosses[0]])).toEqual([
+      ['冇', 'mou5', 'to not have'],
+      ['学校', 'hok6 haau6', 'school'],
+      // A word the readings do not cover is read a character at a time where every one has a reading…
+      ['未读', 'mei6 duk6', 'unread'],
+      // …and has none, rather than its Mandarin one, where a character has none.
+      ['读者', undefined, 'reader'],
+    ]);
+  });
+});
+
+describe('Cantonese readings', () => {
+  it('reads a character its everyday way, and has the everyday words the files lack', async () => {
+    const { SOURCES } = await sources();
+    const canto = SOURCES.canto!;
+    const e = (word: string, reading: string, alt = word): Entry => ({ id: reading, word, alt, reading, common: false, senses: [] });
+    // 嘅 as the files list it: a rarer reading first.
+    const rows = [e('慨', 'koi3', '嘅'), e('嘅', 'ge2'), e('嘅', 'ge3')];
+    expect(canto.rank(rows, '嘅').map((x) => x.reading)).toEqual(['ge3', 'koi3', 'ge2']);
+    expect(canto.rank([e('咁', 'gam3'), e('咁', 'gam2')], '咁').map((x) => x.reading)).toEqual(['gam3', 'gam2']);
   });
 });

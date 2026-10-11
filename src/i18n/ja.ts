@@ -28,6 +28,8 @@ export const ja: Translation = {
   common: {
     furigana: (mode: Settings['ruby']): string => `ふりがな：${RUBY[mode]}`,
     pinyin: (mode: Settings['ruby']): string => `ピンイン：${RUBY[mode]}`,
+    mandarin: '中国語（普通話）',
+    jyutping: (mode: Settings['ruby']): string => `Jyutping：${RUBY[mode]}`,
     sentenceGap: '',
   },
 
@@ -39,6 +41,7 @@ export const ja: Translation = {
     targetLimited: (language: string): string => `${language}（一部対応）`,
     supportFull: 'すべての機能に対応しています。読みとふりがなも表示します。',
     supportPinyin: 'すべての機能に対応しています。ピンインも表示します。意味は英語です。',
+    supportJyutping: 'すべての機能に対応しています。Jyutpingも表示します。意味は英語です。',
     supportWords: 'すべての機能に対応しています。意味は英語です。',
     script: '文字',
     scriptHint: '動画に両方ある場合は、こちらを使います。',
@@ -91,6 +94,8 @@ export const ja: Translation = {
     rubyHint: '漢字の上に読みを表示します。視聴中はRキーで切り替えられます。',
     pinyin: 'ピンイン',
     pinyinHint: '漢字の上に読みを表示します。視聴中はRキーで切り替えられます。',
+    jyutping: 'Jyutping',
+    jyutpingHint: '漢字の上に読みを表示します。視聴中はRキーで切り替えられます。',
     blurPrimary: '字幕をぼかす',
     blurPrimaryHint: 'リスニング練習用：カーソルを合わせるまで字幕をぼかします。Hキーで切り替えられます。',
     subtitleSize: '文字サイズ',
@@ -108,6 +113,10 @@ export const ja: Translation = {
     dualSubtitlesHint:
       '学習言語の字幕の下に、母語の字幕を表示します。機械翻訳ではなくサイトの字幕を使うため、' +
       '動画の文字起こし全体が必要です。',
+    singleKeys: '単一キーのショートカット',
+    singleKeysHint:
+      'AやRなどの文字キーは、視聴中にそれだけで使えます。オフにすると、AltとShiftを押しながら使います。' +
+      '矢印キーはどちらでも使えます。',
 
     // 下線
     underlinesHeading: '下線',
@@ -139,6 +148,11 @@ export const ja: Translation = {
     languageBadgeCode: 'コード',
     badgeFlag: 'バッジの国旗',
     badgeFlagDefault: '初期設定',
+    flagSearch: '検索…',
+    flagSearchLabel: '国を検索',
+    flagSuggested: 'おすすめ',
+    flagAll: 'すべての国',
+    flagNone: (query: string): string => `「${query}」に一致する国はありません。`,
     badgeFlagHint: '学習言語として表示する国旗です。言語ごとに保存されます。',
     languageBadgeHint: 'ヘッダーでの学習言語の表示方法です。',
     sidebarStats: '未知の単語を数える',
@@ -230,7 +244,14 @@ export const ja: Translation = {
       '日本語、韓国語、中国語を単語に分割します。MITライセンス。IPADIC、mecab-ko-dic、CC-CEDICTには、それぞれ独自の条件があります。',
     creditCedict: '中国語辞書 © MDBGとその貢献者。CC BY-SA 4.0のもとで使用しています。',
     creditWiktionary:
-      '韓国語とスペイン語の辞書。Wiktionaryからkaikki.orgとwiktionary-to-yomitanを経て作成しています。CC BY-SA 4.0。',
+      '韓国語とスペイン語の辞書、および母語で書かれた一部の辞書。' +
+      'Wiktionaryからkaikki.orgとwiktionary-to-yomitanを経て作成しています。CC BY-SA 4.0。',
+    creditKrdict:
+      '韓国語の単語を母語で説明します。© National Institute of Korean Language。CC BY-SA 2.0 KRのもとで使用しています。' +
+      'ファイルはLyroxideが作成したものです。',
+    creditCfdict: '中国語をフランス語で説明します。CFDICT © chine.in。CxDICTが更新を続けています。CC BY-SA 4.0。',
+    creditCanto: '広東語辞書と、CC-CEDICT用のJyutpingの読み。© Pleco Inc.、CC BY-SA 3.0のもとで使用しています。',
+    creditHandedict: '中国語をドイツ語で説明します。© HanDeDictとその貢献者。CC BY-SA 3.0のもとで使用しています。',
     creditUnihan: '中国語の漢字で、最初に表示する読みを決めます。© Unicode, Inc.、Unicode Licenseのもとで使用しています。',
     creditJotoba: '辞書のダウンロード中に単語を調べるために使います。どちらもJMdictを使用しています。',
     creditLucide: 'アイコン。ISCライセンス。',
@@ -248,6 +269,7 @@ export const ja: Translation = {
     keyKnown: 'ポップアップの単語を既知にする',
     keyFurigana: 'ふりがなの切り替え：オフ、未知の単語、すべて',
     keyPinyin: 'ピンインの切り替え：オフ、未知の単語、すべて',
+    keyJyutping: 'Jyutpingの切り替え：オフ、未知の単語、すべて',
     keyBlur: '字幕のぼかしのオン・オフ',
     keySave: '再生中の行を保存',
     keyTranscript: '文字起こしパネルの表示・非表示',
@@ -271,6 +293,7 @@ export const ja: Translation = {
     nextSteps:
       '次に、学習言語の字幕がある動画を開いて、単語にカーソルを合わせてみましょう。' +
       '文字起こしパネルのキーボードボタンで、キーボードショートカットを確認できます。',
+    stepDone: '完了',
     confirmLanguages: 'この言語で決定',
     keepDeck: (deck: string): string => `新しいカードを「${deck}」に追加`,
   },
@@ -309,15 +332,17 @@ export const ja: Translation = {
   },
 
   sidebar: {
+    panelLabel: '文字起こしパネル',
+    resizeLabel: 'パネルのサイズを変更',
+
     // タブと、横のアイコンボタン
     tabsLabel: 'リスト',
     transcriptTab: '文字起こし',
     savedTab: '保存済み',
-    wordsTab: '単語',
     settings: '設定',
     shortcuts: 'キーボードショートカット',
     close: '閉じる',
-    closeLabel: 'パネルを折りたたむ',
+    closeLabel: '閉じる（文字起こしパネル）',
     openTip: '文字起こし',
     openLabel: '文字起こしを表示',
     help: 'ヘルプ',
@@ -347,6 +372,7 @@ export const ja: Translation = {
     empty: '文字起こしが読み込まれていません。',
     currentLine: '再生中の行',
     lineNew: (n: number): string => `未知 ${n}`,
+    playFrom: (time: string): string => `${time}から再生`,
     saveLine: '行を保存',
     unsave: '保存を解除',
     addSentence: '文を追加',
@@ -368,6 +394,7 @@ export const ja: Translation = {
     // 保存済み
     savedEmpty: 'まだ何も保存されていません。あとで見返したい文は、文字起こしの行のブックマークか、Bキーで保存できます。',
     thisVideo: 'この動画',
+    openAt: (time: string): string => `動画を${time}から開く`,
     remove: '削除',
     removeLabel: '保存済みから削除',
     copySavedAbout: '保存したすべての行を、タブ区切りのテキストとしてコピー',
@@ -392,18 +419,20 @@ export const ja: Translation = {
     downloadBlocked: 'このページがダウンロードをブロックしました。代わりに「コピー」を使ってください。',
 
     // 単語
-    listsLabel: '単語の種類',
+    listsLabel: '表示するリスト',
+    listLines: '行',
     listTracked: '注目中',
     listKnown: '既知',
     listIgnored: '無視',
-    findPlaceholder: '単語を検索',
-    findLabel: 'このリストの単語を検索',
+    findPlaceholder: '検索…',
+    findLabel: 'このリストを検索',
     copyWordsAbout: 'このリストを、タブ区切りのテキストとしてコピー',
     exportWordsAbout: 'このリストを、Ankiで読み込めるタブ区切りのファイルとして保存',
     wordsCopied: (n: number): string => `${n}語をコピーしました。`,
-    nothingToExport: 'このリストにはエクスポートする単語がありません。',
+    nothingToExport: 'このリストにはエクスポートするものがありません。',
     lookingUp: '読みと意味を調べています…',
     noWordMatches: (query: string): string => `このリストに「${query}」に一致する単語はありません。`,
+    noLineMatches: (query: string): string => `「${query}」に一致する保存済みの行はありません。`,
     wordsMatching: (shown: number, total: number): string => `${total}語中${shown}語。`,
     trackedEmpty:
       'まだ注目中の単語はありません。「注目」は、カードを作らずに単語に下線を引いて、気づけるようにする機能です。' +
@@ -490,6 +519,7 @@ export const ja: Translation = {
     adding: '追加中…',
     undoing: '取り消し中…',
     added: '追加済み',
+    addedUndo: '追加済み（元に戻す）',
     inAnki: 'Ankiにあり',
     showInAnki: 'Ankiで表示',
     waiting: '待機中',
@@ -529,12 +559,12 @@ export const ja: Translation = {
     unblurSubtitle: '字幕のぼかしを解除',
     showTranslation: '翻訳を表示',
     hideTranslation: '翻訳を非表示',
+    translation: '翻訳',
     transcript: '文字起こし',
     pinHeader: 'ヘッダーを固定',
     unpinHeader: 'ヘッダーの固定を解除',
     settings: '設定',
     showHeader: 'ヘッダーを表示',
-    showHeaderLabel: 'ヘッダーを表示',
   },
 
   player: {
@@ -558,7 +588,7 @@ export const ja: Translation = {
     marked: (word: string, status: OverrideStatus, refused: boolean): string => {
       const done = { known: '既知にしました', tracking: '注目にしました', ignored: '無視にしました', unknown: '未知にしました' }[status];
       if (refused) return `${word} · ${done}（カードなし）。Ankiに拒否されたため、あとで再試行します`;
-      return `${word} · ${done}（カードなし）${status === 'tracking' ? '。パネルの「単語」タブで確認できます' : ''}`;
+      return `${word} · ${done}（カードなし）${status === 'tracking' ? '。パネルの「保存済み」タブで確認できます' : ''}`;
     },
 
     // 単語のカード

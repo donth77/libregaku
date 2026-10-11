@@ -16,18 +16,22 @@ vi.stubGlobal('chrome', {
 import { Header } from '../header';
 import { setSetting } from '../../settings';
 
+const DEPS = {
+  stats: () => ({ known: 87, unknown: 14, i1: 3 }),
+  sidebarOpen: () => false,
+  inset: () => 0,
+  onToggleSidebar: () => {},
+  onOpenSettings: () => {},
+};
+
 function build(): { header: Header; host: HTMLElement } {
   const mount = document.createElement('div');
   document.body.appendChild(mount);
-  const header = new Header(mount, {
-    stats: () => ({ known: 87, unknown: 14, i1: 3 }),
-    sidebarOpen: () => false,
-    inset: () => 0,
-    onToggleSidebar: () => {},
-    onOpenSettings: () => {},
-  });
+  const header = new Header(mount, DEPS);
   return { header, host: mount.querySelector('#libregaku-header')! };
 }
+
+const shown = (host: HTMLElement): boolean => host.shadowRoot!.querySelector('.bar')!.classList.contains('show');
 
 beforeEach(async () => {
   document.body.replaceChildren();
@@ -58,9 +62,117 @@ describe('Header', () => {
     expect(tips).toEqual([
       ['R', 'Furigana: new words', 'R', 'Furigana: new words'],
       ['H', 'Blur subtitle', 'H', 'Blur subtitle'],
-      ['ArrowUp', 'Hide translation', '↑', 'Hide translation'],
+      ['ArrowUp', 'Hide translation', '↑', 'Translation'],
       ['S', 'Transcript', 'S', 'Transcript'],
     ]);
+  });
+
+  // A name that flipped with the switch read "Hide translation, pressed".
+  it('keeps each switch\'s name as it is pressed, and says what a click will do in its tooltip', async () => {
+    await setSetting('blurPrimary', false);
+    await setSetting('dualSubtitles', false);
+    const { header, host } = build();
+    const state = (name: string): Array<string | null | undefined> => {
+      const b = host.shadowRoot!.querySelector<HTMLButtonElement>(`button[aria-label="${name}"]`)!;
+      return [b.getAttribute('aria-pressed'), b.dataset.tip, String(b.classList.contains('on'))];
+    };
+    try {
+      expect(state('Blur subtitle')).toEqual(['false', 'Blur subtitle', 'false']);
+      expect(state('Translation')).toEqual(['false', 'Show translation', 'false']);
+      expect(state('Pin header')).toEqual(['false', 'Pin header', 'false']);
+      await setSetting('blurPrimary', true);
+      await setSetting('dualSubtitles', true);
+      await setSetting('headerPinned', true);
+      header.update();
+      expect(state('Blur subtitle')).toEqual(['true', 'Unblur subtitle', 'true']);
+      expect(state('Translation')).toEqual(['true', 'Hide translation', 'true']);
+      expect(state('Pin header')).toEqual(['true', 'Unpin header', 'true']);
+      // On is drawn as more than a lighter colour.
+      expect(host.shadowRoot!.querySelector('style')!.textContent).toMatch(/button\.on::after \{[^}]*border-top: 2px solid/);
+    } finally {
+      await setSetting('blurPrimary', false);
+      await setSetting('dualSubtitles', true);
+    }
+  });
+
+  it('names Alt and Shift with its letter keys while single-key shortcuts are off', async () => {
+    await setSetting('singleKeys', false);
+    try {
+      const keys = Array.from(build().host.shadowRoot!.querySelectorAll<HTMLElement>('button[aria-keyshortcuts]'))
+        .map((b) => [b.getAttribute('aria-keyshortcuts'), b.dataset.key]);
+      expect(keys).toEqual([
+        ['Alt+Shift+R', 'Alt+Shift+R'], ['Alt+Shift+H', 'Alt+Shift+H'], ['ArrowUp', '↑'], ['Alt+Shift+S', 'Alt+Shift+S'],
+      ]);
+    } finally {
+      await setSetting('singleKeys', true);
+    }
+  });
+
+  it('names the pull tab as its tooltip reads, and makes it big enough to hit', () => {
+    const { host } = build();
+    const tab = host.shadowRoot!.querySelector<HTMLElement>('.tab')!;
+    expect(tab.getAttribute('aria-label')).toBe('Show header');
+    expect(tab.dataset.tip).toBe('Show header');
+    expect(host.shadowRoot!.querySelector('style')!.textContent).toMatch(/\.tab \{[^}]*height: 24px/);
+  });
+
+  it('comes first of what is ours in the player, so it is first in Tab order too', () => {
+    const mount = document.createElement('div');
+    const video = document.createElement('video');
+    const overlay = document.createElement('div');
+    overlay.className = 'libregaku-root';
+    const panel = document.createElement('div');
+    panel.className = 'libregaku-sidebar';
+    mount.append(video, overlay, panel);
+    document.body.appendChild(mount);
+    new Header(mount, DEPS);
+    expect(Array.from(mount.children).map((el) => el.id || el.className || el.tagName))
+      .toEqual(['VIDEO', 'libregaku-header', 'libregaku-root', 'libregaku-sidebar']);
+  });
+
+  it('comes down while the focus is in it, and goes when the focus leaves', () => {
+    const { host } = build();
+    const root = host.shadowRoot!;
+    expect(shown(host)).toBe(false);
+    const gear = root.querySelector<HTMLButtonElement>('button[aria-label="Settings"]')!;
+    gear.focus();
+    expect(shown(host)).toBe(true);
+    // The pointer leaving the player does not take it from under the focus.
+    host.parentElement!.dispatchEvent(new MouseEvent('mouseleave'));
+    expect(shown(host)).toBe(true);
+    // Nor does moving the focus along it.
+    root.querySelector<HTMLButtonElement>('button[aria-label="Pin header"]')!.focus();
+    expect(shown(host)).toBe(true);
+    (root.activeElement as HTMLElement).blur();
+    expect(shown(host)).toBe(false);
+  });
+
+  it('stays down when pinned, wherever the focus goes', async () => {
+    await setSetting('headerPinned', true);
+    const { host } = build();
+    const gear = host.shadowRoot!.querySelector<HTMLButtonElement>('button[aria-label="Settings"]')!;
+    gear.focus();
+    gear.blur();
+    expect(shown(host)).toBe(true);
+  });
+
+  it('moves the focus from the pull tab into the bar it brings down', () => {
+    const { host } = build();
+    const root = host.shadowRoot!;
+    const tab = root.querySelector<HTMLButtonElement>('.tab')!;
+    tab.focus();
+    // The tab is what shows while the bar is away: the focus on it brings nothing down.
+    expect(shown(host)).toBe(false);
+    tab.click();
+    expect(shown(host)).toBe(true);
+    expect(tab.hidden).toBe(true);
+    expect(root.activeElement?.closest('.bar')).not.toBeNull();
+  });
+
+  it('reads out what each number counts, which otherwise shows only on hover', () => {
+    const stats = Array.from(build().host.shadowRoot!.querySelectorAll<HTMLElement>('.stat'));
+    expect(stats.map((s) => s.dataset.tip)).toEqual(['Words you know', 'Lines with one new word']);
+    expect(stats.map((s) => s.querySelector('.vh')?.textContent?.trim())).toEqual(['(Words you know)', '(Lines with one new word)']);
   });
 
   it('labels every button with its own tooltip, quickly, and never the browser\'s slow one', async () => {

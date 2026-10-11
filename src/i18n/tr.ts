@@ -36,6 +36,8 @@ export const tr: Translation = {
   common: {
     furigana: (mode: Settings['ruby']): string => `Furigana: ${RUBY[mode]}`,
     pinyin: (mode: Settings['ruby']): string => `Pinyin: ${RUBY[mode]}`,
+    mandarin: 'Çince (Mandarin)',
+    jyutping: (mode: Settings['ruby']): string => `Jyutping: ${RUBY[mode]}`,
     sentenceGap: ' ',
   },
 
@@ -47,6 +49,7 @@ export const tr: Translation = {
     targetLimited: (language: string): string => `${language} — sınırlı`,
     supportFull: 'Tam destek; okunuşlar ve furigana dahil.',
     supportPinyin: 'Tam destek; pinyin dahil. Tanımlar İngilizcedir.',
+    supportJyutping: 'Tam destek; Jyutping dahil. Tanımlar İngilizcedir.',
     supportWords: 'Tam destek. Tanımlar İngilizcedir.',
     script: 'Yazı',
     scriptHint: 'Videoda ikisi de varsa bu kullanılır.',
@@ -99,6 +102,8 @@ export const tr: Translation = {
     rubyHint: 'Kanjilerin üstünde okunuşlar. İzlerken değiştirmek için R tuşuna basın.',
     pinyin: 'Pinyin',
     pinyinHint: 'Karakterlerin üstünde okunuşlar. İzlerken değiştirmek için R tuşuna basın.',
+    jyutping: 'Jyutping',
+    jyutpingHint: 'Karakterlerin üstünde okunuşlar. İzlerken değiştirmek için R tuşuna basın.',
     blurPrimary: 'Altyazıları bulanıklaştır',
     blurPrimaryHint: 'Dinleme pratiği için: altyazılar, üzerine gelene kadar bulanık kalır. Değiştirmek için H tuşuna basın.',
     subtitleSize: 'Metin boyutu',
@@ -116,6 +121,10 @@ export const tr: Translation = {
     dualSubtitlesHint:
       'Öğrendiğiniz dildeki altyazıların altında kendi dilinizdeki altyazıları gösterir. Bunlar makine çevirisi değil, ' +
       'sitenin kendi altyazılarıdır ve videonun tam transkriptini gerektirir.',
+    singleKeys: 'Tek tuşlu kısayollar',
+    singleKeysHint:
+      'A ve R gibi harf tuşları izlerken tek başına çalışır. Kapalıyken bunlarla birlikte Alt ve Shift tuşlarını basılı tutun. ' +
+      'Ok tuşları her iki durumda da çalışır.',
 
     // Alt çizgiler
     underlinesHeading: 'Alt çizgiler',
@@ -147,6 +156,11 @@ export const tr: Translation = {
     languageBadgeCode: 'Kod',
     badgeFlag: 'Rozet bayrağı',
     badgeFlagDefault: 'Varsayılan',
+    flagSearch: 'Ara…',
+    flagSearchLabel: 'Ülke ara',
+    flagSuggested: 'Önerilenler',
+    flagAll: 'Tüm ülkeler',
+    flagNone: (query: string): string => `“${query}” ile eşleşen ülke yok.`,
     badgeFlagHint: 'Öğrendiğiniz dil için gösterilecek bayrak. Her dil kendi bayrağını saklar.',
     languageBadgeHint: 'Üst çubuğun, öğrendiğiniz dili nasıl göstereceği.',
     sidebarStats: 'Yeni kelimeleri say',
@@ -240,7 +254,17 @@ export const tr: Translation = {
       'koşullarına tabidir.',
     creditCedict: 'Çince sözlük © MDBG ve katkıda bulunanlar; CC BY-SA 4.0 kapsamında kullanılmaktadır.',
     creditWiktionary:
-      "Korece ve İspanyolca sözlükler; Wiktionary'den kaikki.org ve wiktionary-to-yomitan aracılığıyla. CC BY-SA 4.0.",
+      "Korece ve İspanyolca sözlükler ile kendi dilinizdeki bazı sözlükler; Wiktionary'den kaikki.org ve " +
+      'wiktionary-to-yomitan aracılığıyla. CC BY-SA 4.0.',
+    creditKrdict:
+      'Korece kelimeler, kendi dilinizde açıklamalarla. © National Institute of Korean Language; CC BY-SA 2.0 KR ' +
+      'kapsamında kullanılmaktadır. Dosyalar Lyroxide tarafından hazırlanmıştır.',
+    creditCfdict:
+      'Çince, Fransızca açıklamalarla. CFDICT © chine.in; CxDICT tarafından güncel tutulmaktadır. CC BY-SA 4.0.',
+    creditCanto:
+      'Kantonca sözlük ve CC-CEDICT için Jyutping okunuşları. © Pleco Inc.; CC BY-SA 3.0 kapsamında kullanılmaktadır.',
+    creditHandedict:
+      'Çince, Almanca açıklamalarla. © HanDeDict ve katkıda bulunanlar; CC BY-SA 3.0 kapsamında kullanılmaktadır.',
     creditUnihan: 'Bir Çince karakterin önce hangi okunuşunun gösterileceği. © Unicode, Inc.; Unicode License kapsamında kullanılmaktadır.',
     creditJotoba: 'Sözlük inerken aramalar için kullanılır. İkisi de JMdict kullanır.',
     creditLucide: 'Simgeler. ISC lisansı.',
@@ -258,6 +282,7 @@ export const tr: Translation = {
     keyKnown: 'Penceredeki kelimeyi bilinen olarak işaretle',
     keyFurigana: 'Furiganayı değiştir: kapalı, yeni kelimeler, tümü',
     keyPinyin: 'Pinyini değiştir: kapalı, yeni kelimeler, tümü',
+    keyJyutping: "Jyutping'i değiştir: kapalı, yeni kelimeler, tümü",
     keyBlur: 'Altyazıları bulanıklaştır veya netleştir',
     keySave: 'Geçerli satırı kaydet',
     keyTranscript: 'Transkript panelini göster veya gizle',
@@ -281,6 +306,7 @@ export const tr: Translation = {
     nextSteps:
       'Ardından öğrendiğiniz dilde altyazısı olan bir video açın ve bir kelimenin üzerine gelin. ' +
       'Transkript panelindeki klavye düğmesi, klavye kısayollarını listeler.',
+    stepDone: 'Tamamlandı',
     confirmLanguages: 'Bu diller doğru',
     keepDeck: (deck: string): string => `Yeni kartlar için “${deck}” destesini kullan`,
   },
@@ -320,15 +346,17 @@ export const tr: Translation = {
   },
 
   sidebar: {
+    panelLabel: 'Transkript paneli',
+    resizeLabel: 'Paneli yeniden boyutlandır',
+
     // Sekmeler ve yanlarındaki düğmeler
     tabsLabel: 'Listeler',
     transcriptTab: 'Transkript',
     savedTab: 'Kaydedilenler',
-    wordsTab: 'Kelimeler',
     settings: 'Ayarlar',
     shortcuts: 'Klavye kısayolları',
     close: 'Kapat',
-    closeLabel: 'Paneli daralt',
+    closeLabel: 'Kapat — transkript paneli',
     openTip: 'Transkript',
     openLabel: 'Transkripti göster',
     help: 'Yardım',
@@ -358,6 +386,7 @@ export const tr: Translation = {
     empty: 'Yüklü transkript yok.',
     currentLine: 'Geçerli satır',
     lineNew: (n: number): string => `${n} yeni`,
+    playFrom: (time: string): string => `${time} noktasından oynat`,
     saveLine: 'Satırı kaydet',
     unsave: 'Kaydedilenlerden çıkar',
     addSentence: 'Cümle ekle',
@@ -381,6 +410,7 @@ export const tr: Translation = {
       'Henüz kaydedilen bir şey yok. Dönmek istediğiniz bir cümleyi saklamak için transkriptteki herhangi bir satırın ' +
       'yer işaretini kullanın ya da B tuşuna basın.',
     thisVideo: 'bu video',
+    openAt: (time: string): string => `Videoyu ${time} noktasında aç`,
     remove: 'Kaldır',
     removeLabel: 'Kaydedilenlerden kaldır',
     copySavedAbout: 'Kaydedilen tüm satırları sekmeyle ayrılmış metin olarak kopyalar',
@@ -405,18 +435,20 @@ export const tr: Translation = {
     downloadBlocked: 'Bu sayfa indirmeyi engelledi — bunun yerine “Kopyala” düğmesini kullanın.',
 
     // Kelimeler sekmesi
-    listsLabel: 'Hangi kelimeler',
+    listsLabel: 'Hangi liste',
+    listLines: 'Satırlar',
     listTracked: 'Takip edilenler',
     listKnown: 'Bilinenler',
     listIgnored: 'Yok sayılanlar',
-    findPlaceholder: 'Kelime bul',
-    findLabel: 'Bu listede kelime bul',
+    findPlaceholder: 'Ara…',
+    findLabel: 'Bu listede ara',
     copyWordsAbout: 'Bu listeyi sekmeyle ayrılmış metin olarak kopyalar',
     exportWordsAbout: "Bu listeyi, Anki'nin içe aktarabileceği sekmeyle ayrılmış bir dosya olarak kaydeder",
     wordsCopied: (n: number): string => `${n} kelime kopyalandı.`,
-    nothingToExport: 'Bu listede dışa aktarılacak kelime yok.',
+    nothingToExport: 'Bu listede dışa aktarılacak bir şey yok.',
     lookingUp: 'Okunuşlar ve anlamlar aranıyor…',
     noWordMatches: (query: string): string => `Bu listede “${query}” ile eşleşen kelime yok.`,
+    noLineMatches: (query: string): string => `“${query}” ile eşleşen kaydedilmiş satır yok.`,
     wordsMatching: (shown: number, total: number): string => `${shown}/${total} kelime.`,
     trackedEmpty:
       'Henüz takip edilen bir şey yok. “Takip et”, kart oluşturmadan bir kelimenin altını çizer; böylece onu fark edersiniz. ' +
@@ -504,6 +536,7 @@ export const tr: Translation = {
     adding: 'Ekleniyor…',
     undoing: 'Geri alınıyor…',
     added: 'Eklendi',
+    addedUndo: 'Eklendi — geri al',
     inAnki: "Anki'de",
     showInAnki: "Anki'de göster",
     waiting: 'Bekliyor',
@@ -543,12 +576,12 @@ export const tr: Translation = {
     unblurSubtitle: 'Altyazıyı netleştir',
     showTranslation: 'Çeviriyi göster',
     hideTranslation: 'Çeviriyi gizle',
+    translation: 'Çeviri',
     transcript: 'Transkript',
     pinHeader: 'Üst çubuğu sabitle',
     unpinHeader: 'Üst çubuğun sabitlemesini kaldır',
     settings: 'Ayarlar',
     showHeader: 'Üst çubuğu göster',
-    showHeaderLabel: 'Üst çubuğu göster',
   },
 
   player: {
@@ -574,7 +607,7 @@ export const tr: Translation = {
         known: 'bilinen olarak işaretlendi', tracking: 'takip ediliyor', ignored: 'yok sayıldı', unknown: 'yeni olarak işaretlendi',
       }[status];
       if (refused) return `${word} · ${done}, kart yok — Anki reddetti; daha sonra yeniden denenecek`;
-      return `${word} · ${done}, kart yok${status === 'tracking' ? '. Paneldeki Kelimeler sekmesine bakın' : ''}`;
+      return `${word} · ${done}, kart yok${status === 'tracking' ? '. Paneldeki Kaydedilenler sekmesine bakın' : ''}`;
     },
 
     // Kelime kartı

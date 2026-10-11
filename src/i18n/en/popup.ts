@@ -118,6 +118,11 @@ export const popup = {
   undoing: 'Undoing…',
   /** The button once the card is in; its tooltip too, once the card can no longer be taken back. */
   added: 'Added',
+  /**
+   * The same button's name for screen readers while pressing it takes the
+   * card back out: the word it shows, Added, first, then what pressing does.
+   */
+  addedUndo: 'Added — undo',
   /** The button on a word Anki already has a card for, and its tooltip: pressing it shows that card in Anki. */
   inAnki: 'In Anki',
   showInAnki: 'Show in Anki',

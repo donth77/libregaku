@@ -31,6 +31,8 @@ export const hi: Translation = {
   common: {
     furigana: (mode: Settings['ruby']): string => `फ़ुरिगाना: ${RUBY[mode]}`,
     pinyin: (mode: Settings['ruby']): string => `पिनयिन: ${RUBY[mode]}`,
+    mandarin: 'चीनी (मंदारिन)',
+    jyutping: (mode: Settings['ruby']): string => `Jyutping: ${RUBY[mode]}`,
     sentenceGap: ' ',
   },
 
@@ -42,6 +44,7 @@ export const hi: Translation = {
     targetLimited: (language: string): string => `${language} — सीमित`,
     supportFull: 'पूरा सपोर्ट, उच्चारण और फ़ुरिगाना के साथ।',
     supportPinyin: 'पूरा सपोर्ट, पिनयिन के साथ। अर्थ अंग्रेज़ी में हैं।',
+    supportJyutping: 'पूरा सपोर्ट, Jyutping के साथ। अर्थ अंग्रेज़ी में हैं।',
     supportWords: 'पूरा सपोर्ट। अर्थ अंग्रेज़ी में हैं।',
     script: 'लिपि',
     scriptHint: 'जब वीडियो में दोनों हों, तब यही इस्तेमाल होती है।',
@@ -94,6 +97,8 @@ export const hi: Translation = {
     rubyHint: 'कांजी के ऊपर उच्चारण। देखते समय बदलने के लिए R दबाएं।',
     pinyin: 'पिनयिन',
     pinyinHint: 'अक्षरों के ऊपर उच्चारण। देखते समय बदलने के लिए R दबाएं।',
+    jyutping: 'Jyutping',
+    jyutpingHint: 'अक्षरों के ऊपर उच्चारण। देखते समय बदलने के लिए R दबाएं।',
     blurPrimary: 'सबटाइटल धुंधले करें',
     blurPrimaryHint: 'सुनने के अभ्यास के लिए: पॉइंटर ले जाने तक सबटाइटल धुंधले रहते हैं। बदलने के लिए H दबाएं।',
     subtitleSize: 'टेक्स्ट का आकार',
@@ -111,6 +116,10 @@ export const hi: Translation = {
     dualSubtitlesHint:
       'आप जो भाषा सीख रहे हैं, उसके सबटाइटल के नीचे आपकी भाषा में सबटाइटल दिखाता है। ये साइट से आते हैं, ' +
       'मशीन अनुवाद से नहीं, और इनके लिए वीडियो की पूरी ट्रांसक्रिप्ट ज़रूरी है।',
+    singleKeys: 'एक कुंजी वाले शॉर्टकट',
+    singleKeysHint:
+      'A और R जैसी अक्षर कुंजियां देखते समय अकेले काम करती हैं। बंद होने पर इनके साथ Alt और Shift दबाए रखें। ' +
+      'ऐरो कुंजियां दोनों स्थितियों में काम करती हैं।',
 
     // अंडरलाइन
     underlinesHeading: 'अंडरलाइन',
@@ -142,6 +151,11 @@ export const hi: Translation = {
     languageBadgeCode: 'कोड',
     badgeFlag: 'बैज का झंडा',
     badgeFlagDefault: 'डिफ़ॉल्ट',
+    flagSearch: 'खोजें…',
+    flagSearchLabel: 'देश खोजें',
+    flagSuggested: 'सुझाए गए',
+    flagAll: 'सभी देश',
+    flagNone: (query: string): string => `कोई भी देश “${query}” से मेल नहीं खाता।`,
     badgeFlagHint: 'आप जो भाषा सीख रहे हैं, उसके लिए दिखने वाला झंडा। हर भाषा का अपना झंडा रहता है।',
     languageBadgeHint: 'आप जो भाषा सीख रहे हैं, हेडर उसे कैसे दिखाए।',
     sidebarStats: 'नए शब्द गिनें',
@@ -235,7 +249,15 @@ export const hi: Translation = {
       'jmdict-simplified ने इसे JSON में दोबारा पैक किया है।',
     creditLindera: 'जापानी, कोरियाई और चीनी को शब्दों में बांटता है। MIT लाइसेंस; IPADIC, mecab-ko-dic और CC-CEDICT की अपनी शर्तें हैं।',
     creditCedict: 'चीनी शब्दकोश © MDBG और उसके योगदानकर्ता, CC BY-SA 4.0 के तहत इस्तेमाल।',
-    creditWiktionary: 'कोरियाई और स्पेनिश शब्दकोश, Wiktionary से kaikki.org और wiktionary-to-yomitan के ज़रिए। CC BY-SA 4.0।',
+    creditWiktionary:
+      'कोरियाई और स्पेनिश शब्दकोश, साथ ही कुछ आपकी अपनी भाषा में, Wiktionary से kaikki.org और wiktionary-to-yomitan ' +
+      'के ज़रिए। CC BY-SA 4.0।',
+    creditKrdict:
+      'कोरियाई शब्दों के अर्थ आपकी अपनी भाषा में। © National Institute of Korean Language, CC BY-SA 2.0 KR के तहत ' +
+      'इस्तेमाल। फ़ाइलें Lyroxide ने बनाई हैं।',
+    creditCfdict: 'चीनी शब्दों के अर्थ फ़्रेंच में। CFDICT © chine.in, जिसे CxDICT अपडेट रखता है। CC BY-SA 4.0।',
+    creditCanto: 'कैंटोनीज़ शब्दकोश, और CC-CEDICT के लिए Jyutping उच्चारण। © Pleco Inc., CC BY-SA 3.0 के तहत इस्तेमाल।',
+    creditHandedict: 'चीनी शब्दों के अर्थ जर्मन में। © HanDeDict और उसके योगदानकर्ता, CC BY-SA 3.0 के तहत इस्तेमाल।',
     creditUnihan: 'किसी चीनी अक्षर का कौन सा उच्चारण पहले दिखे। © Unicode, Inc., Unicode License के तहत इस्तेमाल।',
     creditJotoba: 'शब्दकोश डाउनलोड होने तक अर्थ देखने के लिए इस्तेमाल होते हैं। दोनों JMdict का इस्तेमाल करते हैं।',
     creditLucide: 'आइकॉन। ISC लाइसेंस।',
@@ -253,6 +275,7 @@ export const hi: Translation = {
     keyKnown: 'पॉप-अप वाले शब्द को ज्ञात मार्क करें',
     keyFurigana: 'फ़ुरिगाना बदलें: बंद, नए शब्द, सभी',
     keyPinyin: 'पिनयिन बदलें: बंद, नए शब्द, सभी',
+    keyJyutping: 'Jyutping बदलें: बंद, नए शब्द, सभी',
     keyBlur: 'सबटाइटल धुंधले करें या साफ़ करें',
     keySave: 'मौजूदा लाइन सेव करें',
     keyTranscript: 'ट्रांसक्रिप्ट पैनल दिखाएं या छिपाएं',
@@ -276,6 +299,7 @@ export const hi: Translation = {
     nextSteps:
       'फिर आप जो भाषा सीख रहे हैं, उसके सबटाइटल वाला कोई वीडियो खोलें और किसी शब्द पर होवर करें। ' +
       'ट्रांसक्रिप्ट पैनल का कीबोर्ड बटन सभी कीबोर्ड शॉर्टकट दिखाता है।',
+    stepDone: 'पूरा हुआ',
     confirmLanguages: 'ये भाषाएं सही हैं',
     keepDeck: (deck: string): string => `नए कार्ड के लिए ${deck} इस्तेमाल करें`,
   },
@@ -315,15 +339,17 @@ export const hi: Translation = {
   },
 
   sidebar: {
+    panelLabel: 'ट्रांसक्रिप्ट पैनल',
+    resizeLabel: 'पैनल का आकार बदलें',
+
     // टैब, और उनके बगल के बटन
     tabsLabel: 'सूचियां',
     transcriptTab: 'ट्रांसक्रिप्ट',
     savedTab: 'सेव की गईं',
-    wordsTab: 'शब्द',
     settings: 'सेटिंग',
     shortcuts: 'कीबोर्ड शॉर्टकट',
     close: 'बंद करें',
-    closeLabel: 'पैनल छोटा करें',
+    closeLabel: 'बंद करें — ट्रांसक्रिप्ट पैनल',
     openTip: 'ट्रांसक्रिप्ट',
     openLabel: 'ट्रांसक्रिप्ट दिखाएं',
     help: 'सहायता',
@@ -353,6 +379,7 @@ export const hi: Translation = {
     empty: 'कोई ट्रांसक्रिप्ट लोड नहीं है।',
     currentLine: 'मौजूदा लाइन',
     lineNew: (n: number): string => `${n} ${one(n) ? 'नया' : 'नए'}`,
+    playFrom: (time: string): string => `${time} से चलाएं`,
     saveLine: 'लाइन सेव करें',
     unsave: 'सेव से हटाएं',
     addSentence: 'वाक्य जोड़ें',
@@ -376,6 +403,7 @@ export const hi: Translation = {
       'अभी कुछ सेव नहीं किया गया। जिस वाक्य पर बाद में लौटना हो, उसे रखने के लिए ट्रांसक्रिप्ट की किसी भी लाइन का ' +
       'बुकमार्क इस्तेमाल करें — या B दबाएं।',
     thisVideo: 'यह वीडियो',
+    openAt: (time: string): string => `वीडियो ${time} पर खोलें`,
     remove: 'हटाएं',
     removeLabel: 'सेव से हटाएं',
     copySavedAbout: 'सेव की गई सभी लाइनें टैब से अलग किए गए टेक्स्ट के रूप में कॉपी करें',
@@ -401,18 +429,20 @@ export const hi: Translation = {
     downloadBlocked: 'इस पेज ने डाउनलोड ब्लॉक कर दिया — इसके बजाय “कॉपी करें” इस्तेमाल करें।',
 
     // शब्द टैब
-    listsLabel: 'कौन से शब्द',
+    listsLabel: 'कौन सी सूची',
+    listLines: 'लाइनें',
     listTracked: 'ट्रैक किए गए',
     listKnown: 'ज्ञात',
     listIgnored: 'अनदेखा किए गए',
-    findPlaceholder: 'शब्द ढूंढें',
-    findLabel: 'इस सूची में शब्द ढूंढें',
+    findPlaceholder: 'खोजें…',
+    findLabel: 'इस सूची में खोजें',
     copyWordsAbout: 'यह सूची टैब से अलग किए गए टेक्स्ट के रूप में कॉपी करें',
     exportWordsAbout: 'यह सूची टैब से अलग की गई ऐसी फ़ाइल के रूप में सेव करें जिसे Anki इंपोर्ट कर सके',
     wordsCopied: (n: number): string => `${n} शब्द कॉपी ${one(n) ? 'हुआ' : 'हुए'}।`,
-    nothingToExport: 'इस सूची में एक्सपोर्ट करने के लिए कोई शब्द नहीं है।',
+    nothingToExport: 'इस सूची में एक्सपोर्ट करने के लिए कुछ नहीं है।',
     lookingUp: 'उच्चारण और अर्थ ढूंढे जा रहे हैं…',
     noWordMatches: (query: string): string => `इस सूची में कोई भी शब्द “${query}” से मेल नहीं खाता।`,
+    noLineMatches: (query: string): string => `सेव की गई कोई भी लाइन “${query}” से मेल नहीं खाती।`,
     wordsMatching: (shown: number, total: number): string =>
       `${total} ${one(total) ? 'शब्द' : 'शब्दों'} में से ${shown}।`,
     trackedEmpty:
@@ -509,6 +539,7 @@ export const hi: Translation = {
     adding: 'जोड़ा जा रहा है…',
     undoing: 'हटाया जा रहा है…',
     added: 'जोड़ा गया',
+    addedUndo: 'जोड़ा गया — पहले जैसा करें',
     inAnki: 'Anki में है',
     showInAnki: 'Anki में दिखाएं',
     waiting: 'इंतज़ार में',
@@ -548,12 +579,12 @@ export const hi: Translation = {
     unblurSubtitle: 'सबटाइटल साफ़ करें',
     showTranslation: 'अनुवाद दिखाएं',
     hideTranslation: 'अनुवाद छिपाएं',
+    translation: 'अनुवाद',
     transcript: 'ट्रांसक्रिप्ट',
     pinHeader: 'हेडर पिन करें',
     unpinHeader: 'हेडर अनपिन करें',
     settings: 'सेटिंग',
     showHeader: 'हेडर दिखाएं',
-    showHeaderLabel: 'हेडर दिखाएं',
   },
 
   player: {
@@ -579,7 +610,7 @@ export const hi: Translation = {
         known: 'ज्ञात मार्क किया गया', tracking: 'ट्रैक किया गया', ignored: 'अनदेखा किया गया', unknown: 'नया मार्क किया गया',
       }[status];
       if (refused) return `${word} · ${done}, कोई कार्ड नहीं — Anki ने मना कर दिया; बाद में फिर कोशिश होगी`;
-      return `${word} · ${done}, कोई कार्ड नहीं${status === 'tracking' ? '। पैनल का “शब्द” टैब देखें' : ''}`;
+      return `${word} · ${done}, कोई कार्ड नहीं${status === 'tracking' ? '। पैनल का “सेव की गईं” टैब देखें' : ''}`;
     },
 
     // शब्द का कार्ड

@@ -9,23 +9,30 @@ const words = (n: number): string => `${n} word${n === 1 ? '' : 's'}`;
  * shortcuts, Settings, and Close.
  */
 export const sidebar = {
+  /** The whole panel's name for screen readers, as a part of the page they can jump to. */
+  panelLabel: 'Transcript panel',
+  /** The name, for screen readers, of the panel's inner edge, which sets its width: dragged, or moved with ← and →. */
+  resizeLabel: 'Resize panel',
+
   // The tabs, and the icon buttons beside them
   /** The tab row's name for screen readers: the panel's lists, as tabs. */
   tabsLabel: 'Lists',
   /** Tab: the video's whole script, line by line. */
   transcriptTab: 'Transcript',
-  /** Tab: the lines the learner bookmarked to come back to. */
+  /** Tab: what the learner kept to come back to — lines bookmarked, and words tracked, known or ignored. */
   savedTab: 'Saved',
-  /** Tab: the words the learner marked by hand — tracked, known or ignored. */
-  wordsTab: 'Words',
   /** The gear button's tooltip and its name for screen readers, and the heading over the Settings view it opens. */
   settings: 'Settings',
   /** The keyboard button's tooltip and its name for screen readers, and the heading over the list of keys it opens. */
   shortcuts: 'Keyboard shortcuts',
   /** Tooltip on the button that closes the panel. */
   close: 'Close',
-  /** That button's name for screen readers: closed, the panel folds to a small tab at the player's edge. */
-  closeLabel: 'Collapse the panel',
+  /**
+   * That button's name for screen readers: closed, the panel folds to a small
+   * tab at the player's edge. It starts with the tooltip's word, so someone
+   * who says the word they see, to control the page by voice, presses it.
+   */
+  closeLabel: 'Close the panel',
   /** Tooltip on the small tab at the player's edge, which opens the panel again. */
   openTip: 'Transcript',
   /** That tab's name for screen readers. */
@@ -78,9 +85,17 @@ export const sidebar = {
   currentLine: 'Current line',
   /** A badge on a line: how many of its words are new to the learner. */
   lineNew: (n: number): string => `${n} new`,
-  /** A line's bookmark button, while the line is not saved: its tooltip and its name for screen readers. */
+  /**
+   * The name, for screen readers, of a line's time, a button that plays the
+   * video from the start of the line. time is that start, as 01:23.
+   */
+  playFrom: (time: string): string => `Play from ${time}`,
+  /**
+   * A line's bookmark button: its name for screen readers, saved or not —
+   * they say whether it is on — and its tooltip while the line is not saved.
+   */
   saveLine: 'Save line',
-  /** The same button, while the line is saved. */
+  /** The same button's tooltip, while the line is saved. */
   unsave: 'Unsave',
   /** Tooltip on a line's button that makes a card of the whole line. */
   addSentence: 'Add sentence',
@@ -117,6 +132,12 @@ export const sidebar = {
   savedEmpty: 'Nothing saved yet. Use the bookmark on any transcript line — or press B — to keep a sentence you want to come back to.',
   /** A badge beside the heading of the video playing now. Each heading is a video's title. */
   thisVideo: 'this video',
+  /**
+   * The name, for screen readers, of the time on a line saved from another
+   * video: a button that opens that video in a new tab, at the line. time is
+   * when the line starts, as 01:23. On the video playing, it is playFrom.
+   */
+  openAt: (time: string): string => `Open the video at ${time}`,
   /** Tooltip on a saved line's button that removes it. */
   remove: 'Remove',
   /** That button's name for screen readers. */
@@ -145,7 +166,7 @@ export const sidebar = {
   savedAdded: (added: number, deck: string, already: number): string =>
     `${added} added to ${deck}${already ? `, ${already} already there` : ''}.`,
 
-  // Buttons and messages the Saved and Words tabs share
+  // Buttons and messages the Saved tab's lists share
   /** Button: copy the list to the clipboard. */
   copy: 'Copy',
   /** Button: save the list as a file. */
@@ -159,9 +180,11 @@ export const sidebar = {
   /** Export file failed. Copy is the button. */
   downloadBlocked: 'This page blocked the download — use Copy instead.',
 
-  // The Words tab: three lists, one showing at a time, chosen with a row of buttons
+  // The Saved tab: four lists, one showing at a time, chosen with a row of buttons
   /** The name of that row of buttons, for screen readers. */
-  listsLabel: 'Which words',
+  listsLabel: 'Which list',
+  /** Button: the lines saved from the transcript. */
+  listLines: 'Lines',
   /** Button: the words the learner tracks, underlined so they notice them, without a card. */
   listTracked: 'Tracked',
   /** Button: the words marked known. */
@@ -169,21 +192,23 @@ export const sidebar = {
   /** Button: the words ignored, such as names and sounds. */
   listIgnored: 'Ignored',
   /** Placeholder in the box that searches the list. */
-  findPlaceholder: 'Find a word',
+  findPlaceholder: 'Search…',
   /** That box's name for screen readers. */
-  findLabel: 'Find a word in this list',
+  findLabel: 'Search this list',
   /** What the Copy button does there, for screen readers. */
   copyWordsAbout: 'Copy this list as tab-separated text',
   /** What the Export file button does there, for screen readers. */
   exportWordsAbout: 'Save this list as a tab-separated file Anki can import',
   /** After Copy: how many words were copied. */
   wordsCopied: (n: number): string => `${words(n)} copied.`,
-  /** Copy or Export file, with the list empty. */
-  nothingToExport: 'There are no words in this list to export.',
+  /** Copy, Export file or Add to Anki, with the list empty. */
+  nothingToExport: 'There is nothing in this list to export.',
   /** While the words' readings and meanings are looked up for the file. */
   lookingUp: 'Looking up readings and meanings…',
   /** No word matches the search; query is what was typed. */
   noWordMatches: (query: string): string => `No word in this list matches “${query}”.`,
+  /** No saved line matches the search, by its text or its translation; query is what was typed. */
+  noLineMatches: (query: string): string => `No saved line matches “${query}”.`,
   /** Over the words the search found: how many, of how many in the list. */
   wordsMatching: (shown: number, total: number): string => `${shown} of ${words(total)}.`,
   /**

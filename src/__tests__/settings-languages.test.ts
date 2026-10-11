@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
-  DEFAULTS, DICTIONARIES, TARGET_LANGUAGES, cardDeck, dictionaryOf, featuresOf, targetVariant, withDecks, withDefaults, type Settings,
+  DEFAULTS, DICTIONARIES, OWN_DICTIONARIES, TARGET_LANGUAGES, cardDeck, dictionaryOf, featuresOf, ownDictionaryOf,
+  targetVariant, withDecks, withDefaults, type Settings,
 } from '../settings';
+import { SOURCES } from '../dict/sources';
 
 /** What each language being learned gets, and the decks kept for each. */
 
@@ -133,5 +135,47 @@ describe('what each language gets', () => {
     expect(site('ko', '먹다')).toContain('korean.dict.naver.com/koendict/#/search?query=%EB%A8%B9%EB%8B%A4');
     expect(site('es', 'hablar')).toBe('https://www.spanishdict.com/translate/hablar');
     expect(featuresOf('fr').dictionary).toBeUndefined();
+  });
+});
+
+describe('a dictionary in your own language', () => {
+  it('is asked for where the pair has one, and only there', () => {
+    expect(ownDictionaryOf('ja', { native: 'zh' })).toEqual({ source: 'wty-ja-zh', edition: 'zh' });
+    expect(ownDictionaryOf('ja', { native: 'zh-Hant' })).toEqual({ source: 'wty-ja-zh', edition: 'zh-Hant' });
+    expect(ownDictionaryOf('ja', { native: 'ko' })).toEqual({ source: 'wty-ja-ko', edition: 'ko' });
+    expect(ownDictionaryOf('es', { native: 'fr' })).toEqual({ source: 'wty-es-fr', edition: 'fr' });
+    // JMdict is already in Spanish; English is what the others are in.
+    expect(ownDictionaryOf('ja', { native: 'es' })).toBeNull();
+    expect(ownDictionaryOf('es', { native: 'en' })).toBeNull();
+    expect(ownDictionaryOf('th', { native: 'fr' })).toBeNull();
+  });
+
+  it('names only dictionaries there are, each for a language that has one of its own', () => {
+    for (const [lang, pairs] of Object.entries(OWN_DICTIONARIES)) {
+      expect(DICTIONARIES[lang]).toBeTruthy();
+      for (const source of Object.values(pairs)) expect(SOURCES[source]?.id).toBe(source);
+    }
+  });
+});
+
+describe('Cantonese', () => {
+  it('is a language of its own, read in Jyutping, from its own dictionary', () => {
+    expect(TARGET_LANGUAGES.find((l) => l.code === 'yue')).toMatchObject({ tier: 2, flag: '🇭🇰' });
+    expect(featuresOf('yue')).toMatchObject({ readings: 'jyutping', characters: 'hanzi' });
+    expect(DICTIONARIES.yue).toBe('canto');
+  });
+
+  it('takes Cantonese tracks, and Hong Kong’s after them; Mandarin takes no Cantonese', async () => {
+    const { trackLanguageMatch } = await import('../settings');
+    expect(trackLanguageMatch('yue', 'yue')).toBe(2);
+    expect(trackLanguageMatch('yue-HK', 'yue')).toBe(2);
+    expect(trackLanguageMatch('zh-yue', 'yue')).toBe(2);
+    expect(trackLanguageMatch('zh-HK', 'yue')).toBe(1);
+    expect(trackLanguageMatch('zh-Hant-HK', 'yue')).toBe(1);
+    expect(trackLanguageMatch('zh-Hans', 'yue')).toBe(0);
+    expect(trackLanguageMatch('zh-yue', 'zh')).toBe(0);
+    expect(trackLanguageMatch('zh-yue', 'zh-Hant')).toBe(0);
+    expect(trackLanguageMatch('zh-HK', 'zh-Hant')).toBe(2);
+    expect(trackLanguageMatch('zh-Hans', 'zh')).toBe(2);
   });
 });

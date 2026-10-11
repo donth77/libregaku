@@ -19,6 +19,7 @@ export const DICTIONARIES: Record<string, string> = {
   ja: 'jmdict',
   ko: 'wty-ko-en',
   zh: 'cedict',
+  yue: 'canto',
   es: 'wty-es-en',
 };
 
@@ -36,6 +37,35 @@ export function dictionaryOf(
 }
 
 /**
+ * Dictionaries in the learner's own language where a language's own
+ * (DICTIONARIES) is in another, by the language learned and then the
+ * learner's. Only those worth the download: most of Wiktionary's editions
+ * other than the English hold a few hundred words of these languages.
+ */
+export const OWN_DICTIONARIES: Record<string, Record<string, string>> = {
+  // Wiktionary in Chinese and in Korean, which JMdict has no edition in.
+  ja: { zh: 'wty-ja-zh', 'zh-Hant': 'wty-ja-zh', ko: 'wty-ja-ko' },
+  // Korea's dictionary for learners, in each language it explains words in (Chinese: simplified).
+  ko: Object.fromEntries(['ar', 'es', 'fr', 'id', 'ja', 'ru', 'th', 'vi', 'zh', 'zh-Hant'].map((l) => [l, 'krdict'])),
+  // CFDICT (by way of CxDICT) and HanDeDict, as CC-CEDICT is written; Wiktionary in Japanese and Korean.
+  zh: { fr: 'cxdict-fr', de: 'handedict', ja: 'wty-zh-ja', ko: 'wty-zh-ko' },
+  // Wiktionary in French, Chinese and Polish: each nine words in ten of the commonest Spanish.
+  es: { fr: 'wty-es-fr', zh: 'wty-es-zh', 'zh-Hant': 'wty-es-zh', pl: 'wty-es-pl' },
+};
+
+/**
+ * The dictionary in the learner's own language for a language pair, or null
+ * where there is none. A word is looked up there first, and in the
+ * language's own dictionary (dictionaryOf) when it is not there: a Japanese
+ * word is explained in Chinese where Chinese Wiktionary has it, and in
+ * English where it does not.
+ */
+export function ownDictionaryOf(lang: string, s: Pick<Settings, 'native'>): { source: string; edition: string } | null {
+  const source = OWN_DICTIONARIES[lang]?.[s.native];
+  return source ? { source, edition: s.native } : null;
+}
+
+/**
  * The languages that can be learned. `flag` is the player bar's badge: a
  * country standing for a language, so the one most learners of it mean —
  * Brazil for Portuguese, as most courses do. Arabic has no country's flag
@@ -50,6 +80,8 @@ export const TARGET_LANGUAGES: Array<{ code: string; label: string; tier: 0 | 1 
   { code: 'ja', label: 'Japanese', tier: 2, flag: '🇯🇵' },
   { code: 'ko', label: 'Korean', tier: 2, flag: '🇰🇷' },
   { code: 'zh', label: 'Chinese', tier: 2, flag: '🇨🇳' },
+  // Its own language, not a kind of Chinese: what is said differs, and so are its readings, its words and its decks.
+  { code: 'yue', label: 'Cantonese', tier: 2, flag: '🇭🇰' },
   { code: 'es', label: 'Spanish', tier: 1, flag: '🇪🇸' },
   { code: 'fr', label: 'French', tier: 0, flag: '🇫🇷' },
   { code: 'de', label: 'German', tier: 0, flag: '🇩🇪' },
@@ -73,7 +105,7 @@ export interface LanguageFeatures {
    * key — by the name the language has for them, or false where its script
    * needs none.
    */
-  readings: 'furigana' | 'pinyin' | false;
+  readings: 'furigana' | 'pinyin' | 'jyutping' | false;
   /** The characters a word is written with, on its card, by what the language calls them. */
   characters: 'kanji' | 'hanzi' | false;
   /** A dictionary site to open a word in, from its card. */
@@ -109,6 +141,12 @@ const LANGUAGE_FEATURES: Record<string, LanguageFeatures> = {
     // Simplified first: what most learners of Mandarin study, and what HSK and most courses use.
     scripts: ['zh-Hans', 'zh-Hant'],
     dictionary: { name: 'MDBG', url: (w) => `https://www.mdbg.net/chinese/dictionary?page=worddict&wdqb=${encodeURIComponent(w)}` },
+  },
+  yue: {
+    readings: 'jyutping',
+    characters: 'hanzi',
+    definitions: false,
+    dictionary: { name: 'words.hk', url: (w) => `https://words.hk/zidin/wan/?q=${encodeURIComponent(w)}` },
   },
   es: {
     readings: false,
@@ -205,6 +243,14 @@ function browserTag(): string {
  * zh-TW, zh-HK), and zh, as a language of your own, is Simplified.
  */
 export function trackLanguageMatch(track: string, want: string): 0 | 1 | 2 {
+  // Cantonese, written down, is not Mandarin, whatever its tag starts with.
+  const cantonese = (tag: string): boolean => /^(yue|zh-yue)\b/i.test(tag);
+  if (cantonese(want)) {
+    if (cantonese(track)) return 2;
+    // Hong Kong's subtitles, in its written Chinese: the nearest to spoken Cantonese most videos have.
+    return /^zh-(hant-)?hk\b/i.test(track) ? 1 : 0;
+  }
+  if (cantonese(track)) return 0;
   const scriptOf = (tag: string): string | null => {
     const t = tag.toLowerCase();
     if (!/^zh\b/.test(t)) return null;
@@ -380,6 +426,12 @@ export interface Settings {
   headerBar: boolean;
   /** Keep that bar down instead of letting it hide — the lock in the bar. */
   headerPinned: boolean;
+  /**
+   * The player's letter keys (A, K, R, H, B, S) act on their own. Off, each
+   * needs Alt+Shift, so typing or speaking over the page sets nothing off
+   * (WCAG 2.1.4). The arrows are the same either way.
+   */
+  singleKeys: boolean;
 }
 
 export const DEFAULTS: Settings = {
@@ -423,6 +475,7 @@ export const DEFAULTS: Settings = {
   sidebarOpen: true,
   headerBar: true,
   headerPinned: false,
+  singleKeys: true,
 };
 
 /** Furigana's three settings in the order the top bar and R step through them: off, new words, all. */

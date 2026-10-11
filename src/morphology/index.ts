@@ -27,6 +27,8 @@ const ANALYSED: Record<string, { dict: string; make: () => Segmenter }> = {
   ja: { dict: 'ipadic', make: () => new LinderaSegmenter() },
   ko: { dict: 'ko-dic', make: () => new KoreanSegmenter() },
   zh: { dict: 'cc-cedict', make: () => new ChineseSegmenter() },
+  // Read with the same analyser: Cantonese is written in the same characters, and its dictionary reads them in Jyutping.
+  yue: { dict: 'cc-cedict', make: () => new ChineseSegmenter() },
 };
 
 /**
