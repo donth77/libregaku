@@ -5,6 +5,7 @@ import { defaultDeck } from '../anki/model';
 import { cardAudio } from '../audio/card-audio';
 import { flagChoices } from '../flags';
 import { fill, languageLabel, languageName, ownName, ui, uiLocale } from '../i18n';
+import { markSites, siteInfo, SITE_INFO_STYLE } from '../site-info';
 import { copyText } from './share';
 import {
   DEFAULTS, DEFINITION_LANGUAGES, cardDeck, featuresOf, setSetting, settings, type Settings, TARGET_LANGUAGES,
@@ -226,6 +227,7 @@ export const PANEL_STYLE = `
   }
   .set .perm:hover { border-color: #8A94AF; color: #F2F5FC; }
   .set .perm:focus-visible { outline: 2px solid #F2F5FC; outline-offset: 2px; }
+${SITE_INFO_STYLE}
 
   .credits { padding: 12px 4px 14px; margin: 0; border-top: 1px solid #1C2436; }
   .credits dt { margin-top: 12px; font-size: 13px; }
@@ -659,6 +661,8 @@ export function buildSettings(onChange: Rerender, opts: SettingsPanelOptions = {
   add(credits());
 
   showFor(root, settings().target);
+  // Every hint that says "protected sites" says which they are.
+  markSites(root, uiLocale());
   return root;
 }
 
@@ -996,6 +1000,7 @@ function capturePermission(): HTMLElement {
   const name = document.createElement('span');
   name.className = 'name';
   name.textContent = ui.settings.capture;
+  markSites(name, uiLocale());
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'perm';
@@ -1021,6 +1026,8 @@ function capturePermission(): HTMLElement {
     button.textContent = on ? t.captureRemove : canAsk ? t.captureAllow : t.captureAllowInSettings;
     button.hidden = on && !canAsk;
     hint.textContent = on ? t.captureAllowed : t.captureNeeded;
+    // Which sites: on hover, and the help chapter on click.
+    if (!markSites(hint, uiLocale())) hint.append(siteInfo(uiLocale()));
   };
   button.addEventListener('click', () => {
     if (!canAsk) {

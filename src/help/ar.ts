@@ -182,12 +182,12 @@ export const ar: HelpTranslation = {
       ],
     },
     {
-      id: 'netflix',
+      id: 'protected-sites',
       title: 'Netflix',
       about: 'ما تغيّره حمايته.',
       topics: [
         {
-          id: 'netflix-audio',
+          id: 'protected-sites-audio',
           title: 'صوت الجملة على Netflix',
           body: [
             [

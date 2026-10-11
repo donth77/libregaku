@@ -182,12 +182,12 @@ export const sv: HelpTranslation = {
       ],
     },
     {
-      id: 'netflix',
+      id: 'protected-sites',
       title: 'Netflix',
       about: 'Vad dess skydd ändrar.',
       topics: [
         {
-          id: 'netflix-audio',
+          id: 'protected-sites-audio',
           title: 'Meningsljud på Netflix',
           body: [
             [

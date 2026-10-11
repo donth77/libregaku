@@ -182,12 +182,12 @@ export const de: HelpTranslation = {
       ],
     },
     {
-      id: 'netflix',
+      id: 'protected-sites',
       title: 'Netflix',
       about: 'Was sein Kopierschutz ändert.',
       topics: [
         {
-          id: 'netflix-audio',
+          id: 'protected-sites-audio',
           title: 'Satz-Audio auf Netflix',
           body: [
             [

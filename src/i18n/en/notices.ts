@@ -27,6 +27,12 @@ export const notices = {
   netflixCaptionText: "Couldn't find Netflix's subtitle text on the page.",
   /** Netflix's page stopped the script that reads its subtitle tracks from running. */
   netflixBlocked: 'Netflix blocked the part of Libregaku that reads subtitles.',
+  disneyTrackList: "Couldn't read Disney+'s subtitle list.",
+  disneyCaptionText: "Couldn't find Disney+'s subtitle text on the page.",
+  primeTrackList: "Couldn't read Prime Video's subtitle list.",
+  primeCaptionText: "Couldn't find Prime Video's subtitle text on the page.",
+  maxTrackList: "Couldn't read Max's subtitle list.",
+  maxCaptionText: "Couldn't find Max's subtitle text on the page.",
 
   // Titles: this video's subtitles
   /** Subtitles are switched off in the site's own player, so there is nothing to read. */

@@ -182,12 +182,12 @@ export const tr: HelpTranslation = {
       ],
     },
     {
-      id: 'netflix',
+      id: 'protected-sites',
       title: 'Netflix',
       about: 'Korumasının neleri değiştirdiği.',
       topics: [
         {
-          id: 'netflix-audio',
+          id: 'protected-sites-audio',
           title: "Netflix'te cümle sesi",
           body: [
             [

@@ -6,6 +6,9 @@
  * Pure, so it is tested without a browser. Nothing here fetches.
  */
 
+import { parseVtt } from './netflix';
+import type { Cue } from './types';
+
 export interface HlsRendition {
   /** BCP-47, as the playlist's LANGUAGE gives it. Empty when it gives none. */
   language: string;
@@ -91,4 +94,32 @@ export function timestampOffset(vtt: string): number | null {
   if (!local || !mpegts) return null;
   const offset = Number(mpegts) / 90_000 - clock(local);
   return Number.isFinite(offset) ? offset : null;
+}
+
+/**
+ * One track's cues from its segments' text, in segment order.
+ *
+ * Each segment says where it sits with X-TIMESTAMP-MAP. The first segment's
+ * offset is taken as zero and the rest are shifted by their difference from
+ * it, so a track whose segments all share one offset is left alone. A cue
+ * that straddles two segments is listed in both, and kept once.
+ */
+export function cuesFromSegments(segments: string[]): Cue[] {
+  const out: Cue[] = [];
+  const seen = new Set<string>();
+  let base: number | null = null;
+  for (const text of segments) {
+    const offset = timestampOffset(text) ?? 0;
+    if (base === null) base = offset;
+    const shift = offset - base;
+    for (const cue of parseVtt(text)) {
+      const start = cue.start + shift;
+      const end = cue.end + shift;
+      const key = `${start.toFixed(3)}|${end.toFixed(3)}|${cue.text}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ start, end, text: cue.text });
+    }
+  }
+  return out.sort((a, b) => a.start - b.start);
 }

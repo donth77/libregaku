@@ -295,7 +295,8 @@ export const fr: Translation = {
   options: {
     pageTitle: 'Paramètres de Libregaku',
     help: 'Aide',
-    tagline: 'Les modifications s’appliquent immédiatement, ici et dans le panneau de transcription pendant la lecture.',
+    searchSettings: 'Rechercher…',
+    noSettingsFound: 'Rien ici ne mentionne « {q} ».',
     contentsLabel: 'Sections des paramètres',
     settingsLabel: 'Paramètres',
     setupHeading: 'Premiers pas',
@@ -318,9 +319,9 @@ export const fr: Translation = {
     settingsTip: 'Tous les paramètres',
     checkingPage: 'Vérification de cette page…',
     notActive:
-      'Libregaku n’est pas actif sur cette page. Ouvrez une vidéo YouTube ou Netflix. Si vous venez d’installer ' +
+      'Libregaku n’est pas actif sur cette page. Ouvrez une vidéo YouTube, Netflix, Disney+, Prime Video ou Max. Si vous venez d’installer ' +
       'ou de recharger Libregaku, rechargez l’onglet.',
-    unsupported: 'Libregaku fonctionne sur YouTube et Netflix.',
+    unsupported: 'Libregaku fonctionne sur YouTube, Netflix, Disney+, Prime Video et Max.',
     waitingForSubtitles: (site: string): string =>
       `En attente des sous-titres sur ${site}. Vérifiez qu’ils sont activés.`,
     activeOn: (title: string): string => `Actif : ${title}`,
@@ -662,6 +663,12 @@ export const fr: Translation = {
     youtubePlayerTrackList: 'Impossible de lire la liste des sous-titres de cette vidéo depuis le lecteur YouTube.',
     netflixTrackList: 'Impossible de lire la liste des sous-titres de Netflix.',
     netflixCaptionText: 'Texte des sous-titres de Netflix introuvable sur la page.',
+    disneyTrackList: 'Impossible de lire la liste des sous-titres de Disney+.',
+    disneyCaptionText: 'Texte des sous-titres de Disney+ introuvable sur la page.',
+    primeTrackList: 'Impossible de lire la liste des sous-titres de Prime Video.',
+    primeCaptionText: 'Texte des sous-titres de Prime Video introuvable sur la page.',
+    maxTrackList: 'Impossible de lire la liste des sous-titres de Max.',
+    maxCaptionText: 'Texte des sous-titres de Max introuvable sur la page.',
     netflixBlocked: 'Netflix a bloqué la partie de Libregaku qui lit les sous-titres.',
 
     // Les sous-titres de cette vidéo

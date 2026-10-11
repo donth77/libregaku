@@ -17,6 +17,7 @@ const targets = [
   { entry: 'src/content/inject-netflix.ts', out: 'inject-netflix', format: 'iife' },
   { entry: 'src/content/inject-disney.ts', out: 'inject-disney', format: 'iife' },
   { entry: 'src/content/inject-prime.ts', out: 'inject-prime', format: 'iife' },
+  { entry: 'src/content/inject-max.ts', out: 'inject-max', format: 'iife' },
   { entry: 'src/offscreen.ts',       out: 'offscreen',       format: 'esm'  },
   { entry: 'src/options.ts',         out: 'options',         format: 'esm'  },
   { entry: 'src/action.ts',          out: 'action',          format: 'esm'  },
@@ -55,6 +56,7 @@ await cp('src/options.html', `${outdir}/options.html`);
 await cp('src/options.css', `${outdir}/options.css`);
 await cp('src/help.html', `${outdir}/help.html`);
 await cp('src/help.css', `${outdir}/help.css`);
+await cp('src/page-header.css', `${outdir}/page-header.css`);
 await cp('src/action.html', `${outdir}/action.html`);
 await cp('src/action.css', `${outdir}/action.css`);
 await cp('src/icons', `${outdir}/icons`, { recursive: true });

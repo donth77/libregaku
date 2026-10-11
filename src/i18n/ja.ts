@@ -253,7 +253,8 @@ export const ja: Translation = {
   options: {
     pageTitle: 'Libregakuの設定',
     help: 'ヘルプ',
-    tagline: '変更は、ここにも視聴中の文字起こしパネルにも、すぐに反映されます。',
+    searchSettings: '検索…',
+    noSettingsFound: '「{q}」に一致する項目はありません。',
     contentsLabel: '設定の項目',
     settingsLabel: '設定',
     setupHeading: 'はじめに',
@@ -276,9 +277,9 @@ export const ja: Translation = {
     settingsTip: 'すべての設定',
     checkingPage: 'このページを確認中…',
     notActive:
-      'このページでは動作していません。YouTubeかNetflixの動画を開いてください。' +
+      'このページでは動作していません。YouTube、Netflix、Disney+、Prime Video、Maxの動画を開いてください。' +
       'Libregakuをインストールまたは再読み込みした直後なら、タブを再読み込みしてください。',
-    unsupported: 'LibregakuはYouTubeとNetflixで使えます。',
+    unsupported: 'LibregakuはYouTube、Netflix、Disney+、Prime Video、Maxで使えます。',
     waitingForSubtitles: (site: string): string => `${site}の字幕を待っています。字幕がオンになっているか確認してください。`,
     activeOn: (title: string): string => `動作中：${title}`,
     active: 'この動画で動作中です。',
@@ -602,6 +603,12 @@ export const ja: Translation = {
     youtubePlayerTrackList: 'YouTubeのプレーヤーから、この動画の字幕リストを読み取れませんでした。',
     netflixTrackList: 'Netflixの字幕リストを読み取れませんでした。',
     netflixCaptionText: 'ページ上でNetflixの字幕テキストが見つかりませんでした。',
+    disneyTrackList: 'Disney+の字幕リストを読み取れませんでした。',
+    disneyCaptionText: 'ページ上でDisney+の字幕テキストが見つかりませんでした。',
+    primeTrackList: 'Prime Videoの字幕リストを読み取れませんでした。',
+    primeCaptionText: 'ページ上でPrime Videoの字幕テキストが見つかりませんでした。',
+    maxTrackList: 'Maxの字幕リストを読み取れませんでした。',
+    maxCaptionText: 'ページ上でMaxの字幕テキストが見つかりませんでした。',
     netflixBlocked: 'Netflixが、Libregakuの字幕を読み取る部分をブロックしました。',
 
     // この動画の字幕

@@ -22,9 +22,9 @@ export const action = {
   checkingPage: 'Checking this page…',
   /** The page has no part of the extension in it. */
   notActive:
-    'Not active on this page. Open a YouTube or Netflix video. If you just installed or reloaded Libregaku, reload the tab.',
+    'Not active on this page. Open a video on YouTube, Netflix, Disney+, Prime Video or Max. If you just installed or reloaded Libregaku, reload the tab.',
   /** The page is not on a site the extension works on. */
-  unsupported: 'Libregaku works on YouTube and Netflix.',
+  unsupported: 'Libregaku works on YouTube, Netflix, Disney+, Prime Video and Max.',
   /** On a supported site, with no subtitles yet. `site` is the site's name. */
   waitingForSubtitles: (site: string): string => `Waiting for subtitles on ${site}. Make sure they're turned on.`,
   /** Working. `title` is the video's title, from the site. */
@@ -48,7 +48,7 @@ export const action = {
   /** Button: opens the options page, where the permission is asked for. */
   captureAllowInSettings: 'Allow in settings',
   /** Once the permission is given, above the button that starts recording. */
-  captureReady: "Netflix's sound can be recorded only after you turn it on for this tab.",
+  captureReady: 'Sound from protected sites can be recorded only after you turn it on for this tab.',
   /** Button: starts recording this tab's sound. */
   captureStart: 'Record sentence audio here',
   /** Recording could not start, and nothing said why. */

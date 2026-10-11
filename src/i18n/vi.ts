@@ -252,7 +252,8 @@ export const vi: Translation = {
   options: {
     pageTitle: 'Cài đặt Libregaku',
     help: 'Trợ giúp',
-    tagline: 'Thay đổi có hiệu lực ngay, cả ở đây và trong bảng chép lời khi bạn xem.',
+    searchSettings: 'Tìm kiếm…',
+    noSettingsFound: 'Không có nội dung nào nhắc đến “{q}”.',
     contentsLabel: 'Các mục cài đặt',
     settingsLabel: 'Cài đặt',
     setupHeading: 'Bắt đầu',
@@ -275,9 +276,9 @@ export const vi: Translation = {
     settingsTip: 'Tất cả cài đặt',
     checkingPage: 'Đang kiểm tra trang này…',
     notActive:
-      'Không hoạt động trên trang này. Hãy mở một video YouTube hoặc Netflix. Nếu bạn vừa cài hoặc tải lại Libregaku, ' +
+      'Không hoạt động trên trang này. Hãy mở một video YouTube, Netflix, Disney+, Prime Video hoặc Max. Nếu bạn vừa cài hoặc tải lại Libregaku, ' +
       'hãy tải lại tab.',
-    unsupported: 'Libregaku hoạt động trên YouTube và Netflix.',
+    unsupported: 'Libregaku hoạt động trên YouTube, Netflix, Disney+, Prime Video và Max.',
     waitingForSubtitles: (site: string): string => `Đang chờ phụ đề trên ${site}. Hãy kiểm tra xem phụ đề đã bật chưa.`,
     activeOn: (title: string): string => `Đang hoạt động — ${title}`,
     active: 'Đang hoạt động trên video này.',
@@ -607,6 +608,12 @@ export const vi: Translation = {
     youtubePlayerTrackList: 'Không đọc được danh sách phụ đề của video này từ trình phát YouTube.',
     netflixTrackList: 'Không đọc được danh sách phụ đề của Netflix.',
     netflixCaptionText: 'Không tìm thấy văn bản phụ đề của Netflix trên trang.',
+    disneyTrackList: 'Không đọc được danh sách phụ đề của Disney+.',
+    disneyCaptionText: 'Không tìm thấy văn bản phụ đề của Disney+ trên trang.',
+    primeTrackList: 'Không đọc được danh sách phụ đề của Prime Video.',
+    primeCaptionText: 'Không tìm thấy văn bản phụ đề của Prime Video trên trang.',
+    maxTrackList: 'Không đọc được danh sách phụ đề của Max.',
+    maxCaptionText: 'Không tìm thấy văn bản phụ đề của Max trên trang.',
     netflixBlocked: 'Netflix đã chặn phần của Libregaku dùng để đọc phụ đề.',
 
     // Phụ đề của video này

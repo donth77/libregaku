@@ -242,7 +242,8 @@ export const zh: Translation = {
   options: {
     pageTitle: 'Libregaku 设置',
     help: '帮助',
-    tagline: '更改会立即生效，这里和观看时的侧边栏都会同步。',
+    searchSettings: '搜索…',
+    noSettingsFound: '没有找到与“{q}”相关的内容。',
     contentsLabel: '设置目录',
     settingsLabel: '设置',
     setupHeading: '开始使用',
@@ -260,8 +261,8 @@ export const zh: Translation = {
     settings: '设置',
     settingsTip: '所有设置',
     checkingPage: '正在检查此页面…',
-    notActive: '未在此页面上启用。请打开 YouTube 或 Netflix 视频。如果刚安装或重新加载了 Libregaku，请刷新此标签页。',
-    unsupported: 'Libregaku 支持 YouTube 和 Netflix。',
+    notActive: '未在此页面上启用。请打开 YouTube、Netflix、Disney+、Prime Video 或 Max 视频。如果刚安装或重新加载了 Libregaku，请刷新此标签页。',
+    unsupported: 'Libregaku 支持 YouTube、Netflix、Disney+、Prime Video 和 Max。',
     waitingForSubtitles: (site: string): string => `正在等待 ${site} 的字幕。请确认字幕已打开。`,
     activeOn: (title: string): string => `已启用——${title}`,
     active: '已在此视频上启用。',
@@ -576,6 +577,12 @@ export const zh: Translation = {
     youtubePlayerTrackList: '无法从 YouTube 播放器读取此视频的字幕列表。',
     netflixTrackList: '无法读取 Netflix 的字幕列表。',
     netflixCaptionText: '在页面上找不到 Netflix 的字幕文本。',
+    disneyTrackList: '无法读取 Disney+ 的字幕列表。',
+    disneyCaptionText: '在页面上找不到 Disney+ 的字幕文本。',
+    primeTrackList: '无法读取 Prime Video 的字幕列表。',
+    primeCaptionText: '在页面上找不到 Prime Video 的字幕文本。',
+    maxTrackList: '无法读取 Max 的字幕列表。',
+    maxCaptionText: '在页面上找不到 Max 的字幕文本。',
     netflixBlocked: 'Netflix 阻止了 Libregaku 中读取字幕的部分。',
 
     // Titles: this video's subtitles

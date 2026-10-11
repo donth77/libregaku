@@ -182,12 +182,12 @@ export const vi: HelpTranslation = {
       ],
     },
     {
-      id: 'netflix',
+      id: 'protected-sites',
       title: 'Netflix',
       about: 'Những gì thay đổi do Netflix bảo vệ video.',
       topics: [
         {
-          id: 'netflix-audio',
+          id: 'protected-sites-audio',
           title: 'Âm thanh của câu trên Netflix',
           body: [
             [

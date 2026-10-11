@@ -82,8 +82,8 @@ src/background.ts       service worker: offscreen lifecycle, the AnkiConnect rel
                         audio fetches, page-world injection on Netflix
 src/offscreen.{html,ts} WASM host — the only place the tokenizer runs. The lindera
                         dictionary lives in OPFS; JMdict in IndexedDB
-src/adapters/           one module per subtitle source (youtube, netflix, disney, prime), their
-                        parsers (ttml, json3, hls), the DOM-reading fallback
+src/adapters/           one module per subtitle source (youtube, netflix, disney, prime, max), their
+                        parsers (ttml, json3, hls, dash), the DOM-reading fallback
 src/morphology/         Segmenter implementations and which language gets which (index.ts),
                         merge rules for Japanese and Korean, furigana and pinyin alignment,
                         Spanish dictionary forms, and the words from JMdict that IPADIC
@@ -102,6 +102,7 @@ src/content/
                         keeps the programme's clock, seeks
   inject-prime.ts       Prime Video page world: passes on the subtitle tracks in the playback
                         resources the player asked for
+  inject-max.ts         Max page world: passes on the DASH manifest the player fetched
   index.ts              isolated world: orchestrates adapter → segmenter → UI
   renderer.ts           subtitle overlay
   sidebar.ts            transcript panel, saved lines, settings

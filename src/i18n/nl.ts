@@ -276,7 +276,8 @@ export const nl: Translation = {
   options: {
     pageTitle: 'Libregaku-instellingen',
     help: 'Help',
-    tagline: 'Wijzigingen gelden meteen, hier en in het transcriptpaneel terwijl je kijkt.',
+    searchSettings: 'Zoeken…',
+    noSettingsFound: 'Niets hier noemt “{q}”.',
     contentsLabel: 'Onderdelen van de instellingen',
     settingsLabel: 'Instellingen',
     setupHeading: 'Aan de slag',
@@ -299,9 +300,9 @@ export const nl: Translation = {
     settingsTip: 'Alle instellingen',
     checkingPage: 'Pagina controleren…',
     notActive:
-      'Niet actief op deze pagina. Open een video op YouTube of Netflix. Heb je Libregaku net geïnstalleerd of ' +
+      'Niet actief op deze pagina. Open een video op YouTube, Netflix, Disney+, Prime Video of Max. Heb je Libregaku net geïnstalleerd of ' +
       'opnieuw geladen, laad het tabblad dan opnieuw.',
-    unsupported: 'Libregaku werkt op YouTube en Netflix.',
+    unsupported: 'Libregaku werkt op YouTube, Netflix, Disney+, Prime Video en Max.',
     waitingForSubtitles: (site: string): string => `Wachten op ondertitels van ${site}. Controleer of ze aanstaan.`,
     activeOn: (title: string): string => `Actief – ${title}`,
     active: 'Actief op deze video.',
@@ -640,6 +641,12 @@ export const nl: Translation = {
     youtubePlayerTrackList: 'Kon de ondertitellijst van deze video niet uit de speler van YouTube lezen.',
     netflixTrackList: 'Kon de ondertitellijst van Netflix niet lezen.',
     netflixCaptionText: 'Kon de ondertiteltekst van Netflix niet vinden op de pagina.',
+    disneyTrackList: 'Kon de ondertitellijst van Disney+ niet lezen.',
+    disneyCaptionText: 'Kon de ondertiteltekst van Disney+ niet vinden op de pagina.',
+    primeTrackList: 'Kon de ondertitellijst van Prime Video niet lezen.',
+    primeCaptionText: 'Kon de ondertiteltekst van Prime Video niet vinden op de pagina.',
+    maxTrackList: 'Kon de ondertitellijst van Max niet lezen.',
+    maxCaptionText: 'Kon de ondertiteltekst van Max niet vinden op de pagina.',
     netflixBlocked: 'Netflix heeft het deel van Libregaku geblokkeerd dat ondertitels leest.',
 
     // De ondertitels van deze video

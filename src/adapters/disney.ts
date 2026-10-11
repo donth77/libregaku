@@ -1,6 +1,5 @@
 import { ui } from '../i18n';
-import { segmentUrls, subtitleRenditions, timestampOffset, type HlsRendition } from './hls';
-import { parseVtt } from './netflix';
+import { segmentUrls, subtitleRenditions, cuesFromSegments, type HlsRendition } from './hls';
 import type { Cue, SubtitleSource, TrackInfo } from './types';
 
 /**
@@ -70,33 +69,7 @@ export function programmeSegments(urls: string[]): string[] {
   return main.length ? main : urls;
 }
 
-/**
- * One track's cues from its segments' text, in segment order.
- *
- * Each segment says where it sits with X-TIMESTAMP-MAP. The first segment's
- * offset is taken as zero and the rest are shifted by their difference from
- * it, so a track whose segments all share one offset is left alone. A cue
- * that straddles two segments is listed in both, and kept once.
- */
-export function cuesFromSegments(segments: string[]): Cue[] {
-  const out: Cue[] = [];
-  const seen = new Set<string>();
-  let base: number | null = null;
-  for (const text of segments) {
-    const offset = timestampOffset(text) ?? 0;
-    if (base === null) base = offset;
-    const shift = offset - base;
-    for (const cue of parseVtt(text)) {
-      const start = cue.start + shift;
-      const end = cue.end + shift;
-      const key = `${start.toFixed(3)}|${end.toFixed(3)}|${cue.text}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push({ start, end, text: cue.text });
-    }
-  }
-  return out.sort((a, b) => a.start - b.start);
-}
+export { cuesFromSegments } from './hls';
 
 interface DpTrack extends HlsRendition {
   id: string;

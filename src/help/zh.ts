@@ -182,12 +182,12 @@ export const zh: HelpTranslation = {
       ],
     },
     {
-      id: 'netflix',
+      id: 'protected-sites',
       title: 'Netflix',
       about: 'Netflix 的内容保护会带来哪些变化。',
       topics: [
         {
-          id: 'netflix-audio',
+          id: 'protected-sites-audio',
           title: 'Netflix 上的句子音频',
           body: [
             [

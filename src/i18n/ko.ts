@@ -251,7 +251,8 @@ export const ko: Translation = {
   options: {
     pageTitle: 'Libregaku 설정',
     help: '도움말',
-    tagline: '변경 사항은 이 페이지와 시청 중인 스크립트 패널에 바로 적용됩니다.',
+    searchSettings: '검색…',
+    noSettingsFound: '“{q}”에 관한 내용이 없습니다.',
     contentsLabel: '설정 항목',
     settingsLabel: '설정',
     setupHeading: '시작하기',
@@ -274,9 +275,9 @@ export const ko: Translation = {
     settingsTip: '모든 설정',
     checkingPage: '이 페이지 확인 중…',
     notActive:
-      '이 페이지에서는 작동하지 않습니다. YouTube나 Netflix 동영상을 여세요. ' +
+      '이 페이지에서는 작동하지 않습니다. YouTube, Netflix, Disney+, Prime Video 또는 Max의 동영상을 여세요. ' +
       'Libregaku를 방금 설치했거나 새로고침했다면 탭을 새로고침하세요.',
-    unsupported: 'Libregaku는 YouTube와 Netflix에서 작동합니다.',
+    unsupported: 'Libregaku는 YouTube, Netflix, Disney+, Prime Video, Max에서 작동합니다.',
     waitingForSubtitles: (site: string): string => `${site} 자막을 기다리는 중입니다. 자막이 켜져 있는지 확인하세요.`,
     activeOn: (title: string): string => `작동 중 — ${title}`,
     active: '이 동영상에서 작동 중입니다.',
@@ -593,6 +594,12 @@ export const ko: Translation = {
     youtubePlayerTrackList: 'YouTube 플레이어에서 이 동영상의 자막 목록을 읽을 수 없습니다.',
     netflixTrackList: 'Netflix 자막 목록을 읽을 수 없습니다.',
     netflixCaptionText: '페이지에서 Netflix 자막 텍스트를 찾을 수 없습니다.',
+    disneyTrackList: 'Disney+ 자막 목록을 읽을 수 없습니다.',
+    disneyCaptionText: '페이지에서 Disney+ 자막 텍스트를 찾을 수 없습니다.',
+    primeTrackList: 'Prime Video 자막 목록을 읽을 수 없습니다.',
+    primeCaptionText: '페이지에서 Prime Video 자막 텍스트를 찾을 수 없습니다.',
+    maxTrackList: 'Max 자막 목록을 읽을 수 없습니다.',
+    maxCaptionText: '페이지에서 Max 자막 텍스트를 찾을 수 없습니다.',
     netflixBlocked: 'Netflix가 Libregaku의 자막 읽기 기능을 차단했습니다.',
 
     // Titles: this video's subtitles

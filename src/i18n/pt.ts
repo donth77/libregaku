@@ -262,7 +262,8 @@ export const pt: Translation = {
   options: {
     pageTitle: 'Configurações do Libregaku',
     help: 'Ajuda',
-    tagline: 'As mudanças valem na hora, aqui e no painel de transcrição enquanto você assiste.',
+    searchSettings: 'Pesquisar…',
+    noSettingsFound: 'Nada aqui menciona “{q}”.',
     contentsLabel: 'Seções das configurações',
     settingsLabel: 'Configurações',
     setupHeading: 'Primeiros passos',
@@ -285,9 +286,9 @@ export const pt: Translation = {
     settingsTip: 'Todas as configurações',
     checkingPage: 'Verificando esta página…',
     notActive:
-      'Não está ativo nesta página. Abra um vídeo do YouTube ou da Netflix. Se você acabou de instalar ou recarregar ' +
+      'Não está ativo nesta página. Abra um vídeo do YouTube, da Netflix, do Disney+, do Prime Video ou do Max. Se você acabou de instalar ou recarregar ' +
       'o Libregaku, recarregue a guia.',
-    unsupported: 'O Libregaku funciona no YouTube e na Netflix.',
+    unsupported: 'O Libregaku funciona no YouTube, na Netflix, no Disney+, no Prime Video e no Max.',
     waitingForSubtitles: (site: string): string => `${site}: aguardando as legendas. Verifique se estão ativadas.`,
     activeOn: (title: string): string => `Ativo — ${title}`,
     active: 'Ativo neste vídeo.',
@@ -625,6 +626,12 @@ export const pt: Translation = {
     youtubePlayerTrackList: 'Não foi possível ler a lista de legendas deste vídeo no player do YouTube.',
     netflixTrackList: 'Não foi possível ler a lista de legendas da Netflix.',
     netflixCaptionText: 'Não foi possível encontrar o texto das legendas da Netflix na página.',
+    disneyTrackList: 'Não foi possível ler a lista de legendas da Disney+.',
+    disneyCaptionText: 'Não foi possível encontrar o texto das legendas da Disney+ na página.',
+    primeTrackList: 'Não foi possível ler a lista de legendas da Prime Video.',
+    primeCaptionText: 'Não foi possível encontrar o texto das legendas da Prime Video na página.',
+    maxTrackList: 'Não foi possível ler a lista de legendas da Max.',
+    maxCaptionText: 'Não foi possível encontrar o texto das legendas da Max na página.',
     netflixBlocked: 'A Netflix bloqueou a parte do Libregaku que lê as legendas.',
 
     // This video's subtitles

@@ -182,12 +182,12 @@ export const nl: HelpTranslation = {
       ],
     },
     {
-      id: 'netflix',
+      id: 'protected-sites',
       title: 'Netflix',
       about: 'Wat de beveiliging verandert.',
       topics: [
         {
-          id: 'netflix-audio',
+          id: 'protected-sites-audio',
           title: 'Zinsaudio op Netflix',
           body: [
             [

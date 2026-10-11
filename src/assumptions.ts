@@ -15,7 +15,7 @@ import type { Strings } from './i18n/en';
 export interface Assumption {
   id: string;
   /** 'external' is a third-party service we borrow, not a site we render on. */
-  site: 'youtube' | 'netflix' | 'disney' | 'prime' | 'external';
+  site: 'youtube' | 'netflix' | 'disney' | 'prime' | 'max' | 'external';
   /** What we rely on. */
   claim: string;
   /** What stops working when it stops being true. */
@@ -362,6 +362,34 @@ export const ASSUMPTIONS: Assumption[] = [
     fallback: null,
   },
   {
+    id: 'mx.manifest',
+    site: 'max',
+    claim: 'The player fetches a DASH manifest (.mpd, by fetch or XMLHttpRequest, readable as text) whose text AdaptationSets, one per subtitle track, carry lang, a Role (subtitle, caption, forced) and a SegmentTemplate with a SegmentTimeline and a $Number$ media URL',
+    breaks: 'The track list on Max: no transcript, no second line',
+    fallback: 'DOM reading, current line only (mx.caption-dom)',
+  },
+  {
+    id: 'mx.segments',
+    site: 'max',
+    claim: 'Each segment is a WebVTT file on h264.io, fetchable from the page, whose cue times are on the same clock as the <video>\'s currentTime (X-TIMESTAMP-MAP MPEGTS:0)',
+    breaks: 'No cues: the track is dropped as not Max-hosted, a fetch is refused, or every line is early or late',
+    fallback: null,
+  },
+  {
+    id: 'mx.caption-dom',
+    site: 'max',
+    claim: 'The player draws its subtitles in the page\'s own DOM, in a CaptionWindow and TextCue whose generated class names begin "CaptionWindow-Fuse-Web-Play" and "TextCue-Fuse-Web-Play"',
+    breaks: 'Max\'s own subtitles are not hidden, so two sets show; and the DOM fallback',
+    fallback: null,
+  },
+  {
+    id: 'mx.video',
+    site: 'max',
+    claim: 'The player has one <video> inside #layer-root-player-screen, whose own box is zero tall, so the player\'s size is its parent\'s (a PlayerRootContainer, which also holds the control layer); and setting the <video>\'s currentTime seeks. Unverified: adverts do not play in it',
+    breaks: 'Nothing renders, or clicking a transcript line does nothing, or lines show over an advert',
+    fallback: null,
+  },
+  {
     id: 'anki.media',
     site: 'external',
     claim: 'addNote stores each file in note.audio and note.picture from its base64 data under its filename, and appends [sound:filename] or <img src="filename"> to the fields it names, in order',
@@ -397,6 +425,16 @@ export const NOTICES: Record<string, NoticeTitle> = {
   'nf.textTracks': 'netflixTrackList',
   'nf.caption-dom': 'netflixCaptionText',
   'nf.main-world-csp': 'netflixBlocked',
+  'dp.master-playlist': 'disneyTrackList',
+  'dp.media-hosts': 'disneyTrackList',
+  'dp.vtt-segments': 'disneyTrackList',
+  'dp.caption-dom': 'disneyCaptionText',
+  'pv.resources': 'primeTrackList',
+  'pv.subtitle-files': 'primeTrackList',
+  'pv.caption-dom': 'primeCaptionText',
+  'mx.manifest': 'maxTrackList',
+  'mx.segments': 'maxTrackList',
+  'mx.caption-dom': 'maxCaptionText',
   'no-subtitles-on': 'subtitlesOff',
   'no-target-track': 'noTargetTrack',
   'no-second-track': 'noSecondTrack',

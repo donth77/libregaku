@@ -258,7 +258,8 @@ export const hi: Translation = {
   options: {
     pageTitle: 'Libregaku सेटिंग',
     help: 'सहायता',
-    tagline: 'बदलाव तुरंत लागू होते हैं, यहां भी और देखते समय ट्रांसक्रिप्ट पैनल में भी।',
+    searchSettings: 'खोजें…',
+    noSettingsFound: 'यहां “{q}” का कहीं ज़िक्र नहीं है।',
     contentsLabel: 'सेटिंग के सेक्शन',
     settingsLabel: 'सेटिंग',
     setupHeading: 'शुरू करें',
@@ -281,9 +282,9 @@ export const hi: Translation = {
     settingsTip: 'सभी सेटिंग',
     checkingPage: 'यह पेज जांचा जा रहा है…',
     notActive:
-      'इस पेज पर चालू नहीं है। YouTube या Netflix का कोई वीडियो खोलें। अगर आपने अभी Libregaku इंस्टॉल या ' +
+      'इस पेज पर चालू नहीं है। YouTube, Netflix, Disney+, Prime Video या Max का कोई वीडियो खोलें। अगर आपने अभी Libregaku इंस्टॉल या ' +
       'रीलोड किया है, तो टैब रीलोड करें।',
-    unsupported: 'Libregaku, YouTube और Netflix पर काम करता है।',
+    unsupported: 'Libregaku, YouTube, Netflix, Disney+, Prime Video और Max पर काम करता है।',
     waitingForSubtitles: (site: string): string => `${site} पर सबटाइटल का इंतज़ार है। देख लें कि वे चालू हैं।`,
     activeOn: (title: string): string => `चालू — ${title}`,
     active: 'इस वीडियो पर चालू है।',
@@ -623,6 +624,12 @@ export const hi: Translation = {
     youtubePlayerTrackList: 'YouTube के प्लेयर से इस वीडियो की सबटाइटल सूची नहीं पढ़ी जा सकी।',
     netflixTrackList: 'Netflix की सबटाइटल सूची नहीं पढ़ी जा सकी।',
     netflixCaptionText: 'पेज पर Netflix के सबटाइटल का टेक्स्ट नहीं मिला।',
+    disneyTrackList: 'Disney+ की सबटाइटल सूची नहीं पढ़ी जा सकी।',
+    disneyCaptionText: 'पेज पर Disney+ के सबटाइटल का टेक्स्ट नहीं मिला।',
+    primeTrackList: 'Prime Video की सबटाइटल सूची नहीं पढ़ी जा सकी।',
+    primeCaptionText: 'पेज पर Prime Video के सबटाइटल का टेक्स्ट नहीं मिला।',
+    maxTrackList: 'Max की सबटाइटल सूची नहीं पढ़ी जा सकी।',
+    maxCaptionText: 'पेज पर Max के सबटाइटल का टेक्स्ट नहीं मिला।',
     netflixBlocked: 'Netflix ने Libregaku के उस हिस्से को रोक दिया जो सबटाइटल पढ़ता है।',
 
     // इस वीडियो के सबटाइटल

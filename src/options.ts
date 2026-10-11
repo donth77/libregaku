@@ -1,6 +1,6 @@
 import { PANEL_STYLE, buildSettings } from './content/settings-panel';
-import { loadUiLanguage, localize, onUiLanguageChange, setTranslationLoader, setUiLanguage, ui } from './i18n';
-import { logo } from './logo';
+import { fill, loadUiLanguage, localize, onUiLanguageChange, setTranslationLoader, setUiLanguage, ui } from './i18n';
+import { pageHeader } from './page-header';
 import { cardDeck, loadSettings, onSettingsChange, setSetting, settings } from './settings';
 
 /**
@@ -200,11 +200,39 @@ function rebuild(old: HTMLElement): HTMLElement {
   return next;
 }
 
-async function main(): Promise<void> {
-  const h1 = document.querySelector('h1');
-  const mark = logo('lockup', 46, 'Libregaku');
-  if (h1 && mark) h1.replaceChildren(mark);
+/**
+ * Show the rows of `panel` that mention every word of `query`, in their name or
+ * their hint, and the sections with any left; hide the rest, and the contents'
+ * links to them. An empty query shows everything. True when something shows.
+ *
+ * Rows are hidden by a mark of their own (data-nomatch), never by `hidden`:
+ * that is how a row the language has no use for stays out of sight, and
+ * clearing the search must not bring it back.
+ */
+function filterSettings(panel: HTMLElement, toc: HTMLElement | null, query: string): boolean {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  let any = false;
+  for (const section of Array.from(panel.querySelectorAll<HTMLElement>('.grp-section'))) {
+    let shown = 0;
+    for (const row of Array.from(section.querySelectorAll<HTMLElement>('.set'))) {
+      const text = `${row.querySelector('.name')?.textContent ?? ''} ${row.querySelector('.hint')?.textContent ?? ''}`.toLowerCase();
+      const ok = words.every((w) => text.includes(w));
+      row.toggleAttribute('data-nomatch', !ok);
+      if (ok) shown++;
+    }
+    // A section's own heading and line count too: searching "Anki" finds the section.
+    const own = `${section.querySelector('.grp')?.textContent ?? ''} ${section.querySelector('.grp-about')?.textContent ?? ''}`.toLowerCase();
+    const whole = words.length > 0 && words.every((w) => own.includes(w));
+    if (whole) section.querySelectorAll<HTMLElement>('.set').forEach((r) => r.removeAttribute('data-nomatch'));
+    const visible = whole || shown > 0 || !words.length;
+    section.toggleAttribute('data-nomatch', !visible);
+    if (section.id) toc?.querySelectorAll<HTMLElement>(`a[href="#${section.id}"]`).forEach((a) => a.toggleAttribute('data-nomatch', !visible));
+    if (visible) any = true;
+  }
+  return any || !words.length;
+}
 
+async function main(): Promise<void> {
   // Both read before anything is drawn, so nothing below waits again: a
   // change of language always finds the whole page there to redraw.
   let [, chosen] = await Promise.all([loadSettings(), loadChosen()]);
@@ -214,6 +242,8 @@ async function main(): Promise<void> {
   setTranslationLoader((lang) => import(chrome.runtime.getURL(`i18n/${lang}.js`)));
   await loadUiLanguage(settings().native);
   localize(document);
+  const header = (): void => pageHeader('settings', { heading: ui.options.settingsLabel, other: ui.options.help });
+  header();
   onSettingsChange((s) => setUiLanguage(s.native));
 
   const style = document.createElement('style');
@@ -224,6 +254,22 @@ async function main(): Promise<void> {
   panel.appendChild(built);
   const toc = document.querySelector<HTMLElement>('.toc');
   const relist = toc ? contents(toc, panel) : null;
+
+  // The search over the settings: rows that do not say what was typed are hidden, and so are sections left empty.
+  const find = document.getElementById('q') as HTMLInputElement;
+  const none = document.getElementById('none') as HTMLElement;
+  const search = (): void => {
+    find.placeholder = ui.options.searchSettings;
+    find.setAttribute('aria-label', ui.options.searchSettings);
+    const q = find.value.trim();
+    const hits = filterSettings(panel, toc, q);
+    // The first-run card is not a setting: while searching it only pushes the results down.
+    document.getElementById('setup')?.toggleAttribute('data-nomatch', Boolean(q));
+    none.hidden = hits || !q;
+    none.textContent = fill(ui.options.noSettingsFound, { q }).join('');
+  };
+  find.addEventListener('input', search);
+  search();
 
   /*
    * A first run needs two decisions and nothing else. The language pair cannot
@@ -283,8 +329,10 @@ async function main(): Promise<void> {
    */
   onUiLanguageChange(() => {
     localize(document);
+    header();
     built = rebuild(built);
     relist?.();
+    search();
     refreshSetup();
   });
 }

@@ -279,7 +279,8 @@ export const uk: Translation = {
   options: {
     pageTitle: 'Налаштування Libregaku',
     help: 'Довідка',
-    tagline: 'Зміни застосовуються одразу — тут і на панелі транскрипції під час перегляду.',
+    searchSettings: 'Пошук…',
+    noSettingsFound: 'За запитом «{q}» нічого не знайдено.',
     contentsLabel: 'Розділи налаштувань',
     settingsLabel: 'Налаштування',
     setupHeading: 'Початок роботи',
@@ -302,9 +303,9 @@ export const uk: Translation = {
     settingsTip: 'Усі налаштування',
     checkingPage: 'Перевірка сторінки…',
     notActive:
-      'На цій сторінці не працює. Відкрийте відео на YouTube або Netflix. Якщо ви щойно встановили чи ' +
+      'На цій сторінці не працює. Відкрийте відео на YouTube, Netflix, Disney+, Prime Video або Max. Якщо ви щойно встановили чи ' +
       'перезавантажили Libregaku, оновіть вкладку.',
-    unsupported: 'Libregaku працює на YouTube і Netflix.',
+    unsupported: 'Libregaku працює на YouTube, Netflix, Disney+, Prime Video і Max.',
     waitingForSubtitles: (site: string): string => `Чекаємо на субтитри на ${site}. Переконайтеся, що їх увімкнено.`,
     activeOn: (title: string): string => `Працює — ${title}`,
     active: 'Працює на цьому відео.',
@@ -649,6 +650,12 @@ export const uk: Translation = {
     youtubePlayerTrackList: 'Не вдалося отримати список субтитрів цього відео з плеєра YouTube.',
     netflixTrackList: 'Не вдалося прочитати список субтитрів Netflix.',
     netflixCaptionText: 'Не вдалося знайти текст субтитрів Netflix на сторінці.',
+    disneyTrackList: 'Не вдалося прочитати список субтитрів Disney+.',
+    disneyCaptionText: 'Не вдалося знайти текст субтитрів Disney+ на сторінці.',
+    primeTrackList: 'Не вдалося прочитати список субтитрів Prime Video.',
+    primeCaptionText: 'Не вдалося знайти текст субтитрів Prime Video на сторінці.',
+    maxTrackList: 'Не вдалося прочитати список субтитрів Max.',
+    maxCaptionText: 'Не вдалося знайти текст субтитрів Max на сторінці.',
     netflixBlocked: 'Netflix заблокував частину Libregaku, яка читає субтитри.',
 
     // Субтитри цього відео

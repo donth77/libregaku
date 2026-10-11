@@ -279,7 +279,8 @@ export const de: Translation = {
   options: {
     pageTitle: 'Libregaku-Einstellungen',
     help: 'Hilfe',
-    tagline: 'Änderungen gelten sofort – hier und beim Schauen in der Transkriptleiste.',
+    searchSettings: 'Suchen…',
+    noSettingsFound: 'Nichts hier erwähnt „{q}“.',
     contentsLabel: 'Einstellungsbereiche',
     settingsLabel: 'Einstellungen',
     setupHeading: 'Erste Schritte',
@@ -302,9 +303,9 @@ export const de: Translation = {
     settingsTip: 'Alle Einstellungen',
     checkingPage: 'Seite wird geprüft…',
     notActive:
-      'Auf dieser Seite nicht aktiv. Öffne ein Video auf YouTube oder Netflix. Wenn du Libregaku gerade installiert ' +
+      'Auf dieser Seite nicht aktiv. Öffne ein Video auf YouTube, Netflix, Disney+, Prime Video oder Max. Wenn du Libregaku gerade installiert ' +
       'oder neu geladen hast, lade den Tab neu.',
-    unsupported: 'Libregaku funktioniert auf YouTube und Netflix.',
+    unsupported: 'Libregaku funktioniert auf YouTube, Netflix, Disney+, Prime Video und Max.',
     waitingForSubtitles: (site: string): string =>
       `Warten auf Untertitel von ${site}. Prüfe, ob sie eingeschaltet sind.`,
     activeOn: (title: string): string => `Aktiv – ${title}`,
@@ -645,6 +646,12 @@ export const de: Translation = {
     youtubePlayerTrackList: 'Die Untertitelliste dieses Videos konnte nicht aus dem YouTube-Player gelesen werden.',
     netflixTrackList: 'Die Untertitelliste von Netflix konnte nicht gelesen werden.',
     netflixCaptionText: 'Der Untertiteltext von Netflix wurde auf der Seite nicht gefunden.',
+    disneyTrackList: 'Die Untertitelliste von Disney+ konnte nicht gelesen werden.',
+    disneyCaptionText: 'Der Untertiteltext von Disney+ wurde auf der Seite nicht gefunden.',
+    primeTrackList: 'Die Untertitelliste von Prime Video konnte nicht gelesen werden.',
+    primeCaptionText: 'Der Untertiteltext von Prime Video wurde auf der Seite nicht gefunden.',
+    maxTrackList: 'Die Untertitelliste von Max konnte nicht gelesen werden.',
+    maxCaptionText: 'Der Untertiteltext von Max wurde auf der Seite nicht gefunden.',
     netflixBlocked: 'Netflix hat den Teil von Libregaku blockiert, der Untertitel liest.',
 
     // Die Untertitel dieses Videos

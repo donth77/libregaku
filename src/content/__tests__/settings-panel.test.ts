@@ -368,7 +368,7 @@ describe('settings panel selects', () => {
     runtime.sendMessage = async (msg: unknown) => { sent.push(msg); return { ok: true, granted: false }; };
     const root = buildSettings(() => {});
     await flush();
-    const row = Array.from(root.querySelectorAll<HTMLElement>('.set')).find((r) => r.querySelector('.name')?.textContent === 'Sentence audio on Netflix')!;
+    const row = Array.from(root.querySelectorAll<HTMLElement>('.set')).find((r) => r.querySelector('.name')?.textContent === 'Sentence audio on protected sites')!;
     const button = row.querySelector<HTMLButtonElement>('.perm')!;
     expect(button.textContent).toBe('Allow in settings');
     button.click();

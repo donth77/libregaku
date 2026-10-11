@@ -249,7 +249,8 @@ export const th: Translation = {
   options: {
     pageTitle: 'การตั้งค่า Libregaku',
     help: 'ความช่วยเหลือ',
-    tagline: 'การเปลี่ยนแปลงมีผลทันที ทั้งที่นี่และในแผงข้อความถอดเสียงขณะดู',
+    searchSettings: 'ค้นหา…',
+    noSettingsFound: 'ไม่มีหัวข้อใดกล่าวถึง “{q}”',
     contentsLabel: 'หมวดการตั้งค่า',
     settingsLabel: 'การตั้งค่า',
     setupHeading: 'เริ่มต้นใช้งาน',
@@ -272,9 +273,9 @@ export const th: Translation = {
     settingsTip: 'การตั้งค่าทั้งหมด',
     checkingPage: 'กำลังตรวจสอบหน้านี้…',
     notActive:
-      'ไม่ได้ทำงานในหน้านี้ เปิดวิดีโอ YouTube หรือ Netflix ' +
+      'ไม่ได้ทำงานในหน้านี้ เปิดวิดีโอ YouTube, Netflix, Disney+, Prime Video หรือ Max ' +
       'หากเพิ่งติดตั้งหรือโหลด Libregaku ใหม่ ให้โหลดแท็บซ้ำ',
-    unsupported: 'Libregaku ใช้ได้บน YouTube และ Netflix',
+    unsupported: 'Libregaku ใช้ได้บน YouTube, Netflix, Disney+, Prime Video และ Max',
     waitingForSubtitles: (site: string): string => `กำลังรอคำบรรยายบน ${site} ตรวจสอบว่าเปิดคำบรรยายอยู่`,
     activeOn: (title: string): string => `ทำงานอยู่ — ${title}`,
     active: 'ทำงานอยู่ในวิดีโอนี้',
@@ -603,6 +604,12 @@ export const th: Translation = {
     youtubePlayerTrackList: 'อ่านรายการคำบรรยายของวิดีโอนี้จากโปรแกรมเล่นของ YouTube ไม่ได้',
     netflixTrackList: 'อ่านรายการคำบรรยายของ Netflix ไม่ได้',
     netflixCaptionText: 'ไม่พบข้อความคำบรรยายของ Netflix ในหน้านี้',
+    disneyTrackList: 'อ่านรายการคำบรรยายของ Disney+ ไม่ได้',
+    disneyCaptionText: 'ไม่พบข้อความคำบรรยายของ Disney+ ในหน้านี้',
+    primeTrackList: 'อ่านรายการคำบรรยายของ Prime Video ไม่ได้',
+    primeCaptionText: 'ไม่พบข้อความคำบรรยายของ Prime Video ในหน้านี้',
+    maxTrackList: 'อ่านรายการคำบรรยายของ Max ไม่ได้',
+    maxCaptionText: 'ไม่พบข้อความคำบรรยายของ Max ในหน้านี้',
     netflixBlocked: 'Netflix บล็อกส่วนของ Libregaku ที่อ่านคำบรรยาย',
 
     // คำบรรยายของวิดีโอนี้

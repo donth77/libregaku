@@ -57,6 +57,8 @@ const PAGE = `
     <button id="confirmDeck" hidden></button>
   </section>
   <nav class="toc"></nav>
+  <input type="search" id="q">
+  <p id="none" hidden></p>
   <section id="settings"></section>`;
 
 async function open(settings: Record<string, unknown>, chosen?: string): Promise<void> {

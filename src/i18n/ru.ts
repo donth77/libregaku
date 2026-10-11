@@ -279,7 +279,8 @@ export const ru: Translation = {
   options: {
     pageTitle: 'Настройки Libregaku',
     help: 'Справка',
-    tagline: 'Изменения применяются сразу — здесь и на панели расшифровки во время просмотра.',
+    searchSettings: 'Поиск…',
+    noSettingsFound: 'По запросу «{q}» ничего не найдено.',
     contentsLabel: 'Разделы настроек',
     settingsLabel: 'Настройки',
     setupHeading: 'Начало работы',
@@ -302,9 +303,9 @@ export const ru: Translation = {
     settingsTip: 'Все настройки',
     checkingPage: 'Проверка страницы…',
     notActive:
-      'На этой странице не работает. Откройте видео на YouTube или Netflix. Если вы только что установили ' +
+      'На этой странице не работает. Откройте видео на YouTube, Netflix, Disney+, Prime Video или Max. Если вы только что установили ' +
       'или перезагрузили Libregaku, обновите вкладку.',
-    unsupported: 'Libregaku работает на YouTube и Netflix.',
+    unsupported: 'Libregaku работает на YouTube, Netflix, Disney+, Prime Video и Max.',
     waitingForSubtitles: (site: string): string => `Ждём субтитры на ${site}. Убедитесь, что они включены.`,
     activeOn: (title: string): string => `Работает — ${title}`,
     active: 'Работает на этом видео.',
@@ -649,6 +650,12 @@ export const ru: Translation = {
     youtubePlayerTrackList: 'Не удалось получить список субтитров этого видео из плеера YouTube.',
     netflixTrackList: 'Не удалось прочитать список субтитров Netflix.',
     netflixCaptionText: 'Не удалось найти текст субтитров Netflix на странице.',
+    disneyTrackList: 'Не удалось прочитать список субтитров Disney+.',
+    disneyCaptionText: 'Не удалось найти текст субтитров Disney+ на странице.',
+    primeTrackList: 'Не удалось прочитать список субтитров Prime Video.',
+    primeCaptionText: 'Не удалось найти текст субтитров Prime Video на странице.',
+    maxTrackList: 'Не удалось прочитать список субтитров Max.',
+    maxCaptionText: 'Не удалось найти текст субтитров Max на странице.',
     netflixBlocked: 'Netflix заблокировал часть Libregaku, которая читает субтитры.',
 
     // Субтитры этого видео

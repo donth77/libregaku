@@ -281,12 +281,12 @@ export const settings = {
   cardAudioHint: 'A recording of the word, when one exists. Never a synthetic voice.',
   /** The sound of the subtitle line. */
   cardSentenceAudio: 'Sentence audio',
-  cardSentenceAudioHint: 'Records the sentence by playing it once more. On Netflix, this needs the permission below.',
+  cardSentenceAudioHint: 'Records the sentence by playing it once more. On protected sites, this needs the permission below.',
   /** A still from the video. */
   cardScreenshot: 'Screenshot',
-  cardScreenshotHint: 'A still of the scene. Not available on Netflix, which blocks it.',
+  cardScreenshotHint: 'A still of the scene. Not available on protected sites, which block it.',
   /** A row with a button, for the browser's permission to record a tab's sound. */
-  capture: 'Sentence audio on Netflix',
+  capture: 'Sentence audio on protected sites',
   /** Button: ask for the permission. */
   captureAllow: 'Allow',
   /** Button, in the transcript panel, which cannot ask: it opens the options page, which can. */
@@ -294,9 +294,9 @@ export const settings = {
   /** Button: give the permission back. */
   captureRemove: 'Remove',
   /** Once allowed. Record sentence audio here is the toolbar popup's button, named as the popup names it. */
-  captureAllowed: 'Allowed. On each Netflix tab, click the Libregaku icon and choose Record sentence audio here.',
+  captureAllowed: 'Allowed. On each tab of a protected site, click the Libregaku icon and choose Record sentence audio here.',
   /** Until allowed. */
-  captureNeeded: 'Netflix protects its video, so sentence audio is recorded from the tab. This needs your permission.',
+  captureNeeded: 'Protected sites encrypt their video, so sentence audio is recorded from the tab. This needs your permission.',
 
   // Data and licences: credits for the data and code the extension uses. Their names are kept as they are.
   creditsHeading: 'Data and licences',

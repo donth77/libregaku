@@ -3,19 +3,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title data-i18n="options.pageTitle">Libregaku settings</title>
 <link rel="stylesheet" href="options.css">
+<link rel="stylesheet" href="page-header.css">
+<header class="site-top" id="site-top"></header>
 <div class="page">
-  <header class="top">
-    <div class="title">
-      <h1>Libregaku</h1>
-      <a class="to-help" href="help.html" data-i18n="options.help">Help</a>
-    </div>
-    <p class="tag" data-i18n="options.tagline">Changes apply straight away, here and in the transcript panel while you watch.</p>
-  </header>
 
   <div class="layout">
     <nav class="toc" aria-label="Settings sections" data-i18n-aria-label="options.contentsLabel"></nav>
 
     <main>
+      <div class="find">
+        <input type="search" id="q" autocomplete="off" spellcheck="false">
+      </div>
+      <p class="none" id="none" role="status" hidden></p>
       <section id="setup" class="setup" aria-labelledby="setup-title" hidden>
         <h2 id="setup-title" data-i18n="options.setupHeading">Get started</h2>
         <p class="setup-about" data-i18n="options.setupAbout">Two choices, and everything else has a sensible default.</p>

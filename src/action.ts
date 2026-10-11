@@ -2,9 +2,10 @@ import { queuedCards } from './anki/card-queue';
 import { probe, type AnkiState } from './anki/client';
 import { ANKI_PORT } from './anki/endpoint';
 import type { CaptureFailure } from './audio/tab-capture';
-import { loadUiLanguage, localize, setTranslationLoader, setUiLanguage, ui } from './i18n';
+import { loadUiLanguage, localize, setTranslationLoader, setUiLanguage, ui, uiLocale } from './i18n';
 import { logo } from './logo';
 import { loadSettings, onSettingsChange, settings } from './settings';
+import { markSites, siteInfo } from './site-info';
 
 /**
  * Toolbar popup.
@@ -53,7 +54,7 @@ async function askPage(tabId: number, msg: unknown): Promise<PageState | null> {
 
 /** A site as people write it: the content script reports its adapter's id, "netflix". */
 function siteName(site: string | null): string {
-  return ({ youtube: 'YouTube', netflix: 'Netflix', disney: 'Disney+', prime: 'Prime Video' } as Record<string, string>)[site ?? ''] ?? String(site);
+  return ({ youtube: 'YouTube', netflix: 'Netflix', disney: 'Disney+', prime: 'Prime Video', max: 'Max' } as Record<string, string>)[site ?? ''] ?? String(site);
 }
 
 function describe(state: PageState | null): { text: string; cls: string } {
@@ -169,12 +170,14 @@ async function offerCapture(tabId: number, state: PageState): Promise<void> {
   const granted = await chrome.permissions.contains({ permissions: ['tabCapture'] }).catch(() => false);
   if (!granted) {
     text.textContent = ui.action.captureNeedsPermission;
+    if (!markSites(text, uiLocale())) text.append(siteInfo(uiLocale()));
     go.textContent = ui.action.captureAllowInSettings;
     go.hidden = false;
     go.onclick = () => void chrome.runtime.openOptionsPage();
     return;
   }
   text.textContent = ui.action.captureReady;
+  if (!markSites(text, uiLocale())) text.append(siteInfo(uiLocale()));
   go.textContent = ui.action.captureStart;
   go.hidden = false;
   go.onclick = async () => {

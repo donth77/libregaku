@@ -182,12 +182,12 @@ export const th: HelpTranslation = {
       ],
     },
     {
-      id: 'netflix',
+      id: 'protected-sites',
       title: 'Netflix',
       about: 'การป้องกันของ Netflix ทำให้อะไรเปลี่ยนไป',
       topics: [
         {
-          id: 'netflix-audio',
+          id: 'protected-sites-audio',
           title: 'เสียงประโยคบน Netflix',
           body: [
             [

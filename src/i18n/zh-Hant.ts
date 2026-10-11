@@ -242,7 +242,8 @@ export const zhHant: Translation = {
   options: {
     pageTitle: 'Libregaku 設定',
     help: '說明',
-    tagline: '變更會立即套用，包括這裡，以及觀看時的轉錄稿面板。',
+    searchSettings: '搜尋…',
+    noSettingsFound: '找不到提到「{q}」的內容。',
     contentsLabel: '設定區段',
     settingsLabel: '設定',
 
@@ -264,8 +265,8 @@ export const zhHant: Translation = {
 
     // What the extension is doing on this page
     checkingPage: '正在檢查這個網頁…',
-    notActive: '未在這個網頁上啟用。請開啟 YouTube 或 Netflix 影片。如果剛安裝或重新載入 Libregaku，請重新載入分頁。',
-    unsupported: 'Libregaku 適用於 YouTube 和 Netflix。',
+    notActive: '未在這個網頁上啟用。請開啟 YouTube、Netflix、Disney+、Prime Video 或 Max 影片。如果剛安裝或重新載入 Libregaku，請重新載入分頁。',
+    unsupported: 'Libregaku 適用於 YouTube、Netflix、Disney+、Prime Video 和 Max。',
     waitingForSubtitles: (site: string): string => `正在等待 ${site} 的字幕。請確認字幕已開啟。`,
     activeOn: (title: string): string => `已啟用：${title}`,
     active: '已在這部影片上啟用。',
@@ -589,6 +590,12 @@ export const zhHant: Translation = {
     youtubePlayerTrackList: '無法從 YouTube 播放器讀取這部影片的字幕清單。',
     netflixTrackList: '無法讀取 Netflix 的字幕清單。',
     netflixCaptionText: '在網頁上找不到 Netflix 的字幕文字。',
+    disneyTrackList: '無法讀取 Disney+ 的字幕清單。',
+    disneyCaptionText: '在網頁上找不到 Disney+ 的字幕文字。',
+    primeTrackList: '無法讀取 Prime Video 的字幕清單。',
+    primeCaptionText: '在網頁上找不到 Prime Video 的字幕文字。',
+    maxTrackList: '無法讀取 Max 的字幕清單。',
+    maxCaptionText: '在網頁上找不到 Max 的字幕文字。',
     netflixBlocked: 'Netflix 封鎖了 Libregaku 讀取字幕的元件。',
 
     // This video's subtitles

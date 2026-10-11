@@ -182,12 +182,12 @@ export const it: HelpTranslation = {
       ],
     },
     {
-      id: 'netflix',
+      id: 'protected-sites',
       title: 'Netflix',
       about: 'Cosa cambia con la sua protezione.',
       topics: [
         {
-          id: 'netflix-audio',
+          id: 'protected-sites-audio',
           title: 'Audio della frase su Netflix',
           body: [
             [

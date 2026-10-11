@@ -267,7 +267,8 @@ export const es: Translation = {
   options: {
     pageTitle: 'Configuración de Libregaku',
     help: 'Ayuda',
-    tagline: 'Los cambios se aplican al instante, aquí y en el panel de transcripción mientras ves videos.',
+    searchSettings: 'Buscar…',
+    noSettingsFound: 'No hay nada sobre “{q}”.',
     contentsLabel: 'Secciones de la configuración',
     settingsLabel: 'Configuración',
     setupHeading: 'Primeros pasos',
@@ -290,9 +291,9 @@ export const es: Translation = {
     settingsTip: 'Toda la configuración',
     checkingPage: 'Comprobando esta página…',
     notActive:
-      'No está activo en esta página. Abre un video de YouTube o Netflix. Si acabas de instalar o recargar Libregaku, ' +
+      'No está activo en esta página. Abre un video de YouTube, Netflix, Disney+, Prime Video o Max. Si acabas de instalar o recargar Libregaku, ' +
       'recarga la pestaña.',
-    unsupported: 'Libregaku funciona en YouTube y Netflix.',
+    unsupported: 'Libregaku funciona en YouTube, Netflix, Disney+, Prime Video y Max.',
     waitingForSubtitles: (site: string): string =>
       `Esperando los subtítulos de ${site}. Asegúrate de que estén activados.`,
     activeOn: (title: string): string => `Activo: ${title}`,
@@ -630,6 +631,12 @@ export const es: Translation = {
     youtubePlayerTrackList: 'No se pudo leer la lista de subtítulos de este video desde el reproductor de YouTube.',
     netflixTrackList: 'No se pudo leer la lista de subtítulos de Netflix.',
     netflixCaptionText: 'No se encontró el texto de los subtítulos de Netflix en la página.',
+    disneyTrackList: 'No se pudo leer la lista de subtítulos de Disney+.',
+    disneyCaptionText: 'No se encontró el texto de los subtítulos de Disney+ en la página.',
+    primeTrackList: 'No se pudo leer la lista de subtítulos de Prime Video.',
+    primeCaptionText: 'No se encontró el texto de los subtítulos de Prime Video en la página.',
+    maxTrackList: 'No se pudo leer la lista de subtítulos de Max.',
+    maxCaptionText: 'No se encontró el texto de los subtítulos de Max en la página.',
     netflixBlocked: 'Netflix bloqueó la parte de Libregaku que lee los subtítulos.',
 
     // Los subtítulos de este video

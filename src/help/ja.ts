@@ -182,12 +182,12 @@ export const ja: HelpTranslation = {
       ],
     },
     {
-      id: 'netflix',
+      id: 'protected-sites',
       title: 'Netflix',
       about: 'コンテンツ保護によって変わること。',
       topics: [
         {
-          id: 'netflix-audio',
+          id: 'protected-sites-audio',
           title: 'Netflixでの文の音声',
           body: [
             [

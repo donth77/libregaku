@@ -250,7 +250,8 @@ export const id: Translation = {
   options: {
     pageTitle: 'Setelan Libregaku',
     help: 'Bantuan',
-    tagline: 'Perubahan langsung berlaku, di sini dan di panel transkrip saat Anda menonton.',
+    searchSettings: 'Telusuri…',
+    noSettingsFound: 'Tidak ada yang menyebut “{q}”.',
     contentsLabel: 'Bagian setelan',
     settingsLabel: 'Setelan',
     setupHeading: 'Memulai',
@@ -273,9 +274,9 @@ export const id: Translation = {
     settingsTip: 'Semua setelan',
     checkingPage: 'Memeriksa halaman ini…',
     notActive:
-      'Tidak aktif di halaman ini. Buka video YouTube atau Netflix. Jika Anda baru saja menginstal atau memuat ulang ' +
+      'Tidak aktif di halaman ini. Buka video YouTube, Netflix, Disney+, Prime Video atau Max. Jika Anda baru saja menginstal atau memuat ulang ' +
       'Libregaku, muat ulang tab.',
-    unsupported: 'Libregaku berfungsi di YouTube dan Netflix.',
+    unsupported: 'Libregaku berfungsi di YouTube, Netflix, Disney+, Prime Video dan Max.',
     waitingForSubtitles: (site: string): string => `Menunggu subtitel di ${site}. Pastikan subtitel aktif.`,
     activeOn: (title: string): string => `Aktif — ${title}`,
     active: 'Aktif di video ini.',
@@ -605,6 +606,12 @@ export const id: Translation = {
     youtubePlayerTrackList: 'Tidak dapat membaca daftar subtitel video ini dari pemutar YouTube.',
     netflixTrackList: 'Tidak dapat membaca daftar subtitel Netflix.',
     netflixCaptionText: 'Tidak dapat menemukan teks subtitel Netflix di halaman.',
+    disneyTrackList: 'Tidak dapat membaca daftar subtitel Disney+.',
+    disneyCaptionText: 'Tidak dapat menemukan teks subtitel Disney+ di halaman.',
+    primeTrackList: 'Tidak dapat membaca daftar subtitel Prime Video.',
+    primeCaptionText: 'Tidak dapat menemukan teks subtitel Prime Video di halaman.',
+    maxTrackList: 'Tidak dapat membaca daftar subtitel Max.',
+    maxCaptionText: 'Tidak dapat menemukan teks subtitel Max di halaman.',
     netflixBlocked: 'Netflix memblokir bagian Libregaku yang membaca subtitel.',
 
     // This video's subtitles

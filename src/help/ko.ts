@@ -182,12 +182,12 @@ export const ko: HelpTranslation = {
       ],
     },
     {
-      id: 'netflix',
+      id: 'protected-sites',
       title: 'Netflix',
       about: 'Netflix의 콘텐츠 보호 때문에 달라지는 점.',
       topics: [
         {
-          id: 'netflix-audio',
+          id: 'protected-sites-audio',
           title: 'Netflix 문장 오디오',
           body: [
             [

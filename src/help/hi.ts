@@ -182,12 +182,12 @@ export const hi: HelpTranslation = {
       ],
     },
     {
-      id: 'netflix',
+      id: 'protected-sites',
       title: 'Netflix',
       about: 'उसकी सुरक्षा से क्या बदलता है।',
       topics: [
         {
-          id: 'netflix-audio',
+          id: 'protected-sites-audio',
           title: 'Netflix पर वाक्य ऑडियो',
           body: [
             [

@@ -1,6 +1,7 @@
 # Libregaku
 
-Clickable subtitles for YouTube and Netflix, with a dictionary and a transcript. Make
+Clickable subtitles for YouTube, Netflix, Disney+, Prime Video and Max, with a dictionary
+and a transcript. Make
 Anki cards from any word or sentence. Free and open source.
 
 ---

@@ -10,7 +10,7 @@
   --ink: #F2F5FC; --text: #CDD4E4; --muted: #A3ACC4; --faint: #7A84A0; --accent: #E5806C; --focus: #F2F5FC;
 }
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; scroll-padding-top: 88px; }
+html { scroll-behavior: smooth; scroll-padding-top: calc(var(--site-top, 64px) + 88px); }
 body {
   margin: 0; background: var(--bg); color: var(--text);
   font: 15.5px/1.65 system-ui, -apple-system, "Hiragino Sans", sans-serif;
@@ -30,7 +30,7 @@ h1 svg { display: block; margin-left: -4px; }
 /* Chapters down the side; the help beside them. */
 .layout { display: grid; grid-template-columns: 200px minmax(0, 720px); gap: 56px; align-items: start; }
 .toc {
-  position: sticky; top: 28px; display: flex; flex-direction: column;
+  position: sticky; top: calc(var(--site-top, 64px) + 28px); display: flex; flex-direction: column;
   border-inline-start: 1px solid var(--line);
 }
 .toc-title { margin: 0 0 8px; margin-inline-start: 15px; color: var(--muted); font-size: 13px; font-weight: 600; }
@@ -47,14 +47,13 @@ h1 svg { display: block; margin-left: -4px; }
 /* What the page is, then the search. */
 .hero .title { margin: 0; font: 700 34px/1.15 system-ui, -apple-system, sans-serif; letter-spacing: -.02em; color: var(--ink); }
 .hero .intro { margin: 8px 0 0; color: var(--muted); font-size: 16px; }
-.find { position: sticky; top: 0; z-index: 2; padding: 18px 0 10px; background: var(--bg); }
+.find { position: sticky; top: var(--site-top, 64px); z-index: 2; padding: 18px 0 10px; background: var(--bg); }
 .find input {
   width: 100%; padding: 11px 14px; border-radius: 8px;
   background: var(--surface); color: var(--ink); border: 1px solid var(--line);
   font: 16px/1.3 system-ui, -apple-system, "Hiragino Sans", sans-serif;
 }
 .find input::placeholder { color: var(--faint); }
-.find input:focus-visible { outline: 1px solid #5A6480; outline-offset: 0; border-color: #5A6480; }
 .popular { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; margin: 4px 0 8px; font-size: 14.5px; }
 .popular-label { color: var(--muted); }
 .popular a { color: var(--text); }
@@ -129,3 +128,11 @@ details.topic .body { padding: 0 0 14px 26px; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
 }
+
+/* "Protected sites", wherever a topic says it: which sites, on hover; their chapter, on click. */
+.sites {
+  display: inline; padding: 0; margin: 0; border: 0; background: none; color: inherit; font: inherit; cursor: help;
+  text-decoration: underline dotted; text-underline-offset: 3px;
+}
+.sites:hover { text-decoration-style: solid; }
+.sites:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; border-radius: 2px; }

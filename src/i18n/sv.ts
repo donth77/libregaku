@@ -262,7 +262,8 @@ export const sv: Translation = {
   options: {
     pageTitle: 'Inställningar för Libregaku',
     help: 'Hjälp',
-    tagline: 'Ändringar gäller direkt, här och i transkriptionspanelen medan du tittar.',
+    searchSettings: 'Sök…',
+    noSettingsFound: 'Inga träffar för ”{q}”.',
     contentsLabel: 'Avsnitt i inställningarna',
     settingsLabel: 'Inställningar',
     setupHeading: 'Kom igång',
@@ -285,9 +286,9 @@ export const sv: Translation = {
     settingsTip: 'Alla inställningar',
     checkingPage: 'Kontrollerar sidan…',
     notActive:
-      'Inte aktivt på den här sidan. Öppna en video på YouTube eller Netflix. Om du nyss har installerat Libregaku ' +
+      'Inte aktivt på den här sidan. Öppna en video på YouTube, Netflix, Disney+, Prime Video eller Max. Om du nyss har installerat Libregaku ' +
       'eller läst in det igen, ladda om fliken.',
-    unsupported: 'Libregaku fungerar på YouTube och Netflix.',
+    unsupported: 'Libregaku fungerar på YouTube, Netflix, Disney+, Prime Video och Max.',
     waitingForSubtitles: (site: string): string => `Väntar på undertexter på ${site}. Se till att de är på.`,
     activeOn: (title: string): string => `Aktivt – ${title}`,
     active: 'Aktivt på den här videon.',
@@ -622,6 +623,12 @@ export const sv: Translation = {
     youtubePlayerTrackList: 'Kunde inte läsa videons undertextlista från YouTube-spelaren.',
     netflixTrackList: 'Kunde inte läsa undertextlistan på Netflix.',
     netflixCaptionText: 'Kunde inte hitta undertexterna på Netflix-sidan.',
+    disneyTrackList: 'Kunde inte läsa undertextlistan på Disney+.',
+    disneyCaptionText: 'Kunde inte hitta undertexterna på Disney+-sidan.',
+    primeTrackList: 'Kunde inte läsa undertextlistan på Prime Video.',
+    primeCaptionText: 'Kunde inte hitta undertexterna på Prime Video-sidan.',
+    maxTrackList: 'Kunde inte läsa undertextlistan på Max.',
+    maxCaptionText: 'Kunde inte hitta undertexterna på Max-sidan.',
     netflixBlocked: 'Netflix blockerade den del av Libregaku som läser undertexter.',
 
     // Videons undertexter

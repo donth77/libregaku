@@ -1,4 +1,5 @@
 import { DisneyAdapter } from '../adapters/disney';
+import { MaxAdapter } from '../adapters/max';
 import { NetflixAdapter } from '../adapters/netflix';
 import { PrimeAdapter } from '../adapters/prime';
 import { mergeRepeats, pairCues } from '../adapters/pair';
@@ -92,7 +93,7 @@ const quiet = (msg: string, id?: string, detail?: () => string) => {
   log(msg);
 };
 
-const ADAPTERS: SubtitleSource[] = [new YouTubeAdapter(), new NetflixAdapter(), new DisneyAdapter(), new PrimeAdapter()];
+const ADAPTERS: SubtitleSource[] = [new YouTubeAdapter(), new NetflixAdapter(), new DisneyAdapter(), new PrimeAdapter(), new MaxAdapter()];
 
 let overlay: Overlay | null = null;
 let cues: Cue[] = [];
@@ -761,7 +762,7 @@ async function run(gen: number): Promise<boolean> {
     }
     quiet(
       'waiting for a subtitle track list, or for subtitles to be switched on',
-      adapter.id === 'netflix' ? 'nf.textTracks' : adapter.id === 'disney' ? 'dp.master-playlist' : adapter.id === 'prime' ? 'pv.resources' : 'yt.player-response',
+      adapter.id === 'netflix' ? 'nf.textTracks' : adapter.id === 'disney' ? 'dp.master-playlist' : adapter.id === 'prime' ? 'pv.resources' : adapter.id === 'max' ? 'mx.manifest' : 'yt.player-response',
       () => ui.notices.subtitlesMaybeOff,
     );
     return false;
@@ -939,7 +940,7 @@ function startDomFallback(
   if (!source.container()) {
     quiet(
       'waiting for a caption container — are subtitles switched on?',
-      adapter.id === 'netflix' ? 'nf.caption-dom' : adapter.id === 'disney' ? 'dp.caption-dom' : adapter.id === 'prime' ? 'pv.caption-dom' : 'yt.caption-dom',
+      adapter.id === 'netflix' ? 'nf.caption-dom' : adapter.id === 'disney' ? 'dp.caption-dom' : adapter.id === 'prime' ? 'pv.caption-dom' : adapter.id === 'max' ? 'mx.caption-dom' : 'yt.caption-dom',
       () => ui.notices.lookedFor(adapter.domCaptions.container),
     );
     return false;

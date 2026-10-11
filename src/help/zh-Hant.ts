@@ -182,12 +182,12 @@ export const zhHant: HelpTranslation = {
       ],
     },
     {
-      id: 'netflix',
+      id: 'protected-sites',
       title: 'Netflix',
       about: '它的防護機制帶來的改變。',
       topics: [
         {
-          id: 'netflix-audio',
+          id: 'protected-sites-audio',
           title: 'Netflix 上的句子音訊',
           body: [
             [

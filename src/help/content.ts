@@ -83,7 +83,7 @@ const en: HelpContent = {
   tipLabel: 'Tip:',
   then: 'then',
   link: 'Link to this',
-  popular: { label: 'Popular:', ids: ['add-card', 'sentence-audio', 'marks', 'tracked', 'keys', 'netflix-audio', 'update'] },
+  popular: { label: 'Popular:', ids: ['add-card', 'sentence-audio', 'marks', 'tracked', 'keys', 'protected-sites-audio', 'update'] },
   chapters: [
     {
       id: 'start',
@@ -97,7 +97,7 @@ const en: HelpContent = {
             [
               'In {Settings → Languages}, choose the language you are learning and your own language.',
               'Get Anki from https://apps.ankiweb.net. In {Settings → Anki}, follow the steps to connect it, then choose the deck new cards go to.',
-              'Open a YouTube or Netflix video with subtitles in the language you are learning, and rest the pointer on a word.',
+              'Open a video on YouTube, Netflix, Disney+, Prime Video or Max with subtitles in the language you are learning, and rest the pointer on a word.',
             ],
             { tip: 'Anki is optional. Subtitles, lookups and the transcript all work without it; it is what remembers which words you know.' },
           ],
@@ -253,19 +253,19 @@ const en: HelpContent = {
       ],
     },
     {
-      id: 'netflix',
-      title: 'Netflix',
-      about: 'What its protection changes.',
+      id: 'protected-sites',
+      title: 'Protected sites',
+      about: 'The sites that encrypt their video: Netflix, Disney+, Prime Video and Max. What that changes.',
       topics: [
         {
-          id: 'netflix-audio',
-          title: 'Sentence audio on Netflix',
+          id: 'protected-sites-audio',
+          title: 'Sentence audio on protected sites',
           body: [
             [
-              'Open {Settings → Anki cards → Sentence audio on Netflix} and press Allow.',
-              'On the Netflix tab, click the Libregaku icon in the toolbar and press Record sentence audio here. Do this once per tab.',
+              'Open {Settings → Anki cards → Sentence audio on protected sites} and press Allow.',
+              'On the tab the video is playing in, click the Libregaku icon in the toolbar and press Record sentence audio here. Do this once per tab.',
             ],
-            'Netflix encrypts its video, so Libregaku cannot record the sound from the video as it does on YouTube. It records the tab instead, which Chrome only allows this way. For the same reason, Netflix cards have no screenshot.',
+            'Protected sites encrypt their video, so Libregaku cannot record the sound from the video as it does on YouTube. It records the tab instead, which Chrome only allows this way. For the same reason, cards made there have no screenshot.',
           ],
           keywords: ['netflix', 'audio', 'sound', 'permission', 'tab capture'],
         },
@@ -292,7 +292,7 @@ const en: HelpContent = {
     },
     {
       id: 'questions',
-      title: 'Questions',
+      title: 'FAQ',
       questions: true,
       topics: [
         {
@@ -340,7 +340,7 @@ const en: HelpContent = {
           id: 'q-picture',
           title: 'What is the screenshot on a card?',
           body: [
-            'A still of the scene, on the back of the card, so you see where the word came from. It is taken from the video on YouTube; Netflix blanks its video for extensions, so cards made there have none. {Settings → Anki cards → Screenshot} turns it off.',
+            'A still of the scene, on the back of the card, so you see where the word came from. It is taken from the video on YouTube; protected sites blank their video for extensions, so cards made there have none. {Settings → Anki cards → Screenshot} turns it off.',
           ],
           keywords: ['picture', 'image', 'screenshot', 'still'],
         },

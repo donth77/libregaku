@@ -182,12 +182,12 @@ export const ru: HelpTranslation = {
       ],
     },
     {
-      id: 'netflix',
+      id: 'protected-sites',
       title: 'Netflix',
       about: 'Что меняет его защита.',
       topics: [
         {
-          id: 'netflix-audio',
+          id: 'protected-sites-audio',
           title: 'Аудио предложения на Netflix',
           body: [
             [

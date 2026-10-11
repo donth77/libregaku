@@ -1,6 +1,7 @@
 import { hasHelp, helpFor, type HelpBlock, type HelpContent, type HelpTopic } from './help/content';
+import { markSites } from './site-info';
 import { directionOf, localeOf, uiLanguageFor } from './i18n/languages';
-import { logo } from './logo';
+import { pageHeader } from './page-header';
 import { loadSettings, onSettingsChange } from './settings';
 
 /**
@@ -170,6 +171,8 @@ function fill(el: HTMLElement, topic: HelpTopic, words: readonly string[], help:
       el.appendChild(table);
     }
   }
+  // "Protected sites" names its sites on hover, and goes to their chapter.
+  markSites(el, document.documentElement.lang || 'en', () => { location.hash = '#protected-sites'; });
 }
 
 interface Shown {
@@ -317,11 +320,7 @@ async function main(): Promise<void> {
   document.documentElement.lang = localeOf(lang);
   document.documentElement.dir = directionOf(lang);
   document.title = `Libregaku — ${help.title}`;
-  const h1 = document.querySelector('h1');
-  const mark = logo('lockup', 46, 'Libregaku');
-  if (h1 && mark) h1.replaceChildren(mark);
-  const settingsLink = document.querySelector<HTMLAnchorElement>('.to-settings');
-  if (settingsLink) settingsLink.textContent = help.settings;
+  pageHeader('help', { heading: help.title, other: help.settings });
   const set = (id: string, text: string): void => {
     const el = document.getElementById(id);
     if (el) el.textContent = text;

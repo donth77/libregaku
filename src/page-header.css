@@ -1,0 +1,35 @@
+/*
+ * The bar across the top of the settings page and the help page: the logo, the
+ * name of the page, and a link to the other one. Fixed, so it is there however
+ * far down either is read. Both pages load this after their own sheet and set
+ * the same custom properties (--bg, --line, --ink, --muted), so it follows
+ * whichever one it is on.
+ */
+:root { --site-top: 64px; }
+body { padding-top: var(--site-top); }
+
+.site-top {
+  position: fixed; inset: 0 0 auto 0; z-index: 20; height: var(--site-top);
+  background: var(--bg); border-bottom: 1px solid var(--line);
+}
+.site-top .bar {
+  display: flex; align-items: center; gap: 18px; height: 100%;
+  max-width: 1120px; margin: 0 auto; padding: 0 32px;
+}
+.site-top .brand { display: flex; align-items: center; flex: none; color: var(--ink); }
+/* The lockup's artboard has a margin; pull it back so the ink lines up with the page below. */
+.site-top .brand svg { display: block; margin-inline-start: -4px; }
+.site-top .heading {
+  margin: 0; padding-inline-start: 18px; border-inline-start: 1px solid var(--line);
+  font-size: 17px; font-weight: 600; letter-spacing: -.01em; color: var(--ink);
+}
+.site-top .other {
+  margin-inline-start: auto; font-size: 15px; color: var(--muted); text-decoration: none;
+  padding: 7px 12px; border-radius: 7px; border: 1px solid var(--line);
+}
+.site-top .other:hover { color: var(--ink); border-color: #5A6480; }
+
+@media (max-width: 560px) {
+  .site-top .bar { padding: 0 16px; gap: 12px; }
+  .site-top .heading { padding-inline-start: 12px; font-size: 15px; }
+}

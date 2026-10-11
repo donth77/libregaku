@@ -263,7 +263,8 @@ export const tr: Translation = {
   options: {
     pageTitle: 'Libregaku ayarları',
     help: 'Yardım',
-    tagline: 'Değişiklikler hemen uygulanır: burada ve izlerken transkript panelinde.',
+    searchSettings: 'Ara…',
+    noSettingsFound: 'Burada “{q}” geçmiyor.',
     contentsLabel: 'Ayar bölümleri',
     settingsLabel: 'Ayarlar',
     setupHeading: 'Başlayın',
@@ -286,9 +287,9 @@ export const tr: Translation = {
     settingsTip: 'Tüm ayarlar',
     checkingPage: 'Bu sayfa kontrol ediliyor…',
     notActive:
-      "Bu sayfada etkin değil. Bir YouTube veya Netflix videosu açın. Libregaku'yu yeni yüklediyseniz ya da " +
+      "Bu sayfada etkin değil. Bir YouTube, Netflix, Disney+, Prime Video veya Max videosu açın. Libregaku'yu yeni yüklediyseniz ya da " +
       'yeniden yüklediyseniz sekmeyi yeniden yükleyin.',
-    unsupported: "Libregaku, YouTube ve Netflix'te çalışır.",
+    unsupported: "Libregaku, YouTube, Netflix, Disney+, Prime Video ve Max'te çalışır.",
     waitingForSubtitles: (site: string): string =>
       `${site} üzerinde altyazılar bekleniyor. Altyazıların açık olduğundan emin olun.`,
     activeOn: (title: string): string => `Etkin — ${title}`,
@@ -618,6 +619,12 @@ export const tr: Translation = {
     youtubePlayerTrackList: 'Bu videonun altyazı listesi YouTube oynatıcısından okunamadı.',
     netflixTrackList: "Netflix'in altyazı listesi okunamadı.",
     netflixCaptionText: "Sayfada Netflix'in altyazı metni bulunamadı.",
+    disneyTrackList: "Disney+'ın altyazı listesi okunamadı.",
+    disneyCaptionText: "Sayfada Disney+'ın altyazı metni bulunamadı.",
+    primeTrackList: "Prime Video'nun altyazı listesi okunamadı.",
+    primeCaptionText: "Sayfada Prime Video'nun altyazı metni bulunamadı.",
+    maxTrackList: "Max'in altyazı listesi okunamadı.",
+    maxCaptionText: "Sayfada Max'in altyazı metni bulunamadı.",
     netflixBlocked: "Netflix, Libregaku'nun altyazıları okuyan kısmını engelledi.",
 
     // Bu videonun altyazıları

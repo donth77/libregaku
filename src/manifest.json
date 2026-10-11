@@ -23,6 +23,7 @@
     "https://*.netflix.com/*",
     "https://*.disneyplus.com/*",
     "https://*.primevideo.com/*",
+    "https://*.hbomax.com/*",
     "https://assets.languagepod101.com/*",
     "https://cdn.innovativelanguage.com/*",
     "https://jotoba.de/*",
@@ -81,10 +82,21 @@
     },
     {
       "matches": [
+        "https://play.hbomax.com/*"
+      ],
+      "js": [
+        "inject-max.js"
+      ],
+      "world": "MAIN",
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
         "https://www.youtube.com/*",
         "https://www.netflix.com/*",
         "https://www.disneyplus.com/*",
-        "https://www.primevideo.com/*"
+        "https://www.primevideo.com/*",
+        "https://play.hbomax.com/*"
       ],
       "js": [
         "content.js"

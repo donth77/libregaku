@@ -272,7 +272,8 @@ export const pl: Translation = {
   options: {
     pageTitle: 'Ustawienia Libregaku',
     help: 'Pomoc',
-    tagline: 'Zmiany działają od razu, tutaj i w panelu transkrypcji podczas oglądania.',
+    searchSettings: 'Szukaj…',
+    noSettingsFound: 'Brak wyników dla „{q}”.',
     contentsLabel: 'Sekcje ustawień',
     settingsLabel: 'Ustawienia',
     setupHeading: 'Pierwsze kroki',
@@ -295,9 +296,9 @@ export const pl: Translation = {
     settingsTip: 'Wszystkie ustawienia',
     checkingPage: 'Sprawdzanie strony…',
     notActive:
-      'Nieaktywne na tej stronie. Otwórz film na YouTube lub Netflixie. Jeśli Libregaku zostało właśnie zainstalowane ' +
+      'Nieaktywne na tej stronie. Otwórz film na YouTube, Netflix, Disney+, Prime Video lub Max. Jeśli Libregaku zostało właśnie zainstalowane ' +
       'lub przeładowane, odśwież stronę.',
-    unsupported: 'Libregaku działa na YouTube i Netflixie.',
+    unsupported: 'Libregaku działa na YouTube, Netflix, Disney+, Prime Video i Max.',
     waitingForSubtitles: (site: string): string =>
       `Oczekiwanie na napisy w serwisie ${site}. Upewnij się, że są włączone.`,
     activeOn: (title: string): string => `Aktywne — ${title}`,
@@ -639,6 +640,12 @@ export const pl: Translation = {
     youtubePlayerTrackList: 'Nie udało się odczytać listy napisów tego filmu z odtwarzacza YouTube.',
     netflixTrackList: 'Nie udało się odczytać listy napisów Netflixa.',
     netflixCaptionText: 'Nie znaleziono na stronie tekstu napisów Netflixa.',
+    disneyTrackList: 'Nie udało się odczytać listy napisów Disney+.',
+    disneyCaptionText: 'Nie znaleziono na stronie tekstu napisów Disney+.',
+    primeTrackList: 'Nie udało się odczytać listy napisów Prime Video.',
+    primeCaptionText: 'Nie znaleziono na stronie tekstu napisów Prime Video.',
+    maxTrackList: 'Nie udało się odczytać listy napisów Max.',
+    maxCaptionText: 'Nie znaleziono na stronie tekstu napisów Max.',
     netflixBlocked: 'Netflix zablokował część Libregaku, która odczytuje napisy.',
 
     // Napisy tego filmu

@@ -47,7 +47,7 @@ describe('the help', () => {
     const { main, toc } = page();
     const chapters = Array.from(main.querySelectorAll('.chapter-head h2')).map((h) => h.textContent);
     expect(chapters).toEqual(en.chapters.map((c) => c.title));
-    expect(chapters.at(-1)).toBe('Questions');
+    expect(chapters.at(-1)).toBe('FAQ');
     expect(Array.from(toc.querySelectorAll('a')).map((a) => a.getAttribute('href'))).toEqual(en.chapters.map((c) => `#${c.id}`));
     expect(main.querySelector('#add-card h3')?.textContent).toBe('Make a card#');
     // A question is folded until opened.
@@ -63,7 +63,7 @@ describe('the help', () => {
       expect.arrayContaining(['purple', 'underline']),
     );
     expect(Array.from(toc.querySelectorAll<HTMLElement>('a:not([hidden])')).map((a) => a.textContent)).toEqual([
-      'Marking words', 'Questions',
+      'Marking words', 'FAQ',
     ]);
     expect(none.hidden).toBe(true);
     // Its own keywords count too: "watchlist" is nowhere in the text.

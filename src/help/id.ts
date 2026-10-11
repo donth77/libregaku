@@ -182,12 +182,12 @@ export const id: HelpTranslation = {
       ],
     },
     {
-      id: 'netflix',
+      id: 'protected-sites',
       title: 'Netflix',
       about: 'Apa yang berubah karena perlindungannya.',
       topics: [
         {
-          id: 'netflix-audio',
+          id: 'protected-sites-audio',
           title: 'Audio kalimat di Netflix',
           body: [
             [

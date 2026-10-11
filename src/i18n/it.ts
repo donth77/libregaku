@@ -293,7 +293,8 @@ export const it: Translation = {
   options: {
     pageTitle: 'Impostazioni di Libregaku',
     help: 'Guida',
-    tagline: 'Le modifiche si applicano subito, qui e nel pannello della trascrizione mentre guardi.',
+    searchSettings: 'Cerca…',
+    noSettingsFound: 'Nessun risultato per “{q}”.',
     contentsLabel: 'Sezioni delle impostazioni',
     settingsLabel: 'Impostazioni',
     setupHeading: 'Per iniziare',
@@ -316,9 +317,9 @@ export const it: Translation = {
     settingsTip: 'Tutte le impostazioni',
     checkingPage: 'Verifica della pagina…',
     notActive:
-      'Non attivo in questa pagina. Apri un video di YouTube o Netflix. Se hai appena installato o ricaricato ' +
+      'Non attivo in questa pagina. Apri un video di YouTube, Netflix, Disney+, Prime Video o Max. Se hai appena installato o ricaricato ' +
       'Libregaku, ricarica la scheda.',
-    unsupported: 'Libregaku funziona su YouTube e Netflix.',
+    unsupported: 'Libregaku funziona su YouTube, Netflix, Disney+, Prime Video e Max.',
     waitingForSubtitles: (site: string): string =>
       `In attesa dei sottotitoli su ${site}. Assicurati che siano attivi.`,
     activeOn: (title: string): string => `Attivo: ${title}`,
@@ -660,6 +661,12 @@ export const it: Translation = {
     youtubePlayerTrackList: 'Impossibile leggere l’elenco dei sottotitoli di questo video dal player di YouTube.',
     netflixTrackList: 'Impossibile leggere l’elenco dei sottotitoli di Netflix.',
     netflixCaptionText: 'Testo dei sottotitoli di Netflix non trovato nella pagina.',
+    disneyTrackList: 'Impossibile leggere l’elenco dei sottotitoli di Disney+.',
+    disneyCaptionText: 'Testo dei sottotitoli di Disney+ non trovato nella pagina.',
+    primeTrackList: 'Impossibile leggere l’elenco dei sottotitoli di Prime Video.',
+    primeCaptionText: 'Testo dei sottotitoli di Prime Video non trovato nella pagina.',
+    maxTrackList: 'Impossibile leggere l’elenco dei sottotitoli di Max.',
+    maxCaptionText: 'Testo dei sottotitoli di Max non trovato nella pagina.',
     netflixBlocked: 'Netflix ha bloccato la parte di Libregaku che legge i sottotitoli.',
 
     // I sottotitoli di questo video

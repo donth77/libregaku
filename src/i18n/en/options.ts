@@ -11,8 +11,10 @@ export const options = {
   pageTitle: 'Libregaku settings',
   /** A link at the top, to the help page. */
   help: 'Help',
-  /** The line under the logo at the top. */
-  tagline: 'Changes apply straight away, here and in the transcript panel while you watch.',
+  /** The search box over the settings: its placeholder, which also names it for screen readers. */
+  searchSettings: 'Search settings…',
+  /** Under the box when nothing matches. `q` is what was typed, shown as it is. */
+  noSettingsFound: 'No setting mentions “{q}”.',
   /** The name, for screen readers, of the list of sections down the side. */
   contentsLabel: 'Settings sections',
   /** The name, for screen readers, of the settings themselves. */
