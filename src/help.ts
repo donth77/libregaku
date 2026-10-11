@@ -177,8 +177,8 @@ function fill(el: HTMLElement, topic: HelpTopic, words: readonly string[], help:
       el.appendChild(table);
     }
   }
-  // "Protected sites" names its sites on hover, and goes to their chapter.
-  markSites(el, document.documentElement.lang || 'en', () => { location.hash = '#protected-sites'; });
+  // "Protected sites" names its sites on hover, and goes to their chapter: not from inside it.
+  if (!topic.id.startsWith('protected-sites')) markSites(el, document.documentElement.lang || 'en', () => { location.hash = '#protected-sites'; });
 }
 
 interface Shown {
@@ -348,6 +348,8 @@ async function main(): Promise<void> {
   if (pop) popular(pop, help);
   renderHelp(out, document.querySelector<HTMLElement>('.toc'), input, none, help);
   if (!location.hash) input.focus();
+  // The page is built after it loads, so the browser found no anchor to go to.
+  else document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
 }
 
 if (document.getElementById('help')) void main();

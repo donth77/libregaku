@@ -18,9 +18,10 @@ export async function cardAudio(
     timer = window.setTimeout(() => resolve(null), PATIENCE_MS);
   });
   try {
-    const looking = findRecording(want.word, want.reading, want.lang, want.also ?? []).catch(() => null);
+    const looking = findRecording(want.word, want.reading, want.lang, want.also ?? [], true).catch(() => null);
     const rec = await Promise.race([looking, late]);
-    if (!rec) return null;
+    // A recording that is only to be heard never goes on a card, whatever found it.
+    if (!rec || rec.source === 'naver' || rec.source === 'spanishdict') return null;
     return {
       data: rec.data,
       filename: mediaFilename(want.word, want.reading, rec.type),

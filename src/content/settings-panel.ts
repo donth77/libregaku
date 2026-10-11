@@ -6,6 +6,7 @@ import { cardAudio } from '../audio/card-audio';
 import { flagChoices, type FlagChoice } from '../flags';
 import { fill, languageLabel, languageName, learningLabel, ownName, ui, uiLocale } from '../i18n';
 import { markSites, siteInfo, SITE_INFO_STYLE } from '../site-info';
+import { foldable } from './folds';
 import { copyText } from './share';
 import {
   DEFAULTS, DEFINITION_LANGUAGES, cardDeck, featuresOf, setSetting, settings, type Settings, TARGET_LANGUAGES, targetVariant,
@@ -52,6 +53,22 @@ export const PANEL_STYLE = `
     margin: 0; padding: 0; letter-spacing: -.01em;
     font: 700 17px/1.25 system-ui, -apple-system, sans-serif; color: #F2F5FC;
   }
+  /* A group folds shut under its heading, which stays with its line. */
+  .settings .grp-section[data-folded] .grp-rows { display: none; }
+  .settings .grp button.fold {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%;
+    margin: 0; padding: 0; border: 0; background: none; cursor: pointer;
+    color: inherit; font: inherit; letter-spacing: inherit; text-align: start;
+  }
+  .settings .grp button.fold::after {
+    content: ''; flex: none; width: 7px; height: 7px; margin-inline-end: 3px;
+    border-inline-end: 2px solid #8A94AF; border-bottom: 2px solid #8A94AF;
+    transform: translateY(-2px) rotate(45deg); transition: transform .15s;
+  }
+  .settings .grp-section[data-folded] .grp button.fold::after { transform: translateY(1px) rotate(-45deg); }
+  .settings .grp button.fold:hover::after { border-color: #F2F5FC; }
+  .settings .grp button.fold:focus-visible { outline: 2px solid #F2F5FC; outline-offset: 3px; border-radius: 4px; }
+  @media (prefers-reduced-motion: reduce) { .settings .grp button.fold::after { transition: none; } }
   .settings .grp-about { margin: 4px 0 0; font-size: 12.5px; line-height: 1.45; color: #A3ACC4; }
   /* The rows under a heading start without a line of their own: the band ends the heading. */
   .settings .grp-rows > .set:first-child { border-top: 0; }
@@ -871,6 +888,7 @@ export function buildSettings(onChange: Rerender, opts: SettingsPanelOptions = {
   check('cardMarks', t.cardMarks, t.cardMarksHint);
   check('cardTrack', t.cardTrack, t.cardTrackHint);
   check('cardDeckMenu', t.cardDeckMenu, t.cardDeckMenuHint);
+  check('cardHideAdd', t.cardHideAdd, t.cardHideAddHint);
   check('cardAddLine', t.cardAddLine, t.cardAddLineHint);
   needs(check('cardKanji', t.cardKanji, t.cardKanjiHint), 'characters');
   check('lookupElsewhere', t.lookupElsewhere, t.lookupElsewhereHint);
@@ -977,6 +995,8 @@ export function buildSettings(onChange: Rerender, opts: SettingsPanelOptions = {
   showFor(root, settings().target);
   // Every hint that says "protected sites" says which they are.
   markSites(root, uiLocale());
+  // Each group's heading folds it (folds.ts). Last, so every group is in place.
+  foldable(root, () => Boolean(root.closest('#settings')?.hasAttribute('data-searching')));
   return root;
 }
 
@@ -1443,6 +1463,8 @@ function credits(): HTMLElement {
   entry('Jotoba · Jisho', 'https://jotoba.de/', ui.settings.creditJotoba);
   entry('Lingua Libre · Wikimedia Commons', 'https://commons.wikimedia.org/wiki/Commons:Lingua_Libre', ui.settings.creditCommons);
   entry('audio-cmn · Shtooka', 'https://github.com/hugolpz/audio-cmn', ui.settings.creditAudioCmn);
+  entry('Naver Dictionary', 'https://korean.dict.naver.com/', ui.settings.creditNaver);
+  entry('SpanishDict', 'https://www.spanishdict.com/', ui.settings.creditSpanishdict);
   entry('Lucide', 'https://lucide.dev/', ui.settings.creditLucide);
 
   const fine = document.createElement('dd');

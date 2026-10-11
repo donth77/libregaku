@@ -184,21 +184,47 @@ export const id: HelpTranslation = {
       ],
     },
     {
+      id: 'supported-sites',
+      title: 'Situs yang didukung',
+      about: 'Situs tempat Libregaku bekerja dan apa yang berbeda di antaranya.',
+      topics: [
+        {
+          id: 'supported-sites-list',
+          title: 'Situs mana yang didukung?',
+          body: [
+            'Libregaku menampilkan subtitle interaktif di atas video pada situs-situs ini. Ia memakai subtitle yang disediakan situs itu sendiri, dalam bahasa yang kamu pelajari.',
+            {
+              head: ['Situs', 'Audio kalimat dan tangkapan layar'],
+              rows: [
+                ['YouTube', 'Diambil dari video.'],
+                ['Netflix', 'Direkam dari tab; tanpa tangkapan layar.'],
+                ['Disney+', 'Direkam dari tab; tanpa tangkapan layar.'],
+                ['Prime Video', 'Direkam dari tab; tanpa tangkapan layar.'],
+                ['Max', 'Direkam dari tab; tanpa tangkapan layar.'],
+              ],
+            },
+            'Bab situs terlindungi menjelaskan cara merekam suara dari tab. Video tanpa subtitle dalam bahasa yang kamu pelajari tidak punya apa-apa untuk ditampilkan, dan Libregaku memberi tahu hal itu.',
+          ],
+          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'situs', 'didukung', 'streaming'],
+        },
+      ],
+    },
+    {
       id: 'protected-sites',
-      title: 'Netflix',
-      about: 'Apa yang berubah karena perlindungannya.',
+      title: 'Situs terproteksi',
+      about: 'Situs yang mengenkripsi videonya: Netflix, Disney+, Prime Video dan Max. Apa yang berubah karenanya.',
       topics: [
         {
           id: 'protected-sites-audio',
-          title: 'Audio kalimat di Netflix',
+          title: 'Audio kalimat di situs terproteksi',
           body: [
             [
-              'Buka {Setelan → Kartu Anki → Audio kalimat di Netflix} lalu klik Izinkan.',
-              'Di tab Netflix, klik ikon Libregaku di toolbar, lalu klik Rekam audio kalimat di sini. Lakukan ini sekali per tab.',
+              'Buka {Setelan → Kartu Anki → Audio kalimat di situs terproteksi} lalu klik Izinkan.',
+              'Di tab tempat video diputar, klik ikon Libregaku di toolbar, lalu klik Rekam audio kalimat di sini. Lakukan ini sekali per tab.',
             ],
-            'Netflix mengenkripsi videonya, jadi Libregaku tidak bisa merekam suara dari video seperti di YouTube. Sebagai gantinya, Libregaku merekam tab, yang hanya diizinkan Chrome dengan cara ini. Karena alasan yang sama, kartu dari Netflix tidak punya screenshot.',
+            'Situs terproteksi mengenkripsi videonya, jadi Libregaku tidak bisa merekam suara dari video seperti di YouTube. Sebagai gantinya, Libregaku merekam tab, yang hanya diizinkan Chrome dengan cara ini. Karena alasan yang sama, kartu yang dibuat di sana tidak punya screenshot.',
           ],
-          keywords: ['suara', 'izin', 'enkripsi', 'drm', 'rekam tab', 'tab capture'],
+          keywords: ['netflix', 'disney', 'prime video', 'max', 'hbo', 'suara', 'izin', 'enkripsi', 'drm', 'rekam tab', 'tab capture'],
         },
       ],
     },
@@ -270,7 +296,7 @@ export const id: HelpTranslation = {
           id: 'q-picture',
           title: 'Apa screenshot di kartu itu?',
           body: [
-            'Cuplikan gambar adegan, di bagian belakang kartu, agar Anda tahu asal kata itu. Di YouTube, gambar diambil dari video; Netflix mengosongkan videonya untuk ekstensi, jadi kartu yang dibuat di sana tidak punya gambar. {Setelan → Kartu Anki → Screenshot} menonaktifkannya.',
+            'Cuplikan gambar adegan, di bagian belakang kartu, agar Anda tahu asal kata itu. Di YouTube, gambar diambil dari video; situs terproteksi mengosongkan videonya untuk ekstensi, jadi kartu yang dibuat di sana tidak punya gambar. {Setelan → Kartu Anki → Screenshot} menonaktifkannya.',
           ],
           keywords: ['gambar', 'foto', 'tangkapan layar', 'cuplikan', 'picture'],
         },

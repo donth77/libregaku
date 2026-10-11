@@ -184,21 +184,47 @@ export const vi: HelpTranslation = {
       ],
     },
     {
+      id: 'supported-sites',
+      title: 'Trang được hỗ trợ',
+      about: 'Các trang Libregaku hoạt động và điểm khác nhau giữa chúng.',
+      topics: [
+        {
+          id: 'supported-sites-list',
+          title: 'Hoạt động trên những trang nào?',
+          body: [
+            'Libregaku vẽ phụ đề tương tác lên video trên các trang này. Nó dùng phụ đề do chính trang cung cấp, bằng ngôn ngữ bạn đang học.',
+            {
+              head: ['Trang', 'Âm thanh câu và ảnh chụp màn hình'],
+              rows: [
+                ['YouTube', 'Lấy từ video.'],
+                ['Netflix', 'Ghi từ tab; không có ảnh chụp màn hình.'],
+                ['Disney+', 'Ghi từ tab; không có ảnh chụp màn hình.'],
+                ['Prime Video', 'Ghi từ tab; không có ảnh chụp màn hình.'],
+                ['Max', 'Ghi từ tab; không có ảnh chụp màn hình.'],
+              ],
+            },
+            'Chương về các trang được bảo vệ giải thích cách ghi âm thanh từ tab. Video không có phụ đề bằng ngôn ngữ bạn đang học thì không có gì để hiển thị, và Libregaku sẽ báo như vậy.',
+          ],
+          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'trang', 'được hỗ trợ', 'streaming'],
+        },
+      ],
+    },
+    {
       id: 'protected-sites',
-      title: 'Netflix',
-      about: 'Những gì thay đổi do Netflix bảo vệ video.',
+      title: 'Trang web được bảo vệ',
+      about: 'Các trang web mã hóa video: Netflix, Disney+, Prime Video và Max. Những gì thay đổi do việc đó.',
       topics: [
         {
           id: 'protected-sites-audio',
-          title: 'Âm thanh của câu trên Netflix',
+          title: 'Âm thanh của câu trên các trang web được bảo vệ',
           body: [
             [
-              'Mở {Cài đặt → Thẻ Anki → Âm thanh của câu trên Netflix} và nhấn “Cho phép”.',
-              'Trên tab Netflix, nhấp vào biểu tượng Libregaku trên thanh công cụ rồi nhấn “Ghi âm câu tại đây”. Làm việc này một lần cho mỗi tab.',
+              'Mở {Cài đặt → Thẻ Anki → Âm thanh của câu trên các trang web được bảo vệ} và nhấn “Cho phép”.',
+              'Trên tab đang phát video, nhấp vào biểu tượng Libregaku trên thanh công cụ rồi nhấn “Ghi âm câu tại đây”. Làm việc này một lần cho mỗi tab.',
             ],
-            'Netflix mã hóa video, nên Libregaku không thể ghi âm thanh từ video như trên YouTube. Thay vào đó, Libregaku ghi âm cả tab, và Chrome chỉ cho phép việc này theo cách đó. Cũng vì lý do này, thẻ từ Netflix không có ảnh chụp màn hình.',
+            'Các trang web được bảo vệ đều mã hóa video, nên Libregaku không thể ghi âm thanh từ video như trên YouTube. Thay vào đó, Libregaku ghi âm cả tab, và Chrome chỉ cho phép việc này theo cách đó. Cũng vì lý do này, thẻ tạo trên các trang này không có ảnh chụp màn hình.',
           ],
-          keywords: ['netflix', 'âm thanh', 'ghi âm', 'quyền', 'cho phép', 'mã hóa', 'drm', 'tab capture'],
+          keywords: ['netflix', 'disney', 'prime video', 'max', 'hbo', 'âm thanh', 'ghi âm', 'quyền', 'cho phép', 'mã hóa', 'drm', 'tab capture'],
         },
       ],
     },
@@ -270,7 +296,7 @@ export const vi: HelpTranslation = {
           id: 'q-picture',
           title: 'Ảnh chụp màn hình trên thẻ là gì?',
           body: [
-            'Một ảnh tĩnh của cảnh đó, ở mặt sau của thẻ, để bạn thấy từ đó xuất hiện ở đâu. Trên YouTube, ảnh được chụp từ video; Netflix che video của họ với các tiện ích, nên thẻ tạo ở đó không có ảnh. {Cài đặt → Thẻ Anki → Ảnh chụp màn hình} sẽ tắt tính năng này.',
+            'Một ảnh tĩnh của cảnh đó, ở mặt sau của thẻ, để bạn thấy từ đó xuất hiện ở đâu. Trên YouTube, ảnh được chụp từ video; các trang web được bảo vệ che video của họ với các tiện ích, nên thẻ tạo ở đó không có ảnh. {Cài đặt → Thẻ Anki → Ảnh chụp màn hình} sẽ tắt tính năng này.',
           ],
           keywords: ['ảnh', 'hình ảnh', 'chụp màn hình', 'ảnh tĩnh', 'screenshot'],
         },

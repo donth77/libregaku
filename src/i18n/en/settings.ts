@@ -86,6 +86,9 @@ export const settings = {
   cardDeckMenu: 'Deck menu',
   /** ▾ is the menu's arrow, shown as it is. Add to Anki is the popup's button, named as the popup names it. */
   cardDeckMenuHint: 'Adds a ▾ next to Add to Anki for choosing another deck. New cards then go there.',
+  /** Leaves the popup's Add to Anki button off, with the deck menu beside it. Add to Anki is the button's name. */
+  cardHideAdd: 'Hide Add to Anki',
+  cardHideAddHint: 'Leaves the Add to Anki button, and the deck menu beside it, off the card.',
   /** A button on the popup that makes one card of the whole subtitle line. */
   cardAddLine: 'Sentence cards',
   cardAddLineHint: 'Adds a button that makes a card from the whole sentence, with its audio and a screenshot.',
@@ -134,7 +137,7 @@ export const settings = {
   subtitleBottomHighest: 'Highest',
   subtitleBottomHint: 'How high subtitles sit. Another subtitle extension on the same player stays below them.',
   /** A second line under each subtitle, in your own language. */
-  dualSubtitles: 'Show translation',
+  dualSubtitles: 'Show translation subtitles',
   dualSubtitlesHint:
     "Shows subtitles in your language under the ones you're learning. They come from the site, " +
     'not machine translation, and need a full transcript of the video.',
@@ -365,6 +368,14 @@ export const settings = {
     'CC BY-SA 4.0 for most, named with its speaker where it plays and on the card.',
   /** Under audio-cmn · Shtooka. Yue Tan is the speaker's name; Caen is a city in France. */
   creditAudioCmn: 'Recordings of Chinese words by Yue Tan, University of Caen. CC BY-SA 3.0 US.',
+  /** Under Naver Dictionary: Korean recordings, heard on the lookup card only. */
+  creditNaver:
+    'Recordings of Korean words from Naver Dictionary, played on the lookup card only. ' +
+    'They are not licensed for reuse, so they are never put on a card.',
+  /** Under SpanishDict: a generated voice for Spanish words, heard on the Pronounce button only. */
+  creditSpanishdict:
+    'A generated voice for Spanish words from SpanishDict, played by the Pronounce button when there is no recording. ' +
+    'It is not licensed for reuse, so it is never put on a card.',
   /** Under Lucide. */
   creditLucide: 'Icons. ISC licence.',
   licence: 'Libregaku is MIT-licensed. Dictionary data is downloaded from its sources, not bundled.',

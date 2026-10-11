@@ -13,7 +13,8 @@
   "permissions": [
     "offscreen",
     "storage",
-    "scripting"
+    "scripting",
+    "declarativeNetRequestWithHostAccess"
   ],
   "optional_permissions": [
     "tabCapture"
@@ -28,6 +29,9 @@
     "https://cdn.innovativelanguage.com/*",
     "https://commons.wikimedia.org/*",
     "https://upload.wikimedia.org/*",
+    "https://korean.dict.naver.com/api3/koko/search*",
+    "https://dict-dn.pstatic.net/naver/dic/naverdic/krdic/sound/*",
+    "https://audio1.spanishdict.com/audio*",
     "https://jotoba.de/*",
     "https://jisho.org/*",
     "https://*.nflxvideo.net/*",

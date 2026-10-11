@@ -184,21 +184,47 @@ export const zhHant: HelpTranslation = {
       ],
     },
     {
+      id: 'supported-sites',
+      title: '支援的網站',
+      about: 'Libregaku 可用的網站，以及它們之間的差異。',
+      topics: [
+        {
+          id: 'supported-sites-list',
+          title: '哪些網站可以用？',
+          body: [
+            'Libregaku 在這些網站上把可點選的字幕畫在影片上。它使用網站本身提供的字幕，語言是你正在學的語言。',
+            {
+              head: ['網站', '句子音訊和螢幕截圖'],
+              rows: [
+                ['YouTube', '取自影片。'],
+                ['Netflix', '從分頁錄製；沒有螢幕截圖。'],
+                ['Disney+', '從分頁錄製；沒有螢幕截圖。'],
+                ['Prime Video', '從分頁錄製；沒有螢幕截圖。'],
+                ['Max', '從分頁錄製；沒有螢幕截圖。'],
+              ],
+            },
+            '從分頁錄音的方法見「受保護的網站」一章。沒有你所學語言字幕的影片沒有內容可顯示，Libregaku 會如此告知。',
+          ],
+          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', '網站', '支援', '串流'],
+        },
+      ],
+    },
+    {
       id: 'protected-sites',
-      title: 'Netflix',
-      about: '它的防護機制帶來的改變。',
+      title: '受保護的網站',
+      about: '會加密影片的網站：Netflix、Disney+、Prime Video 和 Max。加密帶來的改變。',
       topics: [
         {
           id: 'protected-sites-audio',
-          title: 'Netflix 上的句子音訊',
+          title: '受保護的網站上的句子音訊',
           body: [
             [
-              '開啟{設定 → Anki 卡片 → Netflix 句子音訊}，按下「允許」。',
-              '在 Netflix 分頁中，點選工具列上的 Libregaku 圖示，然後按「在此錄製句子音訊」。每個分頁做一次即可。',
+              '開啟{設定 → Anki 卡片 → 受保護的網站上的句子音訊}，按下「允許」。',
+              '在播放影片的分頁中，點選工具列上的 Libregaku 圖示，然後按「在此錄製句子音訊」。每個分頁做一次即可。',
             ],
-            'Netflix 會加密影片，所以 Libregaku 無法像在 YouTube 上一樣從影片錄音，而是改為錄製分頁的聲音，而 Chrome 只允許用這種方式錄製。也因為同樣的原因，Netflix 的卡片沒有螢幕截圖。',
+            '受保護的網站會加密影片，所以 Libregaku 無法像在 YouTube 上一樣從影片錄音，而是改為錄製分頁的聲音，而 Chrome 只允許用這種方式錄製。也因為同樣的原因，在這些網站製作的卡片沒有螢幕截圖。',
           ],
-          keywords: ['權限', '授權', '分頁擷取', 'DRM', 'permission', 'tab capture'],
+          keywords: ['netflix', 'disney', 'prime video', 'max', 'hbo', '權限', '授權', '分頁擷取', 'DRM', 'permission', 'tab capture'],
         },
       ],
     },
@@ -270,7 +296,7 @@ export const zhHant: HelpTranslation = {
           id: 'q-picture',
           title: '卡片上的螢幕截圖是什麼？',
           body: [
-            '卡片背面的一張場景靜態畫面，讓你知道單字出自哪裡。在 YouTube 上是從影片擷取；Netflix 會對擴充功能遮蔽影片畫面，所以在 Netflix 製作的卡片沒有螢幕截圖。{設定 → Anki 卡片 → 螢幕截圖}可以關閉這項功能。',
+            '卡片背面的一張場景靜態畫面，讓你知道單字出自哪裡。在 YouTube 上是從影片擷取；受保護的網站會對擴充功能遮蔽影片畫面，所以在這些網站製作的卡片沒有螢幕截圖。{設定 → Anki 卡片 → 螢幕截圖}可以關閉這項功能。',
           ],
           keywords: ['圖片', '影像', '照片', 'image', 'picture', 'screenshot'],
         },

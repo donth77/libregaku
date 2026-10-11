@@ -696,6 +696,12 @@ describe('a card made while Anki is closed', () => {
 });
 
 describe('a card with the line on it', () => {
+  // Off until someone turns it on: recording replays the line.
+  beforeEach(async () => {
+    const { setSetting } = await import('../../settings');
+    await setSetting('cardSentenceAudio', true);
+  });
+
   /** A player that plays: seeking lands at once, and playing moves the clock on. */
   async function player(texts: Array<[number, number, string]>, at: number) {
     const { clock, play } = await lines(texts);

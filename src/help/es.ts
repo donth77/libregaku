@@ -184,21 +184,47 @@ export const es: HelpTranslation = {
       ],
     },
     {
+      id: 'supported-sites',
+      title: 'Sitios compatibles',
+      about: 'Los sitios en los que funciona Libregaku y en qué se diferencian.',
+      topics: [
+        {
+          id: 'supported-sites-list',
+          title: '¿En qué sitios funciona?',
+          body: [
+            'Libregaku dibuja subtítulos interactivos sobre el video en estos sitios. Usa los subtítulos que ofrece el propio sitio, en el idioma que estás aprendiendo.',
+            {
+              head: ['Sitio', 'Audio de la oración y captura de pantalla'],
+              rows: [
+                ['YouTube', 'Se toman del video.'],
+                ['Netflix', 'Se graba desde la pestaña; sin captura de pantalla.'],
+                ['Disney+', 'Se graba desde la pestaña; sin captura de pantalla.'],
+                ['Prime Video', 'Se graba desde la pestaña; sin captura de pantalla.'],
+                ['Max', 'Se graba desde la pestaña; sin captura de pantalla.'],
+              ],
+            },
+            'El capítulo de sitios protegidos explica cómo se graba el sonido desde la pestaña. Un video sin subtítulos en el idioma que aprendes no tiene nada que mostrar, y Libregaku lo dice.',
+          ],
+          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'sitios', 'webs', 'compatibles', 'streaming'],
+        },
+      ],
+    },
+    {
       id: 'protected-sites',
-      title: 'Netflix',
-      about: 'Qué cambia por su protección.',
+      title: 'Sitios protegidos',
+      about: 'Los sitios que cifran su video: Netflix, Disney+, Prime Video y Max. Qué cambia por esa protección.',
       topics: [
         {
           id: 'protected-sites-audio',
-          title: 'Audio de la oración en Netflix',
+          title: 'Audio de la oración en sitios protegidos',
           body: [
             [
-              'Abre {Configuración → Tarjetas de Anki → Audio de la oración en Netflix} y pulsa Permitir.',
-              'En la pestaña de Netflix, haz clic en el icono de Libregaku de la barra de herramientas y pulsa Grabar audio de la oración aquí. Hazlo una vez por pestaña.',
+              'Abre {Configuración → Tarjetas de Anki → Audio de la oración en sitios protegidos} y pulsa Permitir.',
+              'En la pestaña donde se reproduce el video, haz clic en el icono de Libregaku de la barra de herramientas y pulsa Grabar audio de la oración aquí. Hazlo una vez por pestaña.',
             ],
-            'Netflix cifra su video, así que Libregaku no puede grabar el sonido del video como en YouTube. En su lugar graba la pestaña, algo que Chrome solo permite de esta forma. Por el mismo motivo, las tarjetas de Netflix no tienen captura de pantalla.',
+            'Los sitios protegidos cifran su video, así que Libregaku no puede grabar el sonido del video como en YouTube. En su lugar graba la pestaña, algo que Chrome solo permite de esta forma. Por el mismo motivo, las tarjetas creadas ahí no tienen captura de pantalla.',
           ],
-          keywords: ['permiso', 'permisos', 'cifrado', 'drm', 'captura de pestaña', 'tab capture'],
+          keywords: ['netflix', 'disney', 'prime video', 'max', 'hbo', 'permiso', 'permisos', 'cifrado', 'drm', 'captura de pestaña', 'tab capture'],
         },
       ],
     },
@@ -270,7 +296,7 @@ export const es: HelpTranslation = {
           id: 'q-picture',
           title: '¿Qué es la captura de pantalla de una tarjeta?',
           body: [
-            'Un fotograma de la escena, en el reverso de la tarjeta, para que veas de dónde viene la palabra. En YouTube se toma del video; Netflix oculta su video a las extensiones, así que las tarjetas creadas ahí no tienen. {Configuración → Tarjetas de Anki → Captura de pantalla} la desactiva.',
+            'Un fotograma de la escena, en el reverso de la tarjeta, para que veas de dónde viene la palabra. En YouTube se toma del video; los sitios protegidos ocultan su video a las extensiones, así que las tarjetas creadas ahí no tienen. {Configuración → Tarjetas de Anki → Captura de pantalla} la desactiva.',
           ],
           keywords: ['imagen', 'foto', 'pantallazo', 'screenshot'],
         },

@@ -382,6 +382,8 @@ interface Context {
   onAddLine?: () => Promise<string | Added>;
   /** Open Anki's own browser on the word's cards: what the Add button does once there is one. */
   onShowInAnki?: () => void;
+  /** Leave the Add button, and the deck menu beside it, off the card. */
+  noAdd?: boolean;
   /** The deck new cards go to, shown under the Add button. */
   deck?: string;
   /** Anki's decks, for picking another, once Anki answers. */
@@ -906,11 +908,11 @@ export function showPopup(
     }
     addNow();
   });
-  foot.appendChild(add);
+  if (!ctx.noAdd) foot.appendChild(add);
 
   // The deck menu, when it is on: "Add to <deck>" for each of Anki's decks.
   // Picking one adds the card there, and new cards go there from then on.
-  const onDeck = ctx.onDeck;
+  const onDeck = ctx.noAdd ? undefined : ctx.onDeck;
   if (onDeck) {
     // A button that shows a list of buttons: a disclosure, not a menu, which
     // would promise arrow keys and a screen reader's menu mode.

@@ -103,6 +103,8 @@ export const it: Translation = {
     cardDeckMenu: 'Menu dei mazzi',
     cardDeckMenuHint:
       'Aggiunge un ▾ accanto al pulsante Aggiungi ad Anki per scegliere un altro mazzo. Le nuove carte poi andranno lì.',
+    cardHideAdd: 'Nascondi Aggiungi ad Anki',
+    cardHideAddHint: 'Toglie dalla scheda il pulsante Aggiungi ad Anki e il menu dei mazzi accanto.',
     cardAddLine: 'Carte di frasi',
     cardAddLineHint: 'Aggiunge un pulsante che crea una carta dall’intera frase, con il suo audio e uno screenshot.',
     cardKanji: 'Dettaglio dei kanji',
@@ -262,17 +264,17 @@ export const it: Translation = {
     cardAudio: 'Audio della parola',
     cardAudioHint: 'Una registrazione della parola, se esiste. Mai una voce sintetica.',
     cardSentenceAudio: 'Audio della frase',
-    cardSentenceAudioHint: 'Registra la frase riproducendola un’altra volta. Su Netflix serve l’autorizzazione qui sotto.',
+    cardSentenceAudioHint: 'Registra la frase riproducendola un’altra volta. Sui siti protetti serve l’autorizzazione qui sotto.',
     cardScreenshot: 'Screenshot',
-    cardScreenshotHint: 'Un fotogramma della scena. Non disponibile su Netflix, che lo blocca.',
-    capture: 'Audio della frase su Netflix',
+    cardScreenshotHint: 'Un fotogramma della scena. Non disponibile sui siti protetti, che lo bloccano.',
+    capture: 'Audio della frase sui siti protetti',
     captureAllow: 'Consenti',
     captureAllowInSettings: 'Consenti nelle impostazioni',
     captureRemove: 'Rimuovi',
     captureAllowed:
-      'Consentito. In ogni scheda di Netflix, clicca sull’icona di Libregaku e scegli Registra qui l’audio della frase.',
+      'Consentito. In ogni scheda di un sito protetto, clicca sull’icona di Libregaku e scegli Registra qui l’audio della frase.',
     captureNeeded:
-      'Netflix protegge i suoi video, quindi l’audio della frase viene registrato dalla scheda. Per farlo serve la tua autorizzazione.',
+      'I siti protetti criptano i loro video, quindi l’audio della frase viene registrato dalla scheda. Per farlo serve la tua autorizzazione.',
 
     // Dati e licenze
     creditsHeading: 'Dati e licenze',
@@ -298,6 +300,8 @@ export const it: Translation = {
     creditLucide: 'Icone. Licenza ISC.',
     creditCommons: 'Registrazioni di parole spagnole, cinesi e coreane, pronunciate da volontari. Ognuna ha la propria licenza, CC BY-SA 4.0 per la maggior parte, indicata con il nome di chi parla durante la riproduzione e sulla carta.',
     creditAudioCmn: 'Registrazioni di parole cinesi di Yue Tan, Università di Caen. CC BY-SA 3.0 US.',
+    creditNaver: 'Registrazioni di parole coreane del dizionario Naver, riprodotte solo nella scheda di consultazione. Non sono concesse in licenza per il riuso, quindi non vanno mai su una carta.',
+    creditSpanishdict: 'Voce generata per le parole spagnole di SpanishDict, riprodotta dal pulsante di pronuncia quando non c’è una registrazione. Non è concessa in licenza per il riuso, quindi non va mai su una carta.',
     licence: 'Libregaku ha licenza MIT. I dati dei dizionari vengono scaricati dalle loro fonti, non sono inclusi.',
     built: (when: string): string => `Questa copia è stata compilata il ${when}.`,
 
@@ -358,7 +362,7 @@ export const it: Translation = {
     generatedTrack: (track: string): string => `${track} (automatici)`,
     captureNeedsPermission: 'Per registrare qui l’audio della frase serve il permesso di acquisire l’audio di questa scheda.',
     captureAllowInSettings: 'Consenti nelle impostazioni',
-    captureReady: 'L’audio di Netflix si può registrare solo dopo averlo attivato per questa scheda.',
+    captureReady: 'L’audio dei siti protetti si può registrare solo dopo averlo attivato per questa scheda.',
     captureStart: 'Registra qui l’audio della frase',
     captureFailed: 'Chrome non è riuscito a registrare questa scheda.',
     toggleSidebar: 'Mostra/nascondi barra laterale',

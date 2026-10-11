@@ -90,6 +90,8 @@ export const de: Translation = {
     cardDeckMenu: 'Stapelmenü',
     cardDeckMenuHint:
       'Fügt neben „Zu Anki hinzufügen“ ein ▾ hinzu, mit dem du einen anderen Stapel wählst. Neue Karten kommen dann dorthin.',
+    cardHideAdd: 'Zu Anki hinzufügen ausblenden',
+    cardHideAddHint: 'Lässt die Schaltfläche „Zu Anki hinzufügen“ und das Stapelmenü daneben von der Karte weg.',
     cardAddLine: 'Satzkarten',
     cardAddLineHint: 'Fügt eine Schaltfläche hinzu, die aus dem ganzen Satz eine Karte macht – mit Audio und Screenshot.',
     cardKanji: 'Kanji-Details',
@@ -247,17 +249,17 @@ export const de: Translation = {
     cardAudioHint: 'Eine Aufnahme des Wortes, falls es eine gibt. Nie eine synthetische Stimme.',
     cardSentenceAudio: 'Satz-Audio',
     cardSentenceAudioHint:
-      'Nimmt den Satz auf, indem er noch einmal abgespielt wird. Auf Netflix ist dafür die Berechtigung unten nötig.',
+      'Nimmt den Satz auf, indem er noch einmal abgespielt wird. Auf geschützten Websites ist dafür die Berechtigung unten nötig.',
     cardScreenshot: 'Screenshot',
-    cardScreenshotHint: 'Ein Standbild der Szene. Nicht auf Netflix, weil Netflix es blockiert.',
-    capture: 'Satz-Audio auf Netflix',
+    cardScreenshotHint: 'Ein Standbild der Szene. Nicht auf geschützten Websites, weil sie es blockieren.',
+    capture: 'Satz-Audio auf geschützten Websites',
     captureAllow: 'Zulassen',
     captureAllowInSettings: 'In den Einstellungen zulassen',
     captureRemove: 'Entfernen',
     captureAllowed:
-      'Zugelassen. Klicke in jedem Netflix-Tab auf das Libregaku-Symbol und wähle „Satz-Audio hier aufnehmen“.',
+      'Zugelassen. Klicke in jedem Tab einer geschützten Website auf das Libregaku-Symbol und wähle „Satz-Audio hier aufnehmen“.',
     captureNeeded:
-      'Netflix schützt sein Video, deshalb wird Satz-Audio aus dem Tab aufgenommen. Dafür ist deine Berechtigung nötig.',
+      'Geschützte Websites verschlüsseln ihr Video, deshalb wird Satz-Audio aus dem Tab aufgenommen. Dafür ist deine Berechtigung nötig.',
 
     // Daten und Lizenzen
     creditsHeading: 'Daten und Lizenzen',
@@ -284,6 +286,8 @@ export const de: Translation = {
     creditLucide: 'Symbole. ISC-Lizenz.',
     creditCommons: 'Aufnahmen spanischer, chinesischer und koreanischer Wörter, gesprochen von Freiwilligen. Jede hat ihre eigene Lizenz, meist CC BY-SA 4.0; sie steht mit dem Namen der Sprecherin oder des Sprechers bei der Wiedergabe und auf der Karte.',
     creditAudioCmn: 'Aufnahmen chinesischer Wörter von Yue Tan, Universität Caen. CC BY-SA 3.0 US.',
+    creditNaver: 'Aufnahmen koreanischer Wörter aus Naver Dictionary, nur auf der Nachschlagekarte zu hören. Sie sind nicht zur Weiterverwendung lizenziert und kommen nie auf eine Karte.',
+    creditSpanishdict: 'Erzeugte Stimme für spanische Wörter von SpanishDict, über die Aussprache-Taste zu hören, wenn es keine Aufnahme gibt. Nicht zur Weiterverwendung lizenziert, daher nie auf einer Karte.',
     licence: 'Libregaku steht unter der MIT-Lizenz. Wörterbuchdaten werden von ihren Quellen geladen, nicht mitgeliefert.',
     built: (when: string): string => `Diese Kopie wurde am ${when} erstellt.`,
 
@@ -344,7 +348,7 @@ export const de: Translation = {
     generatedTrack: (track: string): string => `${track} (automatisch)`,
     captureNeedsPermission: 'Um hier Satz-Audio aufzunehmen, ist die Berechtigung nötig, den Ton dieses Tabs aufzuzeichnen.',
     captureAllowInSettings: 'In den Einstellungen zulassen',
-    captureReady: 'Den Ton von Netflix kannst du erst aufnehmen, wenn du es für diesen Tab einschaltest.',
+    captureReady: 'Den Ton von geschützten Websites kannst du erst aufnehmen, wenn du es für diesen Tab einschaltest.',
     captureStart: 'Satz-Audio hier aufnehmen',
     captureFailed: 'Chrome konnte diesen Tab nicht aufnehmen.',
     toggleSidebar: 'Seitenleiste ein-/ausblenden',

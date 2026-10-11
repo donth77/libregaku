@@ -184,21 +184,47 @@ export const pt: HelpTranslation = {
       ],
     },
     {
+      id: 'supported-sites',
+      title: 'Sites compatíveis',
+      about: 'Os sites em que o Libregaku funciona e o que muda entre eles.',
+      topics: [
+        {
+          id: 'supported-sites-list',
+          title: 'Em que sites funciona?',
+          body: [
+            'O Libregaku desenha legendas interativas sobre o vídeo nesses sites. Usa as legendas que o próprio site oferece, no idioma que você está aprendendo.',
+            {
+              head: ['Site', 'Áudio da frase e captura de tela'],
+              rows: [
+                ['YouTube', 'Tirados do vídeo.'],
+                ['Netflix', 'Gravado da aba; sem captura de tela.'],
+                ['Disney+', 'Gravado da aba; sem captura de tela.'],
+                ['Prime Video', 'Gravado da aba; sem captura de tela.'],
+                ['Max', 'Gravado da aba; sem captura de tela.'],
+              ],
+            },
+            'O capítulo sobre sites protegidos explica como o som é gravado da aba. Um vídeo sem legendas no idioma que você está aprendendo não tem nada para mostrar, e o Libregaku avisa.',
+          ],
+          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'sites', 'compatíveis', 'streaming'],
+        },
+      ],
+    },
+    {
       id: 'protected-sites',
-      title: 'Netflix',
-      about: 'O que a proteção dela muda.',
+      title: 'Sites protegidos',
+      about: 'Os sites que criptografam o vídeo: Netflix, Disney+, Prime Video e Max. O que essa proteção muda.',
       topics: [
         {
           id: 'protected-sites-audio',
-          title: 'Áudio da frase na Netflix',
+          title: 'Áudio da frase em sites protegidos',
           body: [
             [
-              'Abra {Configurações → Cartões do Anki → Áudio da frase na Netflix} e clique em Permitir.',
-              'Na guia da Netflix, clique no ícone do Libregaku na barra de ferramentas e depois em Gravar áudio da frase aqui. Faça isso uma vez por guia.',
+              'Abra {Configurações → Cartões do Anki → Áudio da frase em sites protegidos} e clique em Permitir.',
+              'Na guia em que o vídeo está tocando, clique no ícone do Libregaku na barra de ferramentas e depois em Gravar áudio da frase aqui. Faça isso uma vez por guia.',
             ],
-            'A Netflix criptografa o vídeo, então o Libregaku não consegue gravar o som do vídeo como faz no YouTube. Em vez disso, ele grava a guia, o que o Chrome só permite desse jeito. Pelo mesmo motivo, os cartões da Netflix não têm captura de tela.',
+            'Os sites protegidos criptografam o vídeo, então o Libregaku não consegue gravar o som do vídeo como faz no YouTube. Em vez disso, ele grava a guia, o que o Chrome só permite desse jeito. Pelo mesmo motivo, os cartões criados lá não têm captura de tela.',
           ],
-          keywords: ['som', 'permissão', 'criptografia', 'drm', 'captura de guia', 'aba', 'tab capture'],
+          keywords: ['netflix', 'disney', 'prime video', 'max', 'hbo', 'som', 'permissão', 'criptografia', 'drm', 'captura de guia', 'aba', 'tab capture'],
         },
       ],
     },
@@ -270,7 +296,7 @@ export const pt: HelpTranslation = {
           id: 'q-picture',
           title: 'O que é a captura de tela no cartão?',
           body: [
-            'Uma imagem da cena, no verso do cartão, para você ver de onde a palavra veio. No YouTube, ela é tirada do vídeo; a Netflix esconde o vídeo das extensões, então os cartões criados lá não têm. {Configurações → Cartões do Anki → Captura de tela} desativa isso.',
+            'Uma imagem da cena, no verso do cartão, para você ver de onde a palavra veio. No YouTube, ela é tirada do vídeo; os sites protegidos escondem o vídeo das extensões, então os cartões criados lá não têm. {Configurações → Cartões do Anki → Captura de tela} desativa isso.',
           ],
           keywords: ['imagem', 'foto', 'print', 'screenshot', 'quadro'],
         },

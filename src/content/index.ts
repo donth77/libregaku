@@ -89,7 +89,7 @@ function noTargetDetail(adapter: SubtitleSource, tracks: TrackInfo[]): string {
  * choosing it — which reads as a video whose subtitles barely exist.
  */
 function wantedTracks(tracks: TrackInfo[]): { track: TrackInfo | undefined; second: TrackInfo | undefined } {
-  // The language's own tracks, and Hong Kong's for Cantonese, never Cantonese for Mandarin (trackLanguageMatch).
+  // The language's own tracks, and any written Chinese for Cantonese, never Cantonese for Mandarin (trackLanguageMatch).
   const inTarget = tracks.filter((t) => trackLanguageMatch(t.lang, targetLang()) > 0 && !t.forced);
   // An explicit pick from the toolbar wins over the automatic one: a person's
   // subtitles, in the script being learned (chooseTrack).
@@ -1594,6 +1594,7 @@ async function openLookup(mount: HTMLElement, el: HTMLElement, token: Token, byH
       onAddCard: (draft) => addCard(draft, token, line),
       onAddLine: settings().cardAddLine && sentence.trim() ? () => addLineCard(sentence, line) : undefined,
       onShowInAnki: () => showInAnki(token),
+      noAdd: settings().cardHideAdd,
       deck: cardDeck(settings()),
       decks: settings().cardDeckMenu ? deckList() : undefined,
       onDeck: settings().cardDeckMenu ? chooseDeck : undefined,
@@ -1724,6 +1725,7 @@ function mountSidebar(mount: HTMLElement, video: HTMLVideoElement, adapter: Subt
         onAddCard: (draft) => addCard(draft, token, line),
         onAddLine: settings().cardAddLine && sentence.trim() ? () => addLineCard(sentence, line) : undefined,
         onShowInAnki: () => showInAnki(token),
+        noAdd: settings().cardHideAdd,
         deck: cardDeck(settings()),
         decks: settings().cardDeckMenu ? deckList() : undefined,
         onDeck: settings().cardDeckMenu ? chooseDeck : undefined,

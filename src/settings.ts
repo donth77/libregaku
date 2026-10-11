@@ -238,17 +238,22 @@ function browserTag(): string {
 
 /**
  * How well a subtitle track's language answers for `want`: 2 for the language
- * itself, 1 for the same language in another script, 0 for none. A site
- * labels Chinese tracks by script (zh-Hans, zh-Hant) or by place (zh-CN,
- * zh-TW, zh-HK), and zh, as a language of your own, is Simplified.
+ * itself, 1 for the same language in another script, 0 for none; more is
+ * nearer. A site labels Chinese tracks by script (zh-Hans, zh-Hant) or by
+ * place (zh-CN, zh-TW, zh-HK), and zh, as a language of your own, is Simplified.
  */
-export function trackLanguageMatch(track: string, want: string): 0 | 1 | 2 {
+export function trackLanguageMatch(track: string, want: string): number {
   // Cantonese, written down, is not Mandarin, whatever its tag starts with.
   const cantonese = (tag: string): boolean => /^(yue|zh-yue)\b/i.test(tag);
   if (cantonese(want)) {
     if (cantonese(track)) return 2;
-    // Hong Kong's subtitles, in its written Chinese: the nearest to spoken Cantonese most videos have.
-    return /^zh-(hant-)?hk\b/i.test(track) ? 1 : 0;
+    // Few videos carry written Cantonese. What Cantonese speech is subtitled
+    // in is written Chinese, and it is read aloud in Cantonese all the same:
+    // Hong Kong's first, then Traditional, then any.
+    const t = track.toLowerCase();
+    if (!/^zh\b/.test(t)) return 0;
+    if (/^zh-(hant-)?(hk|mo)\b/.test(t)) return 1.5;
+    return /^zh-(hant|tw)\b/.test(t) ? 1 : 0.5;
   }
   if (cantonese(track)) return 0;
   const scriptOf = (tag: string): string | null => {
@@ -322,6 +327,8 @@ export interface Settings {
   cardMarks: boolean;
   /** A menu beside Add, for adding the card to another deck. */
   cardDeckMenu: boolean;
+  /** Leave Add to Anki, and the deck menu beside it, off the card. */
+  cardHideAdd: boolean;
   /** The button for a card of the whole line. */
   cardAddLine: boolean;
   /** The word's kanji on its card, where the language has them. */
@@ -450,6 +457,7 @@ export const DEFAULTS: Settings = {
   cardTrack: false,
   cardMarks: true,
   cardDeckMenu: false,
+  cardHideAdd: false,
   cardAddLine: true,
   cardKanji: true,
   languageBadge: 'flag',
@@ -457,7 +465,7 @@ export const DEFAULTS: Settings = {
   marksInAnki: true,
   deck: '',
   cardAudio: true,
-  cardSentenceAudio: true,
+  cardSentenceAudio: false,
   cardScreenshot: true,
   statusScope: '',
   decks: {},

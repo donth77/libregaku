@@ -184,21 +184,47 @@ export const tr: HelpTranslation = {
       ],
     },
     {
+      id: 'supported-sites',
+      title: 'Desteklenen siteler',
+      about: "Libregaku'nun çalıştığı siteler ve aralarındaki farklar.",
+      topics: [
+        {
+          id: 'supported-sites-list',
+          title: 'Hangi sitelerde çalışır?',
+          body: [
+            'Libregaku bu sitelerde videonun üzerine etkileşimli altyazılar çizer. Sitenin kendi sunduğu altyazıları, öğrendiğin dilde kullanır.',
+            {
+              head: ['Site', 'Cümle sesi ve ekran görüntüsü'],
+              rows: [
+                ['YouTube', 'Videodan alınır.'],
+                ['Netflix', 'Sekmeden kaydedilir; ekran görüntüsü yok.'],
+                ['Disney+', 'Sekmeden kaydedilir; ekran görüntüsü yok.'],
+                ['Prime Video', 'Sekmeden kaydedilir; ekran görüntüsü yok.'],
+                ['Max', 'Sekmeden kaydedilir; ekran görüntüsü yok.'],
+              ],
+            },
+            'Sesin sekmeden nasıl kaydedildiğini korumalı siteler bölümü anlatır. Öğrendiğin dilde altyazısı olmayan bir videoda gösterilecek bir şey yoktur ve Libregaku bunu söyler.',
+          ],
+          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'siteler', 'desteklenen', 'akış'],
+        },
+      ],
+    },
+    {
       id: 'protected-sites',
-      title: 'Netflix',
-      about: 'Korumasının neleri değiştirdiği.',
+      title: 'Korumalı siteler',
+      about: 'Videolarını şifreleyen siteler: Netflix, Disney+, Prime Video ve Max. Bunun neleri değiştirdiği.',
       topics: [
         {
           id: 'protected-sites-audio',
-          title: "Netflix'te cümle sesi",
+          title: 'Korumalı sitelerde cümle sesi',
           body: [
             [
-              "{Ayarlar → Anki kartları → Netflix'te cümle sesi} ayarını açın ve “İzin ver” düğmesine basın.",
-              'Netflix sekmesinde, araç çubuğundaki Libregaku simgesine tıklayın ve “Cümle sesini burada kaydet” düğmesine basın. Bunu her sekme için bir kez yapın.',
+              '{Ayarlar → Anki kartları → Korumalı sitelerde cümle sesi} ayarını açın ve “İzin ver” düğmesine basın.',
+              'Videonun oynatıldığı sekmede, araç çubuğundaki Libregaku simgesine tıklayın ve “Cümle sesini burada kaydet” düğmesine basın. Bunu her sekme için bir kez yapın.',
             ],
-            "Netflix videosunu şifrelediği için Libregaku, YouTube'da yaptığı gibi sesi videodan kaydedemez. Bunun yerine sekmeyi kaydeder; Chrome buna yalnızca bu şekilde izin verir. Aynı nedenle Netflix kartlarında ekran görüntüsü olmaz.",
+            "Korumalı siteler videolarını şifrelediği için Libregaku, YouTube'da yaptığı gibi sesi videodan kaydedemez. Bunun yerine sekmeyi kaydeder; Chrome buna yalnızca bu şekilde izin verir. Aynı nedenle bu sitelerde oluşturulan kartlarda ekran görüntüsü olmaz.",
           ],
-          keywords: ['netflix', 'ses', 'izin', 'şifreleme', 'sekme yakalama', 'tab capture', 'drm'],
+          keywords: ['netflix', 'disney', 'prime video', 'max', 'hbo', 'ses', 'izin', 'şifreleme', 'sekme yakalama', 'tab capture', 'drm'],
         },
       ],
     },
@@ -270,7 +296,7 @@ export const tr: HelpTranslation = {
           id: 'q-picture',
           title: 'Karttaki ekran görüntüsü nedir?',
           body: [
-            "Kartın arka yüzünde, kelimenin nereden geldiğini görmeniz için sahneden bir kare. YouTube'da videodan alınır; Netflix videosunu uzantılara boş gösterdiği için orada oluşturulan kartlarda bulunmaz. {Ayarlar → Anki kartları → Ekran görüntüsü} bunu kapatır.",
+            "Kartın arka yüzünde, kelimenin nereden geldiğini görmeniz için sahneden bir kare. YouTube'da videodan alınır; korumalı siteler videolarını uzantılara boş gösterdiği için orada oluşturulan kartlarda bulunmaz. {Ayarlar → Anki kartları → Ekran görüntüsü} bunu kapatır.",
           ],
           keywords: ['görsel', 'resim', 'kare', 'ekran görüntüsü', 'screenshot'],
         },

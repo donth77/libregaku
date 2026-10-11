@@ -97,7 +97,7 @@ const en: HelpContent = {
             [
               'In {Settings → Languages}, choose the language you are learning and your own language.',
               'Get Anki from https://apps.ankiweb.net. In {Settings → Anki}, follow the steps to connect it, then choose the deck new cards go to.',
-              'Open a video on YouTube, Netflix, Disney+, Prime Video or Max with subtitles in the language you are learning, and rest the pointer on a word.',
+              'Open a video on YouTube, Netflix, or another supported site with subtitles in the language you are learning, and rest the pointer on a word.',
             ],
             { tip: 'Anki is optional. Subtitles, lookups and the transcript all work without it; it is what remembers which words you know.' },
           ],
@@ -251,6 +251,32 @@ const en: HelpContent = {
             'Each list has a search box, and Copy and Export file buttons that give you the list as a file Anki and spreadsheets open.',
           ],
           keywords: ['track', 'watchlist', 'list', 'ignored', 'known', 'unignore', 'remove mark', 'words'],
+        },
+      ],
+    },
+    {
+      id: 'supported-sites',
+      title: 'Supported sites',
+      about: 'The sites Libregaku works on, and what differs between them.',
+      topics: [
+        {
+          id: 'supported-sites-list',
+          title: 'Which sites work?',
+          body: [
+            'Libregaku draws interactive subtitles over video on these sites. It uses the subtitles the site itself offers, in the language you are learning.',
+            {
+              head: ['Site', 'Sentence audio and screenshot'],
+              rows: [
+                ['YouTube', 'Taken from the video.'],
+                ['Netflix', 'Recorded from the tab; no screenshot.'],
+                ['Disney+', 'Recorded from the tab; no screenshot.'],
+                ['Prime Video', 'Recorded from the tab; no screenshot.'],
+                ['Max', 'Recorded from the tab; no screenshot.'],
+              ],
+            },
+            'Where sound is recorded from the tab, the Protected sites chapter says how. A video with no subtitles in the language you are learning has nothing to show, and Libregaku says so.',
+          ],
+          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'hbo', 'websites', 'which sites', 'works on', 'streaming'],
         },
       ],
     },

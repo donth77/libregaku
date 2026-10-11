@@ -169,6 +169,13 @@ describe("Lingua Libre's recording of a word", () => {
     expect(linguaLibreOf(files, 'casa', 'cat')).toBeNull();
   });
 
+  it("takes GlyphEnjoyer's recording only when no one else has recorded the word", () => {
+    const both = titled('File:LL-Q1321 (spa)-GlyphEnjoyer-llegar.wav', 'File:LL-Q1321 (spa)-AdrianAbdulBaha-llegar.wav');
+    expect(linguaLibreOf(both, 'llegar', 'spa')?.speaker).toBe('AdrianAbdulBaha');
+    const only = titled('File:LL-Q1321 (spa)-GlyphEnjoyer-llegar.wav');
+    expect(linguaLibreOf(only, 'llegar', 'spa')?.speaker).toBe('GlyphEnjoyer');
+  });
+
   it('ends in the whole word, not in a longer word that ends the same', () => {
     // The search asks for "-casa.wav" anywhere in a title.
     const files = titled('File:LL-Q1321 (spa)-Ana-escasa.wav', 'File:LL-Q1321 (spa)-casa.wav', 'File:Es-casa.wav', 'File:LL-Q1321 (spa)-Ana-casa.ogg');

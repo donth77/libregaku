@@ -22,7 +22,7 @@ export const action = {
   checkingPage: 'Checking this page…',
   /** The page has no part of the extension in it. */
   notActive:
-    'Not active on this page. Open a video on YouTube, Netflix, Disney+, Prime Video or Max. If you just installed or reloaded Libregaku, reload the tab.',
+    'Not active on this page. Open a video on YouTube, Netflix, or another supported site. If you just installed or reloaded Libregaku, reload the tab.',
   /** The page is not on a site the extension works on. */
   unsupported: 'Libregaku works on YouTube, Netflix, Disney+, Prime Video and Max.',
   /** On a supported site, with no subtitles yet. `site` is the site's name. */

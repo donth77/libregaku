@@ -184,21 +184,47 @@ export const nl: HelpTranslation = {
       ],
     },
     {
+      id: 'supported-sites',
+      title: 'Ondersteunde sites',
+      about: 'De sites waarop Libregaku werkt en wat daartussen verschilt.',
+      topics: [
+        {
+          id: 'supported-sites-list',
+          title: 'Op welke sites werkt het?',
+          body: [
+            'Libregaku tekent interactieve ondertitels over de video op deze sites. Het gebruikt de ondertitels die de site zelf aanbiedt, in de taal die je leert.',
+            {
+              head: ['Site', 'Zinsaudio en schermafbeelding'],
+              rows: [
+                ['YouTube', 'Uit de video gehaald.'],
+                ['Netflix', 'Opgenomen vanaf het tabblad; geen schermafbeelding.'],
+                ['Disney+', 'Opgenomen vanaf het tabblad; geen schermafbeelding.'],
+                ['Prime Video', 'Opgenomen vanaf het tabblad; geen schermafbeelding.'],
+                ['Max', 'Opgenomen vanaf het tabblad; geen schermafbeelding.'],
+              ],
+            },
+            'Het hoofdstuk over beschermde sites legt uit hoe het geluid vanaf het tabblad wordt opgenomen. Een video zonder ondertitels in de taal die je leert heeft niets te tonen, en Libregaku zegt dat.',
+          ],
+          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'sites', 'ondersteund', 'streaming'],
+        },
+      ],
+    },
+    {
       id: 'protected-sites',
-      title: 'Netflix',
-      about: 'Wat de beveiliging verandert.',
+      title: 'Beschermde sites',
+      about: 'De sites die hun video versleutelen: Netflix, Disney+, Prime Video en Max. Wat dat verandert.',
       topics: [
         {
           id: 'protected-sites-audio',
-          title: 'Zinsaudio op Netflix',
+          title: 'Zinsaudio op beschermde sites',
           body: [
             [
-              'Open {Instellingen → Anki-kaarten → Zinsaudio op Netflix} en druk op “Toestaan”.',
-              'Klik op het Netflix-tabblad op het Libregaku-icoon in de werkbalk en druk op “Zinsaudio hier opnemen”. Doe dit één keer per tabblad.',
+              'Open {Instellingen → Anki-kaarten → Zinsaudio op beschermde sites} en druk op “Toestaan”.',
+              'Klik in het tabblad waarin de video speelt op het Libregaku-icoon in de werkbalk en druk op “Zinsaudio hier opnemen”. Doe dit één keer per tabblad.',
             ],
-            'Netflix versleutelt zijn video, dus Libregaku kan het geluid niet uit de video opnemen zoals op YouTube. Het neemt in plaats daarvan het tabblad op, wat Chrome alleen op deze manier toestaat. Om dezelfde reden hebben Netflix-kaarten geen screenshot.',
+            'Beschermde sites versleutelen hun video, dus Libregaku kan het geluid niet uit de video opnemen zoals op YouTube. Het neemt in plaats daarvan het tabblad op, wat Chrome alleen op deze manier toestaat. Om dezelfde reden hebben kaarten die je daar maakt geen screenshot.',
           ],
-          keywords: ['netflix', 'audio', 'geluid', 'toestemming', 'versleuteling', 'beveiliging', 'drm', 'tabblad opnemen', 'tab capture'],
+          keywords: ['netflix', 'disney', 'prime video', 'max', 'hbo', 'audio', 'geluid', 'toestemming', 'versleuteling', 'beveiliging', 'drm', 'tabblad opnemen', 'tab capture'],
         },
       ],
     },
@@ -270,7 +296,7 @@ export const nl: HelpTranslation = {
           id: 'q-picture',
           title: 'Wat is de screenshot op een kaart?',
           body: [
-            'Een stilstaand beeld van de scène, op de achterkant van de kaart, zodat je ziet waar het woord vandaan komt. Op YouTube wordt het uit de video genomen; Netflix toont extensies alleen een leeg beeld, dus kaarten van daar hebben er geen. {Instellingen → Anki-kaarten → Screenshot} zet het uit.',
+            'Een stilstaand beeld van de scène, op de achterkant van de kaart, zodat je ziet waar het woord vandaan komt. Op YouTube wordt het uit de video genomen; beschermde sites tonen extensies alleen een leeg beeld, dus kaarten van daar hebben er geen. {Instellingen → Anki-kaarten → Screenshot} zet het uit.',
           ],
           keywords: ['afbeelding', 'plaatje', 'beeld', 'schermafbeelding', 'screenshot'],
         },

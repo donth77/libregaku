@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AUDIO_HOSTS, AUDIO_PLACES, audioUrlAllowed, decodedSize, findRecording, jpodQuery, pronounce, templateHost } from '../pronounce';
 import { cardAudio } from '../card-audio';
-import { AUDIO_CMN, AUDIO_CMN_CREDIT, COMMONS_API, COMMONS_FILES } from '../recordings';
+import { AUDIO_CMN, AUDIO_CMN_CREDIT, COMMONS_API, COMMONS_FILES, NAVER_API, NAVER_SOUNDS, SPANISHDICT_API } from '../recordings';
 
 const parse = (q: string) => Object.fromEntries(new URLSearchParams(q));
 
@@ -65,8 +65,8 @@ describe('what the service worker may fetch as audio', () => {
     expect(audioUrlAllowed('https://example.org/x.mp3', 'http://example.org/{word}.mp3')).toBe(false);
   });
 
-  it("allows Commons' query API and its files, and one folder of one repository at one commit", () => {
-    expect(AUDIO_PLACES).toEqual([COMMONS_API, COMMONS_FILES, AUDIO_CMN]);
+  it("allows Commons' query API and its files, one folder of one repository at one commit, and Naver's search and recordings", () => {
+    expect(AUDIO_PLACES).toEqual([COMMONS_API, COMMONS_FILES, AUDIO_CMN, NAVER_API, NAVER_SOUNDS, SPANISHDICT_API]);
     for (const url of [
       `${COMMONS_API}action=query&titles=File%3AKo-%EC%82%AC%EB%9E%8C.ogg`,
       `${COMMONS_FILES}c/c1/LL-Q1321_%28spa%29-Julie_Samothrace-casa.wav`,
@@ -395,6 +395,101 @@ describe('recordings of Spanish, Chinese and Korean words', () => {
       filename: 'libregaku_老師_lǎo_shī.mp3',
       credit: AUDIO_CMN_CREDIT,
     });
+  });
+  /** Naver Dictionary's answer for a word, cut down from what it returned on 2026-10-11. */
+  const naver = (word: string, file = `${NAVER_SOUNDS}words/000/000904.mp3?_lsu_sa_=abc`): { json: unknown } => ({
+    json: { searchResultMap: { searchResultListMap: { WORD: { items: [
+      { expEntry: `<strong>${word}</strong>`, searchPhoneticSymbolList: [{ symbolValue: '', symbolFile: file }] },
+    ] } } } },
+  });
+
+  it("plays Naver Dictionary's recording of a Korean word the free sources lack, credited to Naver", async () => {
+    const { asked } = relay((url) => {
+      if (url.startsWith(NAVER_API)) return naver('소리');
+      if (url.startsWith(NAVER_SOUNDS)) return 15000;
+      return nothing;
+    });
+    const rec = await findRecording('소리', undefined, 'ko');
+    expect(rec).toMatchObject({
+      source: 'naver', size: 15000,
+      credit: { by: 'Naver Dictionary', licence: '© NAVER', page: `https://korean.dict.naver.com/koendict/#/search?query=${encodeURIComponent('소리')}` },
+    });
+    // The free sources first, then Naver's search, then the file the search names.
+    expect(asked.at(-2)?.startsWith(NAVER_API)).toBe(true);
+    expect(new URL(asked.at(-2)!).searchParams.get('query')).toBe('소리');
+    expect(asked.at(-1)).toBe(`${NAVER_SOUNDS}words/000/000904.mp3?_lsu_sa_=abc`);
+    for (const url of asked) expect(audioUrlAllowed(url), url).toBe(true);
+  });
+
+  it('does not take Naver for a card: a card gets a free recording or none', async () => {
+    const naverOnly = (url: string) =>
+      url.startsWith(NAVER_API) ? naver(new URL(url).searchParams.get('query') ?? '') : url.startsWith(NAVER_SOUNDS) ? 14000 : nothing;
+    const { asked } = relay(naverOnly);
+    expect(await cardAudio({ word: '바람', lang: 'ko' })).toBeNull();
+    expect(asked.some((u) => u.startsWith(NAVER_API) || u.startsWith(NAVER_SOUNDS))).toBe(false);
+
+    // Even after the word was played, which keeps Naver's recording for the session.
+    const again = relay(naverOnly);
+    expect(await findRecording('하늘', undefined, 'ko')).toMatchObject({ source: 'naver' });
+    expect(await findRecording('하늘', undefined, 'ko', [], true)).toBeNull();
+    expect(await cardAudio({ word: '하늘', lang: 'ko' })).toBeNull();
+    expect(again.asked.filter((u) => u.startsWith(NAVER_API))).toHaveLength(1);
+  });
+
+  it("keeps a free recording for the card when one exists, and Naver's is not asked for", async () => {
+    const { asked } = relay((url) => {
+      if (titles(url) === 'File:Ko-물.ogg') return found(file('File:Ko-물.ogg', '1/1a/Ko-mul.ogg', 'CC BY-SA 4.0', 'Someone'));
+      return url.endsWith('Ko-mul.ogg.mp3') ? 9000 : undefined;
+    });
+    expect(await findRecording('물', undefined, 'ko')).toMatchObject({ source: 'commons' });
+    expect(await cardAudio({ word: '물', lang: 'ko' })).toMatchObject({ credit: { licence: 'CC BY-SA 4.0' } });
+    expect(asked.some((u) => u.startsWith(NAVER_API))).toBe(false);
+  });
+
+  it('says a word is not in Naver when no entry of exactly that word has a recording', async () => {
+    const { asked } = relay((url) => (url.startsWith(NAVER_API) ? naver('소리굽쇠') : nothing));
+    expect(await findRecording('굽쇠', undefined, 'ko')).toBeNull();
+    expect(asked.some((u) => u.startsWith(NAVER_SOUNDS))).toBe(false);
+  });
+
+  it('asks again when Naver gave no answer, which is what it gives a request it does not trust', async () => {
+    const { asked } = relay((url) => (url.startsWith(NAVER_API) ? { type: 'application/json', bytes: 0 } : nothing));
+    expect(await findRecording('구두', undefined, 'ko')).toBeNull();
+    const before = asked.length;
+    expect(await findRecording('구두', undefined, 'ko')).toBeNull();
+    expect(asked.length).toBeGreaterThan(before);
+  });
+
+  it('refuses Naver addresses that are not its word search or its recordings', () => {
+    expect(audioUrlAllowed(`${NAVER_API}query=x`)).toBe(true);
+    expect(audioUrlAllowed(`${NAVER_SOUNDS}words/000/000904.mp3`)).toBe(true);
+    for (const url of [
+      'https://korean.dict.naver.com/api3/koen/search?query=x',
+      'https://korean.dict.naver.com/koendict/',
+      'https://dict-dn.pstatic.net/other/a.mp3',
+      'https://dict-dn.pstatic.net.evil.example/naver/dic/naverdic/krdic/sound/a.mp3',
+    ]) expect(audioUrlAllowed(url), url).toBe(false);
+  });
+  it("plays SpanishDict's voice for a Spanish word no recording exists of, said to be a voice and not a recording", async () => {
+    const { asked } = relay((url) => (url.startsWith(SPANISHDICT_API) ? 13000 : nothing));
+    vi.stubGlobal('Audio', class { play = async (): Promise<void> => {}; pause(): void {} });
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:voice');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    expect(await pronounce('ñandú', undefined, 'es')).toEqual({ source: 'spanishdict', human: false });
+    expect(new URL(asked.at(-1)!).searchParams.get('text')).toBe('ñandú');
+    expect(new URL(asked.at(-1)!).searchParams.get('lang')).toBe('es');
+    for (const url of asked) expect(audioUrlAllowed(url), url).toBe(true);
+  });
+
+  it("never puts SpanishDict's voice on a card, and leaves other languages to the browser's voice", async () => {
+    const { asked } = relay((url) => (url.startsWith(SPANISHDICT_API) ? 13000 : nothing));
+    expect(await findRecording('ñu', undefined, 'es')).toBeNull();
+    expect(await cardAudio({ word: 'ñu', lang: 'es' })).toBeNull();
+    expect(asked.some((u) => u.startsWith(SPANISHDICT_API))).toBe(false);
+    vi.stubGlobal('window', { speechSynthesis: undefined });
+    await pronounce('고양이', undefined, 'ko');
+    expect(asked.some((u) => u.startsWith(SPANISHDICT_API))).toBe(false);
+    vi.unstubAllGlobals();
   });
 });
 

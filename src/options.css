@@ -105,6 +105,24 @@ a { color: var(--ink); text-decoration-color: #5A6480; text-underline-offset: 3p
 @keyframes landed { from, 30% { color: var(--accent); } to { color: var(--ink); } }
 #settings .grp-about { display: block; margin: 5px 0 0; color: var(--muted); font-size: 14.5px; line-height: 1.5; }
 #settings .grp-rows > .set:first-child { border-top: 0; }
+/* A folded group keeps its heading and its line; the rows go. A search opens every group. */
+#settings .grp-section[data-folded] .grp-rows { display: none; }
+#settings[data-searching] .grp-section[data-folded] .grp-rows { display: block; }
+#settings .grp button.fold {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%;
+  margin: 0; padding: 0; border: 0; background: none; cursor: pointer;
+  color: inherit; font: inherit; letter-spacing: inherit; text-align: start;
+}
+#settings .grp button.fold::after {
+  content: ''; flex: none; width: 8px; height: 8px; margin-inline-end: 4px;
+  border-inline-end: 2px solid var(--muted); border-bottom: 2px solid var(--muted);
+  transform: translateY(-2px) rotate(45deg); transition: transform .15s;
+}
+#settings .grp-section[data-folded] .grp button.fold::after { transform: translateY(1px) rotate(-45deg); }
+#settings[data-searching] .grp-section[data-folded] .grp button.fold::after { transform: translateY(-2px) rotate(45deg); }
+#settings .grp button.fold:hover::after { border-color: var(--ink); }
+#settings .grp button.fold:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; border-radius: 4px; }
+@media (prefers-reduced-motion: reduce) { #settings .grp button.fold::after { transition: none; } }
 
 /*
  * A row: the setting's name, its control, and what it does underneath. Its
@@ -124,7 +142,7 @@ a { color: var(--ink); text-decoration-color: #5A6480; text-underline-offset: 3p
 #settings .steps li { margin-bottom: 12px; }
 #settings .chip { margin-top: 6px; }
 #settings .chip code { font-size: 13px; }
-#settings .btnrow { margin: 0; padding: 16px 21px 0; gap: 8px; border-top: 1px solid var(--rule); }
+#settings .btnrow { margin: 0; padding: 16px 21px; gap: 8px; border-top: 1px solid var(--rule); }
 #settings .btnrow button,
 #settings .set .perm {
   font: 500 13.5px/1 system-ui, -apple-system, sans-serif; letter-spacing: 0; text-transform: none;

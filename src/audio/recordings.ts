@@ -24,8 +24,10 @@
  * Measured on 2026-10-11 against each language's most common dictionary
  * words: of the first thousand, Lingua Libre has 95% in Spanish, 55% in
  * Mandarin and 22% in Korean; the Ko- files 31% in Korean; audio-cmn 80% in
- * Mandarin. KRDict's own recordings cover 98% of Korean and are not used:
- * its site says their terms are set file by file, and states none.
+ * Mandarin. KRDict's own recordings cover 98% of Korean and are not licensed
+ * for reuse: its site says their terms are set file by file, and states none.
+ * They are played, from Naver Dictionary, on the lookup card only (see
+ * NAVER_API) and never put on a card.
  */
 
 /** Who made a recording and under what licence: said wherever the recording goes. */
@@ -45,7 +47,7 @@ export const COMMONS_FILES = 'https://upload.wikimedia.org/wikipedia/commons/';
 const COMMONS_PAGES = 'https://commons.wikimedia.org/wiki/File:';
 
 /** Lingua Libre's name for a language, in its file names and categories: ISO 639-3. */
-export const LINGUA_LIBRE: Readonly<Record<string, string>> = { es: 'spa', zh: 'cmn', ko: 'kor' };
+export const LINGUA_LIBRE: Readonly<Record<string, string>> = { es: 'spa', zh: 'cmn', yue: 'yue', ko: 'kor' };
 
 /** The start of the name of Wiktionary's own recordings of a language, where they are named for the word alone. */
 export const NAMED: Readonly<Record<string, string>> = { ko: 'Ko' };
@@ -179,6 +181,13 @@ export function filesIn(answer: unknown): CommonsFile[] {
 const same = (a: string, b: string): boolean => a.normalize('NFC').toLowerCase() === b.normalize('NFC').toLowerCase();
 
 /**
+ * Speakers whose recordings are used only when no one else has recorded the
+ * word: GlyphEnjoyer says "ll" as "sh" (the Río de la Plata accent), which
+ * is not the pronunciation most courses teach.
+ */
+export const LAST_SPEAKERS: readonly string[] = ['GlyphEnjoyer'];
+
+/**
  * Lingua Libre's recording of a word among an answer's files: the best ranked
  * one in this language whose name ends in the word, and the speaker its name
  * gives. The search matches the word anywhere in a title, in any language of
@@ -187,6 +196,7 @@ const same = (a: string, b: string): boolean => a.normalize('NFC').toLowerCase()
 export function linguaLibreOf(
   files: readonly CommonsFile[], word: string, iso: string,
 ): { file: CommonsFile; speaker: string } | null {
+  let fallback: { file: CommonsFile; speaker: string } | null = null;
   for (const file of files) {
     const named = /^File:LL-Q\d+ \(([a-z]{2,3})\)-(.+)\.wav$/i.exec(file.title);
     if (!named || named[1]?.toLowerCase() !== iso) continue;
@@ -194,9 +204,12 @@ export function linguaLibreOf(
     const cut = rest.length - word.normalize('NFC').length;
     // "<speaker>-<word>": a speaker of at least a letter, a hyphen, the word.
     if (cut < 2 || rest[cut - 1] !== '-' || !same(rest.slice(cut), word)) continue;
-    return { file, speaker: rest.slice(0, cut - 1) };
+    const hit = { file, speaker: rest.slice(0, cut - 1) };
+    // A speaker whose accent is a poor first model comes after any other, but still before none.
+    if (!LAST_SPEAKERS.some((name) => same(name, hit.speaker))) return hit;
+    fallback ??= hit;
   }
-  return null;
+  return fallback;
 }
 
 /** The file with exactly this name among an answer's files. */
@@ -226,4 +239,63 @@ export function creditOf(file: CommonsFile, speaker?: string): Credit {
 export function audioCmnUrl(word: string): string | null {
   const w = word.normalize('NFC');
   return /^\p{sc=Han}{1,8}$/u.test(w) ? `${AUDIO_CMN}cmn-${encodeURIComponent(w)}.mp3` : null;
+}
+
+/**
+ * Naver Dictionary's Standard Korean Dictionary search, which answers with the
+ * entries of a word and, for most, the address of a recording. Its terms do
+ * not offer these recordings for reuse, so they are played on the lookup card
+ * and never kept: no card carries one. Naver answers only a request that says
+ * it comes from its own dictionary page, which the service worker has the
+ * browser add (background.ts).
+ */
+export const NAVER_API = 'https://korean.dict.naver.com/api3/koko/search?';
+/** Where the dictionary's recordings are kept; each address in an answer is signed and soon expires. */
+export const NAVER_SOUNDS = 'https://dict-dn.pstatic.net/naver/dic/naverdic/krdic/sound/';
+const NAVER_PAGE = 'https://korean.dict.naver.com/koendict/#/search?query=';
+
+/** Who a Naver recording is credited to, where it plays. */
+const NAVER_BY = 'Naver Dictionary';
+const NAVER_LICENCE = '© NAVER';
+
+/** The question about one word. The word must be askable(). */
+export function naverSearch(word: string): string {
+  return NAVER_API + new URLSearchParams({ query: word.normalize('NFC'), m: 'pc', range: 'word', page: '1' }).toString();
+}
+
+/**
+ * The recording of a word among an answer's entries: the first entry that is
+ * exactly this word and has a recording kept where Naver keeps them, with the
+ * credit that goes with it. Anything that is not an answer holds none.
+ */
+export function naverSoundIn(answer: unknown, word: string): { url: string; credit: Credit } | null {
+  const found = isObject(answer) && isObject(answer.searchResultMap) ? answer.searchResultMap.searchResultListMap : null;
+  const words = isObject(found) && isObject(found.WORD) ? found.WORD.items : null;
+  if (!Array.isArray(words)) return null;
+  const want = word.normalize('NFC');
+  for (const item of words as unknown[]) {
+    if (!isObject(item) || typeof item.expEntry !== 'string' || plain(item.expEntry).normalize('NFC') !== want) continue;
+    const symbols = Array.isArray(item.searchPhoneticSymbolList) ? (item.searchPhoneticSymbolList as unknown[]) : [];
+    for (const symbol of symbols) {
+      const file = isObject(symbol) && typeof symbol.symbolFile === 'string' ? symbol.symbolFile : '';
+      if (file.startsWith(NAVER_SOUNDS)) {
+        return { url: file, credit: { by: NAVER_BY, licence: NAVER_LICENCE, page: NAVER_PAGE + encodeURIComponent(want) } };
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * SpanishDict's voice, which says any Spanish text it is sent: a word it has no
+ * recording of gets a generated one all the same, so this is a voice and not a
+ * source of recordings. It is not offered for reuse, so it is heard on the
+ * Pronounce button, after the recordings and before the browser's own voice,
+ * and no card carries it.
+ */
+export const SPANISHDICT_API = 'https://audio1.spanishdict.com/audio?';
+
+/** The question for one word or phrase. It must be askable(). */
+export function spanishDictVoice(word: string): string {
+  return SPANISHDICT_API + new URLSearchParams({ lang: 'es', text: word.normalize('NFC') }).toString();
 }

@@ -9,7 +9,9 @@
  *   1. A recording of a person, from the language's own sources (RECORDED):
  *      JapanesePod101 for Japanese; free recordings on Wikimedia Commons for
  *      Spanish, Chinese and Korean, and for Chinese the HSK words of audio-cmn
- *      before those (recordings.ts)
+ *      before those (recordings.ts). For Korean, Naver Dictionary's own
+ *      recordings after those, to be heard on the lookup card and never
+ *      put on a card
  *   2. A user-supplied URL template — for anyone with their own source
  *   3. speechSynthesis — always available, never fails, never great
  *
@@ -24,8 +26,9 @@
 
 import { toHiragana } from '../morphology/furigana';
 import {
-  AUDIO_CMN, AUDIO_CMN_CREDIT, COMMONS_API, COMMONS_FILES, LINGUA_LIBRE, NAMED,
+  AUDIO_CMN, AUDIO_CMN_CREDIT, COMMONS_API, COMMONS_FILES, LINGUA_LIBRE, NAMED, NAVER_API, NAVER_SOUNDS,
   askable, audioCmnUrl, creditOf, filesIn, linguaLibreOf, linguaLibreSearch, mp3Of, namedOf, namedQuery, namedTitle,
+  SPANISHDICT_API, naverSearch, naverSoundIn, spanishDictVoice,
   type CommonsFile, type Credit,
 } from './recordings';
 
@@ -52,10 +55,12 @@ export const AUDIO_HOSTS: readonly string[] = ['assets.languagepod101.com', 'cdn
 
 /**
  * Sources that are one corner of a host with much else on it: Wikimedia
- * Commons' query API and its files, and one repository's folder on GitHub at
- * one commit. Each is allowed by how its address starts, not by its host.
+ * Commons' query API and its files, one repository's folder on GitHub at
+ * one commit, Naver Dictionary's word search and its recordings, and SpanishDict's
+ * voice. Each is
+ * allowed by how its address starts, not by its host.
  */
-export const AUDIO_PLACES: readonly string[] = [COMMONS_API, COMMONS_FILES, AUDIO_CMN];
+export const AUDIO_PLACES: readonly string[] = [COMMONS_API, COMMONS_FILES, AUDIO_CMN, NAVER_API, NAVER_SOUNDS, SPANISHDICT_API];
 
 /** No recording of one word comes near this; anything bigger is not one. */
 export const MAX_AUDIO_BYTES = 4 * 1024 * 1024;
@@ -91,7 +96,7 @@ export function audioUrlAllowed(url: string, template?: unknown): boolean {
   return own !== null && u.host === own;
 }
 
-export type Source = 'jpod101' | 'commons' | 'audio-cmn' | 'custom' | 'synthesis';
+export type Source = 'jpod101' | 'commons' | 'audio-cmn' | 'naver' | 'spanishdict' | 'custom' | 'synthesis';
 
 export interface Spoken {
   source: Source;
@@ -108,7 +113,7 @@ export interface Recording {
   /** Decoded size, in bytes. */
   size: number;
   type: string;
-  source: 'jpod101' | 'commons' | 'audio-cmn' | 'custom';
+  source: 'jpod101' | 'commons' | 'audio-cmn' | 'naver' | 'spanishdict' | 'custom';
   /** Who recorded it and under what licence, where the source says: shown where it plays, kept on the card. */
   credit?: Credit;
 }
@@ -309,6 +314,44 @@ const tryAudioCmn: Finder = async (word, _reading, also) => {
 };
 
 /**
+ * Naver Dictionary's recording of a Korean word. Only to be heard: its terms
+ * do not offer it for reuse, so a card never takes it (see ONLY_TO_HEAR).
+ */
+const tryNaver: Finder = async (word) => {
+  if (!askable(word)) return 'none';
+  try {
+    const search = await fetchBytes(naverSearch(word));
+    if (!search.ok) {
+      report(search.reason, `Naver ${word}`);
+      return 'unsure';
+    }
+    // An answer that is not JSON is Naver declining to answer, not a word it lacks.
+    let answer: unknown;
+    try {
+      answer = JSON.parse(new TextDecoder().decode(bytesOf(search.data))) as unknown;
+    } catch {
+      report('no answer', `Naver ${word}`);
+      return 'unsure';
+    }
+    const hit = naverSoundIn(answer, word);
+    if (!hit) {
+      report('not in Naver', word);
+      return 'none';
+    }
+    const got = await fetchBytes(hit.url);
+    if (!got.ok || got.size < 512) {
+      report('could not fetch', `Naver ${word}`);
+      return 'unsure';
+    }
+    report(`recording ${got.size}b`, `Naver ${word}`);
+    return { data: got.data, size: got.size, type: got.type, source: 'naver', credit: hit.credit };
+  } catch (e) {
+    report(`fetch failed (${String(e)})`, `Naver ${word}`);
+    return 'unsure';
+  }
+};
+
+/**
  * A user-supplied audio URL, e.g.
  *   https://example.org/audio/{word}.mp3
  *   https://example.org/api?w={word}&r={reading}
@@ -347,8 +390,15 @@ const RECORDED: Record<string, readonly Finder[]> = {
   ja: [tryJpod],
   es: [linguaLibre(LINGUA_LIBRE.es ?? 'spa')],
   zh: [tryAudioCmn, linguaLibre(LINGUA_LIBRE.zh ?? 'cmn')],
-  ko: [named(NAMED.ko ?? 'Ko'), linguaLibre(LINGUA_LIBRE.ko ?? 'kor')],
+  yue: [linguaLibre(LINGUA_LIBRE.yue ?? 'yue')],
+  ko: [named(NAMED.ko ?? 'Ko'), linguaLibre(LINGUA_LIBRE.ko ?? 'kor'), tryNaver],
 };
+
+/**
+ * Sources whose recordings are played and never kept: their terms do not
+ * offer them for reuse. A card is made without asking them.
+ */
+const ONLY_TO_HEAR: ReadonlySet<Finder> = new Set([tryNaver]);
 
 /**
  * A recording from the language's sources, then from the learner's own.
@@ -356,10 +406,11 @@ const RECORDED: Record<string, readonly Finder[]> = {
  * remembering; a source that did not answer may have it the next time.
  */
 async function lookFor(
-  word: string, reading: string | undefined, lang: string, also: readonly string[],
+  word: string, reading: string | undefined, lang: string, also: readonly string[], forCard: boolean,
 ): Promise<{ rec: Recording | null; sure: boolean }> {
   let sure = true;
   for (const find of RECORDED[lang] ?? []) {
+    if (forCard && ONLY_TO_HEAR.has(find)) continue;
     const got = await find(word, reading, also).catch((): Asked => 'unsure');
     if (got === 'unsure') sure = false;
     else if (got !== 'none') return { rec: got, sure: true };
@@ -369,6 +420,9 @@ async function lookFor(
   // The learner's own source says nothing of why it has none.
   return { rec: await tryTemplate(template, word, reading), sure: false };
 }
+
+/** A recording a card may carry: not one that is only to be heard. */
+const keepable = (rec: Recording | undefined): Recording | undefined => (rec?.source === 'naver' ? undefined : rec);
 
 /** Recordings found this session, so pronouncing a word and then carding it fetches it once. */
 const found = new Map<string, Recording>();
@@ -383,16 +437,19 @@ const KEEP_ABSENT = 400;
  * Never synthesis. A synthesised voice can be played but not stored on a
  * card, and should not be: it is the poorest model there is to imitate.
  * `also` is how else the word is written: a Chinese word's other script.
+ * `forCard` is for a recording that will be kept on a card, so one from a
+ * source that is only to be heard is not looked for.
  */
 export async function findRecording(
-  word: string, reading?: string, lang = 'ja', also: readonly string[] = [],
+  word: string, reading?: string, lang = 'ja', also: readonly string[] = [], forCard = false,
 ): Promise<Recording | null> {
-  const key = `${lang}|${word}|${reading ?? ''}`;
-  const known = found.get(key);
+  const heard = `${lang}|${word}|${reading ?? ''}`;
+  const key = forCard ? `card|${heard}` : heard;
+  const known = found.get(key) ?? (forCard ? keepable(found.get(heard)) : undefined);
   if (known) return known;
   // Known to be nowhere, unless the learner has named a source of their own since.
   if (absent.has(key) && !(await storedTemplate())) return null;
-  const { rec, sure } = await lookFor(word, reading, lang, also);
+  const { rec, sure } = await lookFor(word, reading, lang, also, forCard);
   if (rec) {
     found.set(key, rec);
     if (found.size > KEEP) found.delete(found.keys().next().value as string);
@@ -409,7 +466,7 @@ export async function findRecording(
  * one most courses teach. Any other language is asked for by its own code.
  */
 const VOICES: Record<string, string> = {
-  ja: 'ja-JP', ko: 'ko-KR', zh: 'zh-CN', es: 'es-ES', fr: 'fr-FR', de: 'de-DE', it: 'it-IT', pt: 'pt-BR', th: 'th-TH',
+  ja: 'ja-JP', ko: 'ko-KR', zh: 'zh-CN', yue: 'zh-HK', es: 'es-ES', fr: 'fr-FR', de: 'de-DE', it: 'it-IT', pt: 'pt-BR', th: 'th-TH',
 };
 
 function synthesise(word: string, lang: string): void {
@@ -421,15 +478,39 @@ function synthesise(word: string, lang: string): void {
   // Prefer a real voice for the language over whatever the browser defaults
   // to: that country's first, then any of the language's.
   const voices = speechSynthesis.getVoices();
-  const voice = voices.find((v) => v.lang.replace('_', '-') === locale) ?? voices.find((v) => v.lang.startsWith(lang));
+  const tagOf = (v: SpeechSynthesisVoice): string => v.lang.replace('_', '-');
+  // Cantonese voices are filed as zh-HK, or yue-HK; Mandarin's would read the characters wrongly.
+  const voice = lang === 'yue'
+    ? voices.find((v) => /^(zh-HK|yue)\b/i.test(tagOf(v)))
+    : voices.find((v) => tagOf(v) === locale) ?? voices.find((v) => v.lang.startsWith(lang));
   if (voice) u.voice = voice;
   stop();
   speechSynthesis.speak(u);
 }
 
 /**
- * Say a word: a recording where one exists, the browser's voice for the
- * language otherwise. `lang` is the language being learned — a Spanish word
+ * SpanishDict's voice for a Spanish word, or null when it would not say it.
+ * Never kept: it is generated, and not offered for reuse (see SPANISHDICT_API).
+ */
+async function spanishDictVoiceOf(word: string): Promise<Recording | null> {
+  if (!askable(word)) return null;
+  try {
+    const got = await fetchBytes(spanishDictVoice(word));
+    if (!got.ok || got.size < 512) {
+      report(got.ok ? `suspiciously small (${got.size}b)` : got.reason, `SpanishDict ${word}`);
+      return null;
+    }
+    report(`voice ${got.size}b`, `SpanishDict ${word}`);
+    return { data: got.data, size: got.size, type: got.type, source: 'spanishdict' };
+  } catch (e) {
+    report(`fetch failed (${String(e)})`, `SpanishDict ${word}`);
+    return null;
+  }
+}
+
+/**
+ * Say a word: a recording where one exists, then SpanishDict's voice for
+ * Spanish, the browser's voice for the language otherwise. `lang` is the language being learned — a Spanish word
  * read by a Japanese voice is no model at all. `also` as for findRecording.
  */
 export async function pronounce(
@@ -439,6 +520,11 @@ export async function pronounce(
   if (rec) {
     await play(rec);
     return { source: rec.source, human: true, ...(rec.credit ? { credit: rec.credit } : {}) };
+  }
+  const voice = lang === 'es' ? await spanishDictVoiceOf(word) : null;
+  if (voice) {
+    await play(voice);
+    return { source: 'spanishdict', human: false };
   }
   synthesise(word, lang);
   return { source: 'synthesis', human: false };

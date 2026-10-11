@@ -1,3 +1,4 @@
+import { showFolds, unfold } from './content/folds';
 import { PANEL_STYLE, buildSettings } from './content/settings-panel';
 import { fill, loadUiLanguage, localize, onUiLanguageChange, setTranslationLoader, setUiLanguage, ui } from './i18n';
 import { pageHeader } from './page-header';
@@ -202,6 +203,9 @@ function contents(nav: HTMLElement, panel: HTMLElement): () => void {
  * none in use, the section being read keeps its place — however much longer
  * or shorter the words above it have become.
  */
+/** A search is open: every group shows its matches, folded or not. */
+const searching = (): boolean => Boolean(document.getElementById('settings')?.hasAttribute('data-searching'));
+
 function rebuild(old: HTMLElement): HTMLElement {
   const focused = document.activeElement && old.contains(document.activeElement) ? document.activeElement : null;
   const name = focused?.getAttribute('name') ?? '';
@@ -214,6 +218,7 @@ function rebuild(old: HTMLElement): HTMLElement {
 
   const next = buildSettings(() => {});
   old.replaceWith(next);
+  showFolds(next, searching());
 
   const now = held(next);
   if (now && top !== undefined) {
@@ -276,6 +281,13 @@ async function main(): Promise<void> {
   const panel = document.getElementById('settings') as HTMLElement;
   let built = buildSettings(() => {});
   panel.appendChild(built);
+  showFolds(built);
+  // A link to a folded group opens it, here or from the address.
+  document.addEventListener('click', (e) => {
+    const href = (e.target as Element | null)?.closest?.('a[href^="#"]')?.getAttribute('href');
+    if (href) unfold(built, href.slice(1), searching());
+  });
+  unfold(built, location.hash.slice(1));
   const toc = document.querySelector<HTMLElement>('.toc');
   const relist = toc ? contents(toc, panel) : null;
 
@@ -286,6 +298,8 @@ async function main(): Promise<void> {
     find.placeholder = ui.options.searchSettings;
     find.setAttribute('aria-label', ui.options.searchSettings);
     const q = find.value.trim();
+    panel.toggleAttribute('data-searching', Boolean(q));
+    showFolds(built, Boolean(q));
     const hits = filterSettings(panel, toc, q);
     // The first-run card is not a setting: while searching it only pushes the results down.
     document.getElementById('setup')?.toggleAttribute('data-nomatch', Boolean(q));

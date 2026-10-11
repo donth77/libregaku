@@ -184,21 +184,47 @@ export const pl: HelpTranslation = {
       ],
     },
     {
+      id: 'supported-sites',
+      title: 'Obsługiwane serwisy',
+      about: 'Serwisy, w których działa Libregaku, i czym się różnią.',
+      topics: [
+        {
+          id: 'supported-sites-list',
+          title: 'W których serwisach to działa?',
+          body: [
+            'Libregaku rysuje interaktywne napisy na wideo w tych serwisach. Używa napisów, które oferuje sam serwis, w języku, którego się uczysz.',
+            {
+              head: ['Serwis', 'Dźwięk zdania i zrzut ekranu'],
+              rows: [
+                ['YouTube', 'Pobierane z wideo.'],
+                ['Netflix', 'Nagrywany z karty; bez zrzutu ekranu.'],
+                ['Disney+', 'Nagrywany z karty; bez zrzutu ekranu.'],
+                ['Prime Video', 'Nagrywany z karty; bez zrzutu ekranu.'],
+                ['Max', 'Nagrywany z karty; bez zrzutu ekranu.'],
+              ],
+            },
+            'Rozdział o chronionych serwisach wyjaśnia, jak nagrywa się dźwięk z karty. Wideo bez napisów w języku, którego się uczysz, nie ma czego pokazać, a Libregaku o tym mówi.',
+          ],
+          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'serwisy', 'strony', 'obsługiwane', 'streaming'],
+        },
+      ],
+    },
+    {
       id: 'protected-sites',
-      title: 'Netflix',
-      about: 'Co zmienia jego zabezpieczenie.',
+      title: 'Chronione serwisy',
+      about: 'Serwisy, które szyfrują wideo: Netflix, Disney+, Prime Video i Max. Co to zmienia.',
       topics: [
         {
           id: 'protected-sites-audio',
-          title: 'Audio zdania na Netflixie',
+          title: 'Audio zdania w chronionych serwisach',
           body: [
             [
-              'Otwórz {Ustawienia → Karty Anki → Audio zdania na Netflixie} i kliknij Zezwól.',
-              'W karcie z Netflixem kliknij ikonę Libregaku na pasku narzędzi i wybierz Nagrywaj tu audio zdania. Zrób to raz w każdej karcie.',
+              'Otwórz {Ustawienia → Karty Anki → Audio zdania w chronionych serwisach} i kliknij Zezwól.',
+              'W karcie, w której jest odtwarzany film, kliknij ikonę Libregaku na pasku narzędzi i wybierz Nagrywaj tu audio zdania. Zrób to raz w każdej karcie.',
             ],
-            'Netflix szyfruje wideo, więc Libregaku nie może nagrać dźwięku z filmu tak jak na YouTube. Zamiast tego nagrywa kartę przeglądarki, na co Chrome pozwala tylko w ten sposób. Z tego samego powodu karty Anki tworzone na Netflixie nie mają zrzutu ekranu.',
+            'Chronione serwisy szyfrują wideo, więc Libregaku nie może nagrać dźwięku z filmu tak jak na YouTube. Zamiast tego nagrywa kartę przeglądarki, na co Chrome pozwala tylko w ten sposób. Z tego samego powodu karty Anki tworzone w tych serwisach nie mają zrzutu ekranu.',
           ],
-          keywords: ['uprawnienia', 'zgoda', 'szyfrowanie', 'drm', 'dźwięk', 'przechwytywanie karty', 'tab capture'],
+          keywords: ['netflix', 'disney', 'prime video', 'max', 'hbo', 'uprawnienia', 'zgoda', 'szyfrowanie', 'drm', 'dźwięk', 'przechwytywanie karty', 'tab capture'],
         },
       ],
     },
@@ -270,7 +296,7 @@ export const pl: HelpTranslation = {
           id: 'q-picture',
           title: 'Czym jest zrzut ekranu na karcie?',
           body: [
-            'To kadr ze sceny na odwrocie karty, by było widać, skąd pochodzi słowo. Na YouTube jest pobierany z filmu; Netflix ukrywa wideo przed rozszerzeniami, więc karty utworzone na Netflixie go nie mają. Wyłączysz go tutaj: {Ustawienia → Karty Anki → Zrzut ekranu}.',
+            'To kadr ze sceny na odwrocie karty, by było widać, skąd pochodzi słowo. Na YouTube jest pobierany z filmu; chronione serwisy ukrywają wideo przed rozszerzeniami, więc karty utworzone w tych serwisach go nie mają. Wyłączysz go tutaj: {Ustawienia → Karty Anki → Zrzut ekranu}.',
           ],
           keywords: ['obraz', 'obrazek', 'zdjęcie', 'kadr', 'screenshot', 'picture'],
         },

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { describeFailure } from '../../src/assumptions';
 import { audioUrlAllowed } from '../../src/audio/pronounce';
 import {
-  audioCmnUrl, filesIn, linguaLibreOf, linguaLibreSearch, mp3Of, namedOf, namedQuery, namedTitle,
+  audioCmnUrl, filesIn, linguaLibreOf, linguaLibreSearch, mp3Of, namedOf, namedQuery, namedTitle, naverSearch, naverSoundIn, spanishDictVoice,
 } from '../../src/audio/recordings';
 import { fetchCheckingHops } from './hosts';
 
@@ -136,5 +136,24 @@ describe('audio contract', () => {
     // A word it lacks is told from a failure by this status.
     const missing = await fetch(audioCmnUrl('你好')!);
     expect(missing.status, describeFailure('audio.audio-cmn')).toBe(404);
+  }, 60_000);
+  it('audio.naver — a common word has a recording, and the search wants the dictionary\'s own Referer', async () => {
+    const url = naverSearch('소리');
+    expect(audioUrlAllowed(url), `${url} is not a place the service worker fetches from`).toBe(true);
+    const asked = async (referer: string): Promise<string> => {
+      const res = await fetchCheckingHops(url, { headers: { Referer: referer } }, describeFailure('audio.naver'));
+      expect(res.ok, `Naver returned HTTP ${res.status}.\n${describeFailure('audio.naver')}`).toBe(true);
+      return res.text();
+    };
+    const hit = naverSoundIn(JSON.parse(await asked('https://korean.dict.naver.com/')) as unknown, '소리');
+    expect(hit, `No Naver recording of 소리 was found.\n${describeFailure('audio.naver')}`).not.toBeNull();
+    const got = await recording(hit!.url, 'audio.naver');
+    expect(got.type.startsWith('audio/mpeg') && got.bytes > 512, `${got.bytes} bytes of ${got.type}`).toBe(true);
+    // Without its own Referer it answers with nothing; if that changes, the rule in background.ts can go.
+    expect(await asked('https://example.org/'), 'Naver now answers a search from any Referer').toBe('');
+  }, 60_000);
+  it('audio.spanishdict — a Spanish word is said as an MP3, with no header asked for', async () => {
+    const got = await recording(spanishDictVoice('casa'), 'audio.spanishdict');
+    expect(got.type.startsWith('audio/mpeg') && got.bytes > 512, `${got.bytes} bytes of ${got.type}`).toBe(true);
   }, 60_000);
 });

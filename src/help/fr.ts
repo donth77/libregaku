@@ -184,21 +184,47 @@ export const fr: HelpTranslation = {
       ],
     },
     {
+      id: 'supported-sites',
+      title: 'Sites pris en charge',
+      about: 'Les sites sur lesquels Libregaku fonctionne, et ce qui les distingue.',
+      topics: [
+        {
+          id: 'supported-sites-list',
+          title: 'Sur quels sites ça marche ?',
+          body: [
+            'Libregaku affiche des sous-titres interactifs sur la vidéo sur ces sites. Il utilise les sous-titres que le site propose lui-même, dans la langue que tu apprends.',
+            {
+              head: ['Site', 'Audio de la phrase et capture d’écran'],
+              rows: [
+                ['YouTube', 'Pris dans la vidéo.'],
+                ['Netflix', 'Enregistré depuis l’onglet ; pas de capture d’écran.'],
+                ['Disney+', 'Enregistré depuis l’onglet ; pas de capture d’écran.'],
+                ['Prime Video', 'Enregistré depuis l’onglet ; pas de capture d’écran.'],
+                ['Max', 'Enregistré depuis l’onglet ; pas de capture d’écran.'],
+              ],
+            },
+            'Le chapitre sur les sites protégés explique comment le son est enregistré depuis l’onglet. Une vidéo sans sous-titres dans la langue que tu apprends n’a rien à afficher, et Libregaku le dit.',
+          ],
+          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'sites', 'compatibles', 'streaming'],
+        },
+      ],
+    },
+    {
       id: 'protected-sites',
-      title: 'Netflix',
-      about: 'Ce que change sa protection.',
+      title: 'Sites protégés',
+      about: 'Les sites qui chiffrent leur vidéo : Netflix, Disney+, Prime Video et Max. Ce que change cette protection.',
       topics: [
         {
           id: 'protected-sites-audio',
-          title: 'Audio de la phrase sur Netflix',
+          title: 'Audio de la phrase sur les sites protégés',
           body: [
             [
-              'Ouvrez {Paramètres → Cartes Anki → Audio de la phrase sur Netflix} et appuyez sur Autoriser.',
-              'Dans l’onglet Netflix, cliquez sur l’icône Libregaku dans la barre d’outils, puis sur Enregistrer l’audio de la phrase ici. À faire une fois par onglet.',
+              'Ouvrez {Paramètres → Cartes Anki → Audio de la phrase sur les sites protégés} et appuyez sur Autoriser.',
+              'Dans l’onglet où la vidéo est lue, cliquez sur l’icône Libregaku dans la barre d’outils, puis sur Enregistrer l’audio de la phrase ici. À faire une fois par onglet.',
             ],
-            'Netflix chiffre sa vidéo : Libregaku ne peut donc pas en enregistrer le son comme sur YouTube. Il enregistre l’onglet à la place, ce que Chrome n’autorise que de cette façon. Pour la même raison, les cartes Netflix n’ont pas de capture d’écran.',
+            'Les sites protégés chiffrent leur vidéo : Libregaku ne peut donc pas en enregistrer le son comme sur YouTube. Il enregistre l’onglet à la place, ce que Chrome n’autorise que de cette façon. Pour la même raison, les cartes créées là-bas n’ont pas de capture d’écran.',
           ],
-          keywords: ['son', 'autorisation', 'permission', 'chiffrement', 'drm', 'capture d’onglet', 'tab capture'],
+          keywords: ['netflix', 'disney', 'prime video', 'max', 'hbo', 'son', 'autorisation', 'permission', 'chiffrement', 'drm', 'capture d’onglet', 'tab capture'],
         },
       ],
     },
@@ -270,7 +296,7 @@ export const fr: HelpTranslation = {
           id: 'q-picture',
           title: 'Qu’est-ce que la capture d’écran d’une carte ?',
           body: [
-            'Une image fixe de la scène, au verso de la carte, pour voir d’où vient le mot. Sur YouTube, elle est prise dans la vidéo ; Netflix masque sa vidéo aux extensions, donc les cartes créées là-bas n’en ont pas. {Paramètres → Cartes Anki → Capture d’écran} la désactive.',
+            'Une image fixe de la scène, au verso de la carte, pour voir d’où vient le mot. Sur YouTube, elle est prise dans la vidéo ; les sites protégés masquent leur vidéo aux extensions, donc les cartes créées là-bas n’en ont pas. {Paramètres → Cartes Anki → Capture d’écran} la désactive.',
           ],
           keywords: ['image', 'photo', 'verso', 'screenshot'],
         },

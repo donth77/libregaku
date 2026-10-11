@@ -184,21 +184,47 @@ export const de: HelpTranslation = {
       ],
     },
     {
+      id: 'supported-sites',
+      title: 'Unterstützte Seiten',
+      about: 'Die Seiten, auf denen Libregaku funktioniert, und wie sie sich unterscheiden.',
+      topics: [
+        {
+          id: 'supported-sites-list',
+          title: 'Auf welchen Seiten funktioniert es?',
+          body: [
+            'Libregaku zeigt auf diesen Seiten interaktive Untertitel über dem Video. Es nutzt die Untertitel, die die Seite selbst anbietet, in der Sprache, die du lernst.',
+            {
+              head: ['Seite', 'Satzaudio und Screenshot'],
+              rows: [
+                ['YouTube', 'Wird aus dem Video genommen.'],
+                ['Netflix', 'Wird vom Tab aufgenommen; kein Screenshot.'],
+                ['Disney+', 'Wird vom Tab aufgenommen; kein Screenshot.'],
+                ['Prime Video', 'Wird vom Tab aufgenommen; kein Screenshot.'],
+                ['Max', 'Wird vom Tab aufgenommen; kein Screenshot.'],
+              ],
+            },
+            'Wie der Ton vom Tab aufgenommen wird, erklärt das Kapitel zu geschützten Seiten. Ein Video ohne Untertitel in der Sprache, die du lernst, hat nichts zu zeigen, und Libregaku sagt das.',
+          ],
+          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'seiten', 'websites', 'unterstützt', 'streaming'],
+        },
+      ],
+    },
+    {
       id: 'protected-sites',
-      title: 'Netflix',
-      about: 'Was sein Kopierschutz ändert.',
+      title: 'Geschützte Websites',
+      about: 'Die Websites, die ihr Video verschlüsseln: Netflix, Disney+, Prime Video und Max. Was dieser Kopierschutz ändert.',
       topics: [
         {
           id: 'protected-sites-audio',
-          title: 'Satz-Audio auf Netflix',
+          title: 'Satz-Audio auf geschützten Websites',
           body: [
             [
-              'Öffne {Einstellungen → Anki-Karten → Satz-Audio auf Netflix} und drücke „Zulassen“.',
-              'Klicke im Netflix-Tab in der Symbolleiste auf das Libregaku-Symbol und drücke „Satz-Audio hier aufnehmen“. Das machst du einmal pro Tab.',
+              'Öffne {Einstellungen → Anki-Karten → Satz-Audio auf geschützten Websites} und drücke „Zulassen“.',
+              'Klicke in dem Tab, in dem das Video läuft, in der Symbolleiste auf das Libregaku-Symbol und drücke „Satz-Audio hier aufnehmen“. Das machst du einmal pro Tab.',
             ],
-            'Netflix verschlüsselt sein Video, deshalb kann Libregaku den Ton nicht wie auf YouTube aus dem Video aufnehmen. Stattdessen nimmt es den Tab auf, was Chrome nur auf diesem Weg erlaubt. Aus demselben Grund haben Netflix-Karten keinen Screenshot.',
+            'Geschützte Websites verschlüsseln ihr Video, deshalb kann Libregaku den Ton nicht wie auf YouTube aus dem Video aufnehmen. Stattdessen nimmt es den Tab auf, was Chrome nur auf diesem Weg erlaubt. Aus demselben Grund haben Karten von dort keinen Screenshot.',
           ],
-          keywords: ['netflix', 'audio', 'ton', 'berechtigung', 'verschlüsselung', 'kopierschutz', 'drm', 'tab-aufnahme', 'tab capture'],
+          keywords: ['netflix', 'disney', 'prime video', 'max', 'hbo', 'audio', 'ton', 'berechtigung', 'verschlüsselung', 'kopierschutz', 'drm', 'tab-aufnahme', 'tab capture'],
         },
       ],
     },
@@ -270,7 +296,7 @@ export const de: HelpTranslation = {
           id: 'q-picture',
           title: 'Was ist der Screenshot auf einer Karte?',
           body: [
-            'Ein Standbild der Szene auf der Rückseite der Karte, damit du siehst, woher das Wort kommt. Auf YouTube wird es aus dem Video genommen; Netflix zeigt Erweiterungen sein Video nur leer, daher haben Karten von dort keins. {Einstellungen → Anki-Karten → Screenshot} schaltet es aus.',
+            'Ein Standbild der Szene auf der Rückseite der Karte, damit du siehst, woher das Wort kommt. Auf YouTube wird es aus dem Video genommen; geschützte Websites zeigen Erweiterungen ihr Video nur leer, daher haben Karten von dort keins. {Einstellungen → Anki-Karten → Screenshot} schaltet es aus.',
           ],
           keywords: ['bild', 'foto', 'standbild', 'bildschirmfoto', 'screenshot'],
         },

@@ -396,9 +396,9 @@ describe('settings panel selects', () => {
     expect(switchFor(root, 'Examples from this video').closest('#lg-word-popup')).not.toBeNull();
   });
 
-  it('offers sentence audio and pictures on cards, both on unless turned off', () => {
+  it('offers sentence audio and pictures on cards: pictures on, sentence audio off until turned on', () => {
     const root = buildSettings(() => {});
-    expect(switchFor(root, 'Sentence audio').checked).toBe(true);
+    expect(switchFor(root, 'Sentence audio').checked).toBe(false);
     expect(switchFor(root, 'Screenshot').checked).toBe(true);
   });
 

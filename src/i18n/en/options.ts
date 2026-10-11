@@ -29,7 +29,7 @@ export const options = {
   stepAnki: 'Connect Anki and choose a deck for new cards',
   ankiOptional:
     'Anki is optional — subtitles, lookups and furigana all work without it. ' +
-    'It is what remembers which words you already know.',
+    'Anki remembers which words you already know.',
   /** The keyboard button is an icon button in the transcript panel's header. */
   nextSteps:
     'Then open a video with subtitles in the language you are learning, and hover a ' +

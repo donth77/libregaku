@@ -184,21 +184,47 @@ export const sv: HelpTranslation = {
       ],
     },
     {
+      id: 'supported-sites',
+      title: 'Webbplatser som stöds',
+      about: 'De webbplatser där Libregaku fungerar och vad som skiljer dem åt.',
+      topics: [
+        {
+          id: 'supported-sites-list',
+          title: 'Vilka webbplatser fungerar?',
+          body: [
+            'Libregaku ritar interaktiva undertexter över videon på de här webbplatserna. Den använder de undertexter som webbplatsen själv erbjuder, på språket du lär dig.',
+            {
+              head: ['Webbplats', 'Meningsljud och skärmbild'],
+              rows: [
+                ['YouTube', 'Tas från videon.'],
+                ['Netflix', 'Spelas in från fliken; ingen skärmbild.'],
+                ['Disney+', 'Spelas in från fliken; ingen skärmbild.'],
+                ['Prime Video', 'Spelas in från fliken; ingen skärmbild.'],
+                ['Max', 'Spelas in från fliken; ingen skärmbild.'],
+              ],
+            },
+            'Kapitlet om skyddade webbplatser förklarar hur ljudet spelas in från fliken. En video utan undertexter på språket du lär dig har inget att visa, och Libregaku säger det.',
+          ],
+          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'webbplatser', 'sidor', 'stöds', 'streaming'],
+        },
+      ],
+    },
+    {
       id: 'protected-sites',
-      title: 'Netflix',
-      about: 'Vad dess skydd ändrar.',
+      title: 'Skyddade webbplatser',
+      about: 'Webbplatserna som krypterar sin video: Netflix, Disney+, Prime Video och Max. Vad det ändrar.',
       topics: [
         {
           id: 'protected-sites-audio',
-          title: 'Meningsljud på Netflix',
+          title: 'Meningsljud på skyddade webbplatser',
           body: [
             [
-              'Öppna {Inställningar → Anki-kort → Meningsljud på Netflix} och tryck på Tillåt.',
-              'Klicka på Libregaku-ikonen i verktygsfältet på Netflix-fliken och tryck på Spela in meningsljud här. Gör det en gång per flik.',
+              'Öppna {Inställningar → Anki-kort → Meningsljud på skyddade webbplatser} och tryck på Tillåt.',
+              'Klicka på Libregaku-ikonen i verktygsfältet på fliken där videon spelas upp och tryck på Spela in meningsljud här. Gör det en gång per flik.',
             ],
-            'Netflix krypterar sin video, så Libregaku kan inte spela in ljudet från videon som på YouTube. I stället spelar det in fliken, vilket Chrome bara tillåter på det här sättet. Av samma skäl har kort från Netflix ingen skärmbild.',
+            'Skyddade webbplatser krypterar sin video, så Libregaku kan inte spela in ljudet från videon som på YouTube. I stället spelar det in fliken, vilket Chrome bara tillåter på det här sättet. Av samma skäl har kort som skapas där ingen skärmbild.',
           ],
-          keywords: ['ljud', 'behörighet', 'tillåtelse', 'kryptering', 'drm', 'flikinspelning', 'tab capture'],
+          keywords: ['netflix', 'disney', 'prime video', 'max', 'hbo', 'ljud', 'behörighet', 'tillåtelse', 'kryptering', 'drm', 'flikinspelning', 'tab capture'],
         },
       ],
     },
@@ -270,7 +296,7 @@ export const sv: HelpTranslation = {
           id: 'q-picture',
           title: 'Vad är skärmbilden på ett kort?',
           body: [
-            'En stillbild från scenen, på kortets baksida, så att du ser var ordet kom ifrån. Den tas från videon på YouTube; Netflix släcker sin video för tillägg, så kort som skapas där har ingen. {Inställningar → Anki-kort → Skärmbild} stänger av den.',
+            'En stillbild från scenen, på kortets baksida, så att du ser var ordet kom ifrån. Den tas från videon på YouTube; skyddade webbplatser släcker sin video för tillägg, så kort som skapas där har ingen. {Inställningar → Anki-kort → Skärmbild} stänger av den.',
           ],
           keywords: ['bild', 'skärmdump', 'stillbild', 'screenshot', 'picture'],
         },

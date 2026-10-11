@@ -184,21 +184,47 @@ export const zh: HelpTranslation = {
       ],
     },
     {
+      id: 'supported-sites',
+      title: '支持的网站',
+      about: 'Libregaku 可用的网站，以及它们之间的区别。',
+      topics: [
+        {
+          id: 'supported-sites-list',
+          title: '哪些网站可以用？',
+          body: [
+            'Libregaku 在这些网站上把可点击的字幕画在视频上。它使用网站自己提供的字幕，语言是你正在学的语言。',
+            {
+              head: ['网站', '句子音频和截图'],
+              rows: [
+                ['YouTube', '取自视频。'],
+                ['Netflix', '从标签页录制；没有截图。'],
+                ['Disney+', '从标签页录制；没有截图。'],
+                ['Prime Video', '从标签页录制；没有截图。'],
+                ['Max', '从标签页录制；没有截图。'],
+              ],
+            },
+            '从标签页录音的方法见“受保护的网站”一章。没有你所学语言字幕的视频没有内容可显示，Libregaku 会如此告知。',
+          ],
+          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', '网站', '支持', '流媒体'],
+        },
+      ],
+    },
+    {
       id: 'protected-sites',
-      title: 'Netflix',
-      about: 'Netflix 的内容保护会带来哪些变化。',
+      title: '受保护的网站',
+      about: '对视频加密的网站：Netflix、Disney+、Prime Video 和 Max。这会带来哪些变化。',
       topics: [
         {
           id: 'protected-sites-audio',
-          title: 'Netflix 上的句子音频',
+          title: '受保护的网站上的句子音频',
           body: [
             [
-              '在 {设置 → Anki 卡片 → Netflix 上的句子音频} 中点击“允许”。',
-              '在 Netflix 标签页中，点击工具栏上的 Libregaku 图标，然后点击“在此录制句子音频”。每个标签页都需要操作一次。',
+              '在 {设置 → Anki 卡片 → 受保护的网站上的句子音频} 中点击“允许”。',
+              '在播放视频的标签页中，点击工具栏上的 Libregaku 图标，然后点击“在此录制句子音频”。每个标签页都需要操作一次。',
             ],
-            'Netflix 对视频进行了加密，所以 Libregaku 无法像在 YouTube 上那样从视频录音，而是改为录制标签页的声音，而 Chrome 只允许这样录制。出于同样的原因，Netflix 上制作的卡片没有截图。',
+            '受保护的网站对视频进行了加密，所以 Libregaku 无法像在 YouTube 上那样从视频录音，而是改为录制标签页的声音，而 Chrome 只允许这样录制。出于同样的原因，在这些网站上制作的卡片没有截图。',
           ],
-          keywords: ['权限', '授权', '奈飞', '网飞', 'drm', 'tab capture'],
+          keywords: ['netflix', 'disney', 'prime video', 'max', 'hbo', '权限', '授权', '奈飞', '网飞', 'drm', 'tab capture'],
         },
       ],
     },
@@ -270,7 +296,7 @@ export const zh: HelpTranslation = {
           id: 'q-picture',
           title: '卡片上的截图是什么？',
           body: [
-            '它是当时场景的画面，放在卡片背面，让你知道这个单词出自哪里。在 YouTube 上，截图取自视频；Netflix 会对扩展屏蔽视频画面，所以在 Netflix 上制作的卡片没有截图。可在 {设置 → Anki 卡片 → 截图} 中关闭。',
+            '它是当时场景的画面，放在卡片背面，让你知道这个单词出自哪里。在 YouTube 上，截图取自视频；受保护的网站会对扩展屏蔽视频画面，所以在这些网站上制作的卡片没有截图。可在 {设置 → Anki 卡片 → 截图} 中关闭。',
           ],
           keywords: ['图片', '图像', '截屏', '黑屏', 'screenshot'],
         },

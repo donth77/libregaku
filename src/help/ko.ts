@@ -184,21 +184,47 @@ export const ko: HelpTranslation = {
       ],
     },
     {
+      id: 'supported-sites',
+      title: '지원 사이트',
+      about: 'Libregaku가 작동하는 사이트와 사이트별 차이입니다.',
+      topics: [
+        {
+          id: 'supported-sites-list',
+          title: '어떤 사이트에서 되나요?',
+          body: [
+            'Libregaku는 이 사이트들에서 영상 위에 대화형 자막을 표시합니다. 사이트가 직접 제공하는 자막을 배우는 언어로 사용합니다.',
+            {
+              head: ['사이트', '문장 오디오와 스크린샷'],
+              rows: [
+                ['YouTube', '영상에서 가져옵니다.'],
+                ['Netflix', '탭에서 녹음하며 스크린샷은 없습니다.'],
+                ['Disney+', '탭에서 녹음하며 스크린샷은 없습니다.'],
+                ['Prime Video', '탭에서 녹음하며 스크린샷은 없습니다.'],
+                ['Max', '탭에서 녹음하며 스크린샷은 없습니다.'],
+              ],
+            },
+            '탭에서 소리를 녹음하는 방법은 보호된 사이트 장에 나와 있습니다. 배우는 언어의 자막이 없는 영상은 보여 줄 것이 없으며, Libregaku가 그렇게 알려 줍니다.',
+          ],
+          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', '사이트', '지원', '스트리밍'],
+        },
+      ],
+    },
+    {
       id: 'protected-sites',
-      title: 'Netflix',
-      about: 'Netflix의 콘텐츠 보호 때문에 달라지는 점.',
+      title: '보호된 사이트',
+      about: '동영상을 암호화하는 사이트인 Netflix, Disney+, Prime Video, Max에서 달라지는 점.',
       topics: [
         {
           id: 'protected-sites-audio',
-          title: 'Netflix 문장 오디오',
+          title: '보호된 사이트의 문장 오디오',
           body: [
             [
-              '{설정 → Anki 카드 → Netflix 문장 오디오}에서 ‘허용’을 누르세요.',
-              'Netflix 탭에서 툴바의 Libregaku 아이콘을 클릭하고 ‘여기서 문장 오디오 녹음’을 누르세요. 탭마다 한 번씩 하면 됩니다.',
+              '{설정 → Anki 카드 → 보호된 사이트의 문장 오디오}에서 ‘허용’을 누르세요.',
+              '동영상이 재생 중인 탭에서 툴바의 Libregaku 아이콘을 클릭하고 ‘여기서 문장 오디오 녹음’을 누르세요. 탭마다 한 번씩 하면 됩니다.',
             ],
-            'Netflix는 동영상을 암호화하기 때문에 Libregaku가 YouTube에서처럼 동영상에서 소리를 녹음할 수 없습니다. 대신 탭을 녹음하는데, Chrome에서는 이 방법으로만 가능합니다. 같은 이유로 Netflix 카드에는 스크린샷이 없습니다.',
+            '보호된 사이트는 동영상을 암호화하기 때문에 Libregaku가 YouTube에서처럼 동영상에서 소리를 녹음할 수 없습니다. 대신 탭을 녹음하는데, Chrome에서는 이 방법으로만 가능합니다. 같은 이유로 이런 사이트에서 만든 카드에는 스크린샷이 없습니다.',
           ],
-          keywords: ['넷플릭스', '오디오', '소리', '권한', '탭 캡처', '탭 녹음', '암호화', 'DRM', 'netflix', 'tab capture'],
+          keywords: ['netflix', 'disney', 'prime video', 'max', 'hbo', '넷플릭스', '오디오', '소리', '권한', '탭 캡처', '탭 녹음', '암호화', 'DRM', 'tab capture'],
         },
       ],
     },
@@ -270,7 +296,7 @@ export const ko: HelpTranslation = {
           id: 'q-picture',
           title: '카드에 있는 스크린샷은 무엇인가요?',
           body: [
-            '단어가 나온 장면을 캡처한 이미지로, 카드 뒷면에 들어가서 단어가 어디서 나왔는지 보여 줍니다. YouTube에서는 동영상에서 캡처합니다. Netflix는 확장 프로그램에 동영상을 빈 화면으로 보여 주기 때문에 Netflix에서 만든 카드에는 스크린샷이 없습니다. {설정 → Anki 카드 → 스크린샷}에서 끌 수 있습니다.',
+            '단어가 나온 장면을 캡처한 이미지로, 카드 뒷면에 들어가서 단어가 어디서 나왔는지 보여 줍니다. YouTube에서는 동영상에서 캡처합니다. 보호된 사이트는 확장 프로그램에 동영상을 빈 화면으로 보여 주기 때문에 거기서 만든 카드에는 스크린샷이 없습니다. {설정 → Anki 카드 → 스크린샷}에서 끌 수 있습니다.',
           ],
           keywords: ['사진', '이미지', '캡처', '장면', '그림', 'screenshot', 'picture'],
         },

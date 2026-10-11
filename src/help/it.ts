@@ -184,21 +184,47 @@ export const it: HelpTranslation = {
       ],
     },
     {
+      id: 'supported-sites',
+      title: 'Siti supportati',
+      about: 'I siti su cui funziona Libregaku e che cosa cambia tra l’uno e l’altro.',
+      topics: [
+        {
+          id: 'supported-sites-list',
+          title: 'Su quali siti funziona?',
+          body: [
+            'Libregaku disegna sottotitoli interattivi sul video in questi siti. Usa i sottotitoli che il sito stesso offre, nella lingua che stai imparando.',
+            {
+              head: ['Sito', 'Audio della frase e screenshot'],
+              rows: [
+                ['YouTube', 'Presi dal video.'],
+                ['Netflix', 'Registrato dalla scheda; nessuno screenshot.'],
+                ['Disney+', 'Registrato dalla scheda; nessuno screenshot.'],
+                ['Prime Video', 'Registrato dalla scheda; nessuno screenshot.'],
+                ['Max', 'Registrato dalla scheda; nessuno screenshot.'],
+              ],
+            },
+            'Il capitolo sui siti protetti spiega come si registra il suono dalla scheda. Un video senza sottotitoli nella lingua che stai imparando non ha nulla da mostrare, e Libregaku lo dice.',
+          ],
+          keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'siti', 'supportati', 'streaming'],
+        },
+      ],
+    },
+    {
       id: 'protected-sites',
-      title: 'Netflix',
-      about: 'Cosa cambia con la sua protezione.',
+      title: 'Siti protetti',
+      about: 'I siti che criptano i loro video: Netflix, Disney+, Prime Video e Max. Cosa cambia con questa protezione.',
       topics: [
         {
           id: 'protected-sites-audio',
-          title: 'Audio della frase su Netflix',
+          title: 'Audio della frase sui siti protetti',
           body: [
             [
-              'Apri {Impostazioni → Carte di Anki → Audio della frase su Netflix} e premi Consenti.',
-              'Nella scheda di Netflix, clicca sull’icona di Libregaku nella barra degli strumenti e premi Registra qui l’audio della frase. Fallo una volta per scheda.',
+              'Apri {Impostazioni → Carte di Anki → Audio della frase sui siti protetti} e premi Consenti.',
+              'Nella scheda in cui è in riproduzione il video, clicca sull’icona di Libregaku nella barra degli strumenti e premi Registra qui l’audio della frase. Fallo una volta per scheda.',
             ],
-            'Netflix cripta i suoi video, quindi Libregaku non può registrarne l’audio dal video come fa su YouTube. Registra invece la scheda, cosa che Chrome consente solo in questo modo. Per lo stesso motivo, le carte di Netflix non hanno lo screenshot.',
+            'I siti protetti criptano i loro video, quindi Libregaku non può registrarne l’audio dal video come fa su YouTube. Registra invece la scheda, cosa che Chrome consente solo in questo modo. Per lo stesso motivo, le carte create lì non hanno lo screenshot.',
           ],
-          keywords: ['suono', 'autorizzazione', 'permesso', 'crittografia', 'drm', 'acquisizione della scheda', 'tab capture'],
+          keywords: ['netflix', 'disney', 'prime video', 'max', 'hbo', 'suono', 'autorizzazione', 'permesso', 'crittografia', 'drm', 'acquisizione della scheda', 'tab capture'],
         },
       ],
     },
@@ -270,7 +296,7 @@ export const it: HelpTranslation = {
           id: 'q-picture',
           title: 'Cos’è lo screenshot su una carta?',
           body: [
-            'Un fotogramma della scena, sul retro della carta, per vedere da dove viene la parola. Su YouTube viene preso dal video; Netflix oscura i suoi video alle estensioni, quindi le carte create lì non ce l’hanno. {Impostazioni → Carte di Anki → Screenshot} lo disattiva.',
+            'Un fotogramma della scena, sul retro della carta, per vedere da dove viene la parola. Su YouTube viene preso dal video; i siti protetti oscurano i loro video alle estensioni, quindi le carte create lì non ce l’hanno. {Impostazioni → Carte di Anki → Screenshot} lo disattiva.',
           ],
           keywords: ['immagine', 'foto', 'fotogramma', 'cattura', 'retro'],
         },

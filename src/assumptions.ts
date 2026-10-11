@@ -124,6 +124,20 @@ export const ASSUMPTIONS: Assumption[] = [
     fallback: 'The file itself where only its MP3 is missing; otherwise the browser\'s voice, and a card without a recording',
   },
   {
+    id: 'audio.naver',
+    site: 'external',
+    claim: 'korean.dict.naver.com/api3/koko/search?query=<word>&m=pc&range=word&page=1, asked with Referer: https://korean.dict.naver.com/, answers JSON whose searchResultMap.searchResultListMap.WORD.items[] each have an expEntry (the word, in <strong>) and searchPhoneticSymbolList[].symbolFile, a signed address under dict-dn.pstatic.net/naver/dic/naverdic/krdic/sound/ that serves an MP3; with any other Referer it answers 200 and nothing',
+    breaks: 'The last source of recorded Korean words, which the free ones lack for more than half of the common ones: they are heard on the lookup card, and no card carries them',
+    fallback: 'The browser\'s voice',
+  },
+  {
+    id: 'audio.spanishdict',
+    site: 'external',
+    claim: 'audio1.spanishdict.com/audio?lang=es&text=<word> answers 200 with an MP3 of a voice saying the text, with no header needed, for any text it is sent',
+    breaks: 'The voice a Spanish word is said in when no recording of it exists: the Pronounce button falls to the browser\'s voice',
+    fallback: 'The browser\'s voice',
+  },
+  {
     id: 'audio.audio-cmn',
     site: 'external',
     claim: 'raw.githubusercontent.com/hugolpz/audio-cmn/<the commit in recordings.ts>/64k/hsk/cmn-<simplified word>.mp3 is a recording of that word by Yue Tan (CC BY-SA 3.0 US), and answers 404 for a word it lacks',

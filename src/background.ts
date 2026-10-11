@@ -11,6 +11,7 @@
 
 import { relay } from './anki/direct';
 import { MAX_AUDIO_BYTES, TEMPLATE_KEY, audioUrlAllowed } from './audio/pronounce';
+import { NAVER_API } from './audio/recordings';
 import type { CaptureFailure } from './audio/tab-capture';
 import { UI_LANGUAGES } from './i18n/languages';
 
@@ -173,12 +174,43 @@ function wikimediaHeaders(url: string): Record<string, string> | null {
   return { 'Api-User-Agent': `Libregaku/${chrome.runtime.getManifest().version} (https://github.com/donth77/libregaku)` };
 }
 
+/**
+ * Naver's dictionary answers a search only when the request says it comes
+ * from its own page, and a fetch cannot set that header. So the browser is
+ * asked to add it to this extension's searches, and to nothing else.
+ */
+const NAVER_REFERER_RULE = 1;
+
+async function refererForNaver(): Promise<void> {
+  await chrome.declarativeNetRequest.updateSessionRules({
+    removeRuleIds: [NAVER_REFERER_RULE],
+    addRules: [{
+      id: NAVER_REFERER_RULE,
+      priority: 1,
+      action: {
+        type: chrome.declarativeNetRequest.RuleActionType.MODIFY_HEADERS,
+        requestHeaders: [{
+          header: 'referer',
+          operation: chrome.declarativeNetRequest.HeaderOperation.SET,
+          value: 'https://korean.dict.naver.com/',
+        }],
+      },
+      condition: {
+        urlFilter: `|${NAVER_API}`,
+        initiatorDomains: [chrome.runtime.id],
+        resourceTypes: [chrome.declarativeNetRequest.ResourceType.XMLHTTPREQUEST],
+      },
+    }],
+  });
+}
+
 async function fetchAudio(url: string): Promise<{ ok: boolean; status?: number; type?: string; bytes?: string; error?: string }> {
   const template = await audioTemplate();
   if (!audioUrlAllowed(url, template)) return { ok: false, error: 'not an audio source Libregaku uses' };
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), 15_000);
   try {
+    if (url.startsWith(NAVER_API)) await refererForNaver();
     const headers = wikimediaHeaders(url);
     const res = await fetch(url, { credentials: 'omit', signal: ctl.signal, ...(headers ? { headers } : {}) });
     // A redirect can land anywhere; what matters is where the bytes came from.

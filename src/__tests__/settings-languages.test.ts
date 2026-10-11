@@ -165,14 +165,17 @@ describe('Cantonese', () => {
     expect(DICTIONARIES.yue).toBe('canto');
   });
 
-  it('takes Cantonese tracks, and Hong Kong’s after them; Mandarin takes no Cantonese', async () => {
+  it('takes Cantonese tracks, then any written Chinese, Hong Kong’s first; Mandarin takes no Cantonese', async () => {
     const { trackLanguageMatch } = await import('../settings');
     expect(trackLanguageMatch('yue', 'yue')).toBe(2);
     expect(trackLanguageMatch('yue-HK', 'yue')).toBe(2);
     expect(trackLanguageMatch('zh-yue', 'yue')).toBe(2);
-    expect(trackLanguageMatch('zh-HK', 'yue')).toBe(1);
-    expect(trackLanguageMatch('zh-Hant-HK', 'yue')).toBe(1);
-    expect(trackLanguageMatch('zh-Hans', 'yue')).toBe(0);
+    // Cantonese speech is mostly subtitled in written Chinese: every Chinese track will do.
+    const nearest = ['zh-Hans', 'zh', 'zh-TW', 'zh-HK', 'yue', 'zh-Hant', 'zh-Hant-HK', 'zh-CN']
+      .sort((a, b) => trackLanguageMatch(b, 'yue') - trackLanguageMatch(a, 'yue'));
+    expect(nearest).toEqual(['yue', 'zh-HK', 'zh-Hant-HK', 'zh-TW', 'zh-Hant', 'zh-Hans', 'zh', 'zh-CN']);
+    expect(trackLanguageMatch('zh-CN', 'yue')).toBeGreaterThan(0);
+    expect(trackLanguageMatch('ja', 'yue')).toBe(0);
     expect(trackLanguageMatch('zh-yue', 'zh')).toBe(0);
     expect(trackLanguageMatch('zh-yue', 'zh-Hant')).toBe(0);
     expect(trackLanguageMatch('zh-HK', 'zh-Hant')).toBe(2);

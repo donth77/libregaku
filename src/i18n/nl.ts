@@ -89,6 +89,8 @@ export const nl: Translation = {
     cardDeckMenu: 'Setmenu',
     cardDeckMenuHint:
       'Zet een ▾ naast “Toevoegen aan Anki” om een andere set te kiezen. Nieuwe kaarten gaan daarna naar die set.',
+    cardHideAdd: 'Toevoegen aan Anki verbergen',
+    cardHideAddHint: 'Laat de knop “Toevoegen aan Anki” en het setmenu ernaast van de kaart weg.',
     cardAddLine: 'Zinskaarten',
     cardAddLineHint: 'Voegt een knop toe die van de hele zin een kaart maakt, met de audio en een screenshot.',
     cardKanji: 'Kanjidetails',
@@ -244,17 +246,17 @@ export const nl: Translation = {
     cardAudioHint: 'Een opname van het woord, als die bestaat. Nooit een synthetische stem.',
     cardSentenceAudio: 'Zinsaudio',
     cardSentenceAudioHint:
-      'Neemt de zin op door hem nog een keer af te spelen. Op Netflix is daarvoor de toestemming hieronder nodig.',
+      'Neemt de zin op door hem nog een keer af te spelen. Op beschermde sites is daarvoor de toestemming hieronder nodig.',
     cardScreenshot: 'Screenshot',
-    cardScreenshotHint: 'Een stilstaand beeld van de scène. Niet op Netflix, omdat Netflix het blokkeert.',
-    capture: 'Zinsaudio op Netflix',
+    cardScreenshotHint: 'Een stilstaand beeld van de scène. Niet op beschermde sites, omdat die het blokkeren.',
+    capture: 'Zinsaudio op beschermde sites',
     captureAllow: 'Toestaan',
     captureAllowInSettings: 'Toestaan in instellingen',
     captureRemove: 'Verwijderen',
     captureAllowed:
-      'Toegestaan. Klik op elk Netflix-tabblad op het Libregaku-icoon en kies “Zinsaudio hier opnemen”.',
+      'Toegestaan. Klik op elk tabblad van een beschermde site op het Libregaku-icoon en kies “Zinsaudio hier opnemen”.',
     captureNeeded:
-      'Netflix beschermt zijn video, dus wordt zinsaudio via het tabblad opgenomen. Daarvoor is je toestemming nodig.',
+      'Beschermde sites versleutelen hun video, dus wordt zinsaudio via het tabblad opgenomen. Daarvoor is je toestemming nodig.',
 
     // Gegevens en licenties
     creditsHeading: 'Gegevens en licenties',
@@ -281,6 +283,8 @@ export const nl: Translation = {
     creditLucide: 'Iconen. ISC-licentie.',
     creditCommons: 'Opnamen van Spaanse, Chinese en Koreaanse woorden, ingesproken door vrijwilligers. Elke opname heeft een eigen licentie, meestal CC BY-SA 4.0. Die staat met de naam van de spreker bij het afspelen en op de kaart.',
     creditAudioCmn: 'Opnamen van Chinese woorden door Yue Tan, Universiteit van Caen. CC BY-SA 3.0 US.',
+    creditNaver: 'Opnamen van Koreaanse woorden uit Naver Dictionary, alleen te horen op de opzoekkaart. Ze hebben geen licentie voor hergebruik en komen daarom nooit op een kaart.',
+    creditSpanishdict: 'Gegenereerde stem voor Spaanse woorden van SpanishDict, te horen met de uitspraakknop als er geen opname is. Geen licentie voor hergebruik, dus nooit op een kaart.',
     licence: 'Libregaku heeft een MIT-licentie. Woordenboekgegevens worden van hun bronnen gedownload, niet meegeleverd.',
     built: (when: string): string => `Deze kopie is gebouwd op ${when}.`,
 
@@ -340,7 +344,7 @@ export const nl: Translation = {
     generatedTrack: (track: string): string => `${track} (automatisch)`,
     captureNeedsPermission: 'Om hier zinsaudio op te nemen, is toestemming nodig om het geluid van dit tabblad op te nemen.',
     captureAllowInSettings: 'Toestaan in instellingen',
-    captureReady: 'Het geluid van Netflix kan pas worden opgenomen als je het voor dit tabblad aanzet.',
+    captureReady: 'Het geluid van beschermde sites kan pas worden opgenomen als je het voor dit tabblad aanzet.',
     captureStart: 'Zinsaudio hier opnemen',
     captureFailed: 'Chrome kon dit tabblad niet opnemen.',
     toggleSidebar: 'Zijbalk tonen/verbergen',

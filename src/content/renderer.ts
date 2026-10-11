@@ -143,6 +143,17 @@ const STYLE = `
     color: #B8C0D4; letter-spacing: .02em;
     white-space: nowrap; user-select: none; pointer-events: none;
   }
+  /*
+   * A romanised reading — pinyin, Jyutping — is wider than the character under
+   * it, and the readings of neighbours ran into each other (zyu2gun2loeng4).
+   * The character's box is made as wide as its reading by a hidden copy of it
+   * in flow, so the characters part to make room, as ruby does.
+   */
+  .t ruby[data-r] { text-align: center; }
+  .t ruby[data-r]::after {
+    content: attr(data-r); display: block; height: 0; overflow: hidden; visibility: hidden;
+    font-size: .46em; letter-spacing: .02em; white-space: nowrap; padding: 0 .12em;
+  }
   /* Ruby only where it earns its place: words you have not learned yet. */
   .wrap:not(.ruby-all) .t:not([data-s="unknown"]):not([data-s="learning"]) rt { visibility: hidden; }
   .wrap.ruby-off rt { display: none; }
@@ -595,6 +606,7 @@ export class Overlay {
           const rt = document.createElement('rt');
           rt.textContent = seg.ruby;
           ruby.appendChild(rt);
+          if (/^[\x21-\x7e\u00c0-\u024f\u0300-\u036f]+$/.test(seg.ruby)) ruby.dataset.r = seg.ruby;
           el.appendChild(ruby);
         }
       }

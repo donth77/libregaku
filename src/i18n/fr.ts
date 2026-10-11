@@ -105,6 +105,8 @@ export const fr: Translation = {
     cardDeckMenu: 'Menu des paquets',
     cardDeckMenuHint:
       'Ajoute un ▾ à côté du bouton Ajouter à Anki pour choisir un autre paquet. Les nouvelles cartes y vont ensuite.',
+    cardHideAdd: 'Masquer Ajouter à Anki',
+    cardHideAddHint: 'Retire de la carte le bouton Ajouter à Anki et le menu des paquets à côté.',
     cardAddLine: 'Cartes de phrase',
     cardAddLineHint: 'Ajoute un bouton qui crée une carte de la phrase entière, avec son audio et une capture d’écran.',
     cardKanji: 'Détail des kanji',
@@ -264,17 +266,17 @@ export const fr: Translation = {
     cardAudio: 'Audio du mot',
     cardAudioHint: 'Un enregistrement du mot, s’il en existe un. Jamais une voix de synthèse.',
     cardSentenceAudio: 'Audio de la phrase',
-    cardSentenceAudioHint: 'Enregistre la phrase en la rejouant une fois. Sur Netflix, il faut l’autorisation ci-dessous.',
+    cardSentenceAudioHint: 'Enregistre la phrase en la rejouant une fois. Sur les sites protégés, il faut l’autorisation ci-dessous.',
     cardScreenshot: 'Capture d’écran',
-    cardScreenshotHint: 'Une image fixe de la scène. Indisponible sur Netflix, qui la bloque.',
-    capture: 'Audio de la phrase sur Netflix',
+    cardScreenshotHint: 'Une image fixe de la scène. Indisponible sur les sites protégés, qui la bloquent.',
+    capture: 'Audio de la phrase sur les sites protégés',
     captureAllow: 'Autoriser',
     captureAllowInSettings: 'Autoriser dans les paramètres',
     captureRemove: 'Retirer',
     captureAllowed:
-      'Autorisé. Dans chaque onglet Netflix, cliquez sur l’icône Libregaku et choisissez Enregistrer l’audio de la phrase ici.',
+      'Autorisé. Dans chaque onglet d’un site protégé, cliquez sur l’icône Libregaku et choisissez Enregistrer l’audio de la phrase ici.',
     captureNeeded:
-      'Netflix protège sa vidéo : l’audio de la phrase est donc enregistré depuis l’onglet. Il faut pour cela votre autorisation.',
+      'Les sites protégés chiffrent leur vidéo : l’audio de la phrase est donc enregistré depuis l’onglet. Il faut pour cela votre autorisation.',
 
     // Données et licences
     creditsHeading: 'Données et licences',
@@ -300,6 +302,8 @@ export const fr: Translation = {
     creditLucide: 'Icônes. Licence ISC.',
     creditCommons: 'Enregistrements de mots espagnols, chinois et coréens, dits par des bénévoles. Chacun a sa propre licence, CC BY-SA 4.0 pour la plupart, indiquée avec le nom du locuteur à la lecture et sur la carte.',
     creditAudioCmn: 'Enregistrements de mots chinois par Yue Tan, université de Caen. CC BY-SA 3.0 US.',
+    creditNaver: 'Enregistrements de mots coréens du dictionnaire Naver, lus uniquement dans la fiche de recherche. Leur licence n’autorise pas la réutilisation : ils ne sont jamais mis sur une carte.',
+    creditSpanishdict: 'Voix générée pour les mots espagnols de SpanishDict, lue avec le bouton de prononciation quand il n’y a pas d’enregistrement. Sa licence n’autorise pas la réutilisation : elle n’est jamais mise sur une carte.',
     licence: 'Libregaku est sous licence MIT. Les données des dictionnaires sont téléchargées depuis leurs sources, et non intégrées.',
     built: (when: string): string => `Cette copie a été compilée le ${when}.`,
 
@@ -361,7 +365,7 @@ export const fr: Translation = {
     captureNeedsPermission:
       'Pour enregistrer ici l’audio de la phrase, il faut l’autorisation de capturer le son de cet onglet.',
     captureAllowInSettings: 'Autoriser dans les paramètres',
-    captureReady: 'Le son de Netflix ne peut être enregistré qu’après activation pour cet onglet.',
+    captureReady: 'Le son des sites protégés ne peut être enregistré qu’après activation pour cet onglet.',
     captureStart: 'Enregistrer l’audio de la phrase ici',
     captureFailed: 'Chrome n’a pas pu enregistrer cet onglet.',
     toggleSidebar: 'Afficher/masquer la barre latérale',

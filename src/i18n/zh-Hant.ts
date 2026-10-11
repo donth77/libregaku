@@ -66,6 +66,8 @@ export const zhHant: Translation = {
     cardTrackHint: '為想留意的單字加上紫色底線，不會新增卡片。',
     cardDeckMenu: '牌組選單',
     cardDeckMenuHint: '在「新增至 Anki」旁加上 ▾，可選擇其他牌組。之後的新卡片會加入該牌組。',
+    cardHideAdd: '隱藏「新增至 Anki」',
+    cardHideAddHint: '從卡片上移除「新增至 Anki」按鈕及其旁邊的牌組選單。',
     cardAddLine: '句子卡片',
     cardAddLineHint: '加上一個按鈕，可將整句製成卡片，並附上音訊和螢幕截圖。',
     cardKanji: '漢字解析',
@@ -214,15 +216,15 @@ export const zhHant: Translation = {
     cardAudio: '單字音訊',
     cardAudioHint: '單字的錄音（如果有的話）。絕不使用合成語音。',
     cardSentenceAudio: '句子音訊',
-    cardSentenceAudioHint: '將句子再播放一次來錄音。在 Netflix 上需要下方的權限。',
+    cardSentenceAudioHint: '將句子再播放一次來錄音。在受保護的網站上需要下方的權限。',
     cardScreenshot: '螢幕截圖',
-    cardScreenshotHint: '場景的靜態畫面。Netflix 會封鎖截圖，因此無法使用。',
-    capture: 'Netflix 句子音訊',
+    cardScreenshotHint: '場景的靜態畫面。受保護的網站會封鎖截圖，因此在這些網站上無法使用。',
+    capture: '受保護的網站上的句子音訊',
     captureAllow: '允許',
     captureAllowInSettings: '在設定中允許',
     captureRemove: '移除',
-    captureAllowed: '已允許。在每個 Netflix 分頁中，點選 Libregaku 圖示，然後選擇「在此錄製句子音訊」。',
-    captureNeeded: 'Netflix 會保護影片，因此句子音訊是從分頁錄製。這需要你的許可。',
+    captureAllowed: '已允許。在受保護的網站的每個分頁中，點選 Libregaku 圖示，然後選擇「在此錄製句子音訊」。',
+    captureNeeded: '受保護的網站會加密影片，因此句子音訊是從分頁錄製。這需要你的許可。',
 
     // Data and licences
     creditsHeading: '資料與授權',
@@ -243,6 +245,8 @@ export const zhHant: Translation = {
     creditLucide: '圖示。ISC 授權。',
     creditCommons: '西班牙語、中文和韓語單字的錄音，由志願者朗讀。每段錄音各有授權，多數為 CC BY-SA 4.0，播放時和卡片上會連同朗讀者姓名一併標示。',
     creditAudioCmn: '中文單字錄音，由 Yue Tan（卡昂大學）朗讀。CC BY-SA 3.0 US。',
+    creditNaver: '韓語單詞錄音，來自 Naver 詞典，只在查詞卡片中播放。其授權不允許再利用，因此絕不會放進卡片。',
+    creditSpanishdict: 'SpanishDict 為西班牙語單詞生成的語音，在沒有錄音時由發音按鈕播放。其授權不允許再利用，因此絕不會放進卡片。',
     licence: 'Libregaku 採用 MIT 授權。字典資料是從各自的來源下載，並未內建。',
     built: (when: string): string => `此版本建置於 ${when}。`,
 
@@ -304,7 +308,7 @@ export const zhHant: Translation = {
     // Sentence audio on Netflix
     captureNeedsPermission: '要在這裡錄製句子音訊，需要擷取這個分頁聲音的權限。',
     captureAllowInSettings: '在設定中允許',
-    captureReady: '必須先為這個分頁開啟錄製，才能錄下 Netflix 的聲音。',
+    captureReady: '必須先為這個分頁開啟錄製，才能錄下受保護的網站上的聲音。',
     captureStart: '在此錄製句子音訊',
     captureFailed: 'Chrome 無法錄製這個分頁。',
 
