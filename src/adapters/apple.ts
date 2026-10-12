@@ -52,6 +52,20 @@ export function titleIdOf(pathname: string): string | null {
   return /\/(?:episode|show|movie)\/[^/]+\/([^/?#]+)/.exec(pathname)?.[1] ?? null;
 }
 
+/**
+ * What a card says it came from, out of the page's title. Apple writes
+ * "Watch Chapter One - Pachinko (Season 1, Episode 1) - Apple TV", after a
+ * left-to-right mark that is not seen and does not belong on a card.
+ */
+export function titleFrom(documentTitle: string): string | null {
+  const named = documentTitle
+    .replace(/[\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '')
+    .replace(/\s*[-–—|]\s*Apple TV\+?\s*$/i, '')
+    .replace(/^\s*Watch\s+/i, '')
+    .trim();
+  return named && !/^Apple TV\+?$/i.test(named) ? named : null;
+}
+
 async function fetchText(url: string): Promise<string> {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), FETCH_TIMEOUT_MS);
@@ -127,8 +141,7 @@ export class AppleAdapter implements SubtitleSource {
 
   /** The show, and the episode where the page names one. */
   title(): string | null {
-    const named = document.title.replace(/\s*-\s*Apple TV\s*$/i, '').replace(/^Watch\s+/i, '').trim();
-    return named || null;
+    return titleFrom(document.title);
   }
 
   /** Apple TV has no link that opens a title at a moment, so the card has none. */
