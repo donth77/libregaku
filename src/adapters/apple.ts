@@ -80,20 +80,55 @@ async function fetchText(url: string): Promise<string> {
   }
 }
 
+/**
+ * A language tag as the rest of the extension, and Apple's own player, write
+ * it. The playlist names Mandarin by its own code (cmn-Hans, cmn-Hant) and
+ * Tagalog and Norwegian by old ones (tl, no); the player's text tracks, and
+ * every other site, say zh-Hans, zh-Hant, fil and nb. A tag the browser cannot
+ * read is left as written.
+ */
+export function languageOf(tag: string): string {
+  let canonical = tag;
+  try {
+    canonical = Intl.getCanonicalLocales(tag)[0] ?? tag;
+  } catch {
+    // Not a tag: nothing to rewrite.
+  }
+  // The browser keeps "no"; Apple's player lists its norsk as Bokmål.
+  return canonical.replace(/^no(?=-|$)/, 'nb');
+}
+
 /** Renditions as tracks, with ids that survive a refreshed playlist: language, kind, and position among those. */
-function asTracks(renditions: HlsRendition[]): AppleTrack[] {
+export function asTracks(renditions: HlsRendition[]): AppleTrack[] {
   const seen = new Map<string, number>();
   const out: AppleTrack[] = [];
   for (const r of renditions) {
     if (!isMediaUrl(r.uri)) continue;
-    const key = `${r.language}:${r.forced ? 'forced' : r.cc ? 'cc' : 'sub'}`;
+    const language = languageOf(r.language);
+    const key = `${language}:${r.forced ? 'forced' : r.cc ? 'cc' : 'sub'}`;
     const n = seen.get(key) ?? 0;
     seen.set(key, n + 1);
     // The master lists each language once per CDN; the first is as good as the rest.
     if (n > 0) continue;
-    out.push({ ...r, id: `${key}:${n}` });
+    out.push({ ...r, language, id: `${key}:${n}` });
   }
   return out;
+}
+
+/**
+ * The player's text tracks that hold a rendition's lines: those of its
+ * language, or, where the player writes the language some other way, those
+ * under its name. Never a forced track, which holds only a few of the lines.
+ */
+export function nativeTracksFor<T extends Pick<TextTrack, 'kind' | 'language' | 'label'>>(
+  track: Pick<HlsRendition, 'language' | 'name'>, all: T[],
+): T[] {
+  const full = all.filter((t) => t.kind === 'subtitles' && !/forced/i.test(t.label));
+  const language = languageOf(track.language);
+  const ofLanguage = full.filter((t) => languageOf(t.language) === language);
+  if (ofLanguage.length) return ofLanguage;
+  const name = track.name.trim();
+  return name ? full.filter((t) => t.label.trim() === name) : [];
 }
 
 export class AppleAdapter implements SubtitleSource {
@@ -193,7 +228,7 @@ export class AppleAdapter implements SubtitleSource {
 
     const cues = cuesFromSegments(texts);
     if (!cues.length) throw new Error(`libregaku: ${ui.errors.noCuesParsed}`);
-    const offset = await this.#align(track.language, cues);
+    const offset = await this.#align(track, cues);
     // On the player's clock from here on: the transcript, the lines and the seek bar all read it.
     return cues.map((c) => ({ ...c, start: c.start + offset, end: c.end + offset }));
   }
@@ -204,10 +239,10 @@ export class AppleAdapter implements SubtitleSource {
    * only while it is showing, so the track is switched on for a moment; the
    * rule in hideNative keeps it out of sight.
    */
-  async #align(lang: string, cues: Cue[]): Promise<number> {
+  async #align(track: AppleTrack, cues: Cue[]): Promise<number> {
     if (this.#offset !== null) return this.#offset;
     this.#file = cues.map((c) => ({ text: c.text, start: c.start }));
-    if (!(await this.#showTrack(lang))) throw new Error(`libregaku: ${ui.notices.appleTiming}`);
+    if (!(await this.#showTrack(track))) throw new Error(`libregaku: ${ui.notices.appleTiming}`);
     for (let i = 0; i < CALIBRATE_TRIES; i++) {
       if (i > 0) await wait(FILL_WAIT_MS);
       this.#learn();
@@ -216,8 +251,8 @@ export class AppleAdapter implements SubtitleSource {
     throw new Error(`libregaku: ${ui.notices.appleTiming}`);
   }
 
-  /** A text track of this language the player can fill, now showing. False when there is none. */
-  async #showTrack(lang: string): Promise<boolean> {
+  /** A text track of this rendition's language the player can fill, now showing. False when there is none. */
+  async #showTrack(track: AppleTrack): Promise<boolean> {
     // The player fills no text track until the video has data; the tracks are listed well before that.
     let v = this.video();
     for (let waited = 0; (!v || v.readyState < 2) && waited < FILL_WAIT_MS * 12; waited += 500) {
@@ -225,9 +260,7 @@ export class AppleAdapter implements SubtitleSource {
       v = this.video();
     }
     if (!v || v.readyState < 2) return false;
-    const candidates = [...v.textTracks].filter(
-      (t) => t.kind === 'subtitles' && t.language === lang && !/forced/i.test(t.label),
-    );
+    const candidates = nativeTracksFor(track, [...v.textTracks]);
     const filling = candidates.find((t) => t.mode === 'showing' && t.cues && t.cues.length);
     if (filling) {
       this.#native = filling;

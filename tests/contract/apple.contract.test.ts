@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { languageOf } from '../../src/adapters/apple';
 import { isAppleMediaUrl } from '../../src/adapters/apple-hosts';
 import { cuesFromSegments, segmentUrls, subtitleRenditions, timestampOffset, type HlsRendition } from '../../src/adapters/hls';
 import { describeFailure } from '../../src/assumptions';
+import { trackLanguageMatch } from '../../src/settings';
 import { fetchCheckingHops } from './hosts';
 
 /**
@@ -24,6 +26,9 @@ import { fetchCheckingHops } from './hosts';
  *     fills. src/adapters/__tests__/apple-clock.test.ts pins the fitting.
  *   - apple.native-hide. Whether the player still draws its captions with the
  *     browser's text track is only visible in a player.
+ *   - apple.text-tracks. Which language and label the player gives each text
+ *     track is only visible in a player. What is checked here is the playlist's
+ *     side of it: that its Chinese is tagged in a way the adapter reads.
  *   - an episode's own playlist. It is the trailer's that is read here; an
  *     episode's is signed, and its segment URLs carry an access key.
  */
@@ -104,6 +109,13 @@ describe('apple tv contract', () => {
       `Every rendition is on a host the adapter drops (first: ${renditions[0]?.uri.slice(0, 80)}).\n${describeFailure('apple.master')}`,
     ).toBeGreaterThan(0);
     const languages = new Set(kept.map((r) => r.language));
+
+    // Apple tags Mandarin its own way (cmn-Hans); a tag the adapter cannot read as Chinese leaves its learner no track.
+    const unread = kept.filter((r) => /中文/.test(r.name) && trackLanguageMatch(languageOf(r.language), 'zh') === 0);
+    expect(
+      unread.length,
+      `A Chinese rendition is tagged ${unread[0]?.language}, which the adapter does not read as Chinese.\n${describeFailure('apple.master')}`,
+    ).toBe(0);
     console.log(`  apple tv: ${renditions.length} subtitle renditions, ${languages.size} languages, from ${new URL(page).pathname.split('/')[3]}`);
   }, 90_000);
 

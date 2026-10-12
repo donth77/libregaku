@@ -420,9 +420,16 @@ export const ASSUMPTIONS: Assumption[] = [
   {
     id: 'apple.clock',
     site: 'apple',
-    claim: 'Once a subtitle text track is showing, the player fills it with the file\'s lines at its own clock, which runs about a minute apart from the file\'s cue times and drifts slowly, so the two can be matched by their text',
+    claim: 'Once a subtitle text track is showing, the player fills it with the file\'s lines at its own clock, which runs a fixed number of seconds (about a minute) apart from the file\'s cue times for as long as one playback lasts, so the two can be matched by their text',
     breaks: 'Nothing matches, so no clock is learned and the subtitles are not shown',
     fallback: null,
+  },
+  {
+    id: 'apple.text-tracks',
+    site: 'apple',
+    claim: 'The <video> lists a text track of kind "subtitles" for each rendition, under the rendition\'s language as the browser writes it (zh-Hans for the playlist\'s cmn-Hans, fil for tl, nb for no) and labelled with its name',
+    breaks: 'No text track is found for the language being learned, so no clock is learned and the subtitles are not shown',
+    fallback: 'The track labelled with the rendition\'s name, where none has its language',
   },
   {
     id: 'apple.native-hide',
@@ -530,6 +537,7 @@ export const NOTICES: Record<string, NoticeTitle> = {
   'apple.master': 'appleTrackList',
   'apple.vtt-segments': 'appleTrackList',
   'apple.clock': 'appleTiming',
+  'apple.text-tracks': 'appleTiming',
   'pv.resources': 'primeTrackList',
   'pv.subtitle-files': 'primeTrackList',
   'pv.caption-dom': 'primeCaptionText',
