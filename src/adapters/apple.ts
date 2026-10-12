@@ -26,7 +26,11 @@ const NO_DOM_CAPTIONS = '[data-libregaku-no-dom-captions]';
 
 /** Set once, so the rule that hides the player's captions is written once. */
 const STYLE_ID = 'libregaku-apple-native';
-const NATIVE_RULE = ':root.libregaku-active video::cue { visibility: hidden !important; }';
+// The picture is moved beside the transcript panel with a transform, which Apple's playback dialog
+// counts as overflow and answers with a horizontal scrollbar: clipped while the rule is in force.
+const NATIVE_RULE =
+  ':root.libregaku-active video::cue { visibility: hidden !important; }\n' +
+  ':root.libregaku-active dialog.playback-view { overflow-x: hidden !important; }';
 
 const FETCH_TIMEOUT_MS = 15_000;
 /** Segments fetched at once. A film is an hour of minute-long segments: one at a time is slow, all at once is rude. */
@@ -91,7 +95,9 @@ function asTracks(renditions: HlsRendition[]): AppleTrack[] {
 export class AppleAdapter implements SubtitleSource {
   readonly id = 'apple';
   readonly domCaptions = { container: NO_DOM_CAPTIONS, segment: NO_DOM_CAPTIONS, join: '\n' };
-  readonly playerRoot = ['.video-player__video-container', 'video'];
+  // The whole player, controls included: the header bar and the transcript panel are drawn over
+  // the picture and must sit above Apple's own controls, not beneath them.
+  readonly playerRoot = ['.video-player', 'video'];
 
   #tracks: AppleTrack[] = [];
   /** Cues by rendition playlist URL, in flight or done. */
