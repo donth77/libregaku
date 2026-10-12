@@ -318,7 +318,7 @@ export const pt: Translation = {
     notActive:
       'Não está ativo nesta página. Abra um vídeo no YouTube, na Netflix ou em outro site compatível. Se você acabou de instalar ou recarregar ' +
       'o Libregaku, recarregue a guia.',
-    unsupported: 'O Libregaku funciona no YouTube, na Netflix, no Disney+, no Prime Video e no Max.',
+    unsupported: 'O Libregaku funciona no YouTube, na Netflix, no Disney+, no Prime Video, no Max e no Apple TV+.',
     worksOn: (site: string): string => `O Libregaku funciona em ${site}.`,
     waitingForSubtitles: (site: string): string => `${site}: aguardando as legendas. Verifique se estão ativadas.`,
     activeOn: (title: string): string => `Ativo — ${title}`,

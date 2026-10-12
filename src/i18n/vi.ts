@@ -310,7 +310,7 @@ export const vi: Translation = {
     notActive:
       'Không hoạt động trên trang này. Hãy mở một video trên YouTube, Netflix hoặc một trang web được hỗ trợ khác. Nếu bạn vừa cài hoặc tải lại Libregaku, ' +
       'hãy tải lại tab.',
-    unsupported: 'Libregaku hoạt động trên YouTube, Netflix, Disney+, Prime Video và Max.',
+    unsupported: 'Libregaku hoạt động trên YouTube, Netflix, Disney+, Prime Video, Max và Apple TV+.',
     worksOn: (site: string): string => `Libregaku hoạt động trên ${site}.`,
     waitingForSubtitles: (site: string): string => `Đang chờ phụ đề trên ${site}. Hãy kiểm tra xem phụ đề đã bật chưa.`,
     activeOn: (title: string): string => `Đang hoạt động — ${title}`,

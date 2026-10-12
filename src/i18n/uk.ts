@@ -334,7 +334,7 @@ export const uk: Translation = {
     notActive:
       'На цій сторінці не працює. Відкрийте відео на YouTube, Netflix або іншому підтримуваному сайті. Якщо ви щойно встановили чи ' +
       'перезавантажили Libregaku, оновіть вкладку.',
-    unsupported: 'Libregaku працює на YouTube, Netflix, Disney+, Prime Video і Max.',
+    unsupported: 'Libregaku працює на YouTube, Netflix, Disney+, Prime Video, Max і Apple TV+.',
     worksOn: (site: string): string => `Libregaku працює на ${site}.`,
     waitingForSubtitles: (site: string): string => `Чекаємо на субтитри на ${site}. Переконайтеся, що їх увімкнено.`,
     activeOn: (title: string): string => `Працює — ${title}`,

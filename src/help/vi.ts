@@ -201,6 +201,7 @@ export const vi: HelpTranslation = {
                 ['Disney+', 'Ghi từ tab; không có ảnh chụp màn hình.'],
                 ['Prime Video', 'Ghi từ tab; không có ảnh chụp màn hình.'],
                 ['Max', 'Ghi từ tab; không có ảnh chụp màn hình.'],
+                ['Apple TV+', 'Ghi từ tab; không có ảnh chụp màn hình.'],
               ],
             },
             'Chương “Trang web được bảo vệ” giải thích cách ghi âm thanh từ tab. Video không có phụ đề bằng ngôn ngữ bạn đang học thì không có gì để hiển thị, và Libregaku sẽ báo như vậy.',
@@ -212,7 +213,7 @@ export const vi: HelpTranslation = {
     {
       id: 'protected-sites',
       title: 'Trang web được bảo vệ',
-      about: 'Các trang web mã hóa video: Netflix, Disney+, Prime Video và Max. Những gì thay đổi do việc đó.',
+      about: 'Các trang web mã hóa video: Netflix, Disney+, Prime Video, Max và Apple TV+. Những gì thay đổi do việc đó.',
       topics: [
         {
           id: 'protected-sites-audio',

@@ -305,7 +305,7 @@ export const th: Translation = {
     notActive:
       'ไม่ได้ทำงานในหน้านี้ เปิดวิดีโอบน YouTube, Netflix หรือเว็บไซต์อื่นที่รองรับ ' +
       'หากเพิ่งติดตั้งหรือโหลด Libregaku ใหม่ ให้โหลดแท็บซ้ำ',
-    unsupported: 'Libregaku ใช้ได้บน YouTube, Netflix, Disney+, Prime Video และ Max',
+    unsupported: 'Libregaku ใช้ได้บน YouTube, Netflix, Disney+, Prime Video, Max และ Apple TV+',
     worksOn: (site: string): string => `Libregaku ใช้ได้บน ${site}`,
     waitingForSubtitles: (site: string): string => `กำลังรอคำบรรยายบน ${site} ตรวจสอบว่าเปิดคำบรรยายอยู่`,
     activeOn: (title: string): string => `ทำงานอยู่ — ${title}`,

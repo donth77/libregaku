@@ -321,7 +321,7 @@ export const tr: Translation = {
     notActive:
       "Bu sayfada etkin değil. YouTube, Netflix veya desteklenen başka bir sitede bir video açın. Libregaku'yu yeni yüklediyseniz ya da " +
       'yeniden yüklediyseniz sekmeyi yeniden yükleyin.',
-    unsupported: "Libregaku, YouTube, Netflix, Disney+, Prime Video ve Max'te çalışır.",
+    unsupported: "Libregaku, YouTube, Netflix, Disney+, Prime Video, Max ve Apple TV+'ta çalışır.",
     worksOn: (site: string): string => `Libregaku şu sitede çalışır: ${site}.`,
     waitingForSubtitles: (site: string): string =>
       `${site} üzerinde altyazılar bekleniyor. Altyazıların açık olduğundan emin olun.`,

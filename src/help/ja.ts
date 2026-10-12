@@ -201,6 +201,7 @@ export const ja: HelpTranslation = {
                 ['Disney+', 'タブから録音します。スクリーンショットはありません。'],
                 ['Prime Video', 'タブから録音します。スクリーンショットはありません。'],
                 ['Max', 'タブから録音します。スクリーンショットはありません。'],
+                ['Apple TV+', 'タブから録音します。スクリーンショットはありません。'],
               ],
             },
             'タブから音声を録音する方法は、保護されたサイトの章に書かれています。学んでいる言語の字幕がない動画には表示するものがなく、Libregakuはその旨を伝えます。',
@@ -212,7 +213,7 @@ export const ja: HelpTranslation = {
     {
       id: 'protected-sites',
       title: '保護されたサイト',
-      about: '動画を暗号化しているサイト（Netflix、Disney+、Prime Video、Max）で変わること。',
+      about: '動画を暗号化しているサイト（Netflix、Disney+、Prime Video、Max、Apple TV+）で変わること。',
       topics: [
         {
           id: 'protected-sites-audio',

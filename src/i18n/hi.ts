@@ -314,7 +314,7 @@ export const hi: Translation = {
     notActive:
       'इस पेज पर चालू नहीं है। YouTube, Netflix या किसी और समर्थित साइट पर कोई वीडियो खोलें। अगर आपने अभी Libregaku इंस्टॉल या ' +
       'रीलोड किया है, तो टैब रीलोड करें।',
-    unsupported: 'Libregaku, YouTube, Netflix, Disney+, Prime Video और Max पर काम करता है।',
+    unsupported: 'Libregaku, YouTube, Netflix, Disney+, Prime Video, Max और Apple TV+ पर काम करता है।',
     worksOn: (site: string): string => `Libregaku, ${site} पर काम करता है।`,
     waitingForSubtitles: (site: string): string => `${site} पर सबटाइटल का इंतज़ार है। देख लें कि वे चालू हैं।`,
     activeOn: (title: string): string => `चालू — ${title}`,

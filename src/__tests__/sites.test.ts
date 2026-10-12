@@ -19,6 +19,6 @@ describe('site names in right-to-left text', () => {
 
   it('marks the plus in the Arabic list only', () => {
     expect(protectedSites('ar')).toContain('Disney+‎');
-    expect(protectedSites('en')).toBe('Netflix, Disney+, Prime Video, and Max');
+    expect(protectedSites('en')).toBe('Netflix, Disney+, Prime Video, Max, and Apple TV+');
   });
 });

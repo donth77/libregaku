@@ -201,6 +201,7 @@ export const fr: HelpTranslation = {
                 ['Disney+', 'Enregistré depuis l’onglet ; pas de capture d’écran.'],
                 ['Prime Video', 'Enregistré depuis l’onglet ; pas de capture d’écran.'],
                 ['Max', 'Enregistré depuis l’onglet ; pas de capture d’écran.'],
+                ['Apple TV+', 'Enregistré depuis l’onglet ; pas de capture d’écran.'],
               ],
             },
             'Le chapitre sur les sites protégés explique comment le son est enregistré depuis l’onglet. Une vidéo sans sous-titres dans la langue que vous apprenez n’a rien à afficher, et Libregaku le dit.',
@@ -212,7 +213,7 @@ export const fr: HelpTranslation = {
     {
       id: 'protected-sites',
       title: 'Sites protégés',
-      about: 'Les sites qui chiffrent leurs vidéos : Netflix, Disney+, Prime Video et Max. Ce que change cette protection.',
+      about: 'Les sites qui chiffrent leurs vidéos : Netflix, Disney+, Prime Video, Max et Apple TV+. Ce que change cette protection.',
       topics: [
         {
           id: 'protected-sites-audio',

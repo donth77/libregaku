@@ -201,6 +201,7 @@ export const id: HelpTranslation = {
                 ['Disney+', 'Direkam dari tab; tanpa screenshot.'],
                 ['Prime Video', 'Direkam dari tab; tanpa screenshot.'],
                 ['Max', 'Direkam dari tab; tanpa screenshot.'],
+                ['Apple TV+', 'Direkam dari tab; tanpa screenshot.'],
               ],
             },
             'Bab Situs terproteksi menjelaskan cara merekam suara dari tab. Video tanpa subtitel dalam bahasa yang Anda pelajari tidak punya apa-apa untuk ditampilkan, dan Libregaku memberi tahu hal itu.',
@@ -212,7 +213,7 @@ export const id: HelpTranslation = {
     {
       id: 'protected-sites',
       title: 'Situs terproteksi',
-      about: 'Situs yang mengenkripsi videonya: Netflix, Disney+, Prime Video, dan Max. Apa yang berubah karenanya.',
+      about: 'Situs yang mengenkripsi videonya: Netflix, Disney+, Prime Video, Max, dan Apple TV+. Apa yang berubah karenanya.',
       topics: [
         {
           id: 'protected-sites-audio',

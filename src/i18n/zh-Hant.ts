@@ -292,7 +292,7 @@ export const zhHant: Translation = {
     // What the extension is doing on this page
     checkingPage: '正在檢查這個網頁…',
     notActive: '未在這個網頁上啟用。請在 YouTube、Netflix 或其他支援的網站上開啟影片。如果剛安裝或重新載入 Libregaku，請重新載入分頁。',
-    unsupported: 'Libregaku 適用於 YouTube、Netflix、Disney+、Prime Video 和 Max。',
+    unsupported: 'Libregaku 適用於 YouTube、Netflix、Disney+、Prime Video、Max 和 Apple TV+。',
     worksOn: (site: string): string => `Libregaku 適用於 ${site}。`,
     waitingForSubtitles: (site: string): string => `正在等待 ${site} 的字幕。請確認字幕已開啟。`,
     activeOn: (title: string): string => `已啟用：${title}`,

@@ -201,6 +201,7 @@ export const pl: HelpTranslation = {
                 ['Disney+', 'Nagrywane z karty przeglądarki; bez zrzutu ekranu.'],
                 ['Prime Video', 'Nagrywane z karty przeglądarki; bez zrzutu ekranu.'],
                 ['Max', 'Nagrywane z karty przeglądarki; bez zrzutu ekranu.'],
+                ['Apple TV+', 'Nagrywane z karty przeglądarki; bez zrzutu ekranu.'],
               ],
             },
             'Rozdział o chronionych serwisach wyjaśnia, jak nagrywa się dźwięk z karty przeglądarki. Wideo bez napisów w języku, którego się uczysz, nie ma czego pokazać, a Libregaku o tym mówi.',
@@ -212,7 +213,7 @@ export const pl: HelpTranslation = {
     {
       id: 'protected-sites',
       title: 'Chronione serwisy',
-      about: 'Serwisy, które szyfrują wideo: Netflix, Disney+, Prime Video i Max. Co to zmienia.',
+      about: 'Serwisy, które szyfrują wideo: Netflix, Disney+, Prime Video, Max i Apple TV+. Co to zmienia.',
       topics: [
         {
           id: 'protected-sites-audio',

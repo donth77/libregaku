@@ -201,6 +201,7 @@ export const pt: HelpTranslation = {
                 ['Disney+', 'Gravado da guia; sem captura de tela.'],
                 ['Prime Video', 'Gravado da guia; sem captura de tela.'],
                 ['Max', 'Gravado da guia; sem captura de tela.'],
+                ['Apple TV+', 'Gravado da guia; sem captura de tela.'],
               ],
             },
             'O capítulo sobre sites protegidos explica como o som é gravado da guia. Um vídeo sem legendas no idioma que você está aprendendo não tem nada para mostrar, e o Libregaku avisa.',
@@ -212,7 +213,7 @@ export const pt: HelpTranslation = {
     {
       id: 'protected-sites',
       title: 'Sites protegidos',
-      about: 'Os sites que criptografam o vídeo: Netflix, Disney+, Prime Video e Max. O que essa proteção muda.',
+      about: 'Os sites que criptografam o vídeo: Netflix, Disney+, Prime Video, Max e Apple TV+. O que essa proteção muda.',
       topics: [
         {
           id: 'protected-sites-audio',

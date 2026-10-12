@@ -13,7 +13,7 @@
   <img alt="Manifest V3" src="https://img.shields.io/badge/Manifest-V3-informational">
 </p>
 
-Clickable subtitles for YouTube, Netflix, Disney+, Prime Video and Max, with a dictionary
+Clickable subtitles for YouTube, Netflix, Disney+, Prime Video, Max and Apple TV+, with a dictionary
 and a transcript. Make
 Anki cards from any word or sentence. Free and open source.
 

@@ -59,7 +59,7 @@ async function askPage(tabId: number, msg: unknown): Promise<PageState | null> {
 
 /** A site as people write it: the content script reports its adapter's id, "netflix". */
 function siteName(site: string | null): string {
-  return ({ youtube: 'YouTube', netflix: 'Netflix', disney: 'Disney+', prime: 'Prime Video', max: 'Max' } as Record<string, string>)[site ?? ''] ?? String(site);
+  return ({ youtube: 'YouTube', netflix: 'Netflix', disney: 'Disney+', prime: 'Prime Video', max: 'Max', apple: 'Apple TV+' } as Record<string, string>)[site ?? ''] ?? String(site);
 }
 
 /** The site a tab is on, by its address, where it is one the extension works on. */
