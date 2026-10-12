@@ -1,5 +1,5 @@
 import { ui } from '../i18n';
-import { fitClock, pairsFrom, type Clock, type Pair, type Timed } from './apple-clock';
+import { fitOffset, pairsFrom, type Pair, type Timed } from './apple-clock';
 import { cuesFromSegments, segmentUrls, subtitleRenditions, type HlsRendition } from './hls';
 import type { Cue, SubtitleSource, TrackInfo } from './types';
 
@@ -9,11 +9,13 @@ import type { Cue, SubtitleSource, TrackInfo } from './types';
  * minute long each. `inject-apple.ts` passes on the master playlist the player
  * itself fetched, and every rendition and segment URL resolves against it.
  *
- * The files' cue times are not on the <video>'s clock. The offset is about a
- * minute and it drifts a little over a film, so the adapter learns the clock
- * from the player: the browser fills a text track's cues once it is showing,
- * and the same lines appear in the file, so matching them gives the line
- * `apple-clock.ts` fits. The player's own captions stay hidden.
+ * The files' cue times are a fixed number of seconds (about a minute) behind
+ * the <video>'s clock, for as long as one playback lasts. The adapter learns
+ * that number from the player's own captions: the browser fills a text track's
+ * cues once it is showing, and the same lines appear in the file, so matching
+ * them gives the offset (`apple-clock.ts`). The cues are then moved onto the
+ * player's clock as they load, so the transcript and the seek bar agree. The
+ * player's own captions stay hidden.
  */
 
 const TAG = 'libregaku';
@@ -36,9 +38,8 @@ const FETCH_TIMEOUT_MS = 15_000;
 /** Segments fetched at once. A film is an hour of minute-long segments: one at a time is slow, all at once is rude. */
 const PARALLEL = 6;
 const MAX_CACHED = 16;
-/** Time for the player to fill a showing text track, and how often to read it again while playing. */
+/** Time for the player to fill a showing text track, before reading it again. */
 const FILL_WAIT_MS = 2500;
-const LEARN_EVERY_MS = 3000;
 /** Tries before calibration is given up on. */
 const CALIBRATE_TRIES = 4;
 
@@ -104,11 +105,11 @@ export class AppleAdapter implements SubtitleSource {
   #cues = new Map<string, Promise<Cue[]>>();
   /** Matched pairs, keyed by file time, across every track of this title. */
   #pairs = new Map<string, Pair>();
-  #clock: Clock | null = null;
+  /** Player time minus file time, for this playback. Null until the player's captions have been read. */
+  #offset: number | null = null;
   /** The text track the player is filling, and the file cues it is matched against. */
   #native: TextTrack | null = null;
   #file: Timed[] = [];
-  #learner: ReturnType<typeof setInterval> | undefined;
   #titleId: string | null = titleIdOf(location.pathname);
   #navCbs: Array<() => void> = [];
   #trackCbs: Array<() => void> = [];
@@ -190,26 +191,27 @@ export class AppleAdapter implements SubtitleSource {
 
     const cues = cuesFromSegments(texts);
     if (!cues.length) throw new Error(`libregaku: ${ui.errors.noCuesParsed}`);
-    await this.#align(track.language, cues);
-    return cues;
+    const offset = await this.#align(track.language, cues);
+    // On the player's clock from here on: the transcript, the lines and the seek bar all read it.
+    return cues.map((c) => ({ ...c, start: c.start + offset, end: c.end + offset }));
   }
 
   /**
-   * Finds the clock the player keeps for this title, so the file's cues can
-   * be placed. The player fills a text track only while it is showing, so the
-   * track is switched on for a moment and then hidden by the rule below.
+   * The offset for this title, learned from the player's captions the first
+   * time a track is loaded and kept after that. The player fills a text track
+   * only while it is showing, so the track is switched on for a moment; the
+   * rule in hideNative keeps it out of sight.
    */
-  async #align(lang: string, cues: Cue[]): Promise<void> {
+  async #align(lang: string, cues: Cue[]): Promise<number> {
+    if (this.#offset !== null) return this.#offset;
     this.#file = cues.map((c) => ({ text: c.text, start: c.start }));
-    const ready = await this.#showTrack(lang);
-    if (!ready && !this.#clock) throw new Error(`libregaku: ${ui.notices.appleTiming}`);
-    this.#learn();
-    for (let i = 1; !this.#clock && i < CALIBRATE_TRIES; i++) {
-      await wait(FILL_WAIT_MS);
+    if (!(await this.#showTrack(lang))) throw new Error(`libregaku: ${ui.notices.appleTiming}`);
+    for (let i = 0; i < CALIBRATE_TRIES; i++) {
+      if (i > 0) await wait(FILL_WAIT_MS);
       this.#learn();
+      if (this.#offset !== null) return this.#offset;
     }
-    if (!this.#clock) throw new Error(`libregaku: ${ui.notices.appleTiming}`);
-    if (!this.#learner) this.#learner = setInterval(() => this.#learn(), LEARN_EVERY_MS);
+    throw new Error(`libregaku: ${ui.notices.appleTiming}`);
   }
 
   /** A text track of this language the player can fill, now showing. False when there is none. */
@@ -245,37 +247,14 @@ export class AppleAdapter implements SubtitleSource {
     return false;
   }
 
-  /** Reads the cues the player has filled and extends the clock with the pairs they make. */
+  /** Reads the cues the player has filled and fits the offset to the pairs they make. */
   #learn(): void {
     const native = this.#native;
-    if (!native || !this.#file.length) return;
-    const shown: Timed[] = native.cues
-      ? [...native.cues].map((c) => ({ text: (c as VTTCue).text, start: c.startTime }))
-      : [];
-    if (!shown.length) return;
-    for (const p of pairsFrom(shown, this.#file, this.#clock)) this.#pairs.set(p.file.toFixed(3), p);
-    const fitted = fitClock([...this.#pairs.values()]);
-    if (fitted) this.#clock = fitted;
-  }
-
-  /**
-   * Where playback is on the clock the file's cue times are on. Before a clock
-   * is known the element's own time stands in, which is only right for a title
-   * that starts at zero.
-   */
-  time(): number | null {
-    const v = this.video();
-    if (!v) return null;
-    const c = this.#clock;
-    return c ? (v.currentTime - c.b) / c.a : v.currentTime;
-  }
-
-  /** Through the player's clock, so a jump lands on the line asked for. */
-  seek(seconds: number): void {
-    const v = this.video();
-    if (!v || !Number.isFinite(seconds) || seconds < 0) return;
-    const c = this.#clock;
-    v.currentTime = c ? c.a * seconds + c.b : seconds;
+    if (!native || !this.#file.length || !native.cues) return;
+    const shown: Timed[] = [...native.cues].map((c) => ({ text: (c as VTTCue).text, start: c.startTime }));
+    for (const p of pairsFrom(shown, this.#file, null)) this.#pairs.set(p.file.toFixed(3), p);
+    this.#offset = fitOffset([...this.#pairs.values()]);
+    if (this.#offset !== null) console.debug(`[libregaku] apple tv captions run ${this.#offset.toFixed(3)} s behind the file, from ${this.#pairs.size} lines`);
   }
 
   hideNative(): void {
@@ -304,11 +283,9 @@ export class AppleAdapter implements SubtitleSource {
     this.#tracks = [];
     this.#cues.clear();
     this.#pairs.clear();
-    this.#clock = null;
+    this.#offset = null;
     this.#native = null;
     this.#file = [];
-    if (this.#learner) clearInterval(this.#learner);
-    this.#learner = undefined;
     this.#navCbs.forEach((cb) => cb());
   }
 

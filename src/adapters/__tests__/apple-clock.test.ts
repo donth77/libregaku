@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cueKey, fitClock, fitLine, pairsFrom, type Pair, type Timed } from '../apple-clock';
+import { cueKey, fitOffset, pairsFrom, type Pair, type Timed } from '../apple-clock';
 
 /** A film's subtitle cues: one line every 4 s, each different. */
 function cuesOver(seconds: number): Timed[] {
@@ -8,8 +8,8 @@ function cuesOver(seconds: number): Timed[] {
   return out;
 }
 
-/** What the player shows for each file cue, on its own clock. */
-const player = (file: Timed[], a: number, b: number): Timed[] => file.map((c) => ({ text: c.text, start: a * c.start + b }));
+/** What the player shows for each file cue: the file's time plus the session's offset. */
+const player = (file: Timed[], offset: number): Timed[] => file.map((c) => ({ text: c.text, start: c.start + offset }));
 
 describe('cueKey', () => {
   it('ignores tags, case and spacing', () => {
@@ -19,12 +19,12 @@ describe('cueKey', () => {
 });
 
 describe('pairsFrom', () => {
-  it('finds the offset without a clock, from the most common difference', () => {
+  it('finds the offset without one, from the most common difference', () => {
     const file = cuesOver(600);
-    const shown = player(file.slice(10, 40), 1, 58).map((c) => ({ ...c, start: c.start }));
+    const shown = player(file.slice(10, 40), 58.058);
     const pairs = pairsFrom(shown, file, null);
     expect(pairs.length).toBe(30);
-    for (const p of pairs) expect(p.player - p.file).toBeCloseTo(58, 5);
+    for (const p of pairs) expect(p.player - p.file).toBeCloseTo(58.058, 5);
   });
 
   it('matches a repeated line to the cue nearest its predicted time', () => {
@@ -33,59 +33,32 @@ describe('pairsFrom', () => {
       { text: 'Yes.', start: 400 },
     ];
     const shown: Timed[] = [{ text: 'Yes.', start: 158 }];
-    const pairs = pairsFrom(shown, file, null);
-    expect(pairs).toEqual([{ file: 100, player: 158 }]);
+    expect(pairsFrom(shown, file, null)).toEqual([{ file: 100, player: 158 }]);
   });
 
-  it('uses a clock once there is one, and drops cues it cannot place', () => {
+  it('uses the offset once there is one, and drops cues it cannot place', () => {
     const file = cuesOver(200);
-    const clock = { a: 1, b: 58 };
-    const shown = player(file.slice(0, 5), 1, 58);
+    const shown = player(file.slice(0, 5), 58);
     shown.push({ text: 'line 9', start: 999 });
-    const pairs = pairsFrom(shown, file, clock);
-    expect(pairs.length).toBe(5);
+    expect(pairsFrom(shown, file, 58).length).toBe(5);
   });
 });
 
-describe('fitClock', () => {
-  it('recovers a drifting clock across a whole film', () => {
-    const file = cuesOver(3000);
-    const shown = player(file, 0.99778, 58.3);
-    const pairs: Pair[] = shown.map((p, i) => ({ file: file[i]!.start, player: p.start }));
-    const clock = fitClock(pairs);
-    expect(clock).not.toBeNull();
-    expect(clock!.a).toBeCloseTo(0.99778, 4);
-    expect(clock!.b).toBeCloseTo(58.3, 1);
-  });
-
-  it('keeps the rate at one over a short span', () => {
-    const file = cuesOver(120);
-    const pairs: Pair[] = player(file, 1, 58.06).map((p, i) => ({ file: file[i]!.start, player: p.start }));
-    const clock = fitClock(pairs);
-    expect(clock).toEqual({ a: 1, b: expect.any(Number) });
-    expect(clock!.b).toBeCloseTo(58.06, 2);
+describe('fitOffset', () => {
+  it('recovers the offset a session shares', () => {
+    const file = cuesOver(600);
+    const pairs: Pair[] = player(file, 56.473).map((p, i) => ({ file: file[i]!.start, player: p.start }));
+    expect(fitOffset(pairs)).toBeCloseTo(56.473, 6);
   });
 
   it('ignores pairs that disagree with the rest', () => {
     const file = cuesOver(600);
-    const pairs: Pair[] = player(file, 1, 58).map((p, i) => ({ file: file[i]!.start, player: p.start }));
+    const pairs: Pair[] = player(file, 58).map((p, i) => ({ file: file[i]!.start, player: p.start }));
     pairs.push({ file: 100, player: 900 }, { file: 300, player: 20 });
-    const clock = fitClock(pairs);
-    expect(clock!.b).toBeCloseTo(58, 2);
+    expect(fitOffset(pairs)).toBeCloseTo(58, 6);
   });
 
-  it('refuses to fit too few pairs', () => {
-    expect(fitClock([{ file: 1, player: 59 }])).toBeNull();
-  });
-});
-
-describe('fitLine', () => {
-  it('is exact for points on a line', () => {
-    const line = fitLine([
-      { file: 0, player: 5 },
-      { file: 10, player: 25 },
-    ]);
-    expect(line.a).toBeCloseTo(2, 10);
-    expect(line.b).toBeCloseTo(5, 10);
+  it('refuses to decide from too few pairs', () => {
+    expect(fitOffset([{ file: 1, player: 59 }])).toBeNull();
   });
 });
