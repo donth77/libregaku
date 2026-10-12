@@ -78,6 +78,19 @@ describe('readings', () => {
     expect(Array.from(el!.querySelectorAll('ruby')).map((r) => [r.firstChild?.textContent, r.querySelector('rt')?.textContent]))
       .toEqual([['学', 'xué'], ['校', 'xiào']]);
   });
+
+  it('marks a kana reading, so its character is given room as wide as the reading', () => {
+    const verb: Token = { surface: '承りました', start: 0, end: 5, content: true, reading: 'うけたまわりました' };
+    const [el] = drawn([verb], (o) => o.setRuby(() => [{ text: '承', ruby: 'うけたまわ' }, { text: 'りました' }]));
+    const rubies = Array.from(el!.querySelectorAll<HTMLElement>('ruby'));
+    expect(rubies.map((r) => [r.dataset.k, r.dataset.r])).toEqual([['うけたまわ', undefined]]);
+  });
+
+  it('keeps a romanised reading on its own mark', () => {
+    const [el] = drawn([word], (o) => o.setRuby((t) => zhRuby(t.surface, t.reading)));
+    const rubies = Array.from(el!.querySelectorAll<HTMLElement>('ruby'));
+    expect(rubies.map((r) => [r.dataset.r, r.dataset.k])).toEqual([['xué', undefined], ['xiào', undefined]]);
+  });
 });
 
 describe('the keyboard', () => {

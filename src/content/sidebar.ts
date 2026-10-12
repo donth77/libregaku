@@ -449,6 +449,14 @@ const STYLE = `
     font-size: .46em; line-height: 1; color: #B8C0D4;
     white-space: nowrap; user-select: none; pointer-events: none;
   }
+  /* A reading longer than its character widens the character's box, as on the subtitle, so it does not hang over the next one. */
+  .tx ruby[data-k] { text-align: center; }
+  .tx ruby[data-k]::after {
+    content: attr(data-k); display: block; height: 0; overflow: hidden; visibility: hidden;
+    font-size: .46em; white-space: nowrap;
+  }
+  .lines.ruby-off .tx ruby[data-k]::after,
+  .lines:not(.ruby-all) .w:not([data-s="unknown"]):not([data-s="learning"]) ruby[data-k]::after { display: none; }
 
   /* Square corners: a rounded box bent each underline up at its ends. */
   .w { cursor: pointer; padding: 0 1px 3px; }
@@ -3477,6 +3485,7 @@ export class Sidebar {
           const rt = document.createElement('rt');
           rt.textContent = seg.ruby;
           r.appendChild(rt);
+          r.dataset.k = seg.ruby;
           w.appendChild(r);
         }
       } else {

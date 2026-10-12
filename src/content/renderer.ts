@@ -169,6 +169,20 @@ const STYLE = `
     content: attr(data-r); display: block; height: 0; overflow: hidden; visibility: hidden;
     font-size: .46em; letter-spacing: .02em; white-space: nowrap; padding: 0 .12em;
   }
+  /*
+   * A kana reading longer than its character — five kana over the one kanji of
+   * 承り — hung over the neighbouring characters, so it read as belonging to
+   * them. The same hidden copy gives the character a box as wide as the
+   * reading, and only then: a reading that fits adds nothing. Only while the
+   * reading shows, so a word's spacing does not change with what you know.
+   */
+  .t ruby[data-k] { text-align: center; }
+  .t ruby[data-k]::after {
+    content: attr(data-k); display: block; height: 0; overflow: hidden; visibility: hidden;
+    font-size: .46em; letter-spacing: .02em; white-space: nowrap;
+  }
+  .wrap.ruby-off .t ruby[data-k]::after,
+  .wrap:not(.ruby-all) .t:not([data-s="unknown"]):not([data-s="learning"]) ruby[data-k]::after { display: none; }
   /* Ruby only where it earns its place: words you have not learned yet. */
   .wrap:not(.ruby-all) .t:not([data-s="unknown"]):not([data-s="learning"]) rt { visibility: hidden; }
   .wrap.ruby-off rt { display: none; }
@@ -635,6 +649,7 @@ export class Overlay {
           rt.textContent = seg.ruby;
           ruby.appendChild(rt);
           if (/^[\x21-\x7e\u00c0-\u024f\u0300-\u036f]+$/.test(seg.ruby)) ruby.dataset.r = seg.ruby;
+          else ruby.dataset.k = seg.ruby;
           el.appendChild(ruby);
         }
       }
