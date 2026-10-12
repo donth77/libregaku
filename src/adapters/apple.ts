@@ -1,5 +1,6 @@
 import { ui } from '../i18n';
 import { fitOffset, pairsFrom, type Pair, type Timed } from './apple-clock';
+import { isAppleMediaUrl as isMediaUrl } from './apple-hosts';
 import { cuesFromSegments, segmentUrls, subtitleRenditions, type HlsRendition } from './hls';
 import type { Cue, SubtitleSource, TrackInfo } from './types';
 
@@ -19,9 +20,6 @@ import type { Cue, SubtitleSource, TrackInfo } from './types';
  */
 
 const TAG = 'libregaku';
-
-/** Where Apple serves playlists and segments. A URL anywhere else did not come from its player. */
-const MEDIA_HOST = /(^|\.)(tv|itunes)\.apple\.com$/;
 
 /** Apple draws captions with the browser's own text tracks, so there is no DOM text to read. */
 const NO_DOM_CAPTIONS = '[data-libregaku-no-dom-captions]';
@@ -48,15 +46,6 @@ interface AppleTrack extends HlsRendition {
 }
 
 const wait = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
-
-function isMediaUrl(u: string): boolean {
-  try {
-    const url = new URL(u);
-    return url.protocol === 'https:' && MEDIA_HOST.test(url.hostname);
-  } catch {
-    return false;
-  }
-}
 
 /** The title's id in its /episode/, /show/ or /movie/ path, or null anywhere else. */
 export function titleIdOf(pathname: string): string | null {
