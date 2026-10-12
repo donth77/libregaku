@@ -668,6 +668,8 @@ export const tr: Translation = {
     netflixTrackList: "Netflix'in altyazı listesi okunamadı.",
     netflixCaptionText: "Sayfada Netflix'in altyazı metni bulunamadı.",
     disneyTrackList: "Disney+'ın altyazı listesi okunamadı.",
+    appleTrackList: "Apple TV+'ın altyazı listesi okunamadı.",
+    appleTiming: 'Apple TV+ altyazıları videoyla eşleştirilemedi.',
     disneyCaptionText: "Sayfada Disney+'ın altyazı metni bulunamadı.",
     primeTrackList: "Prime Video'nun altyazı listesi okunamadı.",
     primeCaptionText: "Sayfada Prime Video'nun altyazı metni bulunamadı.",

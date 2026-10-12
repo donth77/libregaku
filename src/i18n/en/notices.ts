@@ -28,6 +28,8 @@ export const notices = {
   /** Netflix's page stopped the script that reads its subtitle tracks from running. */
   netflixBlocked: 'Netflix blocked the part of Libregaku that reads subtitles.',
   disneyTrackList: "Couldn't read Disney+'s subtitle list.",
+  appleTrackList: "Couldn't read Apple TV+'s subtitle list.",
+  appleTiming: "Couldn't line Apple TV+'s subtitles up with the video.",
   disneyCaptionText: "Couldn't find Disney+'s subtitle text on the page.",
   primeTrackList: "Couldn't read Prime Video's subtitle list.",
   primeCaptionText: "Couldn't find Prime Video's subtitle text on the page.",

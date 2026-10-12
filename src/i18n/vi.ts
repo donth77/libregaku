@@ -657,6 +657,8 @@ export const vi: Translation = {
     netflixTrackList: 'Không đọc được danh sách phụ đề của Netflix.',
     netflixCaptionText: 'Không tìm thấy văn bản phụ đề của Netflix trên trang.',
     disneyTrackList: 'Không đọc được danh sách phụ đề của Disney+.',
+    appleTrackList: 'Không đọc được danh sách phụ đề của Apple TV+.',
+    appleTiming: 'Không căn được phụ đề Apple TV+ với video.',
     disneyCaptionText: 'Không tìm thấy văn bản phụ đề của Disney+ trên trang.',
     primeTrackList: 'Không đọc được danh sách phụ đề của Prime Video.',
     primeCaptionText: 'Không tìm thấy văn bản phụ đề của Prime Video trên trang.',

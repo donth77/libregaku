@@ -1,3 +1,4 @@
+import { AppleAdapter } from '../adapters/apple';
 import { DisneyAdapter } from '../adapters/disney';
 import { MaxAdapter } from '../adapters/max';
 import { NetflixAdapter } from '../adapters/netflix';
@@ -121,7 +122,7 @@ const quiet = (msg: string, id?: string, detail?: () => string) => {
   log(msg);
 };
 
-const ADAPTERS: SubtitleSource[] = [new YouTubeAdapter(), new NetflixAdapter(), new DisneyAdapter(), new PrimeAdapter(), new MaxAdapter()];
+const ADAPTERS: SubtitleSource[] = [new YouTubeAdapter(), new NetflixAdapter(), new DisneyAdapter(), new PrimeAdapter(), new MaxAdapter(), new AppleAdapter()];
 
 let overlay: Overlay | null = null;
 let cues: Cue[] = [];
@@ -936,7 +937,7 @@ async function run(gen: number): Promise<boolean> {
     }
     quiet(
       'waiting for a subtitle track list, or for subtitles to be switched on',
-      adapter.id === 'netflix' ? 'nf.textTracks' : adapter.id === 'disney' ? 'dp.master-playlist' : adapter.id === 'prime' ? 'pv.resources' : adapter.id === 'max' ? 'mx.manifest' : 'yt.player-response',
+      adapter.id === 'netflix' ? 'nf.textTracks' : adapter.id === 'disney' ? 'dp.master-playlist' : adapter.id === 'prime' ? 'pv.resources' : adapter.id === 'apple' ? 'apple.master' : adapter.id === 'max' ? 'mx.manifest' : 'yt.player-response',
       () => ui.notices.subtitlesMaybeOff,
     );
     return false;

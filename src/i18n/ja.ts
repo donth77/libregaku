@@ -649,6 +649,8 @@ export const ja: Translation = {
     netflixTrackList: 'Netflixの字幕リストを読み取れませんでした。',
     netflixCaptionText: 'ページ上でNetflixの字幕テキストが見つかりませんでした。',
     disneyTrackList: 'Disney+の字幕リストを読み取れませんでした。',
+    appleTrackList: 'Apple TV+の字幕リストを読み取れませんでした。',
+    appleTiming: 'Apple TV+の字幕を動画の時間に合わせられませんでした。',
     disneyCaptionText: 'ページ上でDisney+の字幕テキストが見つかりませんでした。',
     primeTrackList: 'Prime Videoの字幕リストを読み取れませんでした。',
     primeCaptionText: 'ページ上でPrime Videoの字幕テキストが見つかりませんでした。',

@@ -669,6 +669,8 @@ export const sv: Translation = {
     netflixTrackList: 'Kunde inte läsa undertextlistan på Netflix.',
     netflixCaptionText: 'Kunde inte hitta undertexterna på Netflix-sidan.',
     disneyTrackList: 'Kunde inte läsa undertextlistan på Disney+.',
+    appleTrackList: 'Kunde inte läsa undertextlistan på Apple TV+.',
+    appleTiming: 'Kunde inte synkronisera undertexterna på Apple TV+ med videon.',
     disneyCaptionText: 'Kunde inte hitta undertexterna på Disney+-sidan.',
     primeTrackList: 'Kunde inte läsa undertextlistan på Prime Video.',
     primeCaptionText: 'Kunde inte hitta undertexterna på Prime Video-sidan.',

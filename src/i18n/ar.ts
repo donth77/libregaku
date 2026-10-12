@@ -689,6 +689,8 @@ export const ar: Translation = {
     netflixTrackList: 'تعذّرت قراءة قائمة الترجمة في Netflix.',
     netflixCaptionText: 'تعذّر العثور على نص الترجمة في صفحة Netflix.',
     disneyTrackList: 'تعذّرت قراءة قائمة الترجمة في Disney+\u200E.',
+    appleTrackList: 'تعذّرت قراءة قائمة الترجمة في Apple TV+\u200E.',
+    appleTiming: 'تعذّرت مطابقة الترجمة في Apple TV+\u200E مع الفيديو.',
     disneyCaptionText: 'تعذّر العثور على نص الترجمة في صفحة Disney+\u200E.',
     primeTrackList: 'تعذّرت قراءة قائمة الترجمة في Prime Video.',
     primeCaptionText: 'تعذّر العثور على نص الترجمة في صفحة Prime Video.',

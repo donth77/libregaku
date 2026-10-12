@@ -697,6 +697,8 @@ export const ru: Translation = {
     netflixTrackList: 'Не удалось прочитать список субтитров Netflix.',
     netflixCaptionText: 'Не удалось найти текст субтитров Netflix на странице.',
     disneyTrackList: 'Не удалось прочитать список субтитров Disney+.',
+    appleTrackList: 'Не удалось прочитать список субтитров Apple TV+.',
+    appleTiming: 'Не удалось совместить субтитры Apple TV+ с видео.',
     disneyCaptionText: 'Не удалось найти текст субтитров Disney+ на странице.',
     primeTrackList: 'Не удалось прочитать список субтитров Prime Video.',
     primeCaptionText: 'Не удалось найти текст субтитров Prime Video на странице.',

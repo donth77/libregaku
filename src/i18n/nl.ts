@@ -687,6 +687,8 @@ export const nl: Translation = {
     netflixTrackList: 'Kon de ondertitellijst van Netflix niet lezen.',
     netflixCaptionText: 'Kon de ondertiteltekst van Netflix niet vinden op de pagina.',
     disneyTrackList: 'Kon de ondertitellijst van Disney+ niet lezen.',
+    appleTrackList: 'Kon de ondertitellijst van Apple TV+ niet lezen.',
+    appleTiming: 'Kon de ondertitels van Apple TV+ niet op de video afstemmen.',
     disneyCaptionText: 'Kon de ondertiteltekst van Disney+ niet vinden op de pagina.',
     primeTrackList: 'Kon de ondertitellijst van Prime Video niet lezen.',
     primeCaptionText: 'Kon de ondertiteltekst van Prime Video niet vinden op de pagina.',

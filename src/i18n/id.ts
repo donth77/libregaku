@@ -656,6 +656,8 @@ export const id: Translation = {
     netflixTrackList: 'Tidak dapat membaca daftar subtitel Netflix.',
     netflixCaptionText: 'Tidak dapat menemukan teks subtitel Netflix di halaman.',
     disneyTrackList: 'Tidak dapat membaca daftar subtitel Disney+.',
+    appleTrackList: 'Tidak dapat membaca daftar subtitel Apple TV+.',
+    appleTiming: 'Subtitel Apple TV+ tidak dapat disesuaikan dengan video.',
     disneyCaptionText: 'Tidak dapat menemukan teks subtitel Disney+ di halaman.',
     primeTrackList: 'Tidak dapat membaca daftar subtitel Prime Video.',
     primeCaptionText: 'Tidak dapat menemukan teks subtitel Prime Video di halaman.',

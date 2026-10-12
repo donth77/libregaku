@@ -638,6 +638,8 @@ export const ko: Translation = {
     netflixTrackList: 'Netflix 자막 목록을 읽을 수 없습니다.',
     netflixCaptionText: '페이지에서 Netflix 자막 텍스트를 찾을 수 없습니다.',
     disneyTrackList: 'Disney+ 자막 목록을 읽을 수 없습니다.',
+    appleTrackList: 'Apple TV+ 자막 목록을 읽을 수 없습니다.',
+    appleTiming: 'Apple TV+ 자막을 동영상에 맞출 수 없습니다.',
     disneyCaptionText: '페이지에서 Disney+ 자막 텍스트를 찾을 수 없습니다.',
     primeTrackList: 'Prime Video 자막 목록을 읽을 수 없습니다.',
     primeCaptionText: '페이지에서 Prime Video 자막 텍스트를 찾을 수 없습니다.',

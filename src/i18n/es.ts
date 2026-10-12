@@ -678,6 +678,8 @@ export const es: Translation = {
     netflixTrackList: 'No se pudo leer la lista de subtítulos de Netflix.',
     netflixCaptionText: 'No se encontró el texto de los subtítulos de Netflix en la página.',
     disneyTrackList: 'No se pudo leer la lista de subtítulos de Disney+.',
+    appleTrackList: 'No se pudo leer la lista de subtítulos de Apple TV+.',
+    appleTiming: 'No se pudieron alinear los subtítulos de Apple TV+ con el video.',
     disneyCaptionText: 'No se encontró el texto de los subtítulos de Disney+ en la página.',
     primeTrackList: 'No se pudo leer la lista de subtítulos de Prime Video.',
     primeCaptionText: 'No se encontró el texto de los subtítulos de Prime Video en la página.',

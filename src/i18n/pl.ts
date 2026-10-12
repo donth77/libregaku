@@ -687,6 +687,8 @@ export const pl: Translation = {
     netflixTrackList: 'Nie udało się odczytać listy napisów Netflixa.',
     netflixCaptionText: 'Nie znaleziono na stronie tekstu napisów Netflixa.',
     disneyTrackList: 'Nie udało się odczytać listy napisów Disney+.',
+    appleTrackList: 'Nie udało się odczytać listy napisów Apple TV+.',
+    appleTiming: 'Nie udało się dopasować napisów Apple TV+ do wideo.',
     disneyCaptionText: 'Nie znaleziono na stronie tekstu napisów Disney+.',
     primeTrackList: 'Nie udało się odczytać listy napisów Prime Video.',
     primeCaptionText: 'Nie znaleziono na stronie tekstu napisów Prime Video.',

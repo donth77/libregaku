@@ -16,6 +16,7 @@ const targets = [
   { entry: 'src/content/inject.ts',  out: 'inject',          format: 'iife' },
   { entry: 'src/content/inject-netflix.ts', out: 'inject-netflix', format: 'iife' },
   { entry: 'src/content/inject-disney.ts', out: 'inject-disney', format: 'iife' },
+  { entry: 'src/content/inject-apple.ts', out: 'inject-apple', format: 'iife' },
   { entry: 'src/content/inject-prime.ts', out: 'inject-prime', format: 'iife' },
   { entry: 'src/content/inject-max.ts', out: 'inject-max', format: 'iife' },
   { entry: 'src/offscreen.ts',       out: 'offscreen',       format: 'esm'  },

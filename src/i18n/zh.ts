@@ -620,6 +620,8 @@ export const zh: Translation = {
     netflixTrackList: '无法读取 Netflix 的字幕列表。',
     netflixCaptionText: '在页面上找不到 Netflix 的字幕文本。',
     disneyTrackList: '无法读取 Disney+ 的字幕列表。',
+    appleTrackList: '无法读取 Apple TV+ 的字幕列表。',
+    appleTiming: '无法将 Apple TV+ 的字幕与视频对齐。',
     disneyCaptionText: '在页面上找不到 Disney+ 的字幕文本。',
     primeTrackList: '无法读取 Prime Video 的字幕列表。',
     primeCaptionText: '在页面上找不到 Prime Video 的字幕文本。',

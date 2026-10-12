@@ -671,6 +671,8 @@ export const hi: Translation = {
     netflixTrackList: 'Netflix की सबटाइटल सूची नहीं पढ़ी जा सकी।',
     netflixCaptionText: 'पेज पर Netflix के सबटाइटल का टेक्स्ट नहीं मिला।',
     disneyTrackList: 'Disney+ की सबटाइटल सूची नहीं पढ़ी जा सकी।',
+    appleTrackList: 'Apple TV+ की सबटाइटल सूची नहीं पढ़ी जा सकी।',
+    appleTiming: 'Apple TV+ के सबटाइटल वीडियो से मिलाए नहीं जा सके।',
     disneyCaptionText: 'पेज पर Disney+ के सबटाइटल का टेक्स्ट नहीं मिला।',
     primeTrackList: 'Prime Video की सबटाइटल सूची नहीं पढ़ी जा सकी।',
     primeCaptionText: 'पेज पर Prime Video के सबटाइटल का टेक्स्ट नहीं मिला।',

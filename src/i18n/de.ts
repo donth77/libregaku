@@ -691,6 +691,8 @@ export const de: Translation = {
     netflixTrackList: 'Die Untertitelliste von Netflix konnte nicht gelesen werden.',
     netflixCaptionText: 'Der Untertiteltext von Netflix wurde auf der Seite nicht gefunden.',
     disneyTrackList: 'Die Untertitelliste von Disney+ konnte nicht gelesen werden.',
+    appleTrackList: 'Die Untertitelliste von Apple TV+ konnte nicht gelesen werden.',
+    appleTiming: 'Die Untertitel von Apple TV+ ließen sich nicht mit dem Video abgleichen.',
     disneyCaptionText: 'Der Untertiteltext von Disney+ wurde auf der Seite nicht gefunden.',
     primeTrackList: 'Die Untertitelliste von Prime Video konnte nicht gelesen werden.',
     primeCaptionText: 'Der Untertiteltext von Prime Video wurde auf der Seite nicht gefunden.',

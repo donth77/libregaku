@@ -633,6 +633,8 @@ export const zhHant: Translation = {
     netflixTrackList: '無法讀取 Netflix 的字幕清單。',
     netflixCaptionText: '在網頁上找不到 Netflix 的字幕文字。',
     disneyTrackList: '無法讀取 Disney+ 的字幕清單。',
+    appleTrackList: '無法讀取 Apple TV+ 的字幕清單。',
+    appleTiming: '無法將 Apple TV+ 的字幕與影片對齊。',
     disneyCaptionText: '在網頁上找不到 Disney+ 的字幕文字。',
     primeTrackList: '無法讀取 Prime Video 的字幕清單。',
     primeCaptionText: '在網頁上找不到 Prime Video 的字幕文字。',

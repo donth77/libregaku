@@ -15,7 +15,7 @@ import type { Strings } from './i18n/en';
 export interface Assumption {
   id: string;
   /** 'external' is a third-party service we borrow, not a site we render on. */
-  site: 'youtube' | 'netflix' | 'disney' | 'prime' | 'max' | 'external';
+  site: 'youtube' | 'netflix' | 'disney' | 'prime' | 'max' | 'apple' | 'external';
   /** What we rely on. */
   claim: string;
   /** What stops working when it stops being true. */
@@ -404,6 +404,34 @@ export const ASSUMPTIONS: Assumption[] = [
     fallback: null,
   },
   {
+    id: 'apple.master',
+    site: 'apple',
+    claim: 'The player fetches an HLS master playlist (.m3u8, by fetch or XMLHttpRequest, readable as text) whose #EXT-X-MEDIA:TYPE=SUBTITLES lines name each subtitle language and give a URI relative to it',
+    breaks: 'The track list on Apple TV+: no transcript, no second line',
+    fallback: null,
+  },
+  {
+    id: 'apple.vtt-segments',
+    site: 'apple',
+    claim: 'A subtitle rendition is a playlist of WebVTT segments about a minute long, each with an X-TIMESTAMP-MAP of MPEGTS:900000,LOCAL:00:00:00',
+    breaks: 'No cues, or every line in the wrong place',
+    fallback: null,
+  },
+  {
+    id: 'apple.clock',
+    site: 'apple',
+    claim: 'Once a subtitle text track is showing, the player fills it with the file\'s lines at its own clock, which runs about a minute apart from the file\'s cue times and drifts slowly, so the two can be matched by their text',
+    breaks: 'Nothing matches, so no clock is learned and the subtitles are not shown',
+    fallback: null,
+  },
+  {
+    id: 'apple.native-hide',
+    site: 'apple',
+    claim: 'The player draws its captions with the browser\'s text track, which a page rule on video::cue can hide',
+    breaks: 'Apple TV+\'s own captions show alongside ours',
+    fallback: null,
+  },
+  {
     id: 'pv.resources',
     site: 'prime',
     claim: 'Before playing, the player requests GetVodPlaybackResources (by fetch or XMLHttpRequest, answered as JSON) whose timedTextUrls.result lists subtitleUrls and forcedNarrativeUrls, each with url, languageCode, displayName and type ("Subtitle" or "Sdh")',
@@ -499,6 +527,9 @@ export const NOTICES: Record<string, NoticeTitle> = {
   'dp.media-hosts': 'disneyTrackList',
   'dp.vtt-segments': 'disneyTrackList',
   'dp.caption-dom': 'disneyCaptionText',
+  'apple.master': 'appleTrackList',
+  'apple.vtt-segments': 'appleTrackList',
+  'apple.clock': 'appleTiming',
   'pv.resources': 'primeTrackList',
   'pv.subtitle-files': 'primeTrackList',
   'pv.caption-dom': 'primeCaptionText',

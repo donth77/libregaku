@@ -651,6 +651,8 @@ export const th: Translation = {
     netflixTrackList: 'อ่านรายการคำบรรยายของ Netflix ไม่ได้',
     netflixCaptionText: 'ไม่พบข้อความคำบรรยายของ Netflix ในหน้านี้',
     disneyTrackList: 'อ่านรายการคำบรรยายของ Disney+ ไม่ได้',
+    appleTrackList: 'อ่านรายการคำบรรยายของ Apple TV+ ไม่ได้',
+    appleTiming: 'จับเวลาคำบรรยายของ Apple TV+ ให้ตรงกับวิดีโอไม่ได้',
     disneyCaptionText: 'ไม่พบข้อความคำบรรยายของ Disney+ ในหน้านี้',
     primeTrackList: 'อ่านรายการคำบรรยายของ Prime Video ไม่ได้',
     primeCaptionText: 'ไม่พบข้อความคำบรรยายของ Prime Video ในหน้านี้',
