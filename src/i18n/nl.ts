@@ -261,7 +261,7 @@ export const nl: Translation = {
       'Woordenboek- en kanjigegevens © Electronic Dictionary Research and Development Group, gebruikt onder ' +
       'CC BY-SA 4.0. Als JSON verpakt door jmdict-simplified.',
     creditLindera:
-      'Splitst Japans, Koreaans en Chinees in woorden. MIT-licentie; IPADIC, mecab-ko-dic en CC-CEDICT hebben ' +
+      'Splitst Japans, Koreaans en Chinees in woorden. MIT-licentie; IPADIC, UniDic, mecab-ko-dic en CC-CEDICT hebben ' +
       'hun eigen voorwaarden.',
     creditCedict: 'Chinees woordenboek © MDBG en bijdragers, gebruikt onder CC BY-SA 4.0.',
     creditWiktionary:
@@ -332,6 +332,7 @@ export const nl: Translation = {
       'Niet actief op deze pagina. Open een video op YouTube, Netflix of een andere ondersteunde site. Heb je Libregaku net geïnstalleerd of ' +
       'opnieuw geladen, laad het tabblad dan opnieuw.',
     unsupported: 'Libregaku werkt op YouTube, Netflix, Disney+, Prime Video en Max.',
+    worksOn: (site: string): string => `Libregaku werkt op ${site}.`,
     waitingForSubtitles: (site: string): string => `Wachten op ondertitels van ${site}. Controleer of ze aanstaan.`,
     activeOn: (title: string): string => `Actief – ${title}`,
     active: 'Actief op deze video.',
@@ -544,6 +545,7 @@ export const nl: Translation = {
       `Het woordenboek wordt nog geladen – ${percent(n)}. Probeer het zo opnieuw.`,
     dictionaryUnavailable: (error: string): string => `Woordenboek niet beschikbaar: ${error}`,
     noEntry: 'Dit woord staat niet in het woordenboek.',
+    noEntryName: 'Een naam, dus er is geen woordenboekingang.',
     moreMeanings: (n: number): string => `+${n} ${n === 1 ? 'betekenis' : 'betekenissen'} meer`,
 
     // Andere regels in de video met het woord

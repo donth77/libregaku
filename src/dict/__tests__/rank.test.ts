@@ -139,3 +139,27 @@ describe('readingsOf', () => {
     expect(readingsOf(candidates('私'), '私')).not.toContain('わし');
   });
 });
+
+describe('rank — a dependent noun', () => {
+  const entry = (id: string, word: string, pos: string[]): Entry => ({
+    id, word, reading: 'たび', common: true, senses: [{ pos, glosses: ['x'] }],
+    forms: [{ text: word, kana: false, common: true }, { text: 'たび', kana: true, common: true }],
+  }) as unknown as Entry;
+  const tabi = [entry('1', '足袋', ['n']), entry('2', '度', ['n', 'n-suf', 'ctr']), entry('3', '旅', ['n'])];
+
+  it('takes the suffix reading first: たび after a verb is 度, "each time", not 足袋', () => {
+    expect(rank(tabi, 'たび', { pos: '名詞,非自立' })[0]?.word).toBe('度');
+  });
+
+  it('leaves the order alone where the analyser says it is a plain noun', () => {
+    expect(rank(tabi, 'たび', { pos: '名詞,一般' })[0]?.word).toBe('足袋');
+  });
+});
+
+describe('readingsOf — a word written in katakana', () => {
+  it('reads as it is written, so the analyser can ask whether ワンシーン is a word', () => {
+    const scene = { id: '1', word: 'ワンシーン', common: false, senses: [{ pos: ['n'], glosses: ['scene'] }], forms: [{ text: 'ワンシーン', kana: true, common: false }] } as unknown as Entry;
+    expect(readingsOf([scene], 'ワンシーン')).toEqual(['ワンシーン']);
+    expect(readingsOf([scene], 'ワンシーンズ')).toEqual([]);
+  });
+});

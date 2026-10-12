@@ -196,7 +196,9 @@ function fitFor(pos?: string): ((code: string) => number) | null {
         case '接尾': return fit(['suf', 'n-suf', 'ctr'], ['n']);
         case 'サ変接続': return fit(['vs'], ['n']);
         // こと, はず, ため, よう: grammatical nouns JMdict files under several.
-        case '非自立': return fit(['n', 'aux', 'n-adv', 'adj-na'], ['n-suf', 'suf', 'adv', 'prt', 'exp']);
+        // A suffix reading first: たび as 度, "each time", before 足袋, socks.
+        case '非自立':
+          return (c) => (c === 'n-suf' || c === 'suf' ? 3 : ['n', 'aux', 'n-adv', 'adj-na'].includes(c) ? 2 : ['adv', 'prt', 'exp'].includes(c) ? 1 : 0);
         default: return fit(['n'], ['n-adv', 'n-t', 'n-suf', 'pn', 'adj-no', 'num', 'ctr', 'adj-na', 'vs']);
       }
     case '動詞': return (c) => (/^v(1|5|k|z|2|4|n|r|s-)/.test(c) ? 2 : c === 'aux-v' ? 1 : 0);
@@ -294,10 +296,12 @@ export function rank(entries: Entry[], key: string, hint: RankHint = {}): Entry[
  */
 export function readingsOf(entries: Entry[], form: string): string[] {
   const out: string[] = [];
+  // A word written in katakana, ワンシーン, is its own reading: there is no other spelling to read.
+  const katakana = /^[ァ-ヺー・]+$/.test(form);
   for (const e of entries) {
-    const f = e.forms?.find((x) => x.text === form && !x.kana);
+    const f = e.forms?.find((x) => x.text === form && (katakana || !x.kana));
     if (e.forms && (!f || f.rare)) continue;
-    const r = e.reading ?? (e.uk ? e.word : undefined);
+    const r = katakana ? form : e.reading ?? (e.uk ? e.word : undefined);
     if (r && !out.includes(r)) out.push(r);
   }
   return out;

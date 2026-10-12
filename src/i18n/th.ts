@@ -238,7 +238,7 @@ export const th: Translation = {
     creditJmdict:
       'ข้อมูลพจนานุกรมและคันจิ © Electronic Dictionary Research and Development Group ใช้ภายใต้ CC BY-SA 4.0 ' +
       'แปลงเป็น JSON โดย jmdict-simplified',
-    creditLindera: 'ตัดคำภาษาญี่ปุ่น เกาหลี และจีน สัญญาอนุญาต MIT ส่วน IPADIC, mecab-ko-dic และ CC-CEDICT มีเงื่อนไขของตัวเอง',
+    creditLindera: 'ตัดคำภาษาญี่ปุ่น เกาหลี และจีน สัญญาอนุญาต MIT ส่วน IPADIC, UniDic, mecab-ko-dic และ CC-CEDICT มีเงื่อนไขของตัวเอง',
     creditCedict: 'พจนานุกรมภาษาจีน © MDBG และผู้ร่วมพัฒนา ใช้ภายใต้ CC BY-SA 4.0',
     creditWiktionary:
       'พจนานุกรมภาษาเกาหลีและสเปน รวมถึงบางฉบับที่เป็นภาษาของคุณ จาก Wiktionary ผ่าน kaikki.org และ wiktionary-to-yomitan ' +
@@ -306,6 +306,7 @@ export const th: Translation = {
       'ไม่ได้ทำงานในหน้านี้ เปิดวิดีโอบน YouTube, Netflix หรือเว็บไซต์อื่นที่รองรับ ' +
       'หากเพิ่งติดตั้งหรือโหลด Libregaku ใหม่ ให้โหลดแท็บซ้ำ',
     unsupported: 'Libregaku ใช้ได้บน YouTube, Netflix, Disney+, Prime Video และ Max',
+    worksOn: (site: string): string => `Libregaku ใช้ได้บน ${site}`,
     waitingForSubtitles: (site: string): string => `กำลังรอคำบรรยายบน ${site} ตรวจสอบว่าเปิดคำบรรยายอยู่`,
     activeOn: (title: string): string => `ทำงานอยู่ — ${title}`,
     active: 'ทำงานอยู่ในวิดีโอนี้',
@@ -508,6 +509,7 @@ export const th: Translation = {
     dictionaryLoading: (percent: number): string => `พจนานุกรมยังโหลดอยู่ — ${percent}% ลองอีกครั้งในอีกสักครู่`,
     dictionaryUnavailable: (error: string): string => `พจนานุกรมใช้งานไม่ได้: ${error}`,
     noEntry: 'ไม่มีคำนี้ในพจนานุกรม',
+    noEntryName: 'เป็นชื่อเฉพาะ จึงไม่มีรายการในพจนานุกรม',
     moreMeanings: (n: number): string => `+${n} ความหมาย`,
 
     // บรรทัดอื่นในวิดีโอนี้ที่มีคำนี้

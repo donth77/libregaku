@@ -16,6 +16,8 @@ export interface Token {
   /** Reading for furigana / romanization. Tier 2 only. */
   reading?: string;
   pos?: string;
+  /** A name the analyser knows as one (Korean 크레이머): no dictionary lists these, and the card says so where a lookup finds nothing. */
+  properName?: boolean;
   /** True when the token is a content word worth looking up. */
   content?: boolean;
   /** Morphemes this token was merged from — 来た is ["来", "た"]. */
@@ -25,7 +27,12 @@ export interface Token {
    * word for each part, the last being what the whole is a kind of. Riesenschlange
    * is [Riese, Schlange], and `parts` the two as they are written.
    */
-  compound?: [string, string];
+  compound?: string[];
+  /**
+   * A word that may be a word with a suffix on it: 한국식 is 한국 and -식. Tried only when the word itself has no
+   * entry, as the dictionary's words for the parts, the suffix last.
+   */
+  derived?: string[];
   /** What the endings do — "conditional", "polite", "past". */
   inflections?: string[];
   /** Reading of `lemma`, when the analysis pins it down. Tier 2 only. */

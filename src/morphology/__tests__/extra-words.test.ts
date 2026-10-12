@@ -77,3 +77,17 @@ describe('the rows Lindera reads', () => {
     expect([details[0], details[1], details[6], details[7]]).toEqual(['名詞', 'サ変接続', '盗撮', 'トウサツ']);
   });
 });
+
+describe('adverbs of speech', () => {
+  it('are rows of the same thirteen columns, as adverbs, each with its own score', async () => {
+    const { SPOKEN_ADVERBS, analyserRows, spokenRows } = await import('../extra-words');
+    const rows = spokenRows().split('\n').map((r) => r.split(','));
+    expect(rows).toHaveLength(SPOKEN_ADVERBS.length);
+    expect(rows.find((r) => r[0] === 'めちゃ')).toEqual(['めちゃ', '1281', '1281', '9000', '副詞', '一般', '*', '*', '*', '*', 'めちゃ', 'メチャ', 'メチャ']);
+    expect(rows.find((r) => r[0] === 'たまに')?.[3]).toBe('4000');
+    // They go to the analyser after JMdict's words, and alone when there are none.
+    expect(analyserRows([])).toBe(spokenRows());
+    expect(analyserRows([{ surface: '盗撮', reading: 'トウサツ', kind: 'suru' }]).split('\n')).toHaveLength(1 + SPOKEN_ADVERBS.length);
+  });
+});
+

@@ -107,6 +107,44 @@ describe('describeAnki', () => {
   });
 });
 
+describe('the status line off a video', () => {
+  const popupOn = async (url: string): Promise<string> => {
+    document.body.innerHTML = PAGE;
+    vi.stubGlobal('chrome', {
+      tabs: {
+        query: async () => [{ id: 5, url }],
+        sendMessage: async () => ({ supported: false, site: null, title: null, rendering: false, tracks: [], track: null, second: null, sidebarOpen: false }),
+      },
+      runtime: { openOptionsPage: () => {}, sendMessage: async () => ({ ok: false, kind: 'offline', offline: true }) },
+      storage: { local: { get: async () => ({}) } },
+    });
+    vi.resetModules();
+    await import('../action');
+    await vi.waitFor(() => {
+      if (!document.getElementById('status')?.textContent) throw new Error('not yet');
+    });
+    return document.getElementById('status')!.textContent!;
+  };
+
+  it('names the site the tab is on, not all of them', async () => {
+    expect(await popupOn('https://www.netflix.com/browse')).toBe('Libregaku works on Netflix.');
+    expect(await popupOn('https://www.disneyplus.com/home')).toBe('Libregaku works on Disney+.');
+    expect(await popupOn('https://play.hbomax.com/')).toBe('Libregaku works on Max.');
+  });
+
+  it('lists the sites where the tab is on none of them', async () => {
+    expect(await popupOn('https://example.com/')).toBe('Libregaku works on YouTube, Netflix, Disney+, Prime Video and Max.');
+  });
+
+  it('knows each site by its address', async () => {
+    const { siteOfUrl } = await import('../action');
+    expect(siteOfUrl('https://www.youtube.com/watch?v=1')).toBe('youtube');
+    expect(siteOfUrl('https://www.primevideo.com/detail/x')).toBe('prime');
+    expect(siteOfUrl('https://notnetflix.com/')).toBeNull();
+    expect(siteOfUrl(undefined)).toBeNull();
+  });
+});
+
 describe('the track pickers', () => {
   it("mark a generated track after the site's own name for it", async () => {
     document.body.innerHTML = PAGE;

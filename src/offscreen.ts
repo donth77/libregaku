@@ -11,7 +11,9 @@ import {
   JMDICT, build as buildDict, buildKanji, dataMark, eachEntry, formsOf, hasKanji, hasStale, isPopulated, kanjiFor,
   lexicon, lookup, storedWords, storeWords, type Source,
 } from './dict/store';
-import { EXTRA_COST, EXTRA_FORMAT, extraCollector, extraRows, misreads, type ExtraWord } from './morphology/extra-words';
+import { IPADIC, READINGS, fromIpadic, readJapanese, type Row } from './morphology/japanese';
+import { fromUnidic, type UnidicWord } from './morphology/unidic';
+import { EXTRA_COST, EXTRA_FORMAT, analyserRows, extraCollector, misreads, type ExtraWord } from './morphology/extra-words';
 import { LINDERA_DICTS as DICTS } from './morphology/dictionaries';
 import { lexiconQueries, type Morpheme } from './morphology/merge';
 
@@ -23,9 +25,6 @@ import { lexiconQueries, type Morpheme } from './morphology/merge';
  * to the page's CSP). An offscreen document is a real extension page: our
  * origin, our CSP, persistent, with OPFS.
  */
-
-/** Where IPADIC keeps what is read from it, as indices into `details`. */
-const IPADIC = { pos: 0, pos1: 1, conjForm: 5, base: 6, reading: 7 };
 
 /** `details[i]`, or undefined for the "*" a dictionary writes where it has nothing. */
 const col = (d: string[], i: number): string | undefined => {
@@ -47,29 +46,29 @@ interface Reader {
   columns: Array<[number, string]>;
   /** One row as the language's merge rules take it. */
   read(surface: string, details: string[]): unknown;
+  /** The rows of a line together, where a word is read with the ones beside it. */
+  finish?(rows: unknown[]): unknown[];
 }
 
 const READERS: Record<string, Reader> = {
   ipadic: {
     columns: [[IPADIC.pos, 'part_of_speech'], [IPADIC.base, 'base_form'], [IPADIC.reading, 'reading']],
-    read(surface, d): Morpheme {
-      // Unknown words carry no lemma or reading — "*", or a short row.
-      const usable = d.length > IPADIC.reading;
-      return {
-        surface,
-        lemma: usable ? col(d, IPADIC.base) : undefined,
-        reading: usable ? col(d, IPADIC.reading) : undefined,
-        pos: col(d, IPADIC.pos),
-        pos1: col(d, IPADIC.pos1),
-        conjForm: col(d, IPADIC.conjForm),
-      };
-    },
+    read: fromIpadic,
   },
   // KoMorpheme, src/morphology/merge-ko.ts: the tag, and for a unit of more
   // than one morpheme, what it is made of (가/VV/*+았/EP/*).
   'ko-dic': {
     columns: [[0, 'part_of_speech_tag'], [4, 'type'], [7, 'expression']],
     read: (surface, d) => ({ surface, tag: col(d, 0), type: col(d, 4), expression: col(d, 7) }),
+  },
+  // Japanese from UniDic, put into IPADIC's shape for the merge rules a line at a time. Loaded beside IPADIC,
+  // as a second opinion on its reading (ensureSecond).
+  unidic: {
+    columns: [
+      [0, 'part_of_speech'], [5, 'conjugation_form'], [7, 'lexeme'], [9, 'phonological_surface_form'], [10, 'orthographic_base_form'],
+    ],
+    read: (surface, details) => ({ surface, details }),
+    finish: (rows) => fromUnidic(rows as UnidicWord[]),
   },
   // Where the words are, and nothing else: its one reading per word is not
   // to be trusted (src/morphology/dictionaries.ts). The dictionary adds them.
@@ -191,10 +190,14 @@ async function loadNow(name: string): Promise<void> {
       fresh = true;
     }
 
+    // The second opinion, where it is stored, before the first: see secondAhead.
+    const ahead = fresh ? null : await secondAhead(name);
+
     let t: Tokenizer;
     try {
       t = await tokenizerFor(name, r);
     } catch (e) {
+      if (ahead) release(ahead);
       if (fresh) throw e;
       /*
        * A stored copy that will not load. The usual cause is a download cut
@@ -213,6 +216,12 @@ async function loadNow(name: string): Promise<void> {
     tokenizer = t;
     reader = r;
     if (before) release(before);
+    dropSecond();
+    if (ahead) {
+      second.tokenizer = ahead;
+      second.state = 'ready';
+      console.log(`[libregaku] ${SECOND[name]} ready — a second opinion on ${name}`);
+    }
     // The words added from JMdict were in the analyser just replaced.
     extras.state = 'none';
     extras.count = 0;
@@ -250,10 +259,121 @@ interface RawToken {
   details?: string[];
 }
 
+const rowsOf = (raw: unknown): Row[] => (raw as RawToken[]).map((t) => ({ surface: t.surface, details: t.details ?? [] }));
+
 function analyse(text: string): unknown[] {
   const r = reader;
-  if (!tokenizer || !r) return [];
-  return (tokenizer.tokenize(text) as RawToken[]).map((t) => r.read(t.surface, t.details ?? []));
+  const first = tokenizer;
+  if (!first || !r) return [];
+  if (state.dict === 'ipadic') {
+    // Japanese is read by IPADIC, and put right by UniDic once that is in (src/morphology/japanese.ts).
+    const other = second.tokenizer;
+    return readJapanese(text, {
+      ipadic: (t) => rowsOf(first.tokenize(t)),
+      others: (t, within) =>
+        (first.tokenizeNbest(t, READINGS, true, BigInt(within)) as Array<{ tokens: RawToken[]; cost: number | bigint }>)
+          .map((reading) => ({ rows: rowsOf(reading.tokens), cost: Number(reading.cost) })),
+      ...(other ? { unidic: (t: string) => rowsOf(other.tokenize(t)) } : {}),
+    });
+  }
+  const rows = (first.tokenize(text) as RawToken[]).map((t) => r.read(t.surface, t.details ?? []));
+  return r.finish ? r.finish(rows) : rows;
+}
+
+/* ── A second opinion (src/morphology/repair.ts) ────────────────── */
+
+/**
+ * The dictionary that reads a language's lines a second time: UniDic, for
+ * Japanese read by IPADIC. It is the larger by far — 46 MB to download, 190
+ * on disk, and 250 of memory, where IPADIC takes 140 — so the first time it
+ * is downloaded behind the lines, which the first reads alone until it is in.
+ */
+const SECOND: Record<string, string> = { ipadic: 'unidic' };
+
+const second = { tokenizer: null as Tokenizer | null, state: 'none' as 'none' | 'loading' | 'ready' | 'failed' };
+let secondLoading: Promise<void> | null = null;
+
+/** The second analyser goes with the first it was a second opinion on. */
+function dropSecond(): void {
+  if (second.tokenizer) release(second.tokenizer);
+  second.tokenizer = null;
+  second.state = 'none';
+}
+
+/**
+ * A language's second dictionary, loaded before its first where it is already
+ * stored, or null. UniDic is four times IPADIC's size, and Lindera's memory
+ * only ever grows: loaded first, the space its files were read into is where
+ * IPADIC then goes. Measured in Chrome, this page's process settles at 457 MB
+ * that way and 554 the other. Where this fails, the first loads as it would
+ * have, and ensureSecond tries again after.
+ */
+async function secondAhead(first: string): Promise<Tokenizer | null> {
+  const name = SECOND[first];
+  const r = name ? READERS[name] : undefined;
+  if (!name || !r || !(await hasDictionary(name).catch(() => false))) return null;
+  // The one before's goes now, so that its memory is free for this.
+  dropSecond();
+  return buildTokenizer(name, r).catch(() => null);
+}
+
+function ensureSecond(): Promise<void> {
+  const name = SECOND[state.dict ?? ''];
+  if (!name || !tokenizer || !state.ready) return Promise.resolve();
+  if (second.state === 'ready' || second.state === 'failed') return Promise.resolve();
+  secondLoading ??= loadSecond(name).finally(() => {
+    secondLoading = null;
+  });
+  return secondLoading;
+}
+
+async function loadSecond(name: string): Promise<void> {
+  const first = state.dict;
+  const url = DICTS[name];
+  const r = READERS[name];
+  if (!url || !r) return;
+  second.state = 'loading';
+  try {
+    // Downloaded once, behind the lines: nothing waits for it, and its progress is not the first's.
+    if (!(await hasDictionary(name))) await downloadDictionary(url, name);
+    let t: Tokenizer;
+    try {
+      t = await buildTokenizer(name, r);
+    } catch (e) {
+      // A stored copy that will not load, as in loadNow: replaced, once.
+      console.warn(`[libregaku] stored ${name} would not load; downloading it again:`, e);
+      await removeDictionary(name).catch(() => undefined);
+      await downloadDictionary(url, name);
+      t = await buildTokenizer(name, r);
+    }
+    if (state.dict !== first) {
+      // Another language's analyser took the first's place while this was loaded.
+      release(t);
+      second.state = 'none';
+      return;
+    }
+    second.tokenizer = t;
+    second.state = 'ready';
+    console.log(`[libregaku] ${name} ready — a second opinion on ${first}`);
+  } catch (e) {
+    second.state = 'failed';
+    console.warn(`[libregaku] ${name} not loaded; lines are read by ${first} alone:`, e);
+  }
+}
+
+/**
+ * A second dictionary already stored loads in under a second — before the
+ * first, most often (secondAhead) — so the page waits for it and its first
+ * lines are read with it: read without, they change before the viewer's eyes
+ * when it comes. One that has to be downloaded does not hold the page up, and
+ * is asked for with 'second'.
+ */
+async function secondSoon(): Promise<void> {
+  const name = SECOND[state.dict ?? ''];
+  if (!name || !state.ready || second.state === 'ready' || second.state === 'failed') return;
+  const stored = await hasDictionary(name).catch(() => false);
+  const loading = ensureSecond();
+  if (stored) await Promise.race([loading, new Promise((r) => setTimeout(r, 8000))]);
 }
 
 /* ── The word dictionary ────────────────────────────────────────── */
@@ -318,6 +438,44 @@ function ensureOwn(id: string | undefined, edition: string | undefined): Promise
   ownLoading = loading;
   void loading.then(() => {
     if (ownLoading === loading) ownLoading = null;
+  });
+  return loading;
+}
+
+/**
+ * A dictionary for the words the language's own and the learner's own have nothing for (settings.ts,
+ * fallbackDictionaryOf): Korean's learner dictionary behind its Wiktionary. Asked last, and loaded after the others.
+ */
+let fallback: Source | null = null;
+const fallbackDict = { ready: false, error: null as string | null, source: '', edition: '' };
+let fallbackLoading: Promise<void> | null = null;
+
+function ensureFallback(id: string | undefined, edition: string | undefined): Promise<void> {
+  const source = id ? SOURCES[id] : undefined;
+  if (!id || !edition || !source) {
+    fallback = null;
+    Object.assign(fallbackDict, { ready: false, error: id && !source ? `no dictionary called "${id}"` : null, source: id ?? '', edition: edition ?? '' });
+    return Promise.resolve();
+  }
+  if (fallbackDict.source === id && fallbackDict.edition === edition && (fallbackDict.ready || fallbackLoading)) {
+    return fallbackLoading ?? Promise.resolve();
+  }
+  fallback = source;
+  Object.assign(fallbackDict, { ready: false, error: null, source: id, edition });
+  const load = async (): Promise<void> => {
+    try {
+      if (!(await isPopulated(edition, source))) await buildDict(edition, () => {}, source);
+      if (fallback === source && fallbackDict.edition === edition) fallbackDict.ready = true;
+      console.log(`[libregaku] ${id} ready — for the words the others lack`);
+    } catch (e) {
+      if (fallback === source) fallbackDict.error = String(e);
+      console.warn(`[libregaku] ${id} failed to load; words it would have found have no entry:`, e);
+    }
+  };
+  const loading = load();
+  fallbackLoading = loading;
+  void loading.then(() => {
+    if (fallbackLoading === loading) fallbackLoading = null;
   });
   return loading;
 }
@@ -422,7 +580,7 @@ async function withReadings(tokens: Array<{ surface: string }>, source: Source):
  */
 async function finished(tokens: unknown[]): Promise<Analysis> {
   const plain: Analysis = { ok: true, tokens, complete: true };
-  if (state.dict === 'ipadic') {
+  if (state.dict === 'ipadic' || state.dict === 'unidic') {
     // Numbers, prefixed and suffixed nouns: merging reads these better with
     // the dictionary's view of them, and says so when it had to do without.
     const forms = lexiconQueries(tokens as Morpheme[]);
@@ -490,7 +648,7 @@ async function loadExtras(): Promise<void> {
         }));
         if (misreads(w, pieces)) words.push(w);
       }
-      csv = extraRows(words);
+      csv = analyserRows(words);
       await storeWords(mark, csv);
     }
     const count = csv ? csv.split('\n').length : 0;
@@ -522,7 +680,7 @@ async function loadExtras(): Promise<void> {
  * analyser waits for it. One that has to be downloaded does not hold it up.
  */
 async function dictionarySoon(): Promise<void> {
-  if (state.dict !== 'ipadic') return;
+  if (state.dict !== 'ipadic' && state.dict !== 'unidic') return;
   const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
   // The request may still be on its way.
   if (!dictLoading && !dict.ready) await sleep(300);
@@ -589,10 +747,21 @@ async function answerLookup(key: string, hint: RankHint): Promise<unknown> {
   }
   // While that one still downloads, an answer from the other is not kept:
   // the page asks again, and gets the meaning in its own language once it can.
-  const settled = !mine || ownDict.ready || Boolean(ownDict.error);
+  const behind = fallback;
+  const settled = (!mine || ownDict.ready || Boolean(ownDict.error)) && (!behind || fallbackDict.ready || Boolean(fallbackDict.error));
   if (dict.ready) {
     try {
-      return { ok: true, entries: await lookup(key, hint, source), source: settled ? 'local' : 'partial' };
+      const entries = await lookup(key, hint, source);
+      // Nothing in the language's own dictionary: the one behind it, in the words it has them in.
+      if (!entries.length && behind && fallbackDict.ready) {
+        try {
+          const more = await lookup(key, hint, behind);
+          if (more.length) return { ok: true, entries: more.map((e) => ({ ...e, lang: fallbackDict.edition })), source: 'local' };
+        } catch (e) {
+          console.warn('[libregaku] lookup in the fallback dictionary failed:', e);
+        }
+      }
+      return { ok: true, entries, source: settled ? 'local' : 'partial' };
     } catch (e) {
       console.warn('[libregaku] local lookup failed:', e);
       failed = String(e);
@@ -613,6 +782,8 @@ interface Message {
   key?: string;
   source?: string;
   edition?: string;
+  /** A dictionary for the words the others have none for (settings.ts, fallbackDictionaryOf). */
+  fallback?: { source?: string; edition?: string };
   reading?: string;
   pos?: string;
   chars?: string[];
@@ -637,9 +808,20 @@ chrome.runtime.onMessage.addListener((msg: Message, _s, respond) => {
       return true;
 
     case 'load':
-      // With JMdict already in, the analyser answers once its added words are too.
-      void load(msg.dict ?? 'ipadic').then(dictionarySoon).then(ensureExtras).then(() => respond({ ok: state.ready && !state.error, ...state }));
+      // With JMdict already in, the analyser answers once its added words are too, and its second opinion if that is stored.
+      void load(msg.dict ?? 'ipadic').then(dictionarySoon).then(ensureExtras).then(secondSoon)
+        .then(() => respond({ ok: state.ready && !state.error, ...state }));
       return true;
+
+    /*
+     * Answered once the second opinion is in, or will not be. `reread` says it
+     * came after this was asked: the lines the page has were read without it.
+     */
+    case 'second': {
+      const was = second.state === 'ready';
+      void ensureSecond().then(() => respond({ ok: second.state === 'ready', reread: !was && second.state === 'ready' }));
+      return true;
+    }
 
     case 'tokenize': {
       if (!state.ready) {
@@ -668,9 +850,9 @@ chrome.runtime.onMessage.addListener((msg: Message, _s, respond) => {
       void ensureDict(msg.source ?? JMDICT.id, msg.edition ?? 'eng').then(ensureExtras).then(() => {
         respond({ ok: !dict.error, ...dict });
         if (dict.ready && active === JMDICT) void ensureKanji();
-        // Then the one in the learner's own language, if the pair has one.
-        if (dict.ready) void ensureOwn(msg.own?.source, msg.own?.edition);
-        else void ensureOwn(undefined, undefined);
+        // Then the one in the learner's own language, if the pair has one, and then the one behind them all.
+        if (dict.ready) void ensureOwn(msg.own?.source, msg.own?.edition).then(() => ensureFallback(msg.fallback?.source, msg.fallback?.edition));
+        else void ensureOwn(undefined, undefined).then(() => ensureFallback(undefined, undefined));
       });
       return true;
 

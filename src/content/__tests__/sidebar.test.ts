@@ -1470,8 +1470,10 @@ describe('Sidebar at the length of a film', { timeout: 30_000 }, () => {
   const blocks = (root: ShadowRoot, from: number, to: number): HTMLElement[] =>
     Array.from(root.querySelectorAll<HTMLElement>('.blk')).slice(from, to);
 
+  /** Wait for the counts: they are done in idle time, which a busy machine gives late, so by the clock and not by the tick. */
   async function counts(sidebar: Sidebar): Promise<void> {
-    for (let i = 0; i < 400 && !sidebar.stats; i++) await flush();
+    const until = Date.now() + 10_000;
+    while (!sidebar.stats && Date.now() < until) await wait(5);
   }
 
   /** Building is sliced across frames; wait until these rows have their words. */
@@ -1564,11 +1566,15 @@ describe('Sidebar at the length of a film', { timeout: 30_000 }, () => {
     expect([...q.calls.values()].every((n) => n === 1)).toBe(true);
     // The rows being read and a handful for counting — never the whole film.
     expect(q.most()).toBeLessThanOrEqual(24 + 8);
+    await counts(sidebar);
     expect(sidebar.stats).toEqual({ known: 100, unknown: 0, i1: 0 });
     expect(root.querySelector('.summary')?.textContent).toContain('100% known');
 
-    // A status change counts again from tokens in hand: no requests at all.
+    // A status change counts again from tokens in hand: no requests at all. The count is done in slices, and
+    // on a busy machine not in the first.
     sidebar.refreshStatus();
+    expect(q.waiting).toHaveLength(0);
+    await counts(sidebar);
     expect(q.waiting).toHaveLength(0);
     expect(sidebar.stats).toEqual({ known: 100, unknown: 0, i1: 0 });
 
@@ -1578,6 +1584,7 @@ describe('Sidebar at the length of a film', { timeout: 30_000 }, () => {
     await q.drain();
     expect([...q.calls.values()].every((n) => n === 2)).toBe(true);
     expect(q.most()).toBeLessThanOrEqual(24 + 8);
+    await counts(sidebar);
     expect(sidebar.stats).not.toBeNull();
   });
 
@@ -1648,6 +1655,7 @@ describe('Sidebar at the length of a film', { timeout: 30_000 }, () => {
     expect(root.querySelector('.line[data-i="3"] .w')).toBe(word);
     expect(word.dataset.s).toBe('known');
     expect(row.querySelector('.x')?.textContent).toBe('');
+    await counts(sidebar);
     expect(sidebar.stats).toEqual({ known: 100, unknown: 0, i1: 0 });
     expect(seg.total()).toBe(asked);
 

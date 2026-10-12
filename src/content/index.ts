@@ -26,7 +26,7 @@ import { buildStatusMap, lemmaReading, type OverrideStatus, type Status, type St
 import { keepMarkReading, loadMarkReadings, loadOverrides, marksIn, setMark, syncMarks, type MarkSync } from '../anki/marks';
 import { phonetic } from '../anki/text';
 import {
-  DICTIONARIES, cardDeck, definitionLanguage, dictionaryOf, featuresOf, loadSettings, nextRuby, ownDictionaryOf, trackLanguageMatch,
+  DICTIONARIES, cardDeck, definitionLanguage, dictionaryOf, fallbackDictionaryOf, featuresOf, loadSettings, nextRuby, ownDictionaryOf, trackLanguageMatch,
   onSettingsChange, targetVariant,
   nextSubtitleView, setSetting, settings, underlineVars,
 } from '../settings';
@@ -494,7 +494,7 @@ async function makeSegmenter(): Promise<Segmenter | null> {
     void (async () => {
       try {
         // And the one in the learner's own language where the pair has one: asked first.
-        const d = await ensureDictionary(dictionary.edition, dictionary.source, ownDictionaryOf(lang, settings()));
+        const d = await ensureDictionary(dictionary.edition, dictionary.source, ownDictionaryOf(lang, settings()), fallbackDictionaryOf(lang, settings()));
         // The learner may have switched language while this downloaded.
         if (segmenterFor !== lang) return;
         log(
@@ -537,6 +537,14 @@ async function makeSegmenter(): Promise<Segmenter | null> {
       segmenter = found.make();
       reanalyse();   // with dictionary forms, and readings where the language has them
       log(`upgraded to tier ${segmenter.tier} — dictionary forms are live`);
+      // What makes it read better may come long after — a second dictionary, downloaded once. The lines are
+      // read again then, by a segmenter that remembers none of them.
+      void found.improve?.().then((better) => {
+        if (!better || segmenterFor !== lang || analyser !== found) return;
+        segmenter = found.make();
+        reanalyse();
+        log('the analyser reads better now — lines read again');
+      }, () => undefined);
     } catch (e) {
       analyserDown(String(e));
     }
@@ -656,6 +664,33 @@ function charactersFor(token: Token, result: LookupResult): Promise<Characters> 
   if (!DICTIONARIES[targetLang()] || !kind || !settings().cardKanji) return undefined;
   return charactersOf(draftFor(result, token, '').expression, definitionLanguage(settings()), kind)
     .catch(() => ({ label: '', items: [] }));
+}
+
+/**
+ * What a prefix or suffix the lookup left out means. 新名所 is looked up as
+ * 名所 when the dictionary has no 新名所, and 被害者側 as 被害者; the card says
+ * what the 新 and the 側 add. Only kanji parts of a word that does not change
+ * form, so an ending like た is not one.
+ */
+const KANJI_PART = /^[\u4E00-\u9FFF\u3400-\u4DBF々]+$/u;
+
+function leftoversFor(token: Token): Promise<Array<{ part: string; reading?: string; meaning: string }>> | undefined {
+  const { parts, lemma, surface } = token;
+  if (!parts || parts.length < 2 || !lemma || lemma === surface || token.inflections?.length || token.name) return undefined;
+  const left = parts.filter((p) => KANJI_PART.test(p) && !lemma.includes(p));
+  if (!left.length) return undefined;
+  return Promise.all(left.map(async (part) => {
+    // As the affix it is: 生 as the suffix せい, "student", before 生 meaning "I".
+    const result = await lookupToken({
+      surface: part, lemma: part, lookup: [{ key: part, pos: part === parts[0] ? '接頭詞' : '名詞,接尾' }],
+    }).catch(() => null);
+    // The entry for the part as an affix, where there is one: 側 as が わ, a suffix, before そば, "nearby".
+    const entries = result?.state === 'ok' ? result.entries : [];
+    const kind = part === parts[0] ? /pref/ : /suf/;
+    const top = entries.find((e) => e.senses.some((s) => s.pos?.some((p) => kind.test(p)))) ?? entries[0];
+    const meaning = (top?.senses.find((s) => s.pos?.some((p) => kind.test(p))) ?? top?.senses[0])?.glosses.slice(0, 3).join('; ') ?? '';
+    return { part, ...(top?.reading ? { reading: top.reading } : {}), meaning };
+  })).then((all) => all.filter((x) => x.meaning));
 }
 
 /** The language's dictionary site for a word, for its card — none where the language has none. */
@@ -1686,6 +1721,7 @@ async function openLookup(mount: HTMLElement, el: HTMLElement, token: Token, byH
       onSeek: playFrom,
       onSearch: (query, forms) => sidebar?.findWord(query, forms),
       characters: charactersFor(token, result),
+      leftovers: leftoversFor(token),
       lang: targetLang(),
       // The subtitle with its translation, then the line alone.
       keepClear: [el.closest('.wrap'), el.closest('.primary')].filter((x): x is Element => Boolean(x)),
@@ -1815,6 +1851,7 @@ function mountSidebar(mount: HTMLElement, video: HTMLVideoElement, adapter: Subt
         onSeek: playFrom,
         onSearch: (query, forms) => sidebar?.findWord(query, forms),
         characters: charactersFor(token, result),
+        leftovers: leftoversFor(token),
         lang: targetLang(),
         keepClear: [el.closest('.line')].filter((x): x is Element => Boolean(x)),
         onClose: onCardClosed,

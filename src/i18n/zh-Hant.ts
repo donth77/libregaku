@@ -229,7 +229,7 @@ export const zhHant: Translation = {
     creditJmdict:
       '字典和漢字資料 © Electronic Dictionary Research and Development Group，依 CC BY-SA 4.0 授權使用。' +
       '由 jmdict-simplified 重新封裝為 JSON。',
-    creditLindera: '將日文、韓文和中文切分成單字。MIT 授權；IPADIC、mecab-ko-dic 和 CC-CEDICT 各有其授權條款。',
+    creditLindera: '將日文、韓文和中文切分成單字。MIT 授權；IPADIC、UniDic、mecab-ko-dic 和 CC-CEDICT 各有其授權條款。',
     creditCedict: '中文字典 © MDBG 及其貢獻者，依 CC BY-SA 4.0 授權使用。',
     creditWiktionary:
       '韓文和西班牙文字典，以及部分以你母語釋義的字典，來自 Wiktionary，經由 kaikki.org 和 wiktionary-to-yomitan 轉換。CC BY-SA 4.0。',
@@ -293,6 +293,7 @@ export const zhHant: Translation = {
     checkingPage: '正在檢查這個網頁…',
     notActive: '未在這個網頁上啟用。請在 YouTube、Netflix 或其他支援的網站上開啟影片。如果剛安裝或重新載入 Libregaku，請重新載入分頁。',
     unsupported: 'Libregaku 適用於 YouTube、Netflix、Disney+、Prime Video 和 Max。',
+    worksOn: (site: string): string => `Libregaku 適用於 ${site}。`,
     waitingForSubtitles: (site: string): string => `正在等待 ${site} 的字幕。請確認字幕已開啟。`,
     activeOn: (title: string): string => `已啟用：${title}`,
     active: '已在這部影片上啟用。',
@@ -491,6 +492,7 @@ export const zhHant: Translation = {
     dictionaryLoading: (percent: number): string => `字典仍在載入（${percent}%），請稍後再試。`,
     dictionaryUnavailable: (error: string): string => `無法使用字典：${error}`,
     noEntry: '字典中沒有這個單字。',
+    noEntryName: '這是專有名詞，所以字典裡沒有詞條。',
     moreMeanings: (n: number): string => `還有 ${n} 個意思`,
 
     // The word's other lines in this video

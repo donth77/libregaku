@@ -89,6 +89,7 @@ export function place(text: string, merged: MergedToken[], how: Placing = {}): T
       lemmaReading: t.lemmaReading,
       lookup: t.lookup.length ? t.lookup : undefined,
       ...(t.name ? { name: true } : {}),
+      ...(t.properName ? { properName: true } : {}),
     });
   }
   gap(text.length);

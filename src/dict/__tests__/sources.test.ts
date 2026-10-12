@@ -151,8 +151,27 @@ describe('a Wiktionary dictionary', () => {
     const mi = words.filter((w) => w.word === 'mi').sort((a, b) => a.id.localeCompare(b.id));
     expect(mi.map((w) => w.senses[0]?.glosses[0])).toEqual(['my', 'mi (the musical note)']);
     expect(source.rank(mi, 'mi')[0]).toMatchObject({ word: 'mi', kind: ['det', 'n'], senses: [{ glosses: ['my'] }, { glosses: ['mi (the musical note)'] }] });
+
     // And its plural, which the file files under a word it does not have.
     expect(batches.flatMap((b) => b.inflections ?? [])).toContainEqual({ form: 'mis', pos: 'det', of: [{ lemma: 'mi', tags: ['plural'] }] });
+  });
+
+  it('puts the row that is the role the analyser found first: Korean 우리 "we" before 우리 "cage"', async () => {
+    const { SOURCES } = await sources();
+    const ko = SOURCES['wty-ko-en']!;
+    const row = (id: string, kind: string[], gloss: string) => ({ id, word: '우리', common: false, kind, senses: [{ pos: kind, glosses: [gloss] }] });
+    const rows = [row('1', ['n'], 'cage'), row('2', ['pron'], 'we')];
+    expect(ko.rank(rows, '우리', { pos: 'NP' })[0]?.senses[0]?.glosses).toEqual(['we']);
+    expect(ko.rank(rows, '우리', { pos: 'NNG' })[0]?.senses[0]?.glosses).toEqual(['cage']);
+    // No tag, or no row of that role: the file's own order.
+    expect(ko.rank(rows, '우리')[0]?.senses[0]?.glosses).toEqual(['cage']);
+    expect(ko.rank(rows, '우리', { pos: 'MAG' })[0]?.senses[0]?.glosses).toEqual(['cage']);
+    // A noun's tag says too little to reorder by: the file's order stands.
+    const mixed = [row('1', ['n'], 'tent'), row('2', ['n'], 'rough')];
+    expect(ko.rank(mixed, '우리', { pos: 'NNG' })[0]?.senses.map((s) => s.glosses[0])).toEqual(['tent', 'rough']);
+    // The pronoun in its usual use before the same word in a literary one.
+    const pron = [row('1', ['n'], 'cage'), row('2', ['pron', 'lit'], 'that'), row('3', ['pron'], 'I')];
+    expect(ko.rank(pron, '우리', { pos: 'NP' })[0]?.senses[0]?.glosses).toEqual(['I']);
   });
 
   it('adds nothing of Spanish to Korean', async () => {
@@ -161,6 +180,9 @@ describe('a Wiktionary dictionary', () => {
     const words = (await all(await SOURCES['wty-ko-en']!.read('en'))).flatMap((b) => b.entries.map((e) => e.entry.word));
     expect(words).toContain('먹다');
     expect(words).toContain('뭐');
+    // The commonest words the file has in the wrong order are given the right one first.
+    const all2 = (await all(await SOURCES['wty-ko-en']!.read('en'))).flatMap((b) => b.entries.map((e) => e.entry));
+    expect(all2.find((w) => w.word === '시장')?.senses[0]?.glosses[0]).toMatch(/^market/);
     expect(words).not.toContain('muy');
   });
 

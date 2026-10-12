@@ -3,22 +3,29 @@ import { lexiconFrom, toTokens } from '../lindera';
 import { GRAMMAR_LABELS, lexiconQueries } from '../merge';
 import { grammar } from '../../i18n/en/grammar';
 import type { Token } from '../types';
-import { LINES } from './fixtures/ipadic';
+import { ALONE, LINES, type Analysed } from './fixtures/ipadic';
 
 /**
- * Merging, against what IPADIC actually emits.
+ * Merging, against what the analysers actually emit.
  *
  * Every input here is real analyser output (see the fixture), because the
  * failures this guards against were all cases where a hand-written morpheme
- * sequence passed and the analyser's own did not.
+ * sequence passed and the analyser's own did not. LINES is a line as it is
+ * read once everything has loaded; ALONE is the same line as IPADIC alone
+ * reads it, which is what the page shows until JMdict's words and UniDic are
+ * in, and what the merge rules were first written against.
  */
 
+/** A line as IPADIC alone reads it. */
+const alone = (text: string): Analysed | undefined => ALONE[text] ?? LINES[text];
+
 /** Tokens for a fixture line, with the dictionary's answers or without. */
-function tokens(text: string, withDictionary = true): Token[] {
-  const line = LINES[text];
+function tokens(text: string, withDictionary = true, line = LINES[text]): Token[] {
   if (!line) throw new Error(`no fixture for ${text}`);
   return toTokens(text, line.morphemes, withDictionary ? lexiconFrom(line.lexicon) : undefined);
 }
+/** The same for the line as IPADIC alone reads it. */
+const early = (text: string): Token[] => tokens(text, true, alone(text));
 
 const words = (text: string, withDictionary = true) => tokens(text, withDictionary).map((t) => t.surface);
 const only = (text: string, withDictionary = true): Token => {
@@ -307,7 +314,9 @@ describe('kanji compounds the analyser split', () => {
 
   it('are asked about only where a lone kanji is among the nouns', () => {
     expect(lexiconQueries(LINES['灯籠']!.morphemes)).toEqual(['灯籠']);
-    expect(lexiconQueries(LINES['石灯籠']!.morphemes)).toEqual(['石灯', '石灯籠', '灯籠']);
+    // With JMdict's words in the analyser it comes back whole, and nothing is asked.
+    expect(lexiconQueries(alone('石灯籠')!.morphemes)).toEqual(['石灯', '石灯籠', '灯籠']);
+    expect(lexiconQueries(LINES['石灯籠']!.morphemes)).toEqual([]);
     expect(lexiconQueries(LINES['視聴者']!.morphemes)).not.toContain('視聴');
   });
 });
@@ -421,5 +430,425 @@ describe('a name that is also a word', () => {
     for (const text of ['赤ちゃん', '坊ちゃん', 'お姉ちゃん']) {
       expect(tokens(text).some((x) => x.name), text).toBe(false);
     }
+  });
+});
+
+describe('a number before a kanji IPADIC cannot read', () => {
+  it('is one word, with the dictionary\'s reading, where the dictionary has it: 二択', () => {
+    const t = tokens('今ラーメンかビールの二択だったんだけど').find((x) => x.surface === '二択');
+    expect([t?.surface, t?.reading]).toEqual(['二択', 'ニタク']);
+  });
+
+  it('stays two where it does not: 三択', () => {
+    expect(words('三択')).toEqual(['三', '択']);
+  });
+
+  it('leaves counters as they were: 二人, 一日', () => {
+    expect(words('二人')).toEqual(['二人']);
+    expect(words('一日')).toEqual(['一日']);
+  });
+});
+
+describe('a noun and its suffixes', () => {
+  it('are one word, read as a whole: 被害者側', () => {
+    const t = tokens('被害者側に注意を')[0];
+    expect([t?.surface, t?.reading]).toEqual(['被害者側', 'ヒガイシャガワ']);
+  });
+});
+
+describe('katakana slang adjectives', () => {
+  it('are the adjective, read as IPADIC reads it written in hiragana: ヤバくない, ヤバい', () => {
+    const t = only('ヤバくない');
+    expect([t.surface, t.lemma]).toEqual(['ヤバくない', 'やばい']);
+    expect(only('ヤバい').lemma).toBe('やばい');
+  });
+});
+
+describe('adjectives in rough speech', () => {
+  it('are the adjective they are said for: すげえ, スッゲえ, でけえ', () => {
+    expect([only('すげえ').surface, only('すげえ').lemma]).toEqual(['すげえ', 'すごい']);
+    expect(only('スッゲえ').lemma).toBe('すっごい');
+    expect(only('でけえ').lemma).toBe('でかい');
+  });
+
+  it('leave ねえ, "hey", alone', () => {
+    expect(tokens('ねえ、聞いて')[0]?.lemma).toBe('ねえ');
+  });
+});
+
+describe('words speech makes of several', () => {
+  it('keeps たびに, "each time", as one word', () => {
+    expect(words('見るたびにやる')).toEqual(['見る', 'たびに', 'やる']);
+    expect(words('会うたび')).toEqual(['会う', 'たび']);
+  });
+
+  it('knows 知らねえ and 知らん as 知る, negative', () => {
+    for (const text of ['知らねえ', '知らん']) {
+      const t = only(text);
+      expect([t.lemma, t.inflections]).toEqual(['知る', ['negative']]);
+    }
+  });
+
+  it('knows Kansai-ben negatives: 食べへん, 行かへん, わからへん, せえへん', () => {
+    for (const [text, lemma] of [['食べへん', '食べる'], ['行かへん', '行く'], ['わからへん', 'わかる'], ['せえへん', 'する']] as const) {
+      const t = only(text);
+      expect([t.lemma, t.inflections], text).toEqual([lemma, ['negative']]);
+    }
+  });
+
+  it('knows おらん and おらんかった as おる, negative, and past', () => {
+    expect(only('おらんかった').lemma).toBe('おる');
+    expect(only('おらんかった').inflections).toEqual(['negative', 'past']);
+  });
+});
+
+describe('more Kansai-ben', () => {
+  it('knows 食べはる as 食べる, honorific', () => {
+    const t = only('食べはる');
+    expect([t.surface, t.lemma, t.inflections]).toEqual(['食べはる', '食べる', ['honorific']]);
+  });
+
+  it('knows ちゃう on its own as 違う, and leaves ねん as the ending it is', () => {
+    expect(tokens('ちゃうねん').map((t) => [t.surface, t.lemma])).toEqual([['ちゃう', '違う'], ['ねん', 'ねん']]);
+  });
+});
+
+describe('a kanji word the analyser cannot read', () => {
+  it('is read from the dictionary: 就活, and 就活生 with its suffix', () => {
+    expect(only('就活').reading).toBe('シュウカツ');
+    const t = tokens('私が就活生ということもあって').find((x) => x.surface === '就活生');
+    expect([t?.reading, t?.lemma]).toEqual(['シュウカツセイ', '就活']);
+  });
+});
+
+describe('たまに, by the sentence it is in', () => {
+  it('is "now and then" where nothing describes the たま', () => {
+    expect(words('ここにはたまに来る')).toEqual(['ここ', 'に', 'は', 'たまに', '来る']);
+    expect(words('たまには')).toEqual(['たまに', 'は']);
+    expect(words('でもたまに思う')).toEqual(['でも', 'たまに', '思う']);
+  });
+
+  it('is a ball and に where something does: その, 彼の, 速い', () => {
+    expect(words('そのたまに当たった').slice(0, 3)).toEqual(['その', 'たま', 'に']);
+    expect(words('彼のたまに触るな').slice(2, 4)).toEqual(['たま', 'に']);
+    expect(words('速いたまに驚く').slice(1, 3)).toEqual(['たま', 'に']);
+    expect(words('玉に瑕')).toEqual(['玉', 'に', '瑕']);
+  });
+});
+
+describe('Kansai forms, by what is around them', () => {
+  it('takes はる for the honorific only on a verb\'s stem', () => {
+    expect(only('行かはった').inflections).toEqual(['honorific', 'past']);
+    expect(words('紙をはる')).toEqual(['紙', 'を', 'はる']);
+  });
+
+  it('reads おらん as おる, negative, where the analyser already does', () => {
+    const t = tokens('俺はおらんよ').find((x) => x.surface.startsWith('おら'));
+    expect([t?.lemma, t?.inflections]).toEqual(['おる', ['negative']]);
+  });
+});
+
+describe('もん and もの, by the sentence they are in', () => {
+  const mon = (text: string): Token => tokens(text).find((x) => x.surface === 'もん' || x.surface === 'もの')!;
+
+  it('is the particle that gives a reason where it ends what was said', () => {
+    for (const text of ['言ってましたもんね', 'だって嫌いだもん', '子供だもの']) {
+      const t = mon(text);
+      expect([t.pos, t.content], text).toEqual(['助詞', false]);
+      expect(t.lookup?.[0]?.pos, text).toBe('助詞,終助詞');
+    }
+  });
+
+  it('is もの, a thing, before だ: そんなもんだ, うまいもんだ', () => {
+    for (const text of ['そんなもんだ', 'うまいもんだ']) {
+      const t = mon(text);
+      expect([t.pos, t.lemma], text).toEqual(['名詞', 'もの']);
+    }
+  });
+
+  it('leaves 門, the gate, to the kanji', () => {
+    expect(tokens('門の前')[0]?.lemma).toBe('門');
+  });
+});
+
+describe('す for です, as people say it', () => {
+  const lemmas = (text: string): Array<[string, string | undefined]> => tokens(text).map((x) => [x.surface, x.lemma]);
+
+  it('is です where it ends what was said: 詳しいんすか, そうすか, これすか', () => {
+    for (const text of ['詳しいんすか', 'そうすか', 'これすか']) {
+      const all = lemmas(text);
+      expect(all.some(([, lemma]) => lemma === 'です'), text).toBe(true);
+      expect(all.some(([surface]) => surface === 'すか'), text).toBe(false);
+    }
+  });
+
+  it('is です before a particle, and in そうすね', () => {
+    for (const text of ['いいんすよ', '知らないんすけど', 'そうすね']) {
+      expect(lemmas(text).some(([, lemma]) => lemma === 'です'), text).toBe(true);
+    }
+    expect(lemmas('そうすね').some(([, lemma]) => lemma === 'すねる')).toBe(false);
+  });
+
+  it('leaves すか, a miss, where a particle follows it', () => {
+    expect(lemmas('すかを引いた')[0]).toEqual(['すか', 'すか']);
+  });
+});
+
+describe('わけない, "no way that"', () => {
+  it('is the expression after what it denies, however the analyser cut it', () => {
+    for (const text of ['詳しいわけないと思って', '行くわけない', 'そんなわけない']) {
+      const t = tokens(text).find((x) => x.surface === 'わけない');
+      expect(t?.lemma, text).toBe('わけない');
+    }
+  });
+
+  it('stays わける, to divide, where there is something to divide', () => {
+    for (const text of ['ケーキをわけない', '半分にわけない']) {
+      expect(tokens(text).some((x) => x.lemma === '分ける' || x.lemma === 'わける'), text).toBe(true);
+      expect(tokens(text).some((x) => x.lemma === 'わけない'), text).toBe(false);
+    }
+  });
+});
+
+describe('endings that are also verbs, and words that are not endings', () => {
+  it('keeps ちゃう after なっ and 終わっ an ending, though the analyser calls it independent there', () => {
+    const t = tokens('詳しくなっちゃうわけ').find((x) => x.surface === 'なっちゃう');
+    expect([t?.lemma, t?.inflections]).toEqual(['なる', ['completely, or regrettably']]);
+    expect(only('終わっちゃう').lemma).toBe('終わる');
+  });
+
+  it('keeps 言いはる, a verb of its own, from being the honorific', () => {
+    const t = tokens('言いはってしまった').find((x) => x.surface.startsWith('言い'));
+    expect(t?.inflections ?? []).not.toContain('honorific');
+  });
+
+  it('keeps なもの, a thing, from being the particle もの', () => {
+    const t = tokens('事故はとかく起こりがちなもの').find((x) => x.surface === 'もの');
+    expect([t?.pos, t?.content]).not.toEqual(['助詞', false]);
+  });
+});
+
+describe('katakana for emphasis, before する', () => {
+  it('is looked up as the kind of word that takes する, with the dictionary\'s own ranking: マネして', () => {
+    const t = tokens('出すようなマネして').find((x) => x.surface.startsWith('マネ'));
+    expect(t?.surface).toBe('マネして');
+    expect(t?.lookup?.some((k) => k.key === 'マネ' && k.pos === '名詞,サ変接続')).toBe(true);
+  });
+
+  it('is the same with を between: マネをする', () => {
+    const t = tokens('マネをする').find((x) => x.surface === 'マネ');
+    expect(t?.lookup?.some((k) => k.key === 'マネ' && k.pos === '名詞,サ変接続')).toBe(true);
+  });
+});
+
+describe('間, あいだ or ま', () => {
+  const aida = (text: string): string | undefined => tokens(text).find((x) => x.surface === '間')?.reading;
+
+  it('is あいだ after a verb, an adjective, or の', () => {
+    for (const text of ['検討する間出勤を控えて', '食べている間に', '夏休みの間は', '長い間待った', '理論と実行の間には']) {
+      expect(aida(text), text).toBe('アイダ');
+    }
+  });
+
+  it('stays ま where it is a pause or a space: 間もなく, いつの間にか, 控えの間, つかの間, 間を置く', () => {
+    // Words IPADIC already holds whole, 間もなく, have no 間 of their own to read.
+    expect(aida('間もなく始まる') ?? 'マ').toBe('マ');
+    expect(aida('間を置く')).toBe('マ');
+    for (const text of ['いつの間にか寝ていた', '控えの間がある', 'つかの間の休息', '一瞬の間が生まれた']) {
+      expect(aida(text) ?? 'マ', text).toBe('マ');
+    }
+  });
+});
+
+describe('そっか, "oh, right"', () => {
+  it('is one word where it starts what is said', () => {
+    expect(only('そっか').lemma).toBe('そっか');
+    expect(tokens('あ、そっか').some((x) => x.surface === 'そっか' && x.lemma === 'そっか')).toBe(true);
+    // Drawn out, it is still the one word.
+    expect([only('そっかー').surface, only('そっかー').lemma]).toEqual(['そっかー', 'そっか']);
+    expect(only('そっかあ').lemma).toBe('そっか');
+  });
+
+  it('is left alone after a verb, where it is そうか on a stem: 時間つぶそっか', () => {
+    expect(tokens('時間つぶそっか').some((x) => x.lemma === 'そっか')).toBe(false);
+  });
+});
+
+describe('そう, "seems", and the copula after it', () => {
+  it('is a word of its own after 楽しそう: だ, です', () => {
+    expect(words('楽しそうだね')).toEqual(['楽しそう', 'だ', 'ね']);
+    expect(words('楽しそうです')).toEqual(['楽しそう', 'です']);
+    expect(words('待ちそうだ')).toEqual(['待ちそう', 'だ']);
+  });
+
+  it('still names 楽しそう "seems", and leaves hearsay, 待つそうだ, whole', () => {
+    expect(tokens('楽しそうだね')[0]?.inflections).toEqual(['seems']);
+    expect(only('待つそうだ').inflections).toEqual(['hearsay']);
+  });
+});
+
+describe('a dash opening a line of dialogue', () => {
+  it('is a mark of its own, and nothing attaches to it: -そう, -あの方, -3人', () => {
+    expect(words('-そう')).toEqual(['-', 'そう']);
+    expect(tokens('-そう')[0]?.punct).toBe(true);
+    expect(words('-あの方')[0]).toBe('-');
+    expect(words('-3人')[0]).toBe('-');
+  });
+});
+
+describe('loanwords written as one', () => {
+  it('are one word where the dictionary has them: ワンシーン, not ワン and シーン', () => {
+    expect(words('映画のワンシーンかと思ったよ')).toContain('ワンシーン');
+  });
+
+  it('still take する: イメージチェンジした', () => {
+    expect(only('イメージチェンジした').lemma).toBe('イメージチェンジする');
+  });
+});
+
+describe('とかも, "and the like, too"', () => {
+  it('is とか and も, not と and a duck', () => {
+    expect(words('ユーチューバーとかも')).toEqual(['ユーチューバー', 'とか', 'も']);
+    expect(tokens('ユーチューバーとかも').some((x) => x.surface === 'かも')).toBe(false);
+  });
+
+  it('leaves かも, "might", after a verb', () => {
+    expect(words('行くかも')).toEqual(['行く', 'かも']);
+  });
+});
+
+
+describe('a line while only IPADIC has loaded', () => {
+  const surfaces = (text: string): string[] => early(text).map((t) => t.surface);
+
+  it('is read differently from the line once everything has: the fixture holds both', () => {
+    for (const text of ['石灯籠', '盗撮行為', 'ここにはたまに来る', '詳しいんすか', 'ユーチューバーとかも', '彼はいつ来ますか']) {
+      expect(ALONE[text], text).toBeDefined();
+    }
+  });
+
+  it('still has compounds whole from the dictionary: 石灯籠, 盗撮行為', () => {
+    expect(early('石灯籠').map((t) => [t.lemma, t.reading])).toEqual([['石灯籠', 'イシドウロウ']]);
+    expect(early('盗撮行為').map((t) => [t.surface, t.reading])).toEqual([['盗撮', 'トウサツ'], ['行為', 'コウイ']]);
+    expect(early('就活')[0]?.reading).toBe('シュウカツ');
+  });
+
+  it('still reads たまに by the sentence it is in', () => {
+    expect(surfaces('ここにはたまに来る')).toEqual(['ここ', 'に', 'は', 'たまに', '来る']);
+    expect(surfaces('たまには')).toEqual(['たまに', 'は']);
+    expect(surfaces('そのたまに当たった').slice(0, 3)).toEqual(['その', 'たま', 'に']);
+    expect(surfaces('速いたまに驚く').slice(1, 3)).toEqual(['たま', 'に']);
+  });
+
+  it('still reads す as です, and とかも as とか and も', () => {
+    for (const text of ['詳しいんすか', 'そうすか', 'これすか']) {
+      expect(early(text).some((t) => t.lemma === 'です'), text).toBe(true);
+      expect(surfaces(text), text).not.toContain('すか');
+    }
+    expect(surfaces('ユーチューバーとかも')).toEqual(['ユーチューバー', 'とか', 'も']);
+  });
+
+  it('still leaves そうか on a stem alone: 時間つぶそっか', () => {
+    expect(early('時間つぶそっか').some((t) => t.lemma === 'そっか')).toBe(false);
+  });
+
+  it('does not take a rough word for the adjective it sounds like: おめえ is no 重い, くれえ no 黒い', () => {
+    expect(early('おめえが心配だ').some((t) => t.lemma === 'おもい')).toBe(false);
+    expect(early('どのくれえ時間かかるか').some((t) => t.lemma === 'くろい')).toBe(false);
+  });
+});
+
+describe('words in katakana with a long vowel', () => {
+  it('are the words they are, not an adjective said roughly: カレー, レース, ケーキ', () => {
+    for (const read of [tokens, early]) {
+      expect(read('カレーを食べる').map((t) => [t.surface, t.lemma])[0]).toEqual(['カレー', 'カレー']);
+      expect(read('そのレースに勝った').map((t) => t.surface)).toEqual(['その', 'レース', 'に', '勝った']);
+      expect(read('昼食の後でケーキを食べる').map((t) => t.surface)).toContain('ケーキ');
+    }
+  });
+
+  it('are still the adjective where they are one: やべー, きたねぇ', () => {
+    expect(tokens('やべー緊張してきた')[0]).toMatchObject({ surface: 'やべー', lemma: 'やばい' });
+    expect(tokens('字きたねぇな').map((t) => [t.surface, t.lemma])).toContainEqual(['きたねぇ', 'きたない']);
+  });
+});
+
+describe('names in katakana beside an adjective', () => {
+  it('stay names: クラウチさん is not 暗い, アライさん not 荒い', () => {
+    expect(tokens('クラウチさんはヤバい').map((t) => [t.surface, t.lemma])).toEqual([
+      ['クラウチさん', 'クラウチ'], ['は', 'は'], ['ヤバい', 'やばい'],
+    ]);
+    expect(tokens('アライさんが来た')[0]).toMatchObject({ surface: 'アライさん', lemma: 'アライ' });
+  });
+});
+
+describe('what UniDic\'s second opinion puts right', () => {
+  const read = (text: string): Array<[string, string | undefined]> => tokens(text).map((t) => [t.surface, t.lemma]);
+
+  it('reads いつ after は as "when", not いる and an old ending', () => {
+    expect(read('彼はいつ来ますか')).toContainEqual(['いつ', 'いつ']);
+    expect(read('いつから？')[0]).toEqual(['いつ', 'いつ']);
+    // Without it, the word IPADIC gives is いる.
+    expect(early('彼はいつ来ますか').find((t) => t.surface === 'いつ')?.lemma).toBe('いる');
+  });
+
+  it('reads いただけませんか as いただける, not いた and だけ', () => {
+    const t = tokens('また後でかけ直していただけませんか？');
+    expect(t.map((x) => x.surface)).toEqual(['また', '後で', 'かけ直して', 'いただけません', 'か', '？']);
+    expect(t[3]).toMatchObject({ lemma: 'いただける', inflections: ['polite', 'negative'] });
+  });
+
+  it('keeps words written in kana whole: いかが, そろばん, ひげ, もっちり, ぶっちゃけ', () => {
+    expect(read('お肉の焼き加減は、いかがなさいますか？')).toContainEqual(['いかが', 'いかが']);
+    expect(read('そろばんって、なぁに？')[0]).toEqual(['そろばん', 'そろばん']);
+    expect(read('ひげを生やしている')[0]).toEqual(['ひげ', 'ひげ']);
+    expect(read('うわ、めっちゃもっちり。')).toContainEqual(['もっちり', 'もっちり']);
+    expect(read('ぶっちゃけ、そんなの知らなかったよ。')[0]?.[0]).toBe('ぶっちゃけ');
+  });
+
+  it('reads たん after a verb as た and ん, and だい as だ and い', () => {
+    const sunde = tokens('住んでたんだよ');
+    expect(sunde.map((t) => t.surface)).toEqual(['住んでた', 'ん', 'だ', 'よ']);
+    expect(sunde[0]?.lemma).toBe('住む');
+    expect(read('坊や、おかあさんは何処だい？').slice(-3)).toEqual([['だ', 'だ'], ['い', 'い'], ['？', '？']]);
+    expect(tokens('何をしていたんだい？').map((t) => t.surface)).toEqual(['何', 'を', 'していた', 'ん', 'だ', 'い', '？']);
+  });
+
+  it('knows the words IPADIC does not: 癒やす, モテる, ググる, キモい, 試着', () => {
+    expect(read('癒やす')).toEqual([['癒やす', '癒やす']]);
+    expect(tokens('モテない')).toMatchObject([{ surface: 'モテない', lemma: 'もてる', inflections: ['negative'] }]);
+    expect(read('ググってる')).toEqual([['ググってる', 'ググる']]);
+    expect(read('キモいんだろうね')[0]).toEqual(['キモい', 'きもい']);
+    expect(tokens('試着したいんですが')[0]).toMatchObject({ surface: '試着したい', lemma: '試着する', reading: 'シチャクシタイ' });
+    expect(tokens('盗撮された')).toMatchObject([{ lemma: '盗撮する', reading: 'トウサツサレタ' }]);
+  });
+
+  it('reads くださり as 下さる, and おススメ as a noun', () => {
+    expect(tokens('送ってくださり、ありがとうございます。')[0]).toMatchObject({ surface: '送ってくださり', lemma: '送る' });
+    expect(read('大切な思い出になるのでおススメです！').slice(-3)).toEqual([['おススメ', 'すすめ'], ['です', 'です'], ['！', '！']]);
+  });
+});
+
+describe('what UniDic\'s second opinion is not taken on', () => {
+  const surfaces = (text: string): string[] => tokens(text).map((t) => t.surface);
+
+  it('a particle and a word, or a verb and its ending: は and やる, し and たく', () => {
+    expect(surfaces('彼女はやるたびに失敗した。')).toEqual(['彼女', 'は', 'やる', 'たびに', '失敗した', '。']);
+    expect(tokens('邪魔をしたくはない。')[2]).toMatchObject({ surface: 'したく', lemma: 'する' });
+  });
+
+  it('a noun and the particle that ends the clause, or one a particle marks: まじか, かねを', () => {
+    expect(surfaces('まじか。')).toEqual(['まじ', 'か', '。']);
+    expect(tokens('かねを貸してあげる')[0]).toMatchObject({ surface: 'かね', lemma: 'かね' });
+  });
+
+  it('a name: ヒラリさん is not ひらり, and ムーリエル is not cut in two', () => {
+    expect(tokens('ヒラリさんは塀にはしごをかけた。')[0]).toMatchObject({ surface: 'ヒラリさん', lemma: 'ヒラリ' });
+    expect(surfaces('ムーリエルは２０歳になりました。')[0]).toBe('ムーリエル');
+  });
+
+  it('a lone kanji, or a word the two read as different kinds: 三択, くれたまえ', () => {
+    expect(surfaces('三択')).toEqual(['三', '択']);
+    expect(surfaces('ぼやっとしないでくれたまえ。').slice(-3)).toEqual(['ま', 'え', '。']);
   });
 });

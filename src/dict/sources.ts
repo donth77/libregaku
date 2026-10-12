@@ -103,6 +103,33 @@ export function wtyUrl(target: string, native: string): string {
   );
 }
 
+/** The shape of what is stored, where a language's has moved on from the rest (see `format` in wty()). */
+const WTY_FORMAT: Record<string, number> = { de: 4, ko: 5 };
+
+/**
+ * The kinds of word (wty's codes) each of an analyser's tags stands for, by language: what a row has to be
+ * to be the word the analyser found. Korean 안 is an adverb ("not") where it is tagged MAG, and 년 a counter
+ * ("year") where it is NNBC, though the file's first rows for them are "inside" and a slur.
+ */
+const ROLES: Record<string, Record<string, readonly string[]>> = {
+  // Only the tags that tell one row from the rest: a noun, a determiner or a number says too little, since a word
+  // such as 막 or 한 has a row of each and the file's order is better than a guess among them.
+  ko: { NP: ['pron'], NNBC: ['counter'], MAG: ['adv'], MAJ: ['conj', 'adv'], IC: ['intj'], VV: ['v'], VX: ['v'], VA: ['adj', 'v'], XR: ['adj', 'v'] },
+};
+
+/** Codes that say a row is not the usual use of the word. */
+const MARKED = new Set(['lit', 'poet', 'dated', 'dialect', 'obs', 'arch', 'uncmmn', 'rare', 'offens', 'vulg', 'derog']);
+
+/** The rows that are the analyser's role for the word first, the rest after them, each in its own order. */
+function byRole(rows: Entry[], target: string, hint?: RankHint): Entry[] {
+  const wanted = hint?.pos ? ROLES[target]?.[hint.pos.split('+')[0] ?? ''] : undefined;
+  if (!wanted || rows.length < 2) return rows;
+  const fits = (row: Entry): boolean => wanted.includes(row.kind?.[0] ?? '');
+  const usual = (row: Entry): boolean => fits(row) && !(row.kind ?? []).some((k) => MARKED.has(k));
+  // The role, in its usual use; then the role in a literary or a dated one; then the others.
+  return [...rows.filter(usual), ...rows.filter((row) => fits(row) && !usual(row)), ...rows.filter((row) => !fits(row))];
+}
+
 /** A word, or a word's main meaning, that the published file leaves out. */
 interface Gap {
   word: string;
@@ -182,11 +209,28 @@ const GAPS: Record<string, Gap[]> = {
     { word: 'fürs', kind: ['contr'], glosses: ['for the (für and das, written as one word)'] },
     { word: 'durchs', kind: ['contr'], glosses: ['through the (durch and das, written as one word)'] },
     { word: 'übers', kind: ['contr'], glosses: ['over the, about the (über and das, written as one word)'] },
+    // The file has -heit and not its twin, which words made with it are found by (Wendigkeit: wendig and -keit).
+    { word: '-keit', kind: ['suf'], glosses: ['makes a noun of an adjective: -ness, -ity (as -heit does, after -ig, -lich, -bar and -sam)'] },
   ],
   // Spoken Korean's two commonest short forms: the file has 뭐 only as a form
   // of 무엇, and 거 only as the reading of a Chinese character.
   ko: [
     { word: '뭐', kind: ['pron'], glosses: ['what (무엇, as it is said)'] },
+    // Three of the commonest words the file has in the wrong order: 시장 is "hunger" before "market", 분 a unit of
+    // measure before "person" (분들, 그분), and 중 "average" before "during" (식사 중, 셋 중). Each is in it, further down.
+    { word: '시장', kind: ['n'], glosses: ['market, marketplace (야시장, night market)', 'mayor'] },
+    { word: '분', kind: ['n'], glosses: ['person, honorific (그분, "that person"; 분들, "people")'] },
+    { word: '중', kind: ['n'], glosses: ['during, in the middle of (식사 중, "at a meal")', 'among, out of (셋 중, "one of three")'] },
+    // 할 테니까, 갈 터예요: ko-dic reads 터 ("place") and the copula, and the file has only the place.
+    { word: '-ㄹ 터이다', kind: ['phrase'], glosses: ['it will be, I expect (a stem and ㄹ, then 터이다: 갈 터예요, "I am going to go")', 'ㄹ 테니까: since it will, because I will (갈 테니까, "since I will go")'] },
+    // What is put on a noun to make another word of it, which a word the file lacks (한국식, 실용적) is found by.
+    { word: '-적', kind: ['suf'], glosses: ['-ic, -al, -ive: of or like the noun (실용적, practical)'] },
+    { word: '-식', kind: ['suf'], glosses: ['-style, -type: in the way of the noun (한국식, Korean-style)'] },
+    { word: '-화', kind: ['suf'], glosses: ['-ization: becoming or making the noun (현대화, modernization)'] },
+    { word: '-별', kind: ['suf'], glosses: ['by, per, each: according to the noun (나라별, by country)'] },
+    { word: '-형', kind: ['suf'], glosses: ['-type, -form: of the kind of the noun (대형, large-type)'] },
+    { word: '-감', kind: ['suf'], glosses: ['feeling of the noun (안정감, sense of stability)'] },
+    { word: '-력', kind: ['suf'], glosses: ['power, ability of the noun (경쟁력, competitiveness)'] },
     { word: '거', kind: ['n'], glosses: ['thing; the fact that (것, as it is said)'] },
     // The copula: under 이다 the file has "to carry on the head" and "to tile
     // a roof", and for "to be" only a line that points at -이다.
@@ -304,11 +348,13 @@ function wty(target: string, native: string): Source {
     id,
     db: `libregaku-dict-${id}`,
     release: WTY_REVISION,
-    // Bumped when the reader (wty.ts) or the words added here (GAPS) change what is stored.
-    format: 3,
+    // Bumped when the reader (wty.ts) or the words added here (GAPS) change what is stored. By the language
+    // whose words changed, so that a new word for German is not a new download of Spanish.
+    format: WTY_FORMAT[target] ?? 3,
     rank: (entries: Entry[], key: string, hint?: RankHint) => {
       // One row for each part of speech a word has; the card shows one entry.
-      const rows = entries.filter((e) => e.word === key);
+      // The row that is the role the analyser found for it first: 우리 "we", not 우리 "cage".
+      const rows = byRole(entries.filter((e) => e.word === key), target, hint);
       if (!particle) return mergeByWord(rows);
       // A particle's rows are an entry apart (PARTICLE): all that answers a
       // particle, and what comes last for any other word.

@@ -94,6 +94,7 @@ export const popup = {
   dictionaryUnavailable: (error: string): string => `Dictionary unavailable: ${error}`,
   /** In place of the meanings when the dictionary has no entry. */
   noEntry: 'No dictionary entry for this word.',
+  noEntryName: 'A name, so there is no dictionary entry.',
   /** A link under the first meanings that shows the rest. `n` is how many more there are. */
   moreMeanings: (n: number): string => `+${n} more meaning${n === 1 ? '' : 's'}`,
 

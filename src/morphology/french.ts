@@ -19,6 +19,13 @@ export const FRENCH: LemmaHints = {
   ],
   // a mangé, est allé, ont dit: the compound tenses.
   auxiliaries: ['avoir', 'être'],
+  // Articles and the pronouns that stand for a person: not le monde, quelqu'un or rien, which are words to learn.
+  grammar: [
+    'le', 'la', "l'", 'les', 'un', 'une', 'des', 'du', 'je', "j'", 'tu', 'il', 'elle', 'on', 'nous', 'vous', 'ils', 'elles',
+    'me', "m'", 'te', "t'", 'se', "s'", 'lui', 'leur', 'moi', 'toi', 'soi', 'eux', 'ce', "c'", 'ça', 'y', 'en',
+  ],
+  // "Then", before "I can": 68 in 157,000 words of Tatoeba.
+  keep: ['puis'],
   // j' is what splitElisions leaves of j'ai, j'étais.
   subjects: {
     je: 'first-person singular', "j'": 'first-person singular', tu: 'second-person singular',
@@ -43,10 +50,12 @@ const ELIDED = /^(l|d|j|n|m|t|s|c|qu|jusqu|lorsqu|puisqu|quoiqu)(['’])(?=\p{L}
  * piece starts is kept, so the line still reads as it was written.
  */
 export function splitElisions(tokens: Token[]): Token[] {
-  return tokens.flatMap((t) => {
+  return tokens.flatMap((t, i) => {
     if (t.punct) return [t];
     const head = ELIDED.exec(t.surface);
     if (!head) return [t];
+    // c'est-à-dire is one phrase, and the dictionary has it whole: joined again from c'est, -, à, -, dire.
+    if (/^c['’]est$/i.test(t.surface) && tokens.slice(i + 1, i + 5).map((x) => x.surface).join('').toLowerCase() === '-à-dire') return [t];
     const cut = head[0].length;
     return [
       { ...t, surface: t.surface.slice(0, cut), end: t.start + cut },
@@ -54,6 +63,12 @@ export function splitElisions(tokens: Token[]): Token[] {
     ];
   });
 }
+
+/**
+ * What stands apart in a hyphenated French word: the pronoun after a verb (veux-tu, dis-moi, a-t-il) and
+ * what is added to a word (celle-ci, là-bas). The dictionary has the ones that are words.
+ */
+export const APART = /^(je|tu|il|elle|on|nous|vous|ils|elles|moi|toi|lui|leur|le|la|les|y|en|ce|t|ci|là|même|mêmes)$/;
 
 /** The curly apostrophe French is often typed with, as the dictionary writes it. */
 export const straighten = (surface: string): string => surface.replace(/’/g, "'");

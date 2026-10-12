@@ -247,7 +247,7 @@ export const hi: Translation = {
     creditJmdict:
       'शब्दकोश और कांजी डेटा © Electronic Dictionary Research and Development Group, CC BY-SA 4.0 के तहत इस्तेमाल। ' +
       'jmdict-simplified ने इसे JSON में दोबारा पैक किया है।',
-    creditLindera: 'जापानी, कोरियाई और चीनी को शब्दों में बांटता है। MIT लाइसेंस; IPADIC, mecab-ko-dic और CC-CEDICT की अपनी शर्तें हैं।',
+    creditLindera: 'जापानी, कोरियाई और चीनी को शब्दों में बांटता है। MIT लाइसेंस; IPADIC, UniDic, mecab-ko-dic और CC-CEDICT की अपनी शर्तें हैं।',
     creditCedict: 'चीनी शब्दकोश © MDBG और उसके योगदानकर्ता, CC BY-SA 4.0 के तहत इस्तेमाल।',
     creditWiktionary:
       'कोरियाई और स्पेनिश शब्दकोश, साथ ही कुछ आपकी अपनी भाषा में, Wiktionary से kaikki.org और wiktionary-to-yomitan ' +
@@ -315,6 +315,7 @@ export const hi: Translation = {
       'इस पेज पर चालू नहीं है। YouTube, Netflix या किसी और समर्थित साइट पर कोई वीडियो खोलें। अगर आपने अभी Libregaku इंस्टॉल या ' +
       'रीलोड किया है, तो टैब रीलोड करें।',
     unsupported: 'Libregaku, YouTube, Netflix, Disney+, Prime Video और Max पर काम करता है।',
+    worksOn: (site: string): string => `Libregaku, ${site} पर काम करता है।`,
     waitingForSubtitles: (site: string): string => `${site} पर सबटाइटल का इंतज़ार है। देख लें कि वे चालू हैं।`,
     activeOn: (title: string): string => `चालू — ${title}`,
     active: 'इस वीडियो पर चालू है।',
@@ -528,6 +529,7 @@ export const hi: Translation = {
       `शब्दकोश अभी लोड हो रहा है — ${percent}%। थोड़ी देर में फिर कोशिश करें।`,
     dictionaryUnavailable: (error: string): string => `शब्दकोश उपलब्ध नहीं: ${error}`,
     noEntry: 'शब्दकोश में इस शब्द की कोई प्रविष्टि नहीं है।',
+    noEntryName: 'यह एक नाम है, इसलिए शब्दकोश में इसकी प्रविष्टि नहीं है।',
     moreMeanings: (n: number): string => `+${n} और अर्थ`,
 
     // इस वीडियो में शब्द की दूसरी लाइनें

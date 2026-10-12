@@ -28,6 +28,30 @@ function offscreen(answer: (msg: Record<string, unknown>) => Reply) {
 beforeEach(() => clearLookupCache());
 afterEach(() => vi.unstubAllGlobals());
 
+describe('a word made with a suffix', () => {
+  const part = (word: string, gloss: string): Entry => ({ id: word, word, common: false, senses: [{ pos: [], glosses: [gloss] }] });
+  const known: Record<string, Entry> = { 한국: part('한국', 'Korea'), '-식': part('-식', 'style'), '-적': part('-적', '-ic') };
+  const answer = (msg: Record<string, unknown>): Reply =>
+    ({ ok: true, entries: known[String(msg.key)] ? [known[String(msg.key)]!] : [], source: 'local' });
+
+  it('is the word and the suffix where the word itself has no entry: 한국식', async () => {
+    offscreen(answer);
+    const r = await lookupToken({ surface: '한국식', lemma: '한국식', derived: ['한국', '-식'] });
+    expect(r).toMatchObject({ state: 'ok', entries: [{ word: '한국식', senses: [{ glosses: ['한국: Korea'] }, { glosses: ['-식: style'] }] }] });
+  });
+
+  it('is empty where the stem is not a word, however well the suffix is known', async () => {
+    offscreen(answer);
+    expect(await lookupToken({ surface: '쿨적', lemma: '쿨적', derived: ['쿨', '-적'] })).toEqual({ state: 'empty' });
+  });
+
+  it('is left alone where the word has an entry of its own', async () => {
+    offscreen((msg) => ({ ok: true, entries: msg.key === '한국식' ? [part('한국식', 'Korean style')] : [], source: 'local' }));
+    const r = await lookupToken({ surface: '한국식', lemma: '한국식', derived: ['한국', '-식'] });
+    expect(r).toMatchObject({ state: 'ok', entries: [{ word: '한국식', senses: [{ glosses: ['Korean style'] }] }] });
+  });
+});
+
 describe('lookupToken', () => {
   it('follows the token’s plan, passing each key’s hints', async () => {
     offscreen((m) =>

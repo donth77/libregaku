@@ -239,7 +239,7 @@ export const ko: Translation = {
       '사전 및 한자 데이터 © Electronic Dictionary Research and Development Group. CC BY-SA 4.0에 따라 ' +
       '사용합니다. jmdict-simplified가 JSON으로 변환했습니다.',
     creditLindera:
-      '일본어, 한국어, 중국어를 단어로 나눕니다. MIT 라이선스이며, IPADIC, mecab-ko-dic, CC-CEDICT에는 각각 별도의 약관이 있습니다.',
+      '일본어, 한국어, 중국어를 단어로 나눕니다. MIT 라이선스이며, IPADIC, UniDic, mecab-ko-dic, CC-CEDICT에는 각각 별도의 약관이 있습니다.',
     creditCedict: '중국어 사전 © MDBG 및 기여자. CC BY-SA 4.0에 따라 사용합니다.',
     creditWiktionary:
       '한국어·스페인어 사전과 내 언어로 된 일부 사전. Wiktionary에서 kaikki.org와 wiktionary-to-yomitan을 거쳐 가져왔습니다. ' +
@@ -305,6 +305,7 @@ export const ko: Translation = {
       '이 페이지에서는 작동하지 않습니다. YouTube, Netflix 또는 다른 지원 사이트의 동영상을 여세요. ' +
       'Libregaku를 방금 설치했거나 새로고침했다면 탭을 새로고침하세요.',
     unsupported: 'Libregaku는 YouTube, Netflix, Disney+, Prime Video, Max에서 작동합니다.',
+    worksOn: (site: string): string => `Libregaku는 ${site}에서 작동합니다.`,
     waitingForSubtitles: (site: string): string => `${site} 자막을 기다리는 중입니다. 자막이 켜져 있는지 확인하세요.`,
     activeOn: (title: string): string => `작동 중 — ${title}`,
     active: '이 동영상에서 작동 중입니다.',
@@ -498,6 +499,7 @@ export const ko: Translation = {
     dictionaryLoading: (percent: number): string => `사전을 아직 불러오는 중입니다(${percent}%). 잠시 후 다시 시도하세요.`,
     dictionaryUnavailable: (error: string): string => `사전을 사용할 수 없음: ${error}`,
     noEntry: '사전에 없는 단어입니다.',
+    noEntryName: '이름이라서 사전에 항목이 없습니다.',
     moreMeanings: (n: number): string => `+${n}개 더 보기`,
 
     // The word's other lines in this video

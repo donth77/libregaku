@@ -254,7 +254,7 @@ export const es: Translation = {
       'Datos del diccionario y de kanji © Electronic Dictionary Research and Development Group, con licencia ' +
       'CC BY-SA 4.0. Reempaquetados en JSON por jmdict-simplified.',
     creditLindera:
-      'Divide el japonés, el coreano y el chino en palabras. Licencia MIT; IPADIC, mecab-ko-dic y CC-CEDICT tienen ' +
+      'Divide el japonés, el coreano y el chino en palabras. Licencia MIT; IPADIC, UniDic, mecab-ko-dic y CC-CEDICT tienen ' +
       'sus propias condiciones.',
     creditCedict: 'Diccionario de chino © MDBG y sus colaboradores, con licencia CC BY-SA 4.0.',
     creditWiktionary:
@@ -324,6 +324,7 @@ export const es: Translation = {
       'No está activo en esta página. Abre un video en YouTube, Netflix u otro sitio compatible. Si acabas de instalar o recargar Libregaku, ' +
       'recarga la pestaña.',
     unsupported: 'Libregaku funciona en YouTube, Netflix, Disney+, Prime Video y Max.',
+    worksOn: (site: string): string => `Libregaku funciona en ${site}.`,
     waitingForSubtitles: (site: string): string =>
       `Esperando los subtítulos de ${site}. Asegúrate de que estén activados.`,
     activeOn: (title: string): string => `Activo: ${title}`,
@@ -535,6 +536,7 @@ export const es: Translation = {
       `El diccionario aún se está cargando (${percent(n)}). Inténtalo de nuevo en un momento.`,
     dictionaryUnavailable: (error: string): string => `Diccionario no disponible: ${error}`,
     noEntry: 'Esta palabra no está en el diccionario.',
+    noEntryName: 'Un nombre, por eso no tiene entrada en el diccionario.',
     moreMeanings: (n: number): string => `+${n} significado${n === 1 ? '' : 's'} más`,
 
     // Otras líneas del video con la palabra

@@ -243,7 +243,7 @@ describe('settings panel selects', () => {
 
   it('credits every source a language draws on', () => {
     const titles = Array.from(buildSettings(() => {}).querySelectorAll('.credits dt')).map((dt) => dt.textContent);
-    expect(titles).toEqual(expect.arrayContaining(['JMdict · KANJIDIC2', 'CC-CEDICT', 'Wiktionary', 'Lindera · IPADIC · mecab-ko-dic', 'Unihan']));
+    expect(titles).toEqual(expect.arrayContaining(['JMdict · KANJIDIC2', 'CC-CEDICT', 'Wiktionary', 'Lindera · IPADIC · UniDic · mecab-ko-dic', 'Unihan']));
   });
 
   it('asks for your language once, and for a definitions language only where the dictionary has none in it', async () => {

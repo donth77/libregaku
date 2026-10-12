@@ -239,7 +239,7 @@ export const vi: Translation = {
       'Dữ liệu từ điển và kanji © Electronic Dictionary Research and Development Group, dùng theo giấy phép ' +
       'CC BY-SA 4.0. Được jmdict-simplified đóng gói lại thành JSON.',
     creditLindera:
-      'Tách tiếng Nhật, tiếng Hàn và tiếng Trung thành từ. Giấy phép MIT; IPADIC, mecab-ko-dic và CC-CEDICT ' +
+      'Tách tiếng Nhật, tiếng Hàn và tiếng Trung thành từ. Giấy phép MIT; IPADIC, UniDic, mecab-ko-dic và CC-CEDICT ' +
       'có điều khoản riêng.',
     creditCedict: 'Từ điển tiếng Trung © MDBG và những người đóng góp, dùng theo giấy phép CC BY-SA 4.0.',
     creditWiktionary:
@@ -311,6 +311,7 @@ export const vi: Translation = {
       'Không hoạt động trên trang này. Hãy mở một video trên YouTube, Netflix hoặc một trang web được hỗ trợ khác. Nếu bạn vừa cài hoặc tải lại Libregaku, ' +
       'hãy tải lại tab.',
     unsupported: 'Libregaku hoạt động trên YouTube, Netflix, Disney+, Prime Video và Max.',
+    worksOn: (site: string): string => `Libregaku hoạt động trên ${site}.`,
     waitingForSubtitles: (site: string): string => `Đang chờ phụ đề trên ${site}. Hãy kiểm tra xem phụ đề đã bật chưa.`,
     activeOn: (title: string): string => `Đang hoạt động — ${title}`,
     active: 'Đang hoạt động trên video này.',
@@ -516,6 +517,7 @@ export const vi: Translation = {
     dictionaryLoading: (percent: number): string => `Từ điển vẫn đang tải — ${percent}%. Hãy thử lại sau giây lát.`,
     dictionaryUnavailable: (error: string): string => `Không dùng được từ điển: ${error}`,
     noEntry: 'Từ điển không có mục cho từ này.',
+    noEntryName: 'Đây là tên riêng nên không có mục từ trong từ điển.',
     moreMeanings: (n: number): string => `+${n} nghĩa khác`,
 
     // Những dòng khác của từ trong video này

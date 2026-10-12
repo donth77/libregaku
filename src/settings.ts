@@ -73,6 +73,22 @@ export const OWN_DICTIONARIES: Record<string, Record<string, string>> = {
 };
 
 /**
+ * A second dictionary for words the language's own has no entry for, by language: Korean's Wiktionary lacks
+ * ordinary words (초보, 이따금, 진짜로) that the National Institute's learner dictionary has. It is looked
+ * at last, in English, and never where the learner's own dictionary already is that one.
+ */
+export const FALLBACK_DICTIONARIES: Record<string, string> = { ko: 'krdict' };
+
+/** The dictionary to try when the others have nothing, or null where there is none or the pair already has it. */
+export function fallbackDictionaryOf(
+  lang: string, s: Pick<Settings, 'native'>,
+): { source: string; edition: string } | null {
+  const source = FALLBACK_DICTIONARIES[lang];
+  if (!source || OWN_DICTIONARIES[lang]?.[s.native] === source || DICTIONARIES[lang] === source) return null;
+  return { source, edition: 'en' };
+}
+
+/**
  * The dictionary in the learner's own language for a language pair, or null
  * where there is none. A word is looked up there first, and in the
  * language's own dictionary (dictionaryOf) when it is not there: a Japanese

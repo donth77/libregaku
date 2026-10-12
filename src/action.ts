@@ -61,9 +61,30 @@ function siteName(site: string | null): string {
   return ({ youtube: 'YouTube', netflix: 'Netflix', disney: 'Disney+', prime: 'Prime Video', max: 'Max' } as Record<string, string>)[site ?? ''] ?? String(site);
 }
 
-function describe(state: PageState | null): { text: string; cls: string } {
+/** The site a tab is on, by its address, where it is one the extension works on. */
+export function siteOfUrl(url: string | undefined): string | null {
+  let host = '';
+  try {
+    host = new URL(url ?? '').hostname;
+  } catch {
+    return null;
+  }
+  const on = (domain: string): boolean => host === domain || host.endsWith(`.${domain}`);
+  if (on('youtube.com')) return 'youtube';
+  if (on('netflix.com')) return 'netflix';
+  if (on('disneyplus.com')) return 'disney';
+  if (on('primevideo.com')) return 'prime';
+  if (on('hbomax.com')) return 'max';
+  return null;
+}
+
+function describe(state: PageState | null, url?: string): { text: string; cls: string } {
   if (!state) return { text: ui.action.notActive, cls: 'off' };
-  if (!state.supported) return { text: ui.action.unsupported, cls: 'off' };
+  if (!state.supported) {
+    // On one of the sites, just not in a video: name that site, not all of them.
+    const site = siteOfUrl(url);
+    return { text: site ? ui.action.worksOn(siteName(site)) : ui.action.unsupported, cls: 'off' };
+  }
   if (!state.rendering) {
     return { text: ui.action.waitingForSubtitles(siteName(state.site)), cls: 'off' };
   }
@@ -148,10 +169,10 @@ async function main(): Promise<void> {
   let drawn = '';
   let offered = false;
   const show = (now: PageState | null): void => {
-    const key = JSON.stringify([now?.supported, now?.site, now?.title, now?.rendering, now?.tracks, now?.track, now?.second, now?.notice]);
+    const key = JSON.stringify([tab?.url, now?.supported, now?.site, now?.title, now?.rendering, now?.tracks, now?.track, now?.second, now?.notice]);
     if (key === drawn) return;
     drawn = key;
-    const { text, cls } = describe(now);
+    const { text, cls } = describe(now, tab?.url);
     status.textContent = text;
     status.className = `status ${cls}`;
     $('quick').hidden = !now?.supported;

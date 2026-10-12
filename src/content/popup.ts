@@ -162,6 +162,8 @@ const STYLE = `
     font: 12px/1.6 ui-monospace, monospace; color: #838DA8;
   }
   .trace b { color: #E8ECF6; font-weight: 600; }
+  .leftovers { padding: 0 16px 10px; color: #8A94AF; font-size: 13px; line-height: 1.5; }
+  .leftovers b { color: #E8ECF6; font-weight: 600; }
   .grammar {
     margin-top: 4px; color: #D9A64A;
     font: 500 11px/1.5 ui-monospace, monospace; letter-spacing: .06em;
@@ -429,6 +431,8 @@ interface Context {
   onSearch?: (query: string, forms: string[]) => void;
   /** The characters the word is written with, once looked up. */
   characters?: Promise<Characters>;
+  /** What the prefix or suffix the lookup left out means (新 of 新名所), once looked up. */
+  leftovers?: Promise<Array<{ part: string; reading?: string; meaning: string }>>;
   /** The language being learned, so the word is said in a voice for it. */
   lang?: string;
   /**
@@ -554,6 +558,13 @@ export function showPopup(
       a.textContent = top.alt;
       meta.appendChild(a);
     }
+    card.appendChild(meta);
+  } else if (ctx.token.properName) {
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    const p = document.createElement('span');
+    p.textContent = partsOfSpeech(['name']);
+    meta.appendChild(p);
     card.appendChild(meta);
   }
 
@@ -737,7 +748,8 @@ export function showPopup(
   } else if (!entries.length) {
     const e = document.createElement('div');
     e.className = 'empty';
-    e.textContent = ui.popup.noEntry;
+    // A name is no word to look up: say what it is, and that it is not in a dictionary.
+    e.textContent = ctx.token.properName ? ui.popup.noEntryName : ui.popup.noEntry;
     body.appendChild(e);
   } else {
     // The commonest words have the most senses: できる has ten. The first few
@@ -835,6 +847,24 @@ export function showPopup(
       tr.appendChild(g);
     }
     body.appendChild(tr);
+  }
+  if (ctx.leftovers) {
+    const left = document.createElement('div');
+    left.className = 'leftovers';
+    left.lang = learned;
+    const mine = host;
+    void ctx.leftovers.then((found) => {
+      // The card may have closed, or become another word's, meanwhile.
+      if (host !== mine || !found.length) return;
+      for (const { part, reading, meaning } of found) {
+        const row = document.createElement('div');
+        const b = document.createElement('b');
+        b.textContent = part;
+        row.append(b, document.createTextNode(`${reading ? `  ${reading}` : ''} · ${meaning}`));
+        left.appendChild(row);
+      }
+      body.insertBefore(left, body.querySelector('.trace')?.nextSibling ?? null);
+    }, () => {});
   }
   if (ctx.elsewhere) {
     const also = document.createElement('div');

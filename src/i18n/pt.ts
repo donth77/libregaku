@@ -250,7 +250,7 @@ export const pt: Translation = {
       'Dados de dicionário e de kanji © Electronic Dictionary Research and Development Group, usados sob a licença ' +
       'CC BY-SA 4.0. Reempacotados em JSON pelo jmdict-simplified.',
     creditLindera:
-      'Divide japonês, coreano e chinês em palavras. Licença MIT; IPADIC, mecab-ko-dic e CC-CEDICT têm termos próprios.',
+      'Divide japonês, coreano e chinês em palavras. Licença MIT; IPADIC, UniDic, mecab-ko-dic e CC-CEDICT têm termos próprios.',
     creditCedict: 'Dicionário de chinês © MDBG e colaboradores, usado sob a licença CC BY-SA 4.0.',
     creditWiktionary:
       'Dicionários de coreano e espanhol, e alguns no seu idioma, do Wiktionary via kaikki.org e ' +
@@ -319,6 +319,7 @@ export const pt: Translation = {
       'Não está ativo nesta página. Abra um vídeo no YouTube, na Netflix ou em outro site compatível. Se você acabou de instalar ou recarregar ' +
       'o Libregaku, recarregue a guia.',
     unsupported: 'O Libregaku funciona no YouTube, na Netflix, no Disney+, no Prime Video e no Max.',
+    worksOn: (site: string): string => `O Libregaku funciona em ${site}.`,
     waitingForSubtitles: (site: string): string => `${site}: aguardando as legendas. Verifique se estão ativadas.`,
     activeOn: (title: string): string => `Ativo — ${title}`,
     active: 'Ativo neste vídeo.',
@@ -530,6 +531,7 @@ export const pt: Translation = {
       `O dicionário ainda está carregando — ${percent}%. Tente de novo em instantes.`,
     dictionaryUnavailable: (error: string): string => `Dicionário indisponível: ${error}`,
     noEntry: 'Esta palavra não está no dicionário.',
+    noEntryName: 'Um nome, por isso não há verbete no dicionário.',
     moreMeanings: (n: number): string => `+${n} ${n === 1 ? 'significado' : 'significados'}`,
 
     // The word's other lines in this video

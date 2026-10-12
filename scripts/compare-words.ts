@@ -18,7 +18,7 @@ import init, {
 } from 'lindera-wasm';
 import { jmdictUrl } from '../src/dict/store';
 import { keysFor, rank, readingsOf, toEntry, type Entry, type RawWord } from '../src/dict/jmdict';
-import { EXTRA_COST, extraCollector, extraRows, misreads } from '../src/morphology/extra-words';
+import { EXTRA_COST, analyserRows, extraCollector, misreads } from '../src/morphology/extra-words';
 import { LINDERA_DICTS } from '../src/morphology/dictionaries';
 import { segmentWith } from '../src/morphology/lindera';
 import { lexiconQueries, type LexiconEntry, type Morpheme } from '../src/morphology/merge';
@@ -101,7 +101,7 @@ const analyser = (t: Tokenizer) => async (text: string) => {
 const plain = new TokenizerBuilder().setDictionaryInstance(dictionary()).setMode('normal').build();
 const words = collect.words().filter((w) =>
   misreads(w, (plain.tokenize(w.surface) as Raw[]).map((t) => ({ surface: t.surface, reading: col(t.details ?? [], L.reading) }))));
-const rows = extraRows(words, COST);
+const rows = analyserRows(words, COST);
 const dict2 = dictionary();
 const user = loadUserDictionaryFromBytes(new TextEncoder().encode(rows), dict2.metadata);
 const added = new TokenizerBuilder().setDictionaryInstance(dict2).setUserDictionaryInstance(user).setMode('normal').build();

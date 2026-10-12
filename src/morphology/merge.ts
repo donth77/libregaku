@@ -69,6 +69,8 @@ export interface MergedToken {
    * Its reading is a guess and it is not vocabulary to learn.
    */
   name?: boolean;
+  /** A name the analyser knows as one (Korean 크레이머): the card says no dictionary lists it. */
+  properName?: boolean;
 }
 
 /**
@@ -83,7 +85,9 @@ const GRAMMAR: Record<string, string> = {
   // tense and politeness
   た: 'past', だ: 'past', ます: 'polite', です: 'polite',
   // negation
-  ない: 'negative', ぬ: 'negative', ん: 'negative', ず: 'negative',
+  ない: 'negative', ぬ: 'negative', ん: 'negative', ず: 'negative', へん: 'negative',
+  // Kansai: 食べはる, someone eating who is owed respect
+  はる: 'honorific',
   まい: 'negative intent',
   // conditionals
   ば: 'conditional', たら: 'conditional', なら: 'conditional',
@@ -262,6 +266,10 @@ function isVerbal(group: Morpheme[]): boolean {
 function attaches(group: Morpheme[], cur: Morpheme): boolean {
   const prev = group[group.length - 1]!;
 
+  // A dash that opens a line of dialogue, -そう, is a mark, not a noun for a suffix to attach to. (ー, in おめーら, is
+  // part of a word, and ・ between numbers joins them.)
+  if (prev.pos === '記号' || /^[-‐‑–—―−－]+$/.test(prev.surface)) return false;
+
   // ありがとう + ござい, で + ござい: the set phrases ございます makes.
   if (isGozaru(cur) && (prev.pos === '感動詞' || isCopulaDe(prev))) return true;
 
@@ -272,6 +280,11 @@ function attaches(group: Morpheme[], cur: Morpheme): boolean {
    * After a noun it is not. ワールド + です is a noun and a copula: two words a
    * learner looks up separately, and です is not an inflection of ワールド.
    */
+  // 楽しそう + だ: そう after a stem is "seems", a word that is done; the だ, です or でし after it is the
+  // copula, a word of its own (楽しそうだね is 楽しそう, だ, ね). After the plain form it is hearsay, and だ is
+  // part of it (待つそうだ), which IPADIC tags そう differently.
+  if (cur.pos === '助動詞' && prev.surface === 'そう' && prev.pos1 === '接尾') return false;
+
   if (cur.pos === '助動詞') return isVerbal(group);
 
   /*
@@ -567,6 +580,9 @@ const KANJI_ONLY = /^[\u4E00-\u9FFF\u3400-\u4DBF々〆ヶ]+$/u;
 const COMPOUND_POS1 = new Set(['一般', '接尾', 'サ変接続', '形容動詞語幹', '副詞可能']);
 /** Characters, at most: 石灯籠, 灯籠流し are as long as it is worth reaching. */
 const COMPOUND_MAX = 4;
+const KATAKANA_ONLY = /^[ァ-ヺー]+$/;
+/** Characters, at most, of a loanword written as one: ワンルームマンション. */
+const KATAKANA_MAX = 12;
 
 function compoundable(m: Morpheme): boolean {
   if (!KANJI_ONLY.test(m.surface)) return false;
@@ -576,10 +592,27 @@ function compoundable(m: Morpheme): boolean {
   return m.pos === '動詞' && m.surface.length === 1 && (m.conjForm ?? '').startsWith('体言接続特殊');
 }
 
+/**
+ * A numeral before a lone kanji IPADIC has no reading for: 二択, 三択. The
+ * kanji is a counter of sorts, unknown to it, so the pair is split with the
+ * kanji unread. Only that: numbers with words IPADIC knows are merged as
+ * counters already, and 一日 stays as the numeral group reads it.
+ */
+function numberBeforeUnread(run: Morpheme[], k: number): boolean {
+  const next = run[k + 1];
+  return run.length === 2 && k === 0 && run[0]?.pos1 === '数' && KANJI_ONLY.test(run[0].surface) &&
+    next !== undefined && !next.reading && next.surface.length === 1 && compoundable(next);
+}
+
 /** The run i..j, written out, if it could be a compound split apart: else undefined. */
 function compoundAt(morphemes: Morpheme[], i: number, j: number): string | undefined {
   const run = morphemes.slice(i, j + 1);
-  if (run.length < 2 || !run.every(compoundable) || !run.some((m) => m.surface.length === 1)) return undefined;
+  // ワン + シーン: loanwords written as one, which either analyser cuts where it knows the halves.
+  if (run.length >= 2 && run.length <= 3 && run.every((m) => m.pos === '名詞' && KATAKANA_ONLY.test(m.surface))) {
+    const whole = run.map((m) => m.surface).join('');
+    return whole.length <= KATAKANA_MAX ? whole : undefined;
+  }
+  if (run.length < 2 || !run.every((m, k) => compoundable(m) || numberBeforeUnread(run, k)) || !run.some((m) => m.surface.length === 1)) return undefined;
   const form = run.map((m) => m.surface).join('');
   return form.length <= COMPOUND_MAX ? form : undefined;
 }
@@ -610,7 +643,8 @@ function joinCompounds(morphemes: Morpheme[], lexicon: Lexicon | undefined): Mor
       // One reading, or none: 一日 is いちにち or ついたち, and guessing is worse than not saying.
       const readings = new Set(hits.map((h) => h.reading));
       joined = {
-        surface: form, lemma: form, pos: '名詞', pos1: '一般',
+        // イメージ + チェンジ + した: what takes する still does, joined.
+        surface: form, lemma: form, pos: '名詞', pos1: morphemes[j]?.pos1 === 'サ変接続' ? 'サ変接続' : '一般',
         reading: readings.size === 1 ? toKatakana(hits[0]!.reading) : undefined,
       };
       next = j + 1;
@@ -681,8 +715,9 @@ function nounSuffixed(group: Morpheme[]): boolean {
 /*
  * A name followed by the ending a person's name takes. IPADIC tags 未来 a
  * proper noun here, and it is also the word for the future; the dictionary
- * has the word, and its reading is not the name's (みく). Only a proper noun
- * is taken for a name, so 運転手さん and 赤ちゃん are what they were.
+ * has the word, and its reading is not the name's (みく). A proper noun is
+ * taken for a name, and a common one only before ちゃん or くん, so 運転手さん
+ * and 赤ちゃん are what they were.
  */
 const PERSON_SUFFIX = new Set(['ちゃん', 'くん', '君', 'さん', '様', 'さま', '殿']);
 
@@ -695,8 +730,12 @@ const WORDS_WITH_SUFFIX = new Set([
 
 function namedLike(group: Morpheme[]): boolean {
   const [head, tail] = group;
-  return group.length === 2 && head?.pos1 === '固有名詞' && tail?.pos1 === '接尾' &&
-    PERSON_SUFFIX.has(tail.surface) && !WORDS_WITH_SUFFIX.has(head.surface + tail.surface);
+  if (group.length !== 2 || head?.pos !== '名詞' || tail?.pos1 !== '接尾' || !PERSON_SUFFIX.has(tail.surface)) return false;
+  if (WORDS_WITH_SUFFIX.has(head.surface + tail.surface)) return false;
+  // A proper noun, as IPADIC tags 未来 there; or, where an analyser has no names to tag (UniDic's 未来 is a
+  // common noun), a common one before the endings of a child's or a friend's name, ちゃん and くん. Not さん:
+  // 運転手さん and お客さん are not names.
+  return head.pos1 === '固有名詞' || (head.pos1 === '一般' && ['ちゃん', 'くん', '君'].includes(tail.surface));
 }
 
 /**
@@ -707,6 +746,20 @@ function namedLike(group: Morpheme[]): boolean {
  */
 export function lexiconQueries(morphemes: Morpheme[]): string[] {
   const out = new Set<string>(compoundQueries(morphemes));
+  // 食べ放題: whether a verb's stem and the noun after it are one word.
+  morphemes.forEach((m, i) => {
+    const noun = morphemes[i + 1];
+    if (m.pos === '動詞' && m.conjForm === '連用形' && noun?.pos === '名詞' && noun.pos1 === '一般' && KANJI_ONLY.test(noun.surface)) {
+      out.add(m.surface + noun.surface);
+    }
+  });
+  // 言いはる: whether the stem and 張る make a verb, which is not the Kansai honorific.
+  morphemes.forEach((m, i) => {
+    const stem = morphemes[i - 1];
+    if (m.lemma === 'はる' && m.pos === '動詞' && stem?.pos === '動詞') out.add(`${stem.surface}張る`);
+  });
+  // 就活: a kanji word IPADIC has no reading for, whose reading the dictionary has.
+  for (const m of morphemes) if (!m.reading && m.pos === '名詞' && KANJI_ONLY.test(m.surface)) out.add(m.surface);
   for (let i = 0; i < morphemes.length; i++) {
     const verb = compoundVerbAt(morphemes, i);
     if (verb) out.add(verb);
@@ -738,7 +791,14 @@ function merge(group: Morpheme[], lexicon: Lexicon | undefined): MergedToken {
   const at = Math.max(0, group.findIndex((m) => m.pos !== '接頭詞'));
   const lead = group[at]!;
   const surface = group.map((m) => m.surface).join('');
-  const reading = group.every((m) => m.reading) ? group.map((m) => m.reading).join('') : undefined;
+  // A kanji word IPADIC has no reading for (就活) takes the dictionary's, where that is one reading.
+  const readOf = (m: Morpheme): string | undefined => {
+    if (m.reading) return m.reading;
+    const hits = m.pos === '名詞' && KANJI_ONLY.test(m.surface) ? lexicon?.(m.surface) : undefined;
+    const readings = new Set((hits ?? []).map((h) => h.reading));
+    return readings.size === 1 ? toKatakana([...readings][0]!) : undefined;
+  };
+  const reading = group.every((m) => readOf(m)) ? group.map((m) => readOf(m)).join('') : undefined;
   const common = {
     surface,
     parts: group.map((m) => m.surface),
@@ -938,8 +998,265 @@ function constructions(tokens: MergedToken[]): MergedToken[] {
   return tokens;
 }
 
+/**
+ * Words the analyser cuts wrongly that speech makes of two or more.
+ *
+ * たびに is "each time", a word of its own where たび alone is 足袋 or 度:
+ * the analyser tags the one in たびに a dependent noun. Where a form could
+ * be either of two things, the words around it decide, and it is left as the
+ * analyser had it when they do not.
+ * Kansai speech: せえへん is しない, which IPADIC reads as せ, the verb え and
+ * へん; おらん and おらんかった are いない and いなかった, with おら taken for a
+ * noun. Each is put back the way it goes together; the rest of Kansai-ben
+ * (食べへん, 行かへん) is cut right already.
+ */
+/** The spoken contractions that follow a verb as endings: しちゃう, 読んじゃう, 見てる, やっとく. */
+const CONTRACTION_HELPERS = new Set(['ちゃう', 'じゃう', 'ちまう', 'じまう', 'とく', 'どく', 'てる', 'でる']);
+
+/** Whether the word before a noun describes it: この, 彼の, 速い, 投げた, or another noun joined to it. */
+function describes(prev: Morpheme | undefined): boolean {
+  if (!prev) return false;
+  if (prev.pos === '助詞') return prev.pos1 === '連体化' || prev.surface === 'の';
+  return ['連体詞', '接頭詞', '形容詞', '動詞', '助動詞', '名詞'].includes(prev.pos ?? '');
+}
+
+function spoken(morphemes: Morpheme[], lexicon: Lexicon | undefined): Morpheme[] {
+  const out: Morpheme[] = [];
+  for (let i = 0; i < morphemes.length; i++) {
+    const m = morphemes[i]!;
+    const next = morphemes[i + 1];
+    const after = morphemes[i + 2];
+    // IPADIC tags that たび a dependent noun; UniDic does not, and there it is the one after a verb or その.
+    if (m.surface === 'たび' && next?.surface === 'に' && next.pos === '助詞' &&
+      (m.pos1 === '非自立' || (m.pos === '名詞' && ['動詞', '助動詞', '連体詞'].includes(morphemes[i - 1]?.pos ?? '')))) {
+      out.push({ surface: 'たびに', lemma: 'たびに', reading: 'タビニ', pos: '副詞', pos1: '一般' });
+      i++;
+      continue;
+    }
+    /*
+     * たまに: "now and then", or a ball (たま) and に. The sentence says which:
+     * a たま that something describes is the noun — そのたまに, 彼のたまに,
+     * 速いたまに — and one that nothing does is the adverb, as after は, でも,
+     * or at the start of the line. IPADIC picks the noun in both.
+     */
+    // The same, the other way: UniDic takes every たまに for the adverb, そのたまに too.
+    if (m.surface === 'たまに' && m.pos === '副詞' && describes(morphemes[i - 1])) {
+      out.push({ surface: 'たま', lemma: 'たま', reading: 'タマ', pos: '名詞', pos1: '一般' }, { surface: 'に', lemma: 'に', reading: 'ニ', pos: '助詞', pos1: '格助詞' });
+      continue;
+    }
+    if (m.surface === 'たま' && m.pos === '名詞' && next?.surface === 'に' && next.pos === '助詞' && !describes(morphemes[i - 1])) {
+      out.push({ surface: 'たまに', lemma: 'たまに', reading: 'タマニ', pos: '副詞', pos1: '一般' });
+      i++;
+      continue;
+    }
+    /*
+     * もん and もの after what a sentence says: 言ってましたもんね, 嫌いだもん.
+     * There it is the particle that gives a reason, "you know", and not a
+     * thing — and not 門, a gate, which is what もん alone is looked up as.
+     * IPADIC calls both a dependent noun. Ending the sentence after a verb,
+     * an adjective or an ending, it is the particle; before だ or a particle
+     * (そんなもんだ, うまいもん食べたい) it is もの, a thing, said short.
+     */
+    if ((m.surface === 'もん' && m.pos === '名詞') || (m.surface === 'もの' && m.pos === '名詞' && m.pos1 === '非自立')) {
+      const before = morphemes[i - 1];
+      const last = !next || next.pos === '記号' || (next.pos === '助詞' && next.pos1 === '終助詞');
+      const said = m.surface === 'もん'
+        ? ['助動詞', '動詞', '形容詞'].includes(before?.pos ?? '')
+        : before?.pos === '助動詞' && ['だ', 'です'].includes(before.surface);   // だもの, not なもの
+      if (last && said) {
+        out.push({ ...m, pos: '助詞', pos1: '終助詞' });
+        continue;
+      }
+      if (m.surface === 'もん') {
+        out.push({ ...m, lemma: 'もの' });
+        continue;
+      }
+    }
+    /*
+     * す for です, as people say it: 詳しいんすか, いいんすよ, そうすね. IPADIC
+     * has っす and not す, so it reads すか as a noun (a miss, a blank), す as
+     * する and すね as すねる. Where it follows something and ends the sentence,
+     * or goes on to a particle as です would, it is です said short; すか with
+     * a particle after it (すかを引いた) stays the noun.
+     */
+    const prior = morphemes[i - 1];
+    const closes = (x: Morpheme | undefined): boolean => !x || x.pos === '記号' || (x.pos === '助詞' && x.pos1 !== '格助詞' && x.pos1 !== '係助詞');
+    const desu = (surface: string): Morpheme => ({ surface, lemma: 'です', reading: 'ス', pos: '助動詞' });
+    if (prior && prior.pos !== '助詞' && prior.pos !== '記号') {
+      if (m.surface === 'すか' && m.pos === '名詞' && closes(next)) {
+        out.push(desu('す'), { surface: 'か', lemma: 'か', reading: 'カ', pos: '助詞', pos1: '副助詞／並立助詞／終助詞' });
+        continue;
+      }
+      if (m.surface === 'すね' && m.lemma === 'すねる' && (!next || next.pos === '記号')) {
+        out.push(desu('す'), { surface: 'ね', lemma: 'ね', reading: 'ネ', pos: '助詞', pos1: '終助詞' });
+        continue;
+      }
+      if (m.surface === 'す' && m.lemma === 'する' && next?.pos === '助詞' && closes(next)) {
+        out.push(desu('す'));
+        continue;
+      }
+    }
+    /*
+     * わけない: "there is no way that", or "easy" — 詳しいわけない, そんなわけ
+     * ない. IPADIC reads most of them as わける, to divide, in the negative.
+     * All 50 of Tatoeba's sentences with it are the expression, and the rule
+     * here reads them so; the verb needs something to divide, so it stays
+     * the verb after を, に or で (ケーキをわけない).
+     */
+    if (m.surface === 'わけ' && next?.lemma === 'ない' &&
+      (m.pos === '名詞' || (m.lemma === 'わける' && !['を', 'に', 'で'].includes(prior?.surface ?? '')))) {
+      out.push({
+        surface: `わけ${next.surface}`, lemma: 'わけない', reading: `ワケ${next.reading ?? ''}`,
+        pos: '形容詞', pos1: '自立', conjForm: next.conjForm,
+      });
+      i++;
+      continue;
+    }
+    // なっちゃう: IPADIC may call the ちゃう after a verb independent, and leave it a word of its own.
+    if (CONTRACTION_HELPERS.has(m.lemma ?? '') && m.pos === '動詞' && m.pos1 === '自立' &&
+      ['動詞', '助動詞'].includes(out[out.length - 1]?.pos ?? '')) {
+      out.push({ ...m, pos1: '非自立' });
+      continue;
+    }
+    /*
+     * マネして: a word written in katakana for emphasis, before する. IPADIC takes
+     * マネ for a name or a plain noun, and the dictionary has マネ, a manager,
+     * under that spelling and 真似, copying, under its reading. A noun that is
+     * done with する is the kind that takes it, サ変接続, and said so the
+     * dictionary ranks 真似 first.
+     */
+    if (m.pos === '名詞' && ['一般', '固有名詞'].includes(m.pos1 ?? '') && /^[ァ-ヶー]{2,}$/.test(m.surface) &&
+      ((next?.pos === '動詞' && next.lemma === 'する') || (next?.surface === 'を' && after?.lemma === 'する'))) {
+      out.push({ ...m, pos1: 'サ変接続' });
+      continue;
+    }
+    /*
+     * 間: あいだ, "while" or "between", after a verb, an adjective, or の — 検討する間,
+     * 長い間, 夏休みの間, AとBの間. IPADIC reads it ま wherever it is not
+     * after a noun. ま, a pause or a space, is 間もなく, いつの間にか, 控えの間,
+     * つかの間, 一瞬の間, and 間を置く; those it already had right, or are named here.
+     * Of the 790 Tatoeba sentences with の間, all but a handful are あいだ.
+     */
+    const before = morphemes[i - 1];
+    // いつの間にか: one word, "before one knows it", cut by UniDic into five.
+    if (m.surface === 'いつ' && next?.surface === 'の' && after?.surface === '間' && morphemes[i + 3]?.surface === 'に' && morphemes[i + 4]?.surface === 'か') {
+      out.push({ surface: 'いつの間にか', lemma: 'いつの間にか', reading: 'イツノマニカ', pos: '副詞', pos1: '一般' });
+      i += 4;
+      continue;
+    }
+    // 間もなく: one word, "before long", where an analyser cuts it into 間, も and なく.
+    if (m.surface === '間' && next?.surface === 'も' && after?.surface === 'なく') {
+      out.push({ surface: '間もなく', lemma: '間もなく', reading: 'マモナク', pos: '副詞', pos1: '一般' });
+      i += 2;
+      continue;
+    }
+    // And the other way: UniDic reads every 間 あいだ. A pause or a space is ま — 間を置く, 間がある with
+    // nothing before it saying whose, and 控えの間, つかの間, 一瞬の間.
+    if (m.surface === '間' && m.pos === '名詞' && m.reading === 'アイダ' &&
+      ((['控え', 'つか', '一瞬', '沈黙', '絶妙'].includes(morphemes[i - 2]?.surface ?? '') && before?.surface === 'の') ||
+        ((!before || before.pos === '記号') && next?.pos === '助詞'))) {
+      out.push({ ...m, reading: 'マ' });
+      continue;
+    }
+    if (m.surface === '間' && m.pos === '名詞' && m.reading === 'マ' && before &&
+      (['動詞', '形容詞', '助動詞'].includes(before.pos ?? '') || (before.pos === '助詞' && before.pos1 === '連体化')) &&
+      next?.surface !== 'も' && !(next?.surface === 'に' && after?.surface === 'か') &&
+      !['控え', 'つか', 'いつ', '一瞬', '沈黙', '絶妙'].includes(morphemes[i - 2]?.surface ?? '')) {
+      out.push({ ...m, reading: 'アイダ' });
+      continue;
+    }
+    /*
+     * そっか: "oh, right", そうか said short. IPADIC cuts it into そっ, which it
+     * calls a pronoun, and か. Where it starts what is said — every case in
+     * Tatoeba — it is the one word; after a verb's stem (時間つぶそっか, つぶそうか)
+     * it is not, and is left.
+     */
+    if (m.surface === 'そっ' && next && /^か[ーあぁ〜]*$/.test(next.surface) &&
+      (!before || before.pos === '記号' || before.pos === '感動詞')) {
+      // そっかー, そっかあ: drawn out, and still the one word.
+      const long = after && /^[ーあぁ〜]+$/.test(after.surface) ? after.surface : '';
+      out.push({ surface: `そっ${next.surface}${long}`, lemma: 'そっか', reading: 'ソッカ', pos: '感動詞' });
+      i += long ? 2 : 1;
+      continue;
+    }
+    /*
+     * Words UniDic cuts in two that are one in every dictionary, IPADIC's among them: どうも, and でも and
+     * だって where they start what is said (でもたまに思う, だって嫌いだもん).
+     */
+    if (m.surface === 'どう' && next?.surface === 'も' && next.pos === '助詞') {
+      out.push({ surface: 'どうも', lemma: 'どうも', reading: 'ドウモ', pos: '副詞', pos1: '一般' });
+      i++;
+      continue;
+    }
+    if ((!before || before.pos === '記号') && ((m.surface === 'で' && next?.surface === 'も') || (m.surface === 'だ' && next?.surface === 'って')) &&
+      m.pos !== '名詞' && next.pos === '助詞') {
+      const whole = m.surface + next.surface;
+      out.push({ surface: whole, lemma: whole, reading: whole === 'でも' ? 'デモ' : 'ダッテ', pos: '接続詞' });
+      i++;
+      continue;
+    }
+    // 食べ + 放題: a verb's stem and a noun that the dictionary has as one word, which UniDic leaves as two.
+    if (m.pos === '動詞' && m.conjForm === '連用形' && next?.pos === '名詞' && next.pos1 === '一般' && KANJI_ONLY.test(next.surface)) {
+      const whole = m.surface + next.surface;
+      const hits = lexicon?.(whole);
+      if (hits?.length) {
+        const readings = new Set(hits.map((h) => h.reading));
+        out.push({
+          surface: whole, lemma: whole, pos: '名詞', pos1: '一般',
+          ...(readings.size === 1 ? { reading: toKatakana(hits[0]!.reading) } : {}),
+        });
+        i++;
+        continue;
+      }
+    }
+    // ユーチューバーとかも: とか, "and the like", and も. IPADIC, at the end of a line, reads と and かも, a duck.
+    if (m.surface === 'と' && m.pos === '助詞' && next?.surface === 'かも' && next.pos === '名詞') {
+      out.push(
+        { surface: 'とか', lemma: 'とか', reading: 'トカ', pos: '助詞', pos1: '並立助詞' },
+        { surface: 'も', lemma: 'も', reading: 'モ', pos: '助詞', pos1: '係助詞' },
+      );
+      i++;
+      continue;
+    }
+    if (m.surface === 'せ' && m.lemma === 'する' && next?.surface === 'え' && after?.surface === 'へん') {
+      out.push(m, { surface: 'えへん', lemma: 'へん', reading: 'エヘン', pos: '助動詞' });
+      i += 2;
+      continue;
+    }
+    // 食べはる: はる after a verb is the honorific ending, not the verb 張る or 貼る.
+    // Only on a verb's stem, where the honorific goes: 紙をはる is the verb. And not where the stem and
+    // 張る are a verb of their own, 言い張る: that needs the dictionary, and waits for it.
+    const stem = out[out.length - 1];
+    if (m.lemma === 'はる' && m.pos === '動詞' && stem?.pos === '動詞' &&
+      ['連用形', '未然形'].includes(stem.conjForm ?? '') && lexicon && !lexicon(`${stem.surface}張る`)?.length) {
+      out.push({ ...m, pos: '助動詞', pos1: undefined });
+      continue;
+    }
+    // ちゃうねん: ちゃう on its own is Kansai's 違う, "to differ", not the ending of しちゃう.
+    if (m.lemma === 'ちゃう' && (m.pos === '動詞' || m.pos === '助動詞') && !['動詞', '助動詞'].includes(out[out.length - 1]?.pos ?? '')) {
+      out.push({ ...m, lemma: '違う', pos: '動詞', pos1: '自立' });
+      continue;
+    }
+    // Only where the sentence ends on it or goes on as a verb's would: おらんよ, おらんかった.
+    const ends = !after || after.surface === 'かっ' || ['助詞', '助動詞', '記号'].includes(after.pos ?? '');
+    if (m.surface === 'おら' && m.pos === '名詞' && next?.surface === 'ん' && ends) {
+      const past = after?.surface === 'かっ';
+      out.push(
+        { surface: 'おら', lemma: 'おる', reading: 'オラ', pos: '動詞', pos1: '自立', conjForm: '未然形' },
+        past
+          ? { surface: 'んかっ', lemma: 'ない', reading: 'ンカッ', pos: '助動詞', conjForm: '連用タ接続' }
+          : { surface: 'ん', lemma: 'ん', reading: 'ン', pos: '助動詞' },
+      );
+      i += past ? 2 : 1;
+      continue;
+    }
+    out.push(m);
+  }
+  return out;
+}
+
 export function mergeMorphemes(morphemes: Morpheme[], lexicon?: Lexicon): MergedToken[] {
-  return constructions(groups(joinCompoundVerbs(joinCompounds(morphemes, lexicon), lexicon)).flatMap((group) =>
+  return constructions(groups(joinCompoundVerbs(joinCompounds(spoken(morphemes, lexicon), lexicon), lexicon)).flatMap((group) =>
     unknownPair(group, lexicon) ? group.map((m) => merge([m], lexicon)) : [merge(group, lexicon)]));
 }
 

@@ -1458,7 +1458,7 @@ function credits(): HTMLElement {
   entry('CFDICT · CxDICT', 'https://github.com/licryle/CxDICT', ui.settings.creditCfdict);
   entry('HanDeDict', 'https://handedict.zydeo.net/', ui.settings.creditHandedict);
   entry('CC-Canto', 'https://cantonese.org/', ui.settings.creditCanto);
-  entry('Lindera · IPADIC · mecab-ko-dic', 'https://github.com/lindera/lindera', ui.settings.creditLindera);
+  entry('Lindera · IPADIC · UniDic · mecab-ko-dic', 'https://github.com/lindera/lindera', ui.settings.creditLindera);
   entry('Unihan', 'https://www.unicode.org/reports/tr38/', ui.settings.creditUnihan);
   entry('Jotoba · Jisho', 'https://jotoba.de/', ui.settings.creditJotoba);
   entry('Lingua Libre · Wikimedia Commons', 'https://commons.wikimedia.org/wiki/Commons:Lingua_Libre', ui.settings.creditCommons);

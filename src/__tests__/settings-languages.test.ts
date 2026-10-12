@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  DEFAULTS, DICTIONARIES, OWN_DICTIONARIES, TARGET_LANGUAGES, cardDeck, dictionaryOf, featuresOf, ownDictionaryOf,
+  DEFAULTS, DICTIONARIES, OWN_DICTIONARIES, TARGET_LANGUAGES, cardDeck, dictionaryOf, fallbackDictionaryOf, featuresOf, ownDictionaryOf,
   targetVariant, withDecks, withDefaults, type Settings,
 } from '../settings';
 import { SOURCES } from '../dict/sources';
@@ -121,6 +121,14 @@ describe('what each language gets', () => {
     expect(dictionaryOf('fr', { native: 'en', definitions: 'en' })).toEqual({ source: 'wty-fr-en', edition: 'en' });
     expect(dictionaryOf('de', { native: 'ja', definitions: 'en' })).toEqual({ source: 'wty-de-en', edition: 'en' });
     expect(dictionaryOf('it', { native: 'en', definitions: 'en' })).toBeNull();
+  });
+
+  it('has a second dictionary behind Korean’s, unless the learner’s own already is it', () => {
+    expect(fallbackDictionaryOf('ko', { native: 'en' })).toEqual({ source: 'krdict', edition: 'en' });
+    expect(fallbackDictionaryOf('ko', { native: 'de' })).toEqual({ source: 'krdict', edition: 'en' });
+    // KRDict is already the learner's own dictionary for these: nothing behind it to add.
+    expect(fallbackDictionaryOf('ko', { native: 'es' })).toBeNull();
+    expect(fallbackDictionaryOf('es', { native: 'en' })).toBeNull();
   });
 
   it('names what each language draws above its words, and what it calls its characters', () => {

@@ -22,6 +22,9 @@ pnpm test:contract   # vitest against the live sites
 node scripts/check-captions.mjs --lang ja <url-or-id>   # screen a test video
 node scripts/smoke-youtube.mjs                          # load dist/ on a YouTube video; passes when the overlay draws a word
 node scripts/compare-words.mjs                          # IPADIC with and without JMdict's added words
+node scripts/measure-word.mjs <word> <reading> <score>  # what one added adverb does to real sentences, at that score
+node scripts/audit-cuts.mjs                             # words the analyser reads whole alone and cuts in sentences
+node scripts/compare-unidic.mjs                         # Japanese as IPADIC reads it, with and without UniDic's second opinion
 node scripts/build-zh-readings.mjs                      # which reading a Chinese character shows first
 node scripts/build-ko-fixture.mjs <ko-dic directory>    # what the analyser returns for the Korean tests' lines
 ```
@@ -56,6 +59,40 @@ JMdict — and writes out every line that changes. Run it before changing what
 goes into that list or how it is scored, and when JMdict or IPADIC is bumped:
 every change it reports should be a misreading put right.
 
+`measure-word` and `audit-cuts` are for the words of speech the analyser gets
+wrong (`SPOKEN_ADVERBS` in `src/morphology/extra-words.ts`, and the rules in
+`spoken()` in `src/morphology/merge.ts`). A word that can be two things — たまに,
+"now and then", or たま, a ball, and に — is not settled by a rule written from
+one line: add it to the analyser at a score, with `measure-word`, and read
+every Tatoeba sentence that changes, and the lines that mean the other thing.
+`audit-cuts` lists the candidates. Both read the data `compare-words`
+downloads, so run that once first.
+
+Japanese is read by two analysers. IPADIC cuts a line the way a learner reads
+it (ので, という and 彼ら are words to it) and `merge.ts` is written for it, but
+it reads kana badly and knows no word newer than 2007: 彼はいつ来ますか comes
+back は, い, つ. UniDic knows those and cuts everything finer. So IPADIC reads
+the line and UniDic corrects it, only where the two disagree and only in the
+ways `src/morphology/repair.ts` lists. `japanese.ts` is the steps a line goes
+through, shared by the offscreen document and the scripts.
+
+`compare-unidic` measures that. It reads the parser fixtures, any subtitle
+files and 20,000 Tatoeba sentences (`FULL=1`: all 250,000) with and without
+UniDic, and writes out every line that changes. Run it before changing what
+UniDic may correct, and read the changes: UniDic is wrong too (彼女はやる is
+はやる, "to be in fashion", to it), and each rule in `repair.ts` is there
+because a line was read worse without it. `REREAD=1` measures the step before
+it, `katakana-words.ts`, the same way. That step once read カレー as からい,
+"spicy", wherever it appeared, because it was written from six examples and
+never run over real sentences: nothing that rewrites what the analyser is
+given goes in unmeasured.
+
+`WRITE=1 node scripts/compare-unidic.mjs` writes the parser fixtures again:
+`fixtures/ipadic.ts` (each line as the extension reads it once everything has
+loaded, and as IPADIC alone reads it where that differs) and
+`fixtures/second-opinion.ts` (what `repair()` was given for the lines UniDic
+changed). `MORE='…|…'` adds lines. Regenerate, never hand-edit.
+
 `build-zh-readings` writes `src/dict/zh-readings.ts`: for each Chinese character
 with more than one reading in CC-CEDICT, the one drawn above it by default, from
 Unihan's `kMandarin` and a short list of exceptions in the script. Run it when
@@ -81,13 +118,15 @@ src/settings.ts         settings, defaults, and which languages get which tier
 src/background.ts       service worker: offscreen lifecycle, the AnkiConnect relay,
                         audio fetches, page-world injection on Netflix
 src/offscreen.{html,ts} WASM host — the only place the tokenizer runs. The lindera
-                        dictionary lives in OPFS; JMdict in IndexedDB
+                        dictionaries live in OPFS (two for Japanese: IPADIC, and UniDic
+                        loaded after it); JMdict in IndexedDB
 src/adapters/           one module per subtitle source (youtube, netflix, disney, prime, max), their
                         parsers (ttml, json3, hls, dash), the DOM-reading fallback
 src/morphology/         Segmenter implementations and which language gets which (index.ts),
                         merge rules for Japanese and Korean, furigana and pinyin alignment,
-                        Spanish dictionary forms, and the words from JMdict that IPADIC
-                        misreads, added to the analyser
+                        Spanish dictionary forms, the words from JMdict that IPADIC
+                        misreads, added to the analyser, and UniDic's second opinion on
+                        IPADIC's reading of a line (japanese.ts, repair.ts)
 src/dict/               one dictionary per language (sources.ts): download, storage and
                         lookup for JMdict, KANJIDIC2, CC-CEDICT and Wiktionary; remote
                         fallbacks for Japanese
@@ -130,7 +169,8 @@ src/icons/              extension icons, 16/32/48/128 PNG, exported from brand/
 src/logo.ts             the logo in the popup, options page and player bar, imported
                         from brand/ as markup (the build loads .svg as text)
 brand/                  logo masters (SVG), PNG exports, and how to use them
-scripts/                check-captions.mjs, diagnose.js, compare-words.mjs, build-zh-readings.mjs,
+scripts/                check-captions.mjs, diagnose.js, compare-words.mjs, measure-word.mjs, audit-cuts.mjs, compare-unidic.mjs,
+                        build-zh-readings.mjs,
                         build-ko-fixture.mjs and the lines it reads (ko-fixture-lines.txt)
 tests/contract/         the canaries
 ```

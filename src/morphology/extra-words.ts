@@ -45,7 +45,7 @@ export interface ExtraWord {
 export const EXTRA_COST = 10000;
 
 /** Bumped whenever what goes into the list, or how, changes: a stored list is rebuilt. */
-export const EXTRA_FORMAT = 1;
+export const EXTRA_FORMAT = 2;
 
 /** IPADIC's context ids for each kind of noun (its left-id.def). */
 const CONTEXT: Record<ExtraKind, number> = { general: 1285, suru: 1283, na: 1287 };
@@ -113,6 +113,42 @@ export function misreads(word: ExtraWord, pieces: ReadonlyArray<{ surface: strin
   if (pieces.length === 1 && pieces[0]?.surface === word.surface) return false;
   if (!pieces.some((p) => LONE_KANJI.test(p.surface))) return false;
   return pieces.map((p) => p.reading ?? '?').join('') !== word.reading;
+}
+
+/**
+ * Adverbs of speech the analyser lacks, or has and passes over, each with the
+ * score that makes it read right. Not from JMdict: these are kana, where the
+ * list above takes kanji nouns only, and each score was set on its own.
+ *
+ * めちゃ is not in IPADIC at all: めちゃうまい came back め, ちゃう, まい. At
+ * 9000, all 31 Tatoeba sentences that change read right, and やめちゃう,
+ * しめちゃった and めちゃくちゃ are as they were; at 6000 がめちゃいけない
+ * (がめる) was cut wrong.
+ *
+ * たまに is in IPADIC, which in a line still prefers たま, a ball, and に. A
+ * second entry at 4000 lets its own scores for what may follow what decide:
+ * ここにはたまに来る is the adverb, and そのたまに, 彼のたまに, 速いたまに and
+ * 他のたまに stay the ball. At 3000 そのたまに became the adverb; at 5000
+ * ここにはたまに did not. Measured with scripts/measure-word.mjs.
+ */
+export const SPOKEN_ADVERBS: ReadonlyArray<{ surface: string; reading: string; cost: number }> = [
+  { surface: 'めちゃ', reading: 'メチャ', cost: 9000 },
+  { surface: 'たまに', reading: 'タマニ', cost: 4000 },
+];
+
+/** IPADIC's context id for a plain adverb (副詞,一般). */
+const ADVERB = 1281;
+
+/** The adverbs of speech as rows of the same thirteen columns. */
+export function spokenRows(): string {
+  return SPOKEN_ADVERBS
+    .map((w) => [w.surface, ADVERB, ADVERB, w.cost, '副詞', '一般', '*', '*', '*', '*', w.surface, w.reading, w.reading].join(','))
+    .join('\n');
+}
+
+/** Everything handed to the analyser: JMdict's words, then the adverbs of speech. */
+export function analyserRows(words: readonly ExtraWord[], cost = EXTRA_COST): string {
+  return [extraRows(words, cost), spokenRows()].filter(Boolean).join('\n');
 }
 
 /** The words as Lindera's user dictionary reads them: IPADIC's thirteen columns, one row each. */

@@ -266,7 +266,7 @@ export const ru: Translation = {
       'Данные словаря и кандзи © Electronic Dictionary Research and Development Group, по лицензии CC BY-SA 4.0. ' +
       'В JSON переупакованы проектом jmdict-simplified.',
     creditLindera:
-      'Делит японский, корейский и китайский текст на слова. Лицензия MIT; у IPADIC, mecab-ko-dic и CC-CEDICT ' +
+      'Делит японский, корейский и китайский текст на слова. Лицензия MIT; у IPADIC, UniDic, mecab-ko-dic и CC-CEDICT ' +
       'свои условия.',
     creditCedict: 'Китайский словарь © MDBG и участники проекта, по лицензии CC BY-SA 4.0.',
     creditWiktionary:
@@ -336,6 +336,7 @@ export const ru: Translation = {
       'На этой странице не работает. Откройте видео на YouTube, Netflix или другом поддерживаемом сайте. Если вы только что установили ' +
       'или перезагрузили Libregaku, обновите вкладку.',
     unsupported: 'Libregaku работает на YouTube, Netflix, Disney+, Prime Video и Max.',
+    worksOn: (site: string): string => `Libregaku работает на ${site}.`,
     waitingForSubtitles: (site: string): string => `Ждём субтитры на ${site}. Убедитесь, что они включены.`,
     activeOn: (title: string): string => `Работает — ${title}`,
     active: 'Работает на этом видео.',
@@ -550,6 +551,7 @@ export const ru: Translation = {
     dictionaryLoading: (n: number): string => `Словарь ещё загружается — ${percent(n)}. Попробуйте чуть позже.`,
     dictionaryUnavailable: (error: string): string => `Словарь недоступен: ${error}`,
     noEntry: 'Этого слова нет в словаре.',
+    noEntryName: 'Это имя собственное, поэтому в словаре нет статьи.',
     moreMeanings: (n: number): string => `+${n} ${form(n, 'значение', 'значения', 'значений')}`,
 
     // Другие строки видео с этим словом

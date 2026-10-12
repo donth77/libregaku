@@ -161,8 +161,8 @@ export const ASSUMPTIONS: Assumption[] = [
   {
     id: 'dict.lindera-release',
     site: 'external',
-    claim: 'The pinned lindera dictionary zips — IPADIC, ko-dic and cc-cedict (src/morphology/dictionaries.ts) — are still published at their URLs, matching the pinned lindera-wasm',
-    breaks: 'The analyser for that language never loads: no readings, no dictionary forms, and cards matched by exact spelling only — which the page now says',
+    claim: 'The pinned lindera dictionary zips — IPADIC, UniDic, ko-dic and cc-cedict (src/morphology/dictionaries.ts) — are still published at their URLs, matching the pinned lindera-wasm',
+    breaks: 'The analyser for that language never loads: no readings, no dictionary forms, and cards matched by exact spelling only — which the page now says. Without UniDic, Japanese is still read, by IPADIC alone: いつ after は, words written in kana and words newer than 2007 are misread again',
     fallback: null,
   },
   {

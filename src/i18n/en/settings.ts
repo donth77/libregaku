@@ -332,9 +332,9 @@ export const settings = {
   creditJmdict:
     'Dictionary and kanji data © the Electronic Dictionary Research and Development Group, used ' +
     'under CC BY-SA 4.0. Repackaged as JSON by jmdict-simplified.',
-  /** Under Lindera · IPADIC · mecab-ko-dic. */
+  /** Under Lindera · IPADIC · UniDic · mecab-ko-dic. */
   creditLindera:
-    'Splits Japanese, Korean and Chinese into words. MIT licence; IPADIC, mecab-ko-dic and CC-CEDICT have their own terms.',
+    'Splits Japanese, Korean and Chinese into words. MIT licence; IPADIC, UniDic, mecab-ko-dic and CC-CEDICT have their own terms.',
   /** Under CC-CEDICT, the Chinese dictionary. */
   creditCedict: 'Chinese dictionary © MDBG and its contributors, used under CC BY-SA 4.0.',
   /** Under Wiktionary. kaikki.org and wiktionary-to-yomitan are the projects that turn Wiktionary into data files. */

@@ -28,6 +28,19 @@ export async function ensureAnalyser(dict: string): Promise<{ ok: boolean; error
   return { ok: Boolean(res.ok), error: res.error };
 }
 
+/**
+ * Wait for what makes the analyser read better — a second dictionary, which
+ * may be a long download — and say whether it came after this was asked, so
+ * that lines read meanwhile should be read again. False at once where the
+ * language has none.
+ */
+export async function improveAnalyser(): Promise<boolean> {
+  const res = (await chrome.runtime.sendMessage({ target: 'offscreen', type: 'second' })) as
+    | { reread?: boolean }
+    | undefined;
+  return Boolean(res?.reread);
+}
+
 export async function analyserStatus(): Promise<AnalyserStatus> {
   const res = (await chrome.runtime.sendMessage({ target: 'offscreen', type: 'status' })) as
     | AnalyserStatus

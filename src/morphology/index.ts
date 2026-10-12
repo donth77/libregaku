@@ -1,7 +1,7 @@
-import { ensureAnalyser } from './analyser';
+import { ensureAnalyser, improveAnalyser } from './analyser';
 import { ChineseSegmenter } from './chinese';
-import { FRENCH, splitElisions, straighten } from './french';
-import { GERMAN, GERMAN_COMPOUNDS } from './german';
+import { APART, FRENCH, splitElisions, straighten } from './french';
+import { GERMAN, GERMAN_COMPOUNDS, splitClitics } from './german';
 import { KoreanSegmenter } from './korean';
 import { LemmaSegmenter } from './lemma';
 import { LinderaSegmenter } from './lindera';
@@ -44,14 +44,21 @@ const grammarCounts = (): boolean => settings().underlineGrammar;
 
 const BY_FORMS: Record<string, () => Segmenter> = {
   es: () => new LemmaSegmenter('es', SPANISH, { grammarCounts }),
-  fr: () => new LemmaSegmenter('fr', FRENCH, { prepare: splitElisions, fold: straighten, grammarCounts }),
-  de: () => new LemmaSegmenter('de', GERMAN, { grammarCounts, compounds: GERMAN_COMPOUNDS }),
+  fr: () => new LemmaSegmenter('fr', FRENCH, { prepare: splitElisions, fold: straighten, grammarCounts, joinHyphens: { apart: APART } }),
+  de: () => new LemmaSegmenter('de', GERMAN, {
+    prepare: splitClitics, fold: straighten, grammarCounts, compounds: GERMAN_COMPOUNDS, joinHyphens: { apart: /^$/ },
+  }),
 };
 
 /** What turns a language's lines into words with dictionary forms. */
 export interface Analyser {
   /** Bring in whatever it reads with — a download, the first time. */
   load(): Promise<{ ok: boolean; error?: string }>;
+  /**
+   * What makes it read better and may come long after it has loaded. Resolves
+   * true when lines read before then should be read again.
+   */
+  improve?(): Promise<boolean>;
   /** A segmenter over it, with no lines remembered. */
   make(): Segmenter;
 }
@@ -59,7 +66,7 @@ export interface Analyser {
 /** The language's analyser, or null where there are only boundaries to go on. */
 export function analyserFor(lang: string): Analyser | null {
   const analysed = ANALYSED[lang];
-  if (analysed) return { load: () => ensureAnalyser(analysed.dict), make: analysed.make };
+  if (analysed) return { load: () => ensureAnalyser(analysed.dict), improve: improveAnalyser, make: analysed.make };
   const byForms = BY_FORMS[lang];
   if (byForms) return { load: async () => ({ ok: true }), make: byForms };
   return null;

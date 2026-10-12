@@ -237,7 +237,7 @@ export const id: Translation = {
       'Data kamus dan kanji © Electronic Dictionary Research and Development Group, digunakan dengan lisensi ' +
       'CC BY-SA 4.0. Dikemas ulang sebagai JSON oleh jmdict-simplified.',
     creditLindera:
-      'Memisahkan bahasa Jepang, Korea, dan Tionghoa menjadi kata. Lisensi MIT; IPADIC, mecab-ko-dic, dan CC-CEDICT ' +
+      'Memisahkan bahasa Jepang, Korea, dan Tionghoa menjadi kata. Lisensi MIT; IPADIC, UniDic, mecab-ko-dic, dan CC-CEDICT ' +
       'punya ketentuan sendiri.',
     creditCedict: 'Kamus bahasa Tionghoa © MDBG dan para kontributornya, digunakan dengan lisensi CC BY-SA 4.0.',
     creditWiktionary:
@@ -310,6 +310,7 @@ export const id: Translation = {
       'Tidak aktif di halaman ini. Buka video di YouTube, Netflix, atau situs lain yang didukung. Jika Anda baru saja menginstal atau memuat ulang ' +
       'Libregaku, muat ulang tab.',
     unsupported: 'Libregaku berfungsi di YouTube, Netflix, Disney+, Prime Video, dan Max.',
+    worksOn: (site: string): string => `Libregaku berfungsi di ${site}.`,
     waitingForSubtitles: (site: string): string => `Menunggu subtitel di ${site}. Pastikan subtitel aktif.`,
     activeOn: (title: string): string => `Aktif — ${title}`,
     active: 'Aktif di video ini.',
@@ -515,6 +516,7 @@ export const id: Translation = {
     dictionaryLoading: (percent: number): string => `Kamus masih dimuat — ${percent}%. Coba lagi sebentar lagi.`,
     dictionaryUnavailable: (error: string): string => `Kamus tidak tersedia: ${error}`,
     noEntry: 'Kata ini tidak ada di kamus.',
+    noEntryName: 'Sebuah nama, jadi tidak ada entri kamusnya.',
     moreMeanings: (n: number): string => `+${n} arti lainnya`,
 
     // The word's other lines in this video

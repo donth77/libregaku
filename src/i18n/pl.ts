@@ -259,7 +259,7 @@ export const pl: Translation = {
       'Dane słownika i kanji © Electronic Dictionary Research and Development Group, na licencji ' +
       'CC BY-SA 4.0. Przepakowane do JSON przez jmdict-simplified.',
     creditLindera:
-      'Dzieli japoński, koreański i chiński na słowa. Licencja MIT; IPADIC, mecab-ko-dic i CC-CEDICT ' +
+      'Dzieli japoński, koreański i chiński na słowa. Licencja MIT; IPADIC, UniDic, mecab-ko-dic i CC-CEDICT ' +
       'mają własne warunki.',
     creditCedict: 'Słownik chiński © MDBG i współtwórcy, na licencji CC BY-SA 4.0.',
     creditWiktionary:
@@ -329,6 +329,7 @@ export const pl: Translation = {
       'Nieaktywne na tej stronie. Otwórz film na YouTube, Netflixie lub w innym obsługiwanym serwisie. Jeśli Libregaku zostało właśnie zainstalowane ' +
       'lub przeładowane, odśwież stronę.',
     unsupported: 'Libregaku działa w serwisach YouTube, Netflix, Disney+, Prime Video i Max.',
+    worksOn: (site: string): string => `Libregaku działa w serwisie ${site}.`,
     waitingForSubtitles: (site: string): string =>
       `Oczekiwanie na napisy w serwisie ${site}. Upewnij się, że są włączone.`,
     activeOn: (title: string): string => `Aktywne — ${title}`,
@@ -541,6 +542,7 @@ export const pl: Translation = {
       `Słownik wciąż się wczytuje — ${percent(n)}. Spróbuj ponownie za chwilę.`,
     dictionaryUnavailable: (error: string): string => `Słownik niedostępny: ${error}`,
     noEntry: 'Tego słowa nie ma w słowniku.',
+    noEntryName: 'To nazwa własna, więc nie ma jej hasła w słowniku.',
     moreMeanings: (n: number): string => `+${n} ${form(n, 'inne znaczenie', 'inne znaczenia', 'innych znaczeń')}`,
 
     // Inne linijki z tym słowem

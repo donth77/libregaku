@@ -37,6 +37,25 @@ function word(text: string, surface: string, nth = 0): Token {
 const keys = (t: Token): string[] => (t.lookup ?? []).map((k) => k.key);
 const units = (text: string): string[] => raw(text).map((m) => `${m.surface}/${m.tag}`);
 
+describe('names, and the 테니까 pattern', () => {
+  it('flags a name the analyser knows as one, and no other word', () => {
+    const line = '서울에 사는 친구가 예쁜 꽃을 샀어요.';
+    expect(word(line, '서울').properName).toBe(true);
+    expect(word(line, '친구').properName).toBeUndefined();
+  });
+
+  it('reads 할 테니까요 as the pattern and not as the noun 터, "place"', () => {
+    const line: KoMorpheme[] = [
+      { surface: '갈', tag: 'VV+ETM', type: 'Inflect', expression: '가/VV/*+ᆯ/ETM/*' },
+      { surface: '테니까요', tag: 'NNB+VCP+EC+JX', type: 'Inflect', expression: '터/NNB/*+이/VCP/*+니까/EC/*+요/JX/*' },
+    ];
+    const t = koTokens('갈 테니까요', line).filter((x) => !x.punct);
+    expect(t.map((x) => x.surface)).toEqual(['갈', '테니까요']);
+    expect(t[1]?.lemma).toBe('-ㄹ 터이다');
+    expect((t[1]?.lookup ?? []).map((k) => k.key)).toEqual(['-ㄹ 터이다']);
+  });
+});
+
 describe('a stem and its endings', () => {
   it('are one word, looked up as stem + 다', () => {
     const t = only('갔어요');

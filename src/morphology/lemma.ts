@@ -1,5 +1,10 @@
 import { LineCache } from './analyser';
-import { compoundKeys, splitCompound, type CompoundRules } from './compound';
+import {
+  adjectiveStem, compoundKeys, deeperKeys, derivedOf, formKeys, joinedKeys, participleOf, prefixVerb, splitCompound, stemKeys,
+  type CompoundRules,
+} from './compound';
+import { hyphenKeys, joinHyphenated } from './hyphen';
+import { joinSeparable, separableKeys } from './separable';
 import { IntlSegmenter } from './intl';
 import type { RubySegment, Segmenter, Token } from './types';
 
@@ -153,6 +158,16 @@ export interface LemmaHints {
    */
   renamed?: Readonly<Record<string, string>>;
   /**
+   * The articles and personal pronouns, in the forms the dictionary has them as
+   * (lemmas): the words the Underline articles and pronouns setting is about.
+   */
+  grammar?: readonly string[];
+  /**
+   * Words that are themselves before they are a form of a common verb: French
+   * puis is "then" far more often than "I can". Only on counted evidence.
+   */
+  keep?: readonly string[];
+  /**
    * Words of a form's description a learner has no use for, left off the card:
    * with them, the one reading "accusative singular masculine" is three, strong,
    * weak and mixed, which differ only in which article goes before the word.
@@ -183,26 +198,17 @@ const NOMINAL = new Set(['n', 'np', 'ns', 'adj', 'name', 'num']);
 const BEFORE_NOUN = new Set(['artic', 'det', 'num']);
 /** Kinds nobody makes a card for: el, la, un, del, al. Looked up like any word, never counted as one to learn. */
 const NOT_VOCABULARY = new Set(['artic', 'contr']);
-/** The dictionary's codes that say what kind of word a word is; its other codes say more about that kind. */
-const PARTS_OF_SPEECH = new Set([
-  'n', 'name', 'v', 'adj', 'adv', 'pron', 'det', 'artic', 'num', 'counter', 'prep', 'prep-phrase', 'conj', 'ptcl',
-  'intj', 'phrase', 'prov', 'pref', 'suf', 'contr', 'adn', 'ptcpl',
-]);
-/** With pronouns, the words of a language's grammar: der and den, je, yo. */
-const GRAMMAR_ONLY = new Set(['artic', 'contr', 'pron']);
-
 /**
- * A word of grammar and not of vocabulary: an article or a contraction,
- * whatever else it is spelt like (la is also a note), or a word that is
- * nothing but articles and pronouns (German der is both, den a pronoun only,
- * and they are one word). nada, tout and que are other things too, and stay.
+ * A word of grammar and not of vocabulary: an article or a contraction, whatever
+ * else it is spelt like (la is also a note), or a word of the language's own
+ * list of articles and personal pronouns (LemmaHints.grammar). The list and not
+ * the dictionary's labels: it calls tu a particle as well, ce a determiner, and
+ * alles and quelqu'un pronouns, so going by them left je skipped and tu not.
  */
-export function grammatical(kind: readonly string[]): boolean {
+export function grammatical(kind: readonly string[], words: readonly string[], hints?: LemmaHints): boolean {
   if (kind.some((k) => NOT_VOCABULARY.has(k))) return true;
-  // What it is, without what is said of it beside: a pronoun is 'pron neut', 'pron fem pl'.
-  const parts = kind.filter((k) => PARTS_OF_SPEECH.has(k));
-  // nichts, jemand, alguien: "nothing" and "someone" are pronouns, and words a learner has to learn.
-  return parts.length > 0 && parts.every((k) => GRAMMAR_ONLY.has(k)) && !kind.includes('indef');
+  const list = hints?.grammar;
+  return Boolean(list && words.some((w) => list.includes(w.toLocaleLowerCase())));
 }
 
 /**
@@ -373,6 +379,7 @@ export function lemmaOf(
     // 1. el vino, una era.
     (opts.expecting === 'article' && self?.nominal ? self : undefined) ??
     // 2. es, era, son: a form of ser, haber, ir — unless it is only a wish or a command and a word like "outside" besides.
+    (hints.keep?.includes(form) ? self : undefined) ??
     commonest(hints.first, Boolean(closed)) ??
     // 3. como, para, entre.
     closed ??
@@ -466,7 +473,7 @@ export function lemmaTokens(
     return {
       ...t,
       // As Japanese particles are: drawn and looked up, never underlined as new.
-      content: grammarCounts || !grammatical(info?.kind ?? []),
+      content: grammarCounts || !grammatical(info?.kind ?? [], [found.lemma, key], hints),
       lemma: found.lemma,
       lookup: found.lookup.map((key) => ({ key })),
       // The card's trace reads "hablábamos → hablar"; a word in its own form has none.
@@ -487,6 +494,7 @@ export class LemmaSegmenter implements Segmenter {
   readonly #fold: (surface: string) => string;
   readonly #grammarCounts: () => boolean;
   readonly #compounds: CompoundRules | undefined;
+  readonly #joinHyphens: boolean | { apart: RegExp };
   /** What the lines kept were analysed with: a change of the setting starts them over. */
   #counted = false;
   readonly #words: IntlSegmenter;
@@ -504,8 +512,13 @@ export class LemmaSegmenter implements Segmenter {
       fold?: (surface: string) => string;
       /** Whether articles and pronouns count as words to learn, asked at each line: a setting. */
       grammarCounts?: () => boolean;
-      /** Cut a word the dictionary lacks into two it has (compound.ts). */
+      /** Cut a word the dictionary lacks into the words it has (compound.ts). */
       compounds?: CompoundRules;
+      /**
+       * Put back together a hyphenated word the dictionary has, and one it has not that is made of words
+       * it has, except where a part matches this (hyphen.ts). `true` joins only the first kind.
+       */
+      joinHyphens?: boolean | { apart: RegExp };
     } = {},
   ) {
     this.#locale = locale;
@@ -514,6 +527,7 @@ export class LemmaSegmenter implements Segmenter {
     this.#fold = opts.fold ?? ((surface) => surface);
     this.#grammarCounts = opts.grammarCounts ?? (() => false);
     this.#compounds = opts.compounds;
+    this.#joinHyphens = opts.joinHyphens ?? false;
     this.#words = new IntlSegmenter(locale);
   }
 
@@ -525,8 +539,9 @@ export class LemmaSegmenter implements Segmenter {
     }
     const hit = this.#cache.get(text);
     if (hit) return hit;
-    const tokens = this.#prepare(this.#words.segment(text));
+    let tokens = this.#prepare(this.#words.segment(text));
     const asked = new Set<string>();
+    if (this.#joinHyphens) for (const k of hyphenKeys(tokens, this.#fold, this.#locale)) asked.add(k);
     for (const t of tokens) {
       if (t.punct) continue;
       const key = this.#fold(t.surface);
@@ -543,10 +558,23 @@ export class LemmaSegmenter implements Segmenter {
     // The dictionary is still coming: boundaries for now, and not kept, so
     // the line gains its dictionary forms once the table is in.
     if (!res?.ok || !res.forms) return tokens;
+    if (this.#joinHyphens) {
+      tokens = joinHyphenated(tokens, res.forms, this.#fold, this.#locale, this.#joinHyphens === true ? undefined : this.#joinHyphens.apart);
+    }
     let out = lemmaTokens(tokens, res.forms, this.#locale, this.#hints, this.#fold, counts);
     if (this.#compounds) out = await this.#cutCompounds(out, res.forms, this.#compounds);
+    if (this.#compounds?.verbPrefixes) out = await this.#joinSeparated(out, this.#compounds);
     this.#cache.set(text, out);
     return out;
+  }
+
+  /** A verb and its prefix at the other end of the clause, read as the one verb the dictionary has: gehe ... weg. */
+  async #joinSeparated(tokens: Token[], rules: CompoundRules): Promise<Token[]> {
+    const keys = separableKeys(tokens, rules);
+    if (!keys.length) return tokens;
+    const res = (await chrome.runtime.sendMessage({ target: 'offscreen', type: 'dict-forms', forms: keys.slice(0, 400) })) as
+      | FormsAnswer | undefined;
+    return res?.ok && res.forms ? joinSeparable(tokens, res.forms, rules) : tokens;
   }
 
   /** Words the dictionary has nothing for, cut in two where both halves are words it has. */
@@ -557,15 +585,41 @@ export class LemmaSegmenter implements Segmenter {
       && !forms[this.#fold(t.surface)] && !forms[lower(t.surface)]);
     if (!unknown.length) return tokens;
     const asked = new Set<string>();
-    for (const t of unknown.slice(0, COMPOUNDS_PER_LINE)) for (const k of compoundKeys(t.surface, rules)) asked.add(k);
-    const res = (await chrome.runtime.sendMessage({
-      target: 'offscreen', type: 'dict-forms', forms: [...asked].slice(0, 400),
-    })) as FormsAnswer | undefined;
-    if (!res?.ok || !res.forms) return tokens;
-    const known = res.forms;
+    for (const t of unknown.slice(0, COMPOUNDS_PER_LINE)) {
+      for (const k of compoundKeys(t.surface, rules)) asked.add(k);
+      for (const k of stemKeys(t.surface, rules)) asked.add(k);
+      for (const k of formKeys(t.surface, rules)) asked.add(k);
+    }
+    const ask = async (keys: Iterable<string>): Promise<Forms | null> => {
+      const res = (await chrome.runtime.sendMessage({
+        target: 'offscreen', type: 'dict-forms', forms: [...keys].slice(0, 400),
+      })) as FormsAnswer | undefined;
+      return res?.ok && res.forms ? res.forms : null;
+    };
+    const known = await ask(asked);
+    if (!known) return tokens;
+    // Longer ones (Donaudampfschiff): the first part, itself a compound, needs its own parts asked about.
+    const lacking = unknown.slice(0, COMPOUNDS_PER_LINE).filter((t) => !splitCompound(t.surface, known, rules, 1));
+    const deeper = new Set(lacking.flatMap((t) => deeperKeys(t.surface, known, rules)));
+    // And the verb with its prefix, which can only be asked about once the verb is known.
+    for (const t of unknown.slice(0, COMPOUNDS_PER_LINE)) for (const k of joinedKeys(t.surface, known, rules)) deeper.add(k);
+    if (deeper.size) Object.assign(known, (await ask(deeper)) ?? {});
     return tokens.map((t) => {
       if (!unknown.includes(t)) return t;
-      const cut = splitCompound(t.surface, known, rules);
+      // An adjective with an ending the dictionary has not listed: knorpeligen, of knorpelig.
+      const stem = adjectiveStem(t.surface, known, rules);
+      if (stem) {
+        return { ...t, lemma: stem.lemma, lookup: [{ key: stem.lemma }], parts: [t.surface], ...(stem.label ? { inflections: [stem.label] } : {}) };
+      }
+      const parted = (c: { parts: string[]; lemmas: string[] }): Token =>
+        ({ ...t, parts: [...c.parts], compound: c.lemmas, lookup: c.lemmas.slice().reverse().map((key) => ({ key })) });
+      // A form the dictionary does not list of a verb it has: wackelnden, abzuspeichern.
+      const verb: ReturnType<typeof prefixVerb> = participleOf(t.surface, known, rules) ?? prefixVerb(t.surface, known, rules);
+      if (verb?.parts) return parted(verb.parts);
+      if (verb) {
+        return { ...t, lemma: verb.lemma, lookup: [{ key: verb.lemma }], parts: [t.surface], ...(verb.label ? { inflections: [verb.label] } : {}) };
+      }
+      const cut = splitCompound(t.surface, known, rules) ?? derivedOf(t.surface, known, rules);
       if (!cut) return t;
       return { ...t, parts: [...cut.parts], compound: cut.lemmas, lookup: cut.lemmas.slice().reverse().map((key) => ({ key })) };
     });

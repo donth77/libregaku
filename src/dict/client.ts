@@ -56,6 +56,7 @@ function worded(res: { error?: string; reason?: string }): string | undefined {
  */
 export async function ensureDictionary(
   edition: string, source = 'jmdict', own: { source: string; edition: string } | null = null,
+  fallback: { source: string; edition: string } | null = null,
 ): Promise<DictStatus> {
   await chrome.runtime.sendMessage({ type: 'ensure-offscreen' });
   const res = (await chrome.runtime.sendMessage({
@@ -64,6 +65,7 @@ export async function ensureDictionary(
     source,
     edition,
     own,
+    fallback,
   })) as DictStatus | undefined;
   return (
     res ?? {
@@ -157,33 +159,42 @@ export function lookupWord(lemma: string | undefined, surface: string, hint?: Lo
  * that pick 私【わたし】 over 私【あたし】 and この over 九. Anything else is
  * looked up by lemma, then surface.
  */
-export function lookupToken(
-  token: Pick<Token, 'surface' | 'lemma' | 'lemmaReading' | 'pos' | 'lookup' | 'compound'>,
+export async function lookupToken(
+  token: Pick<Token, 'surface' | 'lemma' | 'lemmaReading' | 'pos' | 'lookup' | 'compound' | 'derived'>,
 ): Promise<LookupResult> {
   if (token.compound) return lookupCompound(token.surface, token.compound);
-  if (token.lookup?.length) return lookupKeys(token.lookup.filter((k) => k.key));
-  return lookupWord(token.lemma, token.surface, { reading: token.lemmaReading });
+  const direct = token.lookup?.length
+    ? await lookupKeys(token.lookup.filter((k) => k.key))
+    : await lookupWord(token.lemma, token.surface, { reading: token.lemmaReading });
+  // No entry for the word: it may be a word with a suffix, and the parts have entries.
+  if (direct.state === 'empty' && token.derived) return lookupCompound(token.surface, token.derived, true);
+  return direct;
 }
+
+/** A part's meaning short enough for a line: Donau is a river, and the dictionary says where it flows. */
+const brief = (text: string): string => (text.length > 70 ? `${text.slice(0, 69).replace(/[\s,;(]+\S*$/, '')}…` : text);
 
 /**
  * A word the dictionary has no entry for, made of two it has: one entry for
  * the whole, saying what each part means. Where only one part is found, that
  * part's own entry stands for the word.
  */
-async function lookupCompound(surface: string, [modifier, head]: [string, string]): Promise<LookupResult> {
-  const [first, last] = await Promise.all([lookupKeys([{ key: modifier }]), lookupKeys([{ key: head }])]);
-  if (last.state !== 'ok') return last;
+async function lookupCompound(surface: string, lemmas: string[], everyPart = false): Promise<LookupResult> {
+  const found = await Promise.all(lemmas.map((key) => lookupKeys([{ key }])));
+  const last = found[found.length - 1];
+  if (!last || last.state !== 'ok') return last ?? { state: 'empty' };
+  // A derived word with only its suffix found says nothing of the word.
+  if (everyPart && found.some((f) => f.state !== 'ok')) return { state: 'empty' };
   const headEntry = last.entries[0];
   if (!headEntry) return last;
-  if (first.state !== 'ok' || !first.entries[0]) return last;
-  const part = (word: string, e: Entry): { pos: string[]; glosses: string[] } => ({
-    pos: [], glosses: [`${word}: ${e.senses.flatMap((s) => s.glosses).slice(0, 3).join('; ')}`],
-  });
-  const entry: Entry = {
-    ...headEntry, id: `compound-${surface}`, word: surface, forms: undefined,
-    senses: [part(modifier, first.entries[0]), part(head, headEntry)],
-  };
-  return { state: 'ok', entries: [entry] };
+  const senses: Array<{ pos: string[]; glosses: string[] }> = [];
+  for (const [i, result] of found.entries()) {
+    const e = result.state === 'ok' ? result.entries[0] : undefined;
+    if (e) senses.push({ pos: [], glosses: [`${lemmas[i]}: ${brief(e.senses.flatMap((s) => s.glosses).slice(0, 2).join('; '))}`] });
+  }
+  // Only the last part found: it stands for the word. For a derived word it is the word, said under the word's own name.
+  if (senses.length < 2) return everyPart ? { state: 'ok', entries: [{ ...headEntry, id: `derived-${surface}`, word: surface, forms: undefined }] } : last;
+  return { state: 'ok', entries: [{ ...headEntry, id: `compound-${surface}`, word: surface, forms: undefined, senses }] };
 }
 
 /** Forget negative results so a finished download takes effect immediately. */

@@ -263,7 +263,7 @@ export const de: Translation = {
       'Wörterbuch- und Kanji-Daten © Electronic Dictionary Research and Development Group, verwendet unter ' +
       'CC BY-SA 4.0. Als JSON aufbereitet von jmdict-simplified.',
     creditLindera:
-      'Zerlegt Japanisch, Koreanisch und Chinesisch in Wörter. MIT-Lizenz; IPADIC, mecab-ko-dic und CC-CEDICT ' +
+      'Zerlegt Japanisch, Koreanisch und Chinesisch in Wörter. MIT-Lizenz; IPADIC, UniDic, mecab-ko-dic und CC-CEDICT ' +
       'haben eigene Bedingungen.',
     creditCedict: 'Chinesisches Wörterbuch © MDBG und Mitwirkende, verwendet unter CC BY-SA 4.0.',
     creditWiktionary:
@@ -334,6 +334,7 @@ export const de: Translation = {
       'Auf dieser Seite nicht aktiv. Öffne ein Video auf YouTube, Netflix oder einer anderen unterstützten Website. Wenn du Libregaku gerade installiert ' +
       'oder neu geladen hast, lade den Tab neu.',
     unsupported: 'Libregaku funktioniert auf YouTube, Netflix, Disney+, Prime Video und Max.',
+    worksOn: (site: string): string => `Libregaku funktioniert auf ${site}.`,
     waitingForSubtitles: (site: string): string =>
       `Warten auf Untertitel von ${site}. Prüfe, ob sie eingeschaltet sind.`,
     activeOn: (title: string): string => `Aktiv – ${title}`,
@@ -546,6 +547,7 @@ export const de: Translation = {
     dictionaryLoading: (n: number): string => `Wörterbuch lädt noch – ${percent(n)}. Versuch es gleich noch einmal.`,
     dictionaryUnavailable: (error: string): string => `Wörterbuch nicht verfügbar: ${error}`,
     noEntry: 'Kein Wörterbucheintrag für dieses Wort.',
+    noEntryName: 'Ein Name, daher gibt es keinen Wörterbucheintrag.',
     moreMeanings: (n: number): string => `+${n} weitere ${n === 1 ? 'Bedeutung' : 'Bedeutungen'}`,
 
     // Andere Zeilen im Video mit dem Wort

@@ -25,6 +25,22 @@ function analyser(): string[] {
 
 afterEach(() => vi.unstubAllGlobals());
 
+describe('words made with a suffix', () => {
+  it('names the word and the suffix for a word that ends in one: 한국식, 실용적', async () => {
+    const { withDerivations } = await import('../korean');
+    const tok = (surface: string) => ({ surface, start: 0, end: surface.length });
+    const out = withDerivations([tok('한국식'), tok('실용적'), tok('식'), tok('먹다'), { ...tok('.'), punct: true }]);
+    expect(out.map((t) => t.derived)).toEqual([['한국', '-식'], ['실용', '-적'], undefined, undefined, undefined]);
+  });
+
+  it('names the last verb of a compound verb: 날아다니다, 킥킥대다', async () => {
+    const { withDerivations } = await import('../korean');
+    const verb = (surface: string, lemma: string) => ({ surface, lemma, start: 0, end: surface.length });
+    const out = withDerivations([verb('날아다니거나', '날아다니다'), verb('킥킥대며', '킥킥대다'), verb('다니다', '다니다'), verb('먹고', '먹다')]);
+    expect(out.map((t) => t.derived)).toEqual([['다니다'], ['대다'], undefined, undefined]);
+  });
+});
+
 describe('KoreanSegmenter', () => {
   it('asks about each speaker\'s words on their own, with a full stop, and gives the cue back whole', async () => {
     const asked = analyser();

@@ -271,7 +271,7 @@ export const ar: Translation = {
       'بيانات القاموس والكانجي © Electronic Dictionary Research and Development Group، مستخدمة بموجب ترخيص ' +
       'CC BY-SA 4.0. أعاد jmdict-simplified حزمها بتنسيق JSON.',
     creditLindera:
-      'يقسّم اليابانية والكورية والصينية إلى كلمات. ترخيص MIT؛ ولكلٍّ من IPADIC وmecab-ko-dic وCC-CEDICT ' +
+      'يقسّم اليابانية والكورية والصينية إلى كلمات. ترخيص MIT؛ ولكلٍّ من IPADIC وUniDic وmecab-ko-dic وCC-CEDICT ' +
       'شروطه الخاصة.',
     creditCedict: 'القاموس الصيني © MDBG والمساهمون فيه، مستخدم بموجب ترخيص CC BY-SA 4.0.',
     creditWiktionary:
@@ -339,6 +339,7 @@ export const ar: Translation = {
       'غير نشط في هذه الصفحة. افتح فيديو على YouTube أو Netflix أو موقع مدعوم آخر. إذا ثبّتَّ Libregaku أو أعدت تحميله للتو، ' +
       'فأعد تحميل علامة التبويب.',
     unsupported: 'يعمل Libregaku على YouTube وNetflix وDisney+\u200E وPrime Video وMax.',
+    worksOn: (site: string): string => `يعمل Libregaku على ${site}\u200E.`,
     waitingForSubtitles: (site: string): string => `في انتظار الترجمة على ${site}. تأكّد من تفعيلها.`,
     activeOn: (title: string): string => `نشط — ${title}`,
     active: 'نشط في هذا الفيديو.',
@@ -541,6 +542,7 @@ export const ar: Translation = {
       `لا يزال القاموس قيد التحميل — ${percent}%. أعد المحاولة بعد قليل.`,
     dictionaryUnavailable: (error: string): string => `القاموس غير متاح: ${error}`,
     noEntry: 'لا يوجد مدخل لهذه الكلمة في القاموس.',
+    noEntryName: 'اسم، لذلك لا يوجد له مدخل في القاموس.',
     moreMeanings: (n: number): string => `+${count(n, MORE_MEANINGS)}`,
 
     // أسطر أخرى في الفيديو فيها الكلمة

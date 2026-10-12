@@ -95,6 +95,9 @@ const USAGE = new Map(Object.entries({
   '🇻🇪': 'Venezuela', '🇩🇪⬅️': 'western', '✡️': 'Judaism', '🛕': 'Hinduism',
 }));
 
+/** Codes of a row that a card does not say: a German noun's or adjective's declension (strong, weak, mixed) says which endings it takes, and "not comparable" is said of the few that are. */
+const HEADER_NOISE = new Set(['not-comp', 'strong', 'weak', 'mixed']);
+
 /**
  * A row's tags as codes, in the order a card should say them: what kind of
  * word it is, then how it is used.
@@ -105,8 +108,7 @@ const USAGE = new Map(Object.entries({
  * with no name here counts as usage. "pl pl-only" says one thing twice.
  */
 function codesOf(tags: string): string[] {
-  // "not comparable": true of most adjectives that are not, and said only of a few.
-  const all = [...new Set(tags.split(/\s+/).filter((t) => t && t !== 'not-comp'))];
+  const all = [...new Set(tags.split(/\s+/).filter((t) => t && !HEADER_NOISE.has(t)))];
   const codes = all.filter((t) => !(t === 'pl' && all.includes('pl-only')));
   return [...codes.filter((t) => GRAMMAR.has(t)), ...codes.filter((t) => !GRAMMAR.has(t))];
 }

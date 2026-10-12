@@ -11,6 +11,9 @@
 export const LINDERA_DICTS: Record<string, string> = {
   // Japanese, ~10 MB.
   ipadic: 'https://github.com/lindera/lindera/releases/download/v6.0.0/lindera-ipadic-6.0.0.zip',
+  // Japanese, UniDic: ~46 MB. Reads casual speech, katakana for effect and new words IPADIC (2007) does not;
+  // its words are put into IPADIC's shape for the merge rules (src/morphology/unidic.ts).
+  unidic: 'https://github.com/lindera/lindera/releases/download/v6.0.0/lindera-unidic-6.0.0.zip',
   // Korean (mecab-ko-dic), ~20 MB.
   'ko-dic': 'https://github.com/lindera/lindera/releases/download/v6.0.0/lindera-ko-dic-6.0.0.zip',
   // Chinese, ~7 MB: CC-CEDICT as it stood in 2020, with word costs. Read for

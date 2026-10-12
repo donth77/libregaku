@@ -1086,6 +1086,8 @@ const OF_HADA = new Set(['되', '시키', '당하', '받']);
 
 /** Spellings that are the same word to a learner: the 거 of 할 거야 is 것, and 재밌어 is 재미있다. */
 const SAME_WORD: Record<string, string> = { 거: '것', 꺼: '것', 재밌: '재미있' };
+/** The word for 테니까, 터예요: what the file says of it (sources.ts, GAPS). */
+const EXPECTED = '-ㄹ 터이다';
 
 /** Short forms the dictionary has only under the long one. */
 const ALSO: Record<string, string> = { 뭐: '무엇', 아뇨: '아니요', 그치: '그렇지', 어딨다: '어디' };
@@ -1172,7 +1174,7 @@ function build(group: Unit[], closing: boolean): Word {
 
   const squeezed = /잖/u.test(surface) && pieces.some((p) => p.form === '않' && p.tag === 'VX');
   const named = labelsOf(pieces, at + 1, head, closing, squeezed);
-  const common = { surface, pos, parts, inflections: named.labels, content: isContent(pos) };
+  const common = { surface, pos, parts, inflections: named.labels, content: isContent(pos), ...(pos === 'NNP' ? { properName: true } : {}) };
   const tail = named.tail;
 
   // 이에요, 입니다, 예요: the copula and its endings.
@@ -1235,6 +1237,14 @@ function build(group: Unit[], closing: boolean): Word {
       const particles = labelsOf(pieces, end + 2, head, closing, false).labels;
       return { token: { ...common, inflections: particles, lemma: some, lookup: lookupKeys(pos, some, core, ALSO[core]) }, copula: false };
     }
+  }
+
+  /*
+   * 할 테니까, 갈 터예요: "it will, so", "I expect". ko-dic reads 테 as the bound noun 터, "place", and the
+   * copula after it; the word is the pattern, which the dictionary has under the ending written out.
+   */
+  if (pos === 'NNB' && head.form === '터' && pieces[at + 1]?.tag === 'VCP') {
+    return { token: { ...common, lemma: EXPECTED, lookup: lookupKeys(pos, EXPECTED) }, tail, copula };
   }
 
   let kept = end;

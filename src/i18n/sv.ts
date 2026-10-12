@@ -249,7 +249,7 @@ export const sv: Translation = {
       'Ordboks- och kanjidata © Electronic Dictionary Research and Development Group, används under ' +
       'CC BY-SA 4.0. Ompaketerat som JSON av jmdict-simplified.',
     creditLindera:
-      'Delar upp japanska, koreanska och kinesiska i ord. MIT-licens; IPADIC, mecab-ko-dic och CC-CEDICT har ' +
+      'Delar upp japanska, koreanska och kinesiska i ord. MIT-licens; IPADIC, UniDic, mecab-ko-dic och CC-CEDICT har ' +
       'egna villkor.',
     creditCedict: 'Kinesisk ordbok © MDBG och bidragsgivarna, används under CC BY-SA 4.0.',
     creditWiktionary:
@@ -318,6 +318,7 @@ export const sv: Translation = {
       'Inte aktivt på den här sidan. Öppna en video på YouTube, Netflix eller en annan webbplats som stöds. Om du nyss har installerat Libregaku ' +
       'eller läst in det igen, ladda om fliken.',
     unsupported: 'Libregaku fungerar på YouTube, Netflix, Disney+, Prime Video och Max.',
+    worksOn: (site: string): string => `Libregaku fungerar på ${site}.`,
     waitingForSubtitles: (site: string): string => `Väntar på undertexter på ${site}. Se till att de är på.`,
     activeOn: (title: string): string => `Aktivt – ${title}`,
     active: 'Aktivt på den här videon.',
@@ -525,6 +526,7 @@ export const sv: Translation = {
       `Ordboken laddas fortfarande – ${percent(n)}. Försök igen om en stund.`,
     dictionaryUnavailable: (error: string): string => `Ordboken är inte tillgänglig: ${error}`,
     noEntry: 'Ordet finns inte i ordboken.',
+    noEntryName: 'Ett namn, så det finns ingen ordboksartikel.',
     moreMeanings: (n: number): string => `+${n} ${one(n) ? 'betydelse' : 'betydelser'} till`,
 
     // Ordets andra rader i videon

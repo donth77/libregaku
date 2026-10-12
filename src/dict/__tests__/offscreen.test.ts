@@ -30,20 +30,39 @@ const lindera = vi.hoisted(() => ({
       { surface: '学校', details: ['*', '*', '*', '*', 'xue2 xiao4', '學校', '学校', 'school/'] },
       { surface: '了', details: ['*', '*', '*', '*', 'liao4', '瞭', '了', 'unofficial variant of 瞭[liao4]/'] },
     ],
+    // IPADIC has no 癒やす: a piece with a short row, and an ending it takes やす for.
+    癒やす: [
+      { surface: '癒', details: ['名詞', '一般', '*', '*', '*', '*', '*'] },
+      { surface: 'やす', details: ['助動詞', '*', '*', '*', '特殊・ヤス', '基本形', 'やす', 'ヤス', 'ヤス'] },
+    ],
+  } as Record<string, Array<{ surface: string; details: string[] }>>,
+  /** The same lines as UniDic reads them. */
+  unidic: {
+    癒やす: [
+      { surface: '癒やす', details: ['動詞', '一般', '*', '*', '五段-サ行', '終止形-一般', 'イヤス', '癒やす', '癒やす', 'イヤス', '癒やす', 'イヤス', '和', '*', '*', '*', '*'] },
+    ],
   } as Record<string, Array<{ surface: string; details: string[] }>>,
 }));
 
 vi.mock('lindera-wasm', () => ({
   default: vi.fn(async () => undefined),
-  loadDictionaryFromBytes: vi.fn(() => ({})),
+  // A dictionary is told by its columns: UniDic has a lexeme, which no other has.
+  loadDictionaryFromBytes: vi.fn((metadata: Uint8Array) => ({ unidic: new TextDecoder().decode(metadata).includes('lexeme') })),
   TokenizerBuilder: class {
-    setDictionaryInstance() { return this; }
+    unidic = false;
+    setDictionaryInstance(dictionary?: { unidic?: boolean }) {
+      this.unidic = Boolean(dictionary?.unidic);
+      return this;
+    }
     setMode() { return this; }
     build() {
+      const rows = this.unidic ? lindera.unidic : lindera.rows;
+      const tokenize = (text: string) => rows[text]
+        ?? [{ surface: text, details: ['名詞', '一般', '*', '*', '*', '*', text, 'ヨミ', 'ヨミ'] }];
       return {
         free: lindera.free,
-        tokenize: (text: string) => lindera.rows[text]
-          ?? [{ surface: text, details: ['名詞', '一般', '*', '*', '*', '*', text, 'ヨミ', 'ヨミ'] }],
+        tokenize,
+        tokenizeNbest: (text: string) => [{ tokens: tokenize(text), cost: 0 }],
       };
     }
   },
@@ -80,6 +99,13 @@ const IPADIC_FIELDS = [
   'conjugation_form', 'conjugation_type', 'base_form', 'reading', 'pronunciation',
 ];
 
+const UNIDIC_FIELDS = [
+  'surface', 'left_context_id', 'right_context_id', 'cost', 'part_of_speech',
+  'part_of_speech_subcategory_1', 'part_of_speech_subcategory_2', 'part_of_speech_subcategory_3',
+  'conjugation_type', 'conjugation_form', 'reading', 'lexeme', 'orthographic_surface_form',
+  'phonological_surface_form', 'orthographic_base_form', 'phonological_base_form', 'word_type',
+];
+
 const KO_FIELDS = [
   'surface', 'left_context_id', 'right_context_id', 'cost', 'part_of_speech_tag', 'meaning',
   'presence_absence', 'reading', 'type', 'first_part_of_speech', 'last_part_of_speech', 'expression',
@@ -99,6 +125,9 @@ const files = (fields = IPADIC_FIELDS) => {
     dictWords: bytes, matrixMtx: bytes, charDef: bytes, unk: bytes,
   };
 };
+
+/** A dictionary's files as OPFS hands them over: its own bytes each time they are read. */
+const stored = (fields = IPADIC_FIELDS) => async () => files(fields);
 
 function deferred<T = void>() {
   let resolve!: (v: T) => void;
@@ -121,7 +150,7 @@ async function boot() {
   const store = await import('../store');
   const { jotobaLookup } = await import('../jotoba');
   vi.mocked(opfs.hasDictionary).mockResolvedValue(true);
-  vi.mocked(opfs.loadDictionaryFiles).mockResolvedValue(files());
+  vi.mocked(opfs.loadDictionaryFiles).mockImplementation(stored());
   await import('../../offscreen');
 
   const send = (msg: Record<string, unknown>) =>
@@ -137,6 +166,10 @@ afterEach(() => {
   vi.resetAllMocks();
   vi.unstubAllGlobals();
 });
+
+/** How often a dictionary was asked for by name: Japanese has two, and each is its own download. */
+const calls = (mock: unknown, name: string): number =>
+  vi.mocked(mock as (...args: unknown[]) => unknown).mock.calls.filter((c) => c.includes(name)).length;
 
 describe('loading the analyser', () => {
   it('shares one load between callers, and answers neither until it is ready', async () => {
@@ -154,24 +187,29 @@ describe('loading the analyser', () => {
     download.resolve();
     expect(await first).toMatchObject({ ok: true, ready: true });
     expect(await second).toMatchObject({ ok: true, ready: true });
-    expect(opfs.downloadDictionary).toHaveBeenCalledTimes(1);
+    expect(calls(opfs.downloadDictionary, 'ipadic')).toBe(1);
   });
 
   it('does not reload a dictionary that is already loaded', async () => {
     const { send, opfs } = await boot();
     await send({ type: 'load', dict: 'ipadic' });
     await send({ type: 'load', dict: 'ipadic' });
-    expect(opfs.loadDictionaryFiles).toHaveBeenCalledTimes(1);
+    expect(calls(opfs.loadDictionaryFiles, 'ipadic')).toBe(1);
   });
 
   it('replaces a stored copy that will not load — once', async () => {
     const { send, opfs } = await boot();
-    vi.mocked(opfs.loadDictionaryFiles)
-      .mockRejectedValueOnce(new Error('NotFoundError: dict.words'))
-      .mockResolvedValue(files());
+    let broken = true;
+    vi.mocked(opfs.loadDictionaryFiles).mockImplementation(async (name) => {
+      if (name === 'ipadic' && broken) {
+        broken = false;
+        throw new Error('NotFoundError: dict.words');
+      }
+      return files();
+    });
     expect(await send({ type: 'load', dict: 'ipadic' })).toMatchObject({ ok: true, ready: true });
     expect(opfs.removeDictionary).toHaveBeenCalledWith('ipadic');
-    expect(opfs.downloadDictionary).toHaveBeenCalledTimes(1);
+    expect(calls(opfs.downloadDictionary, 'ipadic')).toBe(1);
   });
 
   it('reports a fresh download that will not load, without looping', async () => {
@@ -186,15 +224,23 @@ describe('loading the analyser', () => {
 
   it('refuses a dictionary it has no reader for, by name', async () => {
     const { send } = await boot();
+    const r = await send({ type: 'load', dict: 'sudachi' });
+    expect(r.ok).toBe(false);
+    expect(String(r.error)).toContain('"sudachi"');
+    expect(String(r.error)).toContain('ipadic, ko-dic, unidic, cc-cedict');
+  });
+
+  it('reads UniDic by its own columns, and refuses IPADIC files read as UniDic', async () => {
+    const { send, opfs } = await boot();
+    vi.mocked(opfs.loadDictionaryFiles).mockImplementation(stored(IPADIC_FIELDS));
     const r = await send({ type: 'load', dict: 'unidic' });
     expect(r.ok).toBe(false);
-    expect(String(r.error)).toContain('"unidic"');
-    expect(String(r.error)).toContain('ipadic, ko-dic, cc-cedict');
+    expect(String(r.error)).toContain('the unidic dictionary has');
   });
 
   it('reads ko-dic by its own columns: a tag, and what a fused unit is made of', async () => {
     const { send, opfs } = await boot();
-    vi.mocked(opfs.loadDictionaryFiles).mockResolvedValue(files(KO_FIELDS));
+    vi.mocked(opfs.loadDictionaryFiles).mockImplementation(stored(KO_FIELDS));
     expect(await send({ type: 'load', dict: 'ko-dic' })).toMatchObject({ ok: true, ready: true, dict: 'ko-dic' });
     expect(await send({ type: 'tokenize', text: '갔어요' })).toEqual({
       ok: true,
@@ -208,7 +254,7 @@ describe('loading the analyser', () => {
 
   it('refuses ko-dic files read as if they were IPADIC, rather than taking tags for dictionary forms', async () => {
     const { send, opfs } = await boot();
-    vi.mocked(opfs.loadDictionaryFiles).mockResolvedValue(files(IPADIC_FIELDS));
+    vi.mocked(opfs.loadDictionaryFiles).mockImplementation(stored(IPADIC_FIELDS));
     vi.mocked(opfs.downloadDictionary).mockResolvedValue(undefined);
     const r = await send({ type: 'load', dict: 'ko-dic' });
     expect(r.ok).toBe(false);
@@ -220,7 +266,7 @@ describe('loading the analyser', () => {
     lindera.free = vi.fn();
     await send({ type: 'load', dict: 'ipadic' });
     expect(lindera.free).not.toHaveBeenCalled();
-    vi.mocked(opfs.loadDictionaryFiles).mockResolvedValue(files(KO_FIELDS));
+    vi.mocked(opfs.loadDictionaryFiles).mockImplementation(stored(KO_FIELDS));
     expect(await send({ type: 'load', dict: 'ko-dic' })).toMatchObject({ ok: true, dict: 'ko-dic' });
     expect(lindera.free).toHaveBeenCalledOnce();
     // Rows are now read as ko-dic's.
@@ -232,7 +278,7 @@ describe('loading the analyser', () => {
     const moved = [...IPADIC_FIELDS];
     moved[10] = 'reading';
     moved[11] = 'base_form';
-    vi.mocked(opfs.loadDictionaryFiles).mockResolvedValue(files(moved));
+    vi.mocked(opfs.loadDictionaryFiles).mockImplementation(stored(moved));
     vi.mocked(opfs.downloadDictionary).mockResolvedValue(undefined);
     const r = await send({ type: 'load', dict: 'ipadic' });
     expect(r.ok).toBe(false);
@@ -246,6 +292,70 @@ describe('loading the analyser', () => {
     void send({ type: 'load', dict: 'ipadic' });
     await new Promise((r) => setTimeout(r, 0));
     expect(await send({ type: 'tokenize', text: '猫' })).toMatchObject({ ok: false, error: 'the analyser is still loading' });
+  });
+});
+
+describe('a second opinion on Japanese', () => {
+  /** Each dictionary's own files: UniDic's are not IPADIC's. */
+  const eachItsOwn = async (name: string) => files(name === 'unidic' ? UNIDIC_FIELDS : IPADIC_FIELDS);
+  const iyasu = { surface: '癒やす', pos: '動詞', pos1: '自立', lemma: '癒やす', reading: 'イヤス', conjForm: '基本形' };
+
+  it('loads UniDic with IPADIC where it is stored, and reads a line with both', async () => {
+    const { send, opfs } = await boot();
+    vi.mocked(opfs.loadDictionaryFiles).mockImplementation(eachItsOwn);
+    expect(await send({ type: 'load', dict: 'ipadic' })).toMatchObject({ ok: true, ready: true, dict: 'ipadic' });
+    expect(calls(opfs.loadDictionaryFiles, 'unidic')).toBe(1);
+    expect(opfs.downloadDictionary).not.toHaveBeenCalled();
+    // The word IPADIC has in two pieces is UniDic's.
+    expect(await send({ type: 'tokenize', text: '癒やす' })).toMatchObject({ ok: true, tokens: [iyasu] });
+    // Nothing the page has was read without it.
+    expect(await send({ type: 'second' })).toEqual({ ok: true, reread: false });
+  });
+
+  it('does not keep the page waiting for a download, and says when lines should be read again', async () => {
+    const { send, opfs } = await boot();
+    vi.mocked(opfs.loadDictionaryFiles).mockImplementation(eachItsOwn);
+    vi.mocked(opfs.hasDictionary).mockImplementation(async (name) => name !== 'unidic');
+    const download = deferred();
+    vi.mocked(opfs.downloadDictionary).mockReturnValue(download.promise);
+
+    expect(await send({ type: 'load', dict: 'ipadic' })).toMatchObject({ ok: true, ready: true });
+    expect(await send({ type: 'tokenize', text: '癒やす' })).toMatchObject({ tokens: [{ surface: '癒' }, { surface: 'やす' }] });
+    let answer: Record<string, unknown> | null = null;
+    const asked = send({ type: 'second' }).then((r) => { answer = r; });
+    await new Promise((r) => setTimeout(r, 10));
+    expect(answer).toBeNull();
+
+    download.resolve();
+    await asked;
+    expect(answer).toEqual({ ok: true, reread: true });
+    expect(calls(opfs.downloadDictionary, 'unidic')).toBe(1);
+    expect(await send({ type: 'tokenize', text: '癒やす' })).toMatchObject({ tokens: [iyasu] });
+  });
+
+  it('reads with IPADIC alone where UniDic will not load', async () => {
+    const { send, opfs } = await boot();
+    vi.mocked(opfs.loadDictionaryFiles).mockImplementation(async (name) => {
+      if (name === 'unidic') throw new Error('NotFoundError: matrix.mtx');
+      return files();
+    });
+    expect(await send({ type: 'load', dict: 'ipadic' })).toMatchObject({ ok: true, ready: true });
+    expect(await send({ type: 'second' })).toEqual({ ok: false, reread: false });
+    expect(await send({ type: 'tokenize', text: '癒やす' })).toMatchObject({ ok: true, tokens: [{ surface: '癒' }, { surface: 'やす' }] });
+    // Replaced once, as the first is, and not again.
+    expect(calls(opfs.downloadDictionary, 'unidic')).toBe(1);
+  });
+
+  it('goes with the analyser it was a second opinion on', async () => {
+    const { send, opfs } = await boot();
+    lindera.free = vi.fn();
+    vi.mocked(opfs.loadDictionaryFiles).mockImplementation(eachItsOwn);
+    await send({ type: 'load', dict: 'ipadic' });
+    vi.mocked(opfs.loadDictionaryFiles).mockImplementation(stored(KO_FIELDS));
+    expect(await send({ type: 'load', dict: 'ko-dic' })).toMatchObject({ ok: true, dict: 'ko-dic' });
+    expect(lindera.free).toHaveBeenCalledTimes(2);
+    // Korean has none.
+    expect(await send({ type: 'second' })).toEqual({ ok: false, reread: false });
   });
 });
 
@@ -331,7 +441,7 @@ describe('Chinese', () => {
 
   async function chinese() {
     const booted = await boot();
-    vi.mocked(booted.opfs.loadDictionaryFiles).mockResolvedValue(files(ZH_FIELDS));
+    vi.mocked(booted.opfs.loadDictionaryFiles).mockImplementation(stored(ZH_FIELDS));
     await booted.send({ type: 'load', dict: 'cc-cedict' });
     vi.mocked(booted.store.lookup).mockImplementation(async (key: string) =>
       (readings[key] ? [{ ...school, word: key, reading: readings[key] }] : []));

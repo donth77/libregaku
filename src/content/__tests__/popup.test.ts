@@ -836,3 +836,23 @@ describe('the meanings', () => {
     }
   });
 });
+
+describe('what a prefix or suffix left out of the lookup means', () => {
+  const token = { surface: '新名所', start: 0, end: 3, lemma: '名所', parts: ['新', '名所'] };
+  const flush = (): Promise<void> => new Promise((r) => setTimeout(r, 0));
+
+  it('is listed under the trace, with its reading and meaning', async () => {
+    const card = open({ token, leftovers: Promise.resolve([{ part: '新', reading: 'しん', meaning: 'new' }]) }, '新名所');
+    await flush();
+    const row = card.querySelector('.leftovers');
+    expect(row?.textContent).toContain('新');
+    expect(row?.textContent).toContain('しん · new');
+    expect(card.querySelector('.trace')?.textContent).toContain('新 + 名所');
+  });
+
+  it('leaves nothing when the lookup found no meaning', async () => {
+    const card = open({ token, leftovers: Promise.resolve([]) }, '新名所');
+    await flush();
+    expect(card.querySelector('.leftovers')?.children.length ?? 0).toBe(0);
+  });
+});

@@ -282,7 +282,7 @@ export const fr: Translation = {
       'Données du dictionnaire et des kanji © Electronic Dictionary Research and Development Group, utilisées sous ' +
       'licence CC BY-SA 4.0. Converties en JSON par jmdict-simplified.',
     creditLindera:
-      'Découpe le japonais, le coréen et le chinois en mots. Licence MIT ; IPADIC, mecab-ko-dic et CC-CEDICT ont ' +
+      'Découpe le japonais, le coréen et le chinois en mots. Licence MIT ; IPADIC, UniDic, mecab-ko-dic et CC-CEDICT ont ' +
       'leurs propres conditions.',
     creditCedict: 'Dictionnaire chinois © MDBG et ses contributeurs, utilisé sous licence CC BY-SA 4.0.',
     creditWiktionary:
@@ -352,6 +352,7 @@ export const fr: Translation = {
       'Libregaku n’est pas actif sur cette page. Ouvrez une vidéo sur YouTube, Netflix ou un autre site pris en charge. Si vous venez d’installer ' +
       'ou de recharger Libregaku, rechargez l’onglet.',
     unsupported: 'Libregaku fonctionne sur YouTube, Netflix, Disney+, Prime Video et Max.',
+    worksOn: (site: string): string => `Libregaku fonctionne sur ${site}.`,
     waitingForSubtitles: (site: string): string =>
       `En attente des sous-titres sur ${site}. Vérifiez qu’ils sont activés.`,
     activeOn: (title: string): string => `Actif : ${title}`,
@@ -566,6 +567,7 @@ export const fr: Translation = {
       `Dictionnaire en cours de chargement (${percent(n)}). Réessayez dans un instant.`,
     dictionaryUnavailable: (error: string): string => `Dictionnaire indisponible : ${error}`,
     noEntry: 'Aucune entrée de dictionnaire pour ce mot.',
+    noEntryName: 'Un nom propre : il n’a pas d’entrée dans le dictionnaire.',
     moreMeanings: (n: number): string => `+${n} autre${one(n) ? '' : 's'} sens`,
 
     // Les autres lignes de la vidéo avec ce mot

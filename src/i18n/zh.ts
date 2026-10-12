@@ -229,7 +229,7 @@ export const zh: Translation = {
     creditJmdict:
       '词典和汉字数据 © Electronic Dictionary Research and Development Group，依据 CC BY-SA 4.0 使用。' +
       '由 jmdict-simplified 重新打包为 JSON。',
-    creditLindera: '将日语、韩语和中文切分为单词。MIT 许可；IPADIC、mecab-ko-dic 和 CC-CEDICT 各有其条款。',
+    creditLindera: '将日语、韩语和中文切分为单词。MIT 许可；IPADIC、UniDic、mecab-ko-dic 和 CC-CEDICT 各有其条款。',
     creditCedict: '中文词典 © MDBG 及其贡献者，依据 CC BY-SA 4.0 使用。',
     creditWiktionary:
       '韩语和西班牙语词典，以及部分用你母语释义的词典，来自 Wiktionary，经 kaikki.org 和 wiktionary-to-yomitan 转换。CC BY-SA 4.0。',
@@ -289,6 +289,7 @@ export const zh: Translation = {
     checkingPage: '正在检查此页面…',
     notActive: '未在此页面上启用。请在 YouTube、Netflix 或其他支持的网站上打开视频。如果刚安装或重新加载了 Libregaku，请刷新此标签页。',
     unsupported: 'Libregaku 支持 YouTube、Netflix、Disney+、Prime Video 和 Max。',
+    worksOn: (site: string): string => `Libregaku 支持 ${site}。`,
     waitingForSubtitles: (site: string): string => `正在等待 ${site} 的字幕。请确认字幕已打开。`,
     activeOn: (title: string): string => `已启用——${title}`,
     active: '已在此视频上启用。',
@@ -480,6 +481,7 @@ export const zh: Translation = {
     dictionaryLoading: (percent: number): string => `词典仍在加载（${percent}%），请稍后再试。`,
     dictionaryUnavailable: (error: string): string => `词典不可用：${error}`,
     noEntry: '词典中没有这个单词。',
+    noEntryName: '这是专有名词，所以词典里没有词条。',
     moreMeanings: (n: number): string => `+${n} 条释义`,
 
     // The word's other lines in this video

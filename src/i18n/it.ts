@@ -280,7 +280,7 @@ export const it: Translation = {
       'Dati del dizionario e dei kanji © Electronic Dictionary Research and Development Group, usati con licenza ' +
       'CC BY-SA 4.0. Convertiti in JSON da jmdict-simplified.',
     creditLindera:
-      'Divide in parole il giapponese, il coreano e il cinese. Licenza MIT; IPADIC, mecab-ko-dic e CC-CEDICT hanno ' +
+      'Divide in parole il giapponese, il coreano e il cinese. Licenza MIT; IPADIC, UniDic, mecab-ko-dic e CC-CEDICT hanno ' +
       'i propri termini.',
     creditCedict: 'Dizionario di cinese © MDBG e i suoi collaboratori, usato con licenza CC BY-SA 4.0.',
     creditWiktionary:
@@ -350,6 +350,7 @@ export const it: Translation = {
       'Non attivo in questa pagina. Apri un video su YouTube, Netflix o un altro sito supportato. Se hai appena installato o ricaricato ' +
       'Libregaku, ricarica la scheda.',
     unsupported: 'Libregaku funziona su YouTube, Netflix, Disney+, Prime Video e Max.',
+    worksOn: (site: string): string => `Libregaku funziona su ${site}.`,
     waitingForSubtitles: (site: string): string =>
       `In attesa dei sottotitoli su ${site}. Assicurati che siano attivi.`,
     activeOn: (title: string): string => `Attivo: ${title}`,
@@ -561,6 +562,7 @@ export const it: Translation = {
       `Il dizionario si sta ancora caricando (${percent(n)}). Riprova tra un attimo.`,
     dictionaryUnavailable: (error: string): string => `Dizionario non disponibile: ${error}`,
     noEntry: 'Nessuna voce del dizionario per questa parola.',
+    noEntryName: 'Un nome, quindi non ha una voce nel dizionario.',
     moreMeanings: (n: number): string => `+${n} ${one(n) ? 'altro significato' : 'altri significati'}`,
 
     // Le altre righe del video con questa parola

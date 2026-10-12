@@ -241,7 +241,7 @@ export const ja: Translation = {
       '辞書と漢字のデータ © Electronic Dictionary Research and Development Group。CC BY-SA 4.0のもとで使用しています。' +
       'jmdict-simplifiedがJSON形式に再パッケージしたものです。',
     creditLindera:
-      '日本語、韓国語、中国語を単語に分割します。MITライセンス。IPADIC、mecab-ko-dic、CC-CEDICTには、それぞれ独自の条件があります。',
+      '日本語、韓国語、中国語を単語に分割します。MITライセンス。IPADIC、UniDic、mecab-ko-dic、CC-CEDICTには、それぞれ独自の条件があります。',
     creditCedict: '中国語辞書 © MDBGとその貢献者。CC BY-SA 4.0のもとで使用しています。',
     creditWiktionary:
       '韓国語とスペイン語の辞書、および母語で書かれた一部の辞書。' +
@@ -309,6 +309,7 @@ export const ja: Translation = {
       'このページでは動作していません。YouTubeやNetflixなどの対応サイトで動画を開いてください。' +
       'Libregakuをインストールまたは再読み込みした直後なら、タブを再読み込みしてください。',
     unsupported: 'LibregakuはYouTube、Netflix、Disney+、Prime Video、Maxで使えます。',
+    worksOn: (site: string): string => `Libregakuは${site}で使えます。`,
     waitingForSubtitles: (site: string): string => `${site}の字幕を待っています。字幕がオンになっているか確認してください。`,
     activeOn: (title: string): string => `動作中：${title}`,
     active: 'この動画で動作中です。',
@@ -508,6 +509,7 @@ export const ja: Translation = {
     dictionaryLoading: (percent: number): string => `辞書を読み込み中です（${percent}%）。少し待ってからもう一度お試しください。`,
     dictionaryUnavailable: (error: string): string => `辞書を利用できません：${error}`,
     noEntry: 'この単語は辞書にありません。',
+    noEntryName: '固有名詞なので、辞書に項目はありません。',
     moreMeanings: (n: number): string => `他${n}件の意味`,
 
     // この動画のほかの行
