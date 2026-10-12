@@ -129,17 +129,21 @@ describe('the status line off a video', () => {
   it('names the site the tab is on, not all of them', async () => {
     expect(await popupOn('https://www.netflix.com/browse')).toBe('Libregaku works on Netflix.');
     expect(await popupOn('https://www.disneyplus.com/home')).toBe('Libregaku works on Disney+.');
-    expect(await popupOn('https://play.hbomax.com/')).toBe('Libregaku works on Max.');
+    expect(await popupOn('https://play.hbomax.com/')).toBe('Libregaku works on HBO Max.');
+    expect(await popupOn('https://tv.apple.com/us')).toBe('Libregaku works on Apple TV.');
   });
 
   it('lists the sites where the tab is on none of them', async () => {
-    expect(await popupOn('https://example.com/')).toBe('Libregaku works on YouTube, Netflix, Disney+, Prime Video and Max.');
+    expect(await popupOn('https://example.com/')).toBe('Libregaku works on YouTube, Netflix, Disney+, Prime Video, HBO Max and Apple TV.');
   });
 
   it('knows each site by its address', async () => {
     const { siteOfUrl } = await import('../action');
     expect(siteOfUrl('https://www.youtube.com/watch?v=1')).toBe('youtube');
     expect(siteOfUrl('https://www.primevideo.com/detail/x')).toBe('prime');
+    expect(siteOfUrl('https://tv.apple.com/us/show/pachinko/umc.cmc.1')).toBe('apple');
+    // The rest of apple.com is not the service.
+    expect(siteOfUrl('https://www.apple.com/apple-tv-plus/')).toBeNull();
     expect(siteOfUrl('https://notnetflix.com/')).toBeNull();
     expect(siteOfUrl(undefined)).toBeNull();
   });

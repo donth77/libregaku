@@ -3,11 +3,11 @@
  *
  * From the <video> element itself where the site allows it: captureStream()
  * gives its sound to a MediaRecorder, and a canvas copies a frame. YouTube
- * allows both. Netflix, Disney+, Prime Video and HBO Max encrypt their video, and
- * Chrome will neither capture nor copy encrypted media — so there the sound
- * comes from capturing the tab (an optional permission, started from the
- * toolbar popup; see src/audio/tab-capture.ts), and there is no picture to be
- * had. Which it is is asked of the <video> (isEncrypted), not of the site.
+ * allows both. Netflix, Disney+, Prime Video, HBO Max and Apple TV encrypt their
+ * video, and Chrome will neither capture nor copy encrypted media — so there
+ * the sound comes from capturing the tab (an optional permission, started from
+ * the toolbar popup; see src/audio/tab-capture.ts), and there is no picture to
+ * be had. Which it is is asked of the <video> (isEncrypted), not of the site.
  */
 
 /** Media for a card, as AnkiConnect takes it. */

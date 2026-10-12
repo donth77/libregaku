@@ -76,6 +76,8 @@ export function siteOfUrl(url: string | undefined): string | null {
   if (on('disneyplus.com')) return 'disney';
   if (on('primevideo.com')) return 'prime';
   if (on('hbomax.com')) return 'max';
+  // Only the service's own host: apple.com is a great deal else.
+  if (on('tv.apple.com')) return 'apple';
   return null;
 }
 
@@ -84,7 +86,7 @@ function describe(state: PageState | null, url?: string): { text: string; cls: s
   if (!state.supported) {
     // On one of the sites, just not in a video: name that site, not all of them.
     const site = siteOfUrl(url);
-    return { text: site ? ui.action.worksOn(siteName(site)) : ui.action.unsupported, cls: 'off' };
+    return { text: site ? ui.action.worksOn(nameIn(siteName(site), uiLocale())) : ui.action.unsupported, cls: 'off' };
   }
   if (!state.rendering) {
     return { text: ui.action.waitingForSubtitles(nameIn(siteName(state.site), uiLocale())), cls: 'off' };
