@@ -200,7 +200,7 @@ export const it: HelpTranslation = {
                 ['Netflix', 'Registrato dalla scheda; nessuno screenshot.'],
                 ['Disney+', 'Registrato dalla scheda; nessuno screenshot.'],
                 ['Prime Video', 'Registrato dalla scheda; nessuno screenshot.'],
-                ['Max', 'Registrato dalla scheda; nessuno screenshot.'],
+                ['HBO Max', 'Registrato dalla scheda; nessuno screenshot.'],
                 ['Apple TV', 'Registrato dalla scheda; nessuno screenshot.'],
               ],
             },
@@ -213,7 +213,7 @@ export const it: HelpTranslation = {
     {
       id: 'protected-sites',
       title: 'Siti protetti',
-      about: 'I siti che criptano i loro video: Netflix, Disney+, Prime Video, Max e Apple TV. Cosa cambia con questa protezione.',
+      about: 'I siti che criptano i loro video: Netflix, Disney+, Prime Video, HBO Max e Apple TV. Cosa cambia con questa protezione.',
       topics: [
         {
           id: 'protected-sites-audio',

@@ -6,7 +6,7 @@
  * this list where one is wanted, so it is kept in one place.
  */
 
-export const PROTECTED_SITES: readonly string[] = ['Netflix', 'Disney+', 'Prime Video', 'Max', 'Apple TV'];
+export const PROTECTED_SITES: readonly string[] = ['Netflix', 'Disney+', 'Prime Video', 'HBO Max', 'Apple TV'];
 
 /**
  * A site's name as it is written in `locale`. In right-to-left text a plus at the end of a name
@@ -16,7 +16,7 @@ export function nameIn(name: string, locale: string): string {
   return name.endsWith('+') && /^ar\b/.test(locale) ? `${name}\u200E` : name;
 }
 
-/** The list as a sentence's worth of words in `locale`: "Netflix, Disney+, Prime Video, Max and Apple TV". */
+/** The list as a sentence's worth of words in `locale`: "Netflix, Disney+, Prime Video, HBO Max and Apple TV". */
 export function protectedSites(locale: string): string {
   const names = PROTECTED_SITES.map((name) => nameIn(name, locale));
   try {

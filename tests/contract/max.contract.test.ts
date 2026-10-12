@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { describeFailure } from '../../src/assumptions';
 
 /**
- * Max canaries.
+ * HBO Max canaries.
  *
- * Like Netflix, Disney+ and Prime Video, Max cannot be played in CI: it needs
+ * Like Netflix, Disney+ and Prime Video, HBO Max cannot be played in CI: it needs
  * an account and DRM. Its web app shell at play.hbomax.com is served to anyone,
  * though, and its own bundles (play/<name>.sha.js) carry the component names
  * the player is styled with, so a rename of the caption family shows up here
@@ -41,7 +41,7 @@ function app(): Promise<{ bundles: number; body: string }> {
     expect(
       paths.length,
       'Found no /play/*.sha.js bundles on play.hbomax.com.\n' +
-        'Max may have moved or renamed its web app — which is itself a signal, not just a broken test.',
+        'HBO Max may have moved or renamed its web app — which is itself a signal, not just a broken test.',
     ).toBeGreaterThan(0);
 
     const bodies = await Promise.all(
@@ -73,7 +73,7 @@ describe('max contract', () => {
     const { body } = await app();
     expect(
       body.includes('Fuse-Web-Play'),
-      `"Fuse-Web-Play" is gone from Max's web app.\n${describeFailure('mx.caption-dom')}`,
+      `"Fuse-Web-Play" is gone from HBO Max's web app.\n${describeFailure('mx.caption-dom')}`,
     ).toBe(true);
   }, 90_000);
 });

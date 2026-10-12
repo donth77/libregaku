@@ -200,7 +200,7 @@ export const zhHant: HelpTranslation = {
                 ['Netflix', '從分頁錄製；沒有螢幕截圖。'],
                 ['Disney+', '從分頁錄製；沒有螢幕截圖。'],
                 ['Prime Video', '從分頁錄製；沒有螢幕截圖。'],
-                ['Max', '從分頁錄製；沒有螢幕截圖。'],
+                ['HBO Max', '從分頁錄製；沒有螢幕截圖。'],
                 ['Apple TV', '從分頁錄製；沒有螢幕截圖。'],
               ],
             },
@@ -213,7 +213,7 @@ export const zhHant: HelpTranslation = {
     {
       id: 'protected-sites',
       title: '受保護網站',
-      about: '會加密影片的網站：Netflix、Disney+、Prime Video、Max 和 Apple TV。加密帶來的改變。',
+      about: '會加密影片的網站：Netflix、Disney+、Prime Video、HBO Max 和 Apple TV。加密帶來的改變。',
       topics: [
         {
           id: 'protected-sites-audio',

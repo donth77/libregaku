@@ -1,7 +1,7 @@
 /**
- * Page-world script for Max (HBO Max).
+ * Page-world script for HBO Max.
  *
- * Max plays DASH. The manifest the player fetches lists every subtitle track
+ * HBO Max plays DASH. The manifest the player fetches lists every subtitle track
  * as a text AdaptationSet of numbered WebVTT files, and its URL carries a
  * signed query — so, as on YouTube, the request is observed rather than built
  * (AGENTS.md, invariant 6). This hooks fetch and XMLHttpRequest and passes on

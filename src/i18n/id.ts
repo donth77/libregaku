@@ -309,7 +309,7 @@ export const id: Translation = {
     notActive:
       'Tidak aktif di halaman ini. Buka video di YouTube, Netflix, atau situs lain yang didukung. Jika Anda baru saja menginstal atau memuat ulang ' +
       'Libregaku, muat ulang tab.',
-    unsupported: 'Libregaku berfungsi di YouTube, Netflix, Disney+, Prime Video, Max, dan Apple TV.',
+    unsupported: 'Libregaku berfungsi di YouTube, Netflix, Disney+, Prime Video, HBO Max, dan Apple TV.',
     worksOn: (site: string): string => `Libregaku berfungsi di ${site}.`,
     waitingForSubtitles: (site: string): string => `Menunggu subtitel di ${site}. Pastikan subtitel aktif.`,
     activeOn: (title: string): string => `Aktif — ${title}`,
@@ -661,8 +661,8 @@ export const id: Translation = {
     disneyCaptionText: 'Tidak dapat menemukan teks subtitel Disney+ di halaman.',
     primeTrackList: 'Tidak dapat membaca daftar subtitel Prime Video.',
     primeCaptionText: 'Tidak dapat menemukan teks subtitel Prime Video di halaman.',
-    maxTrackList: 'Tidak dapat membaca daftar subtitel Max.',
-    maxCaptionText: 'Tidak dapat menemukan teks subtitel Max di halaman.',
+    maxTrackList: 'Tidak dapat membaca daftar subtitel HBO Max.',
+    maxCaptionText: 'Tidak dapat menemukan teks subtitel HBO Max di halaman.',
     netflixBlocked: 'Netflix memblokir bagian Libregaku yang membaca subtitel.',
 
     // This video's subtitles

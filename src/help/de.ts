@@ -200,7 +200,7 @@ export const de: HelpTranslation = {
                 ['Netflix', 'Wird vom Tab aufgenommen; kein Screenshot.'],
                 ['Disney+', 'Wird vom Tab aufgenommen; kein Screenshot.'],
                 ['Prime Video', 'Wird vom Tab aufgenommen; kein Screenshot.'],
-                ['Max', 'Wird vom Tab aufgenommen; kein Screenshot.'],
+                ['HBO Max', 'Wird vom Tab aufgenommen; kein Screenshot.'],
                 ['Apple TV', 'Wird vom Tab aufgenommen; kein Screenshot.'],
               ],
             },
@@ -213,7 +213,7 @@ export const de: HelpTranslation = {
     {
       id: 'protected-sites',
       title: 'Geschützte Websites',
-      about: 'Die Websites, die ihre Videos verschlüsseln: Netflix, Disney+, Prime Video, Max und Apple TV. Was dieser Kopierschutz ändert.',
+      about: 'Die Websites, die ihre Videos verschlüsseln: Netflix, Disney+, Prime Video, HBO Max und Apple TV. Was dieser Kopierschutz ändert.',
       topics: [
         {
           id: 'protected-sites-audio',

@@ -200,7 +200,7 @@ export const nl: HelpTranslation = {
                 ['Netflix', 'Opgenomen vanaf het tabblad; geen screenshot.'],
                 ['Disney+', 'Opgenomen vanaf het tabblad; geen screenshot.'],
                 ['Prime Video', 'Opgenomen vanaf het tabblad; geen screenshot.'],
-                ['Max', 'Opgenomen vanaf het tabblad; geen screenshot.'],
+                ['HBO Max', 'Opgenomen vanaf het tabblad; geen screenshot.'],
                 ['Apple TV', 'Opgenomen vanaf het tabblad; geen screenshot.'],
               ],
             },
@@ -213,7 +213,7 @@ export const nl: HelpTranslation = {
     {
       id: 'protected-sites',
       title: 'Beschermde sites',
-      about: 'De sites die hun video versleutelen: Netflix, Disney+, Prime Video, Max en Apple TV. Wat dat verandert.',
+      about: 'De sites die hun video versleutelen: Netflix, Disney+, Prime Video, HBO Max en Apple TV. Wat dat verandert.',
       topics: [
         {
           id: 'protected-sites-audio',

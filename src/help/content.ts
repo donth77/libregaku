@@ -272,7 +272,7 @@ const en: HelpContent = {
                 ['Netflix', 'Recorded from the tab; no screenshot.'],
                 ['Disney+', 'Recorded from the tab; no screenshot.'],
                 ['Prime Video', 'Recorded from the tab; no screenshot.'],
-                ['Max', 'Recorded from the tab; no screenshot.'],
+                ['HBO Max', 'Recorded from the tab; no screenshot.'],
                 ['Apple TV', 'Recorded from the tab; no screenshot.'],
               ],
             },
@@ -285,7 +285,7 @@ const en: HelpContent = {
     {
       id: 'protected-sites',
       title: 'Protected sites',
-      about: 'The sites that encrypt their video: Netflix, Disney+, Prime Video, Max and Apple TV. What that changes.',
+      about: 'The sites that encrypt their video: Netflix, Disney+, Prime Video, HBO Max and Apple TV. What that changes.',
       topics: [
         {
           id: 'protected-sites-audio',

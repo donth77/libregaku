@@ -33,8 +33,8 @@ export const notices = {
   disneyCaptionText: "Couldn't find Disney+'s subtitle text on the page.",
   primeTrackList: "Couldn't read Prime Video's subtitle list.",
   primeCaptionText: "Couldn't find Prime Video's subtitle text on the page.",
-  maxTrackList: "Couldn't read Max's subtitle list.",
-  maxCaptionText: "Couldn't find Max's subtitle text on the page.",
+  maxTrackList: "Couldn't read HBO Max's subtitle list.",
+  maxCaptionText: "Couldn't find HBO Max's subtitle text on the page.",
 
   // Titles: this video's subtitles
   /** Subtitles are switched off in the site's own player, so there is nothing to read. */

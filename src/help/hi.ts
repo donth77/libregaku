@@ -200,7 +200,7 @@ export const hi: HelpTranslation = {
                 ['Netflix', 'टैब से रिकॉर्ड होता है; स्क्रीनशॉट नहीं।'],
                 ['Disney+', 'टैब से रिकॉर्ड होता है; स्क्रीनशॉट नहीं।'],
                 ['Prime Video', 'टैब से रिकॉर्ड होता है; स्क्रीनशॉट नहीं।'],
-                ['Max', 'टैब से रिकॉर्ड होता है; स्क्रीनशॉट नहीं।'],
+                ['HBO Max', 'टैब से रिकॉर्ड होता है; स्क्रीनशॉट नहीं।'],
                 ['Apple TV', 'टैब से रिकॉर्ड होता है; स्क्रीनशॉट नहीं।'],
               ],
             },
@@ -213,7 +213,7 @@ export const hi: HelpTranslation = {
     {
       id: 'protected-sites',
       title: 'संरक्षित साइटें',
-      about: 'वे साइटें जो अपना वीडियो एन्क्रिप्ट करती हैं: Netflix, Disney+, Prime Video, Max और Apple TV। इससे क्या बदलता है।',
+      about: 'वे साइटें जो अपना वीडियो एन्क्रिप्ट करती हैं: Netflix, Disney+, Prime Video, HBO Max और Apple TV। इससे क्या बदलता है।',
       topics: [
         {
           id: 'protected-sites-audio',

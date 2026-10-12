@@ -200,7 +200,7 @@ export const vi: HelpTranslation = {
                 ['Netflix', 'Ghi từ tab; không có ảnh chụp màn hình.'],
                 ['Disney+', 'Ghi từ tab; không có ảnh chụp màn hình.'],
                 ['Prime Video', 'Ghi từ tab; không có ảnh chụp màn hình.'],
-                ['Max', 'Ghi từ tab; không có ảnh chụp màn hình.'],
+                ['HBO Max', 'Ghi từ tab; không có ảnh chụp màn hình.'],
                 ['Apple TV', 'Ghi từ tab; không có ảnh chụp màn hình.'],
               ],
             },
@@ -213,7 +213,7 @@ export const vi: HelpTranslation = {
     {
       id: 'protected-sites',
       title: 'Trang web được bảo vệ',
-      about: 'Các trang web mã hóa video: Netflix, Disney+, Prime Video, Max và Apple TV. Những gì thay đổi do việc đó.',
+      about: 'Các trang web mã hóa video: Netflix, Disney+, Prime Video, HBO Max và Apple TV. Những gì thay đổi do việc đó.',
       topics: [
         {
           id: 'protected-sites-audio',

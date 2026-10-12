@@ -200,7 +200,7 @@ export const th: HelpTranslation = {
                 ['Netflix', 'บันทึกจากแท็บ ไม่มีภาพหน้าจอ'],
                 ['Disney+', 'บันทึกจากแท็บ ไม่มีภาพหน้าจอ'],
                 ['Prime Video', 'บันทึกจากแท็บ ไม่มีภาพหน้าจอ'],
-                ['Max', 'บันทึกจากแท็บ ไม่มีภาพหน้าจอ'],
+                ['HBO Max', 'บันทึกจากแท็บ ไม่มีภาพหน้าจอ'],
                 ['Apple TV', 'บันทึกจากแท็บ ไม่มีภาพหน้าจอ'],
               ],
             },
@@ -213,7 +213,7 @@ export const th: HelpTranslation = {
     {
       id: 'protected-sites',
       title: 'เว็บไซต์ที่มีการป้องกัน',
-      about: 'เว็บไซต์ที่เข้ารหัสวิดีโอ ได้แก่ Netflix, Disney+, Prime Video, Max และ Apple TV การเข้ารหัสนี้ทำให้อะไรเปลี่ยนไป',
+      about: 'เว็บไซต์ที่เข้ารหัสวิดีโอ ได้แก่ Netflix, Disney+, Prime Video, HBO Max และ Apple TV การเข้ารหัสนี้ทำให้อะไรเปลี่ยนไป',
       topics: [
         {
           id: 'protected-sites-audio',

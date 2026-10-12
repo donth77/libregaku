@@ -200,7 +200,7 @@ export const uk: HelpTranslation = {
                 ['Netflix', 'Записується з вкладки; знімка екрана немає.'],
                 ['Disney+', 'Записується з вкладки; знімка екрана немає.'],
                 ['Prime Video', 'Записується з вкладки; знімка екрана немає.'],
-                ['Max', 'Записується з вкладки; знімка екрана немає.'],
+                ['HBO Max', 'Записується з вкладки; знімка екрана немає.'],
                 ['Apple TV', 'Записується з вкладки; знімка екрана немає.'],
               ],
             },
@@ -213,7 +213,7 @@ export const uk: HelpTranslation = {
     {
       id: 'protected-sites',
       title: 'Сайти із захищеним відео',
-      about: 'Сайти, які шифрують відео: Netflix, Disney+, Prime Video, Max і Apple TV. Що це змінює.',
+      about: 'Сайти, які шифрують відео: Netflix, Disney+, Prime Video, HBO Max і Apple TV. Що це змінює.',
       topics: [
         {
           id: 'protected-sites-audio',

@@ -4,7 +4,7 @@ import { cuesFromSegments } from './hls';
 import type { Cue, SubtitleSource, TrackInfo } from './types';
 
 /**
- * Max (HBO Max). It plays DASH: the manifest lists each subtitle track as a
+ * HBO Max. It plays DASH: the manifest lists each subtitle track as a
  * text AdaptationSet whose segments are numbered WebVTT files, with cue times
  * already on the programme's clock. `inject-max.ts` passes on the manifest
  * the player itself fetched, whose URL is signed; every segment URL is
@@ -17,7 +17,7 @@ import type { Cue, SubtitleSource, TrackInfo } from './types';
 
 const TAG = 'libregaku';
 
-/** Where Max serves its manifests and segments. A URL anywhere else did not come from its player. */
+/** Where HBO Max serves its manifests and segments. A URL anywhere else did not come from its player. */
 const MEDIA_HOST = /(^|\.)h264\.io$/;
 
 const FETCH_TIMEOUT_MS = 15_000;
@@ -77,7 +77,7 @@ export function asTracks(tracks: DashTrack[]): MxTrack[] {
 
 export class MaxAdapter implements SubtitleSource {
   readonly id = 'max';
-  // Max's class names are generated ("CaptionWindow-Fuse-Web-Play__sc-1wvp621-5"); the part before "__" is the component's.
+  // HBO Max's class names are generated ("CaptionWindow-Fuse-Web-Play__sc-1wvp621-5"); the part before "__" is the component's.
   readonly domCaptions = {
     container: '[class*="CaptionWindow-Fuse-Web-Play"]',
     segment: '[class*="TextCue-Fuse-Web-Play"]',
@@ -101,7 +101,7 @@ export class MaxAdapter implements SubtitleSource {
 
   constructor() {
     window.addEventListener('message', (e: MessageEvent) => this.#onMessage(e));
-    // Max is an SPA; the title changes without a page load.
+    // HBO Max is an SPA; the title changes without a page load.
     setInterval(() => this.#syncUrl(), 500);
     // The page hook may have seen the manifest before this script existed to hear about it.
     window.postMessage({ source: TAG, kind: 'mx-request-mpd' }, '*');
@@ -129,7 +129,7 @@ export class MaxAdapter implements SubtitleSource {
     return clean || null;
   }
 
-  /** The watch page. Max has no documented way to open one at a moment, so the card links to the title. */
+  /** The watch page. HBO Max has no documented way to open one at a moment, so the card links to the title. */
   deepLink(_seconds: number): string | null {
     const id = watchIdOf(location.pathname);
     return id ? `https://play.hbomax.com/video/watch/${id}` : null;
@@ -147,7 +147,7 @@ export class MaxAdapter implements SubtitleSource {
 
   loadTrack(id: string): Promise<Cue[]> {
     const track = this.#tracks.find((t) => t.id === id);
-    if (!track) return Promise.reject(new Error(`libregaku: no Max subtitle track "${id}"`));
+    if (!track) return Promise.reject(new Error(`libregaku: no HBO Max subtitle track "${id}"`));
     const key = track.urls[0] ?? id;
     const cached = this.#cues.get(key);
     if (cached) return cached;
@@ -198,13 +198,13 @@ export class MaxAdapter implements SubtitleSource {
   }
 
   #onMessage(e: MessageEvent): void {
-    // Only this window's own page hook speaks for Max; a frame on the page does not.
+    // Only this window's own page hook speaks for HBO Max; a frame on the page does not.
     if (e.source !== window) return;
     const d: unknown = e.data;
     if (typeof d !== 'object' || d === null) return;
     const m = d as Record<string, unknown>;
     if (m.source !== TAG || m.kind !== 'mx-mpd') return;
-    // The page is not trusted — any script on it can post this — so the manifest must be Max-hosted.
+    // The page is not trusted — any script on it can post this — so the manifest must be HBO Max-hosted.
     if (typeof m.url !== 'string' || typeof m.text !== 'string' || !isMediaUrl(m.url)) return;
 
     const tracks = asTracks(textTracks(m.text, m.url));

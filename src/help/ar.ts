@@ -200,7 +200,7 @@ export const ar: HelpTranslation = {
                 ['Netflix', 'يُسجَّل من علامة التبويب؛ بلا لقطة شاشة.'],
                 ['Disney+\u200E', 'يُسجَّل من علامة التبويب؛ بلا لقطة شاشة.'],
                 ['Prime Video', 'يُسجَّل من علامة التبويب؛ بلا لقطة شاشة.'],
-                ['Max', 'يُسجَّل من علامة التبويب؛ بلا لقطة شاشة.'],
+                ['HBO Max', 'يُسجَّل من علامة التبويب؛ بلا لقطة شاشة.'],
                 ['Apple TV', 'يُسجَّل من علامة التبويب؛ بلا لقطة شاشة.'],
               ],
             },
@@ -213,7 +213,7 @@ export const ar: HelpTranslation = {
     {
       id: 'protected-sites',
       title: 'المواقع المحمية',
-      about: 'المواقع التي تشفّر الفيديو: Netflix وDisney+\u200E وPrime Video وMax وApple TV. وما يغيّره ذلك.',
+      about: 'المواقع التي تشفّر الفيديو: Netflix وDisney+\u200E وPrime Video وHBO Max وApple TV. وما يغيّره ذلك.',
       topics: [
         {
           id: 'protected-sites-audio',

@@ -200,7 +200,7 @@ export const zh: HelpTranslation = {
                 ['Netflix', '从标签页录制；没有截图。'],
                 ['Disney+', '从标签页录制；没有截图。'],
                 ['Prime Video', '从标签页录制；没有截图。'],
-                ['Max', '从标签页录制；没有截图。'],
+                ['HBO Max', '从标签页录制；没有截图。'],
                 ['Apple TV', '从标签页录制；没有截图。'],
               ],
             },
@@ -213,7 +213,7 @@ export const zh: HelpTranslation = {
     {
       id: 'protected-sites',
       title: '受保护网站',
-      about: '对视频加密的网站：Netflix、Disney+、Prime Video、Max 和 Apple TV。这会带来哪些变化。',
+      about: '对视频加密的网站：Netflix、Disney+、Prime Video、HBO Max 和 Apple TV。这会带来哪些变化。',
       topics: [
         {
           id: 'protected-sites-audio',

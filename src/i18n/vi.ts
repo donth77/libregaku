@@ -310,7 +310,7 @@ export const vi: Translation = {
     notActive:
       'Không hoạt động trên trang này. Hãy mở một video trên YouTube, Netflix hoặc một trang web được hỗ trợ khác. Nếu bạn vừa cài hoặc tải lại Libregaku, ' +
       'hãy tải lại tab.',
-    unsupported: 'Libregaku hoạt động trên YouTube, Netflix, Disney+, Prime Video, Max và Apple TV.',
+    unsupported: 'Libregaku hoạt động trên YouTube, Netflix, Disney+, Prime Video, HBO Max và Apple TV.',
     worksOn: (site: string): string => `Libregaku hoạt động trên ${site}.`,
     waitingForSubtitles: (site: string): string => `Đang chờ phụ đề trên ${site}. Hãy kiểm tra xem phụ đề đã bật chưa.`,
     activeOn: (title: string): string => `Đang hoạt động — ${title}`,
@@ -662,8 +662,8 @@ export const vi: Translation = {
     disneyCaptionText: 'Không tìm thấy văn bản phụ đề của Disney+ trên trang.',
     primeTrackList: 'Không đọc được danh sách phụ đề của Prime Video.',
     primeCaptionText: 'Không tìm thấy văn bản phụ đề của Prime Video trên trang.',
-    maxTrackList: 'Không đọc được danh sách phụ đề của Max.',
-    maxCaptionText: 'Không tìm thấy văn bản phụ đề của Max trên trang.',
+    maxTrackList: 'Không đọc được danh sách phụ đề của HBO Max.',
+    maxCaptionText: 'Không tìm thấy văn bản phụ đề của HBO Max trên trang.',
     netflixBlocked: 'Netflix đã chặn phần của Libregaku dùng để đọc phụ đề.',
 
     // Phụ đề của video này

@@ -200,7 +200,7 @@ export const tr: HelpTranslation = {
                 ['Netflix', 'Sekmeden kaydedilir; ekran görüntüsü yok.'],
                 ['Disney+', 'Sekmeden kaydedilir; ekran görüntüsü yok.'],
                 ['Prime Video', 'Sekmeden kaydedilir; ekran görüntüsü yok.'],
-                ['Max', 'Sekmeden kaydedilir; ekran görüntüsü yok.'],
+                ['HBO Max', 'Sekmeden kaydedilir; ekran görüntüsü yok.'],
                 ['Apple TV', 'Sekmeden kaydedilir; ekran görüntüsü yok.'],
               ],
             },
@@ -213,7 +213,7 @@ export const tr: HelpTranslation = {
     {
       id: 'protected-sites',
       title: 'Korumalı siteler',
-      about: 'Videolarını şifreleyen siteler: Netflix, Disney+, Prime Video, Max ve Apple TV. Bunun neleri değiştirdiği.',
+      about: 'Videolarını şifreleyen siteler: Netflix, Disney+, Prime Video, HBO Max ve Apple TV. Bunun neleri değiştirdiği.',
       topics: [
         {
           id: 'protected-sites-audio',

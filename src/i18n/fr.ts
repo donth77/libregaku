@@ -351,7 +351,7 @@ export const fr: Translation = {
     notActive:
       'Libregaku n’est pas actif sur cette page. Ouvrez une vidéo sur YouTube, Netflix ou un autre site pris en charge. Si vous venez d’installer ' +
       'ou de recharger Libregaku, rechargez l’onglet.',
-    unsupported: 'Libregaku fonctionne sur YouTube, Netflix, Disney+, Prime Video, Max et Apple TV.',
+    unsupported: 'Libregaku fonctionne sur YouTube, Netflix, Disney+, Prime Video, HBO Max et Apple TV.',
     worksOn: (site: string): string => `Libregaku fonctionne sur ${site}.`,
     waitingForSubtitles: (site: string): string =>
       `En attente des sous-titres sur ${site}. Vérifiez qu’ils sont activés.`,
@@ -715,8 +715,8 @@ export const fr: Translation = {
     disneyCaptionText: 'Texte des sous-titres de Disney+ introuvable sur la page.',
     primeTrackList: 'Impossible de lire la liste des sous-titres de Prime Video.',
     primeCaptionText: 'Texte des sous-titres de Prime Video introuvable sur la page.',
-    maxTrackList: 'Impossible de lire la liste des sous-titres de Max.',
-    maxCaptionText: 'Texte des sous-titres de Max introuvable sur la page.',
+    maxTrackList: 'Impossible de lire la liste des sous-titres de HBO Max.',
+    maxCaptionText: 'Texte des sous-titres de HBO Max introuvable sur la page.',
     netflixBlocked: 'Netflix a bloqué la partie de Libregaku qui lit les sous-titres.',
 
     // Les sous-titres de cette vidéo

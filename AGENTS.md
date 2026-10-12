@@ -166,7 +166,7 @@ src/content/
                         keeps the programme's clock, seeks
   inject-prime.ts       Prime Video page world: passes on the subtitle tracks in the playback
                         resources the player asked for
-  inject-max.ts         Max page world: passes on the DASH manifest the player fetched
+  inject-max.ts         HBO Max page world: passes on the DASH manifest the player fetched
   inject-apple.ts       Apple TV page world: passes on the HLS master playlist the player fetched
   index.ts              isolated world: orchestrates adapter → segmenter → UI
   track-choice.ts       which of a video's tracks is studied, and which is the line under it

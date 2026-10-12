@@ -338,7 +338,7 @@ export const ar: Translation = {
     notActive:
       'غير نشط في هذه الصفحة. افتح فيديو على YouTube أو Netflix أو موقع مدعوم آخر. إذا ثبّتَّ Libregaku أو أعدت تحميله للتو، ' +
       'فأعد تحميل علامة التبويب.',
-    unsupported: 'يعمل Libregaku على YouTube وNetflix وDisney+\u200E وPrime Video وMax وApple TV.',
+    unsupported: 'يعمل Libregaku على YouTube وNetflix وDisney+\u200E وPrime Video وHBO Max وApple TV.',
     worksOn: (site: string): string => `يعمل Libregaku على ${site}\u200E.`,
     waitingForSubtitles: (site: string): string => `في انتظار الترجمة على ${site}. تأكّد من تفعيلها.`,
     activeOn: (title: string): string => `نشط — ${title}`,
@@ -694,8 +694,8 @@ export const ar: Translation = {
     disneyCaptionText: 'تعذّر العثور على نص الترجمة في صفحة Disney+\u200E.',
     primeTrackList: 'تعذّرت قراءة قائمة الترجمة في Prime Video.',
     primeCaptionText: 'تعذّر العثور على نص الترجمة في صفحة Prime Video.',
-    maxTrackList: 'تعذّرت قراءة قائمة الترجمة في Max.',
-    maxCaptionText: 'تعذّر العثور على نص الترجمة في صفحة Max.',
+    maxTrackList: 'تعذّرت قراءة قائمة الترجمة في HBO Max.',
+    maxCaptionText: 'تعذّر العثور على نص الترجمة في صفحة HBO Max.',
     netflixBlocked: 'حظر Netflix الجزء من Libregaku الذي يقرأ الترجمة.',
 
     // ترجمة هذا الفيديو

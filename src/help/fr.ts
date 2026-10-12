@@ -200,7 +200,7 @@ export const fr: HelpTranslation = {
                 ['Netflix', 'Enregistré depuis l’onglet ; pas de capture d’écran.'],
                 ['Disney+', 'Enregistré depuis l’onglet ; pas de capture d’écran.'],
                 ['Prime Video', 'Enregistré depuis l’onglet ; pas de capture d’écran.'],
-                ['Max', 'Enregistré depuis l’onglet ; pas de capture d’écran.'],
+                ['HBO Max', 'Enregistré depuis l’onglet ; pas de capture d’écran.'],
                 ['Apple TV', 'Enregistré depuis l’onglet ; pas de capture d’écran.'],
               ],
             },
@@ -213,7 +213,7 @@ export const fr: HelpTranslation = {
     {
       id: 'protected-sites',
       title: 'Sites protégés',
-      about: 'Les sites qui chiffrent leurs vidéos : Netflix, Disney+, Prime Video, Max et Apple TV. Ce que change cette protection.',
+      about: 'Les sites qui chiffrent leurs vidéos : Netflix, Disney+, Prime Video, HBO Max et Apple TV. Ce que change cette protection.',
       topics: [
         {
           id: 'protected-sites-audio',

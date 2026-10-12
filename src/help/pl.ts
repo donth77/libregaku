@@ -200,7 +200,7 @@ export const pl: HelpTranslation = {
                 ['Netflix', 'Nagrywane z karty przeglądarki; bez zrzutu ekranu.'],
                 ['Disney+', 'Nagrywane z karty przeglądarki; bez zrzutu ekranu.'],
                 ['Prime Video', 'Nagrywane z karty przeglądarki; bez zrzutu ekranu.'],
-                ['Max', 'Nagrywane z karty przeglądarki; bez zrzutu ekranu.'],
+                ['HBO Max', 'Nagrywane z karty przeglądarki; bez zrzutu ekranu.'],
                 ['Apple TV', 'Nagrywane z karty przeglądarki; bez zrzutu ekranu.'],
               ],
             },
@@ -213,7 +213,7 @@ export const pl: HelpTranslation = {
     {
       id: 'protected-sites',
       title: 'Chronione serwisy',
-      about: 'Serwisy, które szyfrują wideo: Netflix, Disney+, Prime Video, Max i Apple TV. Co to zmienia.',
+      about: 'Serwisy, które szyfrują wideo: Netflix, Disney+, Prime Video, HBO Max i Apple TV. Co to zmienia.',
       topics: [
         {
           id: 'protected-sites-audio',

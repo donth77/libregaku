@@ -5,11 +5,11 @@ name: canary
 # so a break is discovered by CI rather than mid-episode.
 #
 # One job checks every site. The contract tests read what each site serves
-# without a login (YouTube, Netflix, Disney+, Prime Video, Max, Apple TV, and
+# without a login (YouTube, Netflix, Disney+, Prime Video, HBO Max, Apple TV, and
 # the dictionary and audio hosts). The browser check then loads the built
 # extension on a YouTube video and waits for the overlay to draw words: the
 # injection and the tokenizer, which the contract tests only approximate.
-# Netflix, Disney+, Prime Video, Max and Apple TV have no browser check; they
+# Netflix, Disney+, Prime Video, HBO Max and Apple TV have no browser check; they
 # need a signed-in paid account.
 on:
   schedule:

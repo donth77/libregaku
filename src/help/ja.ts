@@ -200,7 +200,7 @@ export const ja: HelpTranslation = {
                 ['Netflix', 'タブから録音します。スクリーンショットはありません。'],
                 ['Disney+', 'タブから録音します。スクリーンショットはありません。'],
                 ['Prime Video', 'タブから録音します。スクリーンショットはありません。'],
-                ['Max', 'タブから録音します。スクリーンショットはありません。'],
+                ['HBO Max', 'タブから録音します。スクリーンショットはありません。'],
                 ['Apple TV', 'タブから録音します。スクリーンショットはありません。'],
               ],
             },
@@ -213,7 +213,7 @@ export const ja: HelpTranslation = {
     {
       id: 'protected-sites',
       title: '保護されたサイト',
-      about: '動画を暗号化しているサイト（Netflix、Disney+、Prime Video、Max、Apple TV）で変わること。',
+      about: '動画を暗号化しているサイト（Netflix、Disney+、Prime Video、HBO Max、Apple TV）で変わること。',
       topics: [
         {
           id: 'protected-sites-audio',

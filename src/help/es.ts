@@ -200,7 +200,7 @@ export const es: HelpTranslation = {
                 ['Netflix', 'Se graba desde la pestaña; sin captura de pantalla.'],
                 ['Disney+', 'Se graba desde la pestaña; sin captura de pantalla.'],
                 ['Prime Video', 'Se graba desde la pestaña; sin captura de pantalla.'],
-                ['Max', 'Se graba desde la pestaña; sin captura de pantalla.'],
+                ['HBO Max', 'Se graba desde la pestaña; sin captura de pantalla.'],
                 ['Apple TV', 'Se graba desde la pestaña; sin captura de pantalla.'],
               ],
             },
@@ -213,7 +213,7 @@ export const es: HelpTranslation = {
     {
       id: 'protected-sites',
       title: 'Sitios protegidos',
-      about: 'Los sitios que cifran su video: Netflix, Disney+, Prime Video, Max y Apple TV. Qué cambia con esa protección.',
+      about: 'Los sitios que cifran su video: Netflix, Disney+, Prime Video, HBO Max y Apple TV. Qué cambia con esa protección.',
       topics: [
         {
           id: 'protected-sites-audio',

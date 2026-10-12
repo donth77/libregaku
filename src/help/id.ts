@@ -200,7 +200,7 @@ export const id: HelpTranslation = {
                 ['Netflix', 'Direkam dari tab; tanpa screenshot.'],
                 ['Disney+', 'Direkam dari tab; tanpa screenshot.'],
                 ['Prime Video', 'Direkam dari tab; tanpa screenshot.'],
-                ['Max', 'Direkam dari tab; tanpa screenshot.'],
+                ['HBO Max', 'Direkam dari tab; tanpa screenshot.'],
                 ['Apple TV', 'Direkam dari tab; tanpa screenshot.'],
               ],
             },
@@ -213,7 +213,7 @@ export const id: HelpTranslation = {
     {
       id: 'protected-sites',
       title: 'Situs terproteksi',
-      about: 'Situs yang mengenkripsi videonya: Netflix, Disney+, Prime Video, Max, dan Apple TV. Apa yang berubah karenanya.',
+      about: 'Situs yang mengenkripsi videonya: Netflix, Disney+, Prime Video, HBO Max, dan Apple TV. Apa yang berubah karenanya.',
       topics: [
         {
           id: 'protected-sites-audio',

@@ -317,7 +317,7 @@ export const sv: Translation = {
     notActive:
       'Inte aktivt på den här sidan. Öppna en video på YouTube, Netflix eller en annan webbplats som stöds. Om du nyss har installerat Libregaku ' +
       'eller läst in det igen, ladda om fliken.',
-    unsupported: 'Libregaku fungerar på YouTube, Netflix, Disney+, Prime Video, Max och Apple TV.',
+    unsupported: 'Libregaku fungerar på YouTube, Netflix, Disney+, Prime Video, HBO Max och Apple TV.',
     worksOn: (site: string): string => `Libregaku fungerar på ${site}.`,
     waitingForSubtitles: (site: string): string => `Väntar på undertexter på ${site}. Se till att de är på.`,
     activeOn: (title: string): string => `Aktivt – ${title}`,
@@ -674,8 +674,8 @@ export const sv: Translation = {
     disneyCaptionText: 'Kunde inte hitta undertexterna på Disney+-sidan.',
     primeTrackList: 'Kunde inte läsa undertextlistan på Prime Video.',
     primeCaptionText: 'Kunde inte hitta undertexterna på Prime Video-sidan.',
-    maxTrackList: 'Kunde inte läsa undertextlistan på Max.',
-    maxCaptionText: 'Kunde inte hitta undertexterna på Max-sidan.',
+    maxTrackList: 'Kunde inte läsa undertextlistan på HBO Max.',
+    maxCaptionText: 'Kunde inte hitta undertexterna på HBO Max-sidan.',
     netflixBlocked: 'Netflix blockerade den del av Libregaku som läser undertexter.',
 
     // Videons undertexter

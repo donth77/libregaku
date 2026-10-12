@@ -200,7 +200,7 @@ export const ko: HelpTranslation = {
                 ['Netflix', '탭에서 녹음하며 스크린샷은 없습니다.'],
                 ['Disney+', '탭에서 녹음하며 스크린샷은 없습니다.'],
                 ['Prime Video', '탭에서 녹음하며 스크린샷은 없습니다.'],
-                ['Max', '탭에서 녹음하며 스크린샷은 없습니다.'],
+                ['HBO Max', '탭에서 녹음하며 스크린샷은 없습니다.'],
                 ['Apple TV', '탭에서 녹음하며 스크린샷은 없습니다.'],
               ],
             },
@@ -213,7 +213,7 @@ export const ko: HelpTranslation = {
     {
       id: 'protected-sites',
       title: '보호된 사이트',
-      about: '동영상을 암호화하는 사이트인 Netflix, Disney+, Prime Video, Max, Apple TV에서 달라지는 점.',
+      about: '동영상을 암호화하는 사이트인 Netflix, Disney+, Prime Video, HBO Max, Apple TV에서 달라지는 점.',
       topics: [
         {
           id: 'protected-sites-audio',
