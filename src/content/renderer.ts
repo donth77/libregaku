@@ -1,6 +1,12 @@
 import type { RubySegment, Token } from '../morphology/types';
 import { uiDirection } from '../i18n';
 import { markPhrase, phraseAt, plainText, selectWhole, selectedWords, textFrom, type PhrasePick } from './phrase';
+import { roomFor, sidesOf, type Drawn } from './ruby-room';
+
+/** A reading's font size, in em of the text under it (.t rt, below). */
+const RT_SIZE = 0.46;
+/** The width of one kana of a reading, in em of the text under it: its size and its letter-spacing. */
+const RT_UNIT = RT_SIZE * 1.02;
 
 /**
  * The subtitle overlay.
@@ -170,19 +176,18 @@ const STYLE = `
     font-size: .46em; letter-spacing: .02em; white-space: nowrap; padding: 0 .12em;
   }
   /*
-   * A kana reading longer than its character — five kana over the one kanji of
-   * 承り — hung over the neighbouring characters, so it read as belonging to
-   * them. The same hidden copy gives the character a box as wide as the
-   * reading, and only then: a reading that fits adds nothing. Only while the
-   * reading shows, so a word's spacing does not change with what you know.
+   * A kana reading wider than its characters — five kana over the one kanji of
+   * 承り — hung over whatever stood beside it, and read as belonging to both.
+   * ruby-room.ts says how much room such a reading needs, on which side, and
+   * where the reading then sits: it may hang over kana, never over another
+   * reading. The room is padding beside the characters, and the lean keeps the
+   * reading over them. Only while the reading shows, so a word's spacing does
+   * not change with what you know.
    */
-  .t ruby[data-k] { text-align: center; }
-  .t ruby[data-k]::after {
-    content: attr(data-k); display: block; height: 0; overflow: hidden; visibility: hidden;
-    font-size: .46em; letter-spacing: .02em; white-space: nowrap;
-  }
-  .wrap.ruby-off .t ruby[data-k]::after,
-  .wrap:not(.ruby-all) .t:not([data-s="unknown"]):not([data-s="learning"]) ruby[data-k]::after { display: none; }
+  .t ruby[data-k] { padding: 0 var(--lg-after, 0em) 0 var(--lg-before, 0em); }
+  .t ruby[data-k] rt { left: calc(50% + var(--lg-lean, 0em)); }
+  .wrap.ruby-off .t ruby[data-k],
+  .wrap:not(.ruby-all) .t:not([data-s="unknown"]):not([data-s="learning"]) ruby[data-k] { padding: 0; }
   /* Ruby only where it earns its place: words you have not learned yet. */
   .wrap:not(.ruby-all) .t:not([data-s="unknown"]):not([data-s="learning"]) rt { visibility: hidden; }
   .wrap.ruby-off rt { display: none; }
@@ -598,7 +603,9 @@ export class Overlay {
     this.#primary.classList.remove('phrased');
     // Whether what was just drawn is a word, or a mark closed up against one.
     let tight = false;
-    for (const tok of tokens) {
+    // What each word is drawn as, so a reading knows what stands beside it.
+    const drawn: Drawn[] = tokens.map((t) => (t.punct ? (t.surface.includes('\n') ? 'break' : 'mark') : this.#ruby(t)));
+    for (const [j, tok] of tokens.entries()) {
       // Punctuation is text, not a word: rendered, never hoverable. The line
       // breaks a subtitle was written with are kept — two speakers, or the
       // author's own phrasing — as are breaks between cues shown together.
@@ -623,7 +630,7 @@ export class Overlay {
       }
       tight = true;
 
-      const segs = this.#ruby(tok);
+      const segs = drawn[j] as RubySegment[];
       const annotated = segs.some((x) => x.ruby);
 
       const el = document.createElement('span');
@@ -638,7 +645,7 @@ export class Overlay {
       if (!annotated) {
         el.textContent = tok.surface;
       } else {
-        for (const seg of segs) {
+        for (const [i, seg] of segs.entries()) {
           if (!seg.ruby) {
             el.appendChild(document.createTextNode(seg.text));
             continue;
@@ -649,7 +656,17 @@ export class Overlay {
           rt.textContent = seg.ruby;
           ruby.appendChild(rt);
           if (/^[\x21-\x7e\u00c0-\u024f\u0300-\u036f]+$/.test(seg.ruby)) ruby.dataset.r = seg.ruby;
-          else ruby.dataset.k = seg.ruby;
+          else {
+            const [before, after] = sidesOf(drawn, j, i);
+            const room = roomFor(seg.text, seg.ruby, before, after, RT_UNIT);
+            if (room) {
+              ruby.dataset.k = seg.ruby;
+              ruby.style.setProperty('--lg-before', `${room.left}em`);
+              ruby.style.setProperty('--lg-after', `${room.right}em`);
+              // Used on the reading, whose em is RT_SIZE of the text's.
+              ruby.style.setProperty('--lg-lean', `${Math.round((room.lean / RT_SIZE) * 1000) / 1000}em`);
+            }
+          }
           el.appendChild(ruby);
         }
       }

@@ -79,11 +79,27 @@ describe('readings', () => {
       .toEqual([['学', 'xué'], ['校', 'xiào']]);
   });
 
-  it('marks a kana reading, so its character is given room as wide as the reading', () => {
+  it('gives a reading wider than its character room, and leans it off the edge of the line', () => {
     const verb: Token = { surface: '承りました', start: 0, end: 5, content: true, reading: 'うけたまわりました' };
     const [el] = drawn([verb], (o) => o.setRuby(() => [{ text: '承', ruby: 'うけたまわ' }, { text: 'りました' }]));
     const rubies = Array.from(el!.querySelectorAll<HTMLElement>('ruby'));
     expect(rubies.map((r) => [r.dataset.k, r.dataset.r])).toEqual([['うけたまわ', undefined]]);
+    // The line starts with it, so little hangs to the left; more hangs over its own りました.
+    const before = parseFloat(rubies[0]!.style.getPropertyValue('--lg-before'));
+    const after = parseFloat(rubies[0]!.style.getPropertyValue('--lg-after'));
+    expect(before).toBeGreaterThan(0.3);
+    expect(after).toBeGreaterThan(0);
+    expect(before).toBeGreaterThan(after);
+    // The reading sits over the character, which is right of the middle of its widened box.
+    expect(parseFloat(rubies[0]!.style.getPropertyValue('--lg-lean'))).toBeGreaterThan(0);
+  });
+
+  it('leaves a reading that fits alone', () => {
+    const noun: Token = { surface: '予約', start: 0, end: 2, content: true, reading: 'よやく' };
+    const [el] = drawn([noun], (o) => o.setRuby(() => [{ text: '予約', ruby: 'よやく' }]));
+    const ruby = el!.querySelector<HTMLElement>('ruby')!;
+    expect(ruby.dataset.k).toBeUndefined();
+    expect(ruby.style.getPropertyValue('--lg-before')).toBe('');
   });
 
   it('keeps a romanised reading on its own mark', () => {

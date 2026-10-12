@@ -14,6 +14,7 @@ import { applyVars, onSettingsChange, setSetting, settings, underlineVars, type 
 import { markPhrase, phraseAt, phraseToken, selectWhole, selectedWords, textFrom } from './phrase';
 import { matcher } from './search-text';
 import { rubyOf } from '../morphology/ruby';
+import { roomFor, sidesOf, type Drawn } from './ruby-room';
 import { PANEL_STYLE, buildSettings, keysView, syncSettingsControls } from './settings-panel';
 import { letterKey } from './keys';
 import { partsOfSpeech, popupIsOpen } from './popup';
@@ -449,14 +450,11 @@ const STYLE = `
     font-size: .46em; line-height: 1; color: #B8C0D4;
     white-space: nowrap; user-select: none; pointer-events: none;
   }
-  /* A reading longer than its character widens the character's box, as on the subtitle, so it does not hang over the next one. */
-  .tx ruby[data-k] { text-align: center; }
-  .tx ruby[data-k]::after {
-    content: attr(data-k); display: block; height: 0; overflow: hidden; visibility: hidden;
-    font-size: .46em; white-space: nowrap;
-  }
-  .lines.ruby-off .tx ruby[data-k]::after,
-  .lines:not(.ruby-all) .w:not([data-s="unknown"]):not([data-s="learning"]) ruby[data-k]::after { display: none; }
+  /* A reading wider than its characters is given room, and leans off a neighbour's reading, as on the subtitle (ruby-room.ts). */
+  .tx ruby[data-k] { padding: 0 var(--lg-after, 0em) 0 var(--lg-before, 0em); }
+  .tx ruby[data-k] rt { left: calc(50% + var(--lg-lean, 0em)); }
+  .lines.ruby-off .tx ruby[data-k],
+  .lines:not(.ruby-all) .w:not([data-s="unknown"]):not([data-s="learning"]) ruby[data-k] { padding: 0; }
 
   /* Square corners: a rounded box bent each underline up at its ends. */
   .w { cursor: pointer; padding: 0 1px 3px; }
@@ -3447,7 +3445,9 @@ export class Sidebar {
     // this line needs the taller leading in that mode.
     let ruby = false;
     let fresh = false;
-    for (const tok of tokens) {
+    // What each word is drawn as, so a reading knows what stands beside it.
+    const drawn: Drawn[] = tokens.map((t) => (t.punct ? (t.surface.includes('\n') ? 'break' : 'mark') : rubyOf(this.#deps.segmenter(), t)));
+    for (const [j, tok] of tokens.entries()) {
       if (tok.punct) {
         // In a span, so a phrase across it can mark it too.
         const p = document.createElement('span');
@@ -3469,13 +3469,13 @@ export class Sidebar {
 
       // Readings and status belong here too: a transcript that renders the
       // same words differently from the overlay is two tools, not one.
-      const segs = rubyOf(this.#deps.segmenter(), tok);
+      const segs = drawn[j] as ReturnType<typeof rubyOf>;
       const annotated = segs.some((x) => x.ruby);
       if (annotated) {
         this.#annotated.add(w);
         ruby = true;
         if (status === 'unknown' || status === 'learning') fresh = true;
-        for (const seg of segs) {
+        for (const [i, seg] of segs.entries()) {
           if (!seg.ruby) {
             w.appendChild(document.createTextNode(seg.text));
             continue;
@@ -3485,7 +3485,15 @@ export class Sidebar {
           const rt = document.createElement('rt');
           rt.textContent = seg.ruby;
           r.appendChild(rt);
-          r.dataset.k = seg.ruby;
+          const [before, after] = sidesOf(drawn, j, i);
+          // One kana of a reading is .46em of the text under it here (.tx rt).
+          const room = roomFor(seg.text, seg.ruby, before, after, 0.46);
+          if (room) {
+            r.dataset.k = seg.ruby;
+            r.style.setProperty('--lg-before', `${room.left}em`);
+            r.style.setProperty('--lg-after', `${room.right}em`);
+            r.style.setProperty('--lg-lean', `${Math.round((room.lean / 0.46) * 1000) / 1000}em`);
+          }
           w.appendChild(r);
         }
       } else {
