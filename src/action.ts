@@ -8,6 +8,7 @@ import { loadSettings, onSettingsChange, settings } from './settings';
 import type { TrackInfo } from './adapters/types';
 import { studyTracks, translationTracks } from './content/track-choice';
 import { markSites, siteInfo } from './site-info';
+import { nameIn } from './sites';
 
 /**
  * Toolbar popup.
@@ -86,7 +87,7 @@ function describe(state: PageState | null, url?: string): { text: string; cls: s
     return { text: site ? ui.action.worksOn(siteName(site)) : ui.action.unsupported, cls: 'off' };
   }
   if (!state.rendering) {
-    return { text: ui.action.waitingForSubtitles(siteName(state.site)), cls: 'off' };
+    return { text: ui.action.waitingForSubtitles(nameIn(siteName(state.site), uiLocale())), cls: 'off' };
   }
   // The video has tracks and none is in use: the page's own notice says why,
   // and "active" would be the opposite of it.
