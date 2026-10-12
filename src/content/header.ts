@@ -3,7 +3,7 @@ import { letterKey } from './keys';
 import { TIP_STYLE, tooltips } from './tooltip';
 import { fill, learningLabel, ui, uiDirection, uiLocale } from '../i18n';
 import { logo } from '../logo';
-import { TARGET_LANGUAGES, featuresOf, nextRuby, settings, setSetting } from '../settings';
+import { TARGET_LANGUAGES, featuresOf, nextRuby, nextSubtitleView, settings, setSetting, subtitleView } from '../settings';
 
 /**
  * The bar across the top of the player.
@@ -206,7 +206,11 @@ export class Header {
       void setSetting('blurPrimary', !settings().blurPrimary).then(() => this.update());
     });
     add('dual', 'captions', () => {
-      void setSetting('dualSubtitles', !settings().dualSubtitles).then(() => this.update());
+      // Translation off, then subtitles off, then both on.
+      const next = nextSubtitleView(settings());
+      void setSetting('dualSubtitles', next.dualSubtitles)
+        .then(() => setSetting('showSubtitles', next.showSubtitles))
+        .then(() => this.update());
     });
     add('sidebar', 'panel', () => {
       this.#deps.onToggleSidebar();
@@ -362,8 +366,12 @@ export class Header {
     setOn('blur', s.blurPrimary, ui.header.blurSubtitle, s.blurPrimary ? ui.header.unblurSubtitle : ui.header.blurSubtitle,
       letterKey('H', s.singleKeys));
     this.#buttons.get('blur')?.replaceChildren(icon(s.blurPrimary ? 'eye' : 'eyeOff', 20));
-    setOn('dual', s.dualSubtitles, ui.header.translation, s.dualSubtitles ? ui.header.hideTranslation : ui.header.showTranslation,
+    // One button for what the video shows: both lines, the subtitles alone, or neither. Its tip says what a press does.
+    const view = subtitleView(s);
+    setOn('dual', view !== 'off', ui.header.subtitles,
+      view === 'both' ? ui.header.hideTranslation : view === 'subtitles' ? ui.header.hideSubtitles : ui.header.showSubtitles,
       { shown: '↑', aria: 'ArrowUp' });
+    this.#buttons.get('dual')?.replaceChildren(icon(view === 'both' ? 'captions' : view === 'subtitles' ? 'captionsOne' : 'captionsOff', 20));
     setOn('sidebar', this.#deps.sidebarOpen(), ui.header.transcript, ui.header.transcript, letterKey('S', s.singleKeys));
 
     const pin = this.#buttons.get('pin');

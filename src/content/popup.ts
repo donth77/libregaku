@@ -802,17 +802,23 @@ export function showPopup(
 
   // The inflection trace: what this token was built from, and where it leads.
   const { parts, lemma, surface, inflections } = ctx.token;
-  if (parts?.length && lemma && lemma !== surface) {
+  const compound = Boolean(ctx.token.compound);
+  if (parts?.length && lemma && (lemma !== surface || compound)) {
     const tr = document.createElement('div');
     tr.className = 'trace';
     tr.lang = learned;
     // Read left to right whatever the interface's direction: + and → take
     // the page's, and in Arabic the parts came out in the wrong order.
     tr.dir = 'ltr';
-    tr.append(document.createTextNode(`${parts.join(' + ')}  →  `));
-    const b = document.createElement('b');
-    b.textContent = lemma;
-    tr.appendChild(b);
+    // A compound is its parts and nothing more: Riesen + schlange, with no word it leads to.
+    if (compound) {
+      tr.append(document.createTextNode(parts.join(' + ')));
+    } else {
+      tr.append(document.createTextNode(`${parts.join(' + ')}  →  `));
+      const b = document.createElement('b');
+      b.textContent = lemma;
+      tr.appendChild(b);
+    }
 
     /*
      * Name what the endings do. The merge pass already decided which morphemes

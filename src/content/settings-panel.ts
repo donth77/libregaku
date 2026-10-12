@@ -58,7 +58,7 @@ export const PANEL_STYLE = `
   .settings .grp button.fold {
     display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%;
     margin: 0; padding: 0; border: 0; background: none; cursor: pointer;
-    color: inherit; font: inherit; letter-spacing: inherit; text-align: start;
+    color: inherit; font: inherit; letter-spacing: inherit; text-transform: none; text-align: start;
   }
   .settings .grp button.fold::after {
     content: ''; flex: none; width: 7px; height: 7px; margin-inline-end: 3px;
@@ -641,7 +641,7 @@ function flagPicker(labelId: string, hintId: string, onChange: () => void): { bu
 }
 
 /** A setting only some languages have a use for, such as Furigana. */
-type Feature = 'readings' | 'characters' | 'definitions' | 'scripts';
+type Feature = 'readings' | 'characters' | 'definitions' | 'scripts' | 'articles';
 
 /** Give a setting's row its name and its hint. */
 function named(root: ParentNode, setting: keyof Settings, [name, hint]: [string, string]): void {
@@ -891,6 +891,7 @@ export function buildSettings(onChange: Rerender, opts: SettingsPanelOptions = {
   check('lookupElsewhere', t.lookupElsewhere, t.lookupElsewhereHint);
 
   group('subtitles', t.subtitlesHeading, t.subtitlesAbout);
+  check('showSubtitles', t.showSubtitles, t.showSubtitlesHint);
   const ruby = select('ruby', t.ruby, [
     ['unknown', t.rubyUnknown], ['always', t.rubyAlways], ['never', t.rubyNever],
   ], t.rubyHint);
@@ -898,7 +899,7 @@ export function buildSettings(onChange: Rerender, opts: SettingsPanelOptions = {
   check('blurPrimary', t.blurPrimary, t.blurPrimaryHint);
   select('subtitleSize', t.subtitleSize,
     // Up to twice the size: text has to reach 200% (WCAG 1.4.4).
-    ['70', '85', '100', '120', '140', '160', '180', '200'].map((v) => [v, t.subtitleSizeOption(Number(v))]),
+    ['50', '60', '70', '85', '100', '120', '140', '160', '180', '200'].map((v) => [v, t.subtitleSizeOption(Number(v))]),
     t.subtitleSizeHint);
   select('subtitleBottom', t.subtitleBottom, [
     ['4', t.subtitleBottomLowest], ['8', t.subtitleBottomLow], ['12', t.subtitleBottomNormal],
@@ -915,6 +916,8 @@ export function buildSettings(onChange: Rerender, opts: SettingsPanelOptions = {
   color('colorTracking', t.colorTracking, t.colorTrackingHint);
   color('colorKnown', t.colorKnown, t.colorKnownHint);
   check('markKnown', t.markKnown, t.markKnownHint);
+  // Only a language whose dictionary says which words are articles and pronouns has a use for it.
+  needs(check('underlineGrammar', t.underlineGrammar, t.underlineGrammarHint), 'articles');
   {
     const set = document.createElement('div');
     set.className = 'set';
@@ -1483,10 +1486,12 @@ function credits(): HTMLElement {
  * code it loaded until it is reloaded, and this is how to tell which that is.
  * The date is written as the interface language writes dates.
  */
-export function builtLabel(iso = typeof __BUILT__ === 'string' ? __BUILT__ : ''): string {
+export function builtLabel(iso = typeof __BUILT__ === 'string' ? __BUILT__ : '', now = new Date()): string {
   const at = iso ? new Date(iso) : null;
   if (!at || Number.isNaN(at.getTime())) return '';
+  // The year is written only when it is not this one: a copy from last year says so.
   const when = new Intl.DateTimeFormat(uiLocale(), {
+    ...(at.getFullYear() !== now.getFullYear() ? { year: 'numeric' as const } : {}),
     month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
   }).format(at);
   return ui.settings.built(when);

@@ -20,6 +20,12 @@ export interface Token {
   content?: boolean;
   /** Morphemes this token was merged from — 来た is ["来", "た"]. */
   parts?: string[];
+  /**
+   * A word made of two the dictionary has but not the whole: the dictionary's
+   * word for each part, the last being what the whole is a kind of. Riesenschlange
+   * is [Riese, Schlange], and `parts` the two as they are written.
+   */
+  compound?: [string, string];
   /** What the endings do — "conditional", "polite", "past". */
   inflections?: string[];
   /** Reading of `lemma`, when the analysis pins it down. Tier 2 only. */

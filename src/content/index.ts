@@ -28,7 +28,7 @@ import { phonetic } from '../anki/text';
 import {
   DICTIONARIES, cardDeck, definitionLanguage, dictionaryOf, featuresOf, loadSettings, nextRuby, ownDictionaryOf, trackLanguageMatch,
   onSettingsChange, targetVariant,
-  setSetting, settings, underlineVars,
+  nextSubtitleView, setSetting, settings, underlineVars,
 } from '../settings';
 import { languageList, loadUiLanguage, setTranslationLoader, setUiLanguage, ui } from '../i18n';
 import {
@@ -1144,6 +1144,7 @@ function makeOverlay(mount: HTMLElement, adapter: SubtitleSource): Overlay {
   o.setSize(settings().subtitleSize);
   o.setRubyMode(settings().ruby);
   o.setBlurred(settings().blurPrimary);
+  o.setShown(settings().showSubtitles);
   o.setMarkKnown(settings().markKnown);
   o.setUnderlines(settings().underlines);
   o.setColors(underlineVars(settings()));
@@ -2098,9 +2099,15 @@ function act(action: KeyAction): void {
       if (!goToLine(action) && mount) flash(mount, action === 'next' ? ui.player.lastLine : ui.player.noLineBefore);
       return;
     case 'second': {
-      const on = !settings().dualSubtitles;
-      void setSetting('dualSubtitles', on).then(() => header?.update());
-      if (mount) flash(mount, on ? ui.player.translationOn : ui.player.translationOff);
+      // Translation off, then subtitles off, then both on: as the header's button steps.
+      const next = nextSubtitleView(settings());
+      void setSetting('dualSubtitles', next.dualSubtitles)
+        .then(() => setSetting('showSubtitles', next.showSubtitles))
+        .then(() => header?.update());
+      if (mount) {
+        flash(mount, !next.showSubtitles ? ui.player.subtitlesOff : next.dualSubtitles
+          ? ui.player.subtitlesOn : ui.player.translationOff);
+      }
       return;
     }
     case 'furigana': {
@@ -2238,6 +2245,12 @@ onSettingsChange((s) => {
 onSettingsChange((s) => {
   if (s.interaction !== 'hover') closePopup();
 });
+// Whether articles and pronouns count as words to learn is decided when a line is analysed.
+let grammarCounted: boolean | null = null;
+onSettingsChange((s) => {
+  if (grammarCounted !== null && s.underlineGrammar !== grammarCounted) reanalyse();
+  grammarCounted = s.underlineGrammar;
+});
 // Marks kept in the browser go into Anki the moment keeping them there comes back on.
 let marksInAnki: boolean | null = null;
 onSettingsChange((s) => {
@@ -2253,6 +2266,7 @@ onSettingsChange((s) => {
   if (s.subtitleBottom !== appearance.bottom) replace?.();
   overlay?.setRubyMode(s.ruby);
   overlay?.setBlurred(s.blurPrimary);
+  overlay?.setShown(s.showSubtitles);
   overlay?.setMarkKnown(s.markKnown);
   overlay?.setUnderlines(s.underlines);
   overlay?.setColors(underlineVars(s));

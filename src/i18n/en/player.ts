@@ -31,6 +31,8 @@ export const player = {
   /** ↑ turned the translation under the subtitle on, or off. */
   translationOn: 'Translation on',
   translationOff: 'Translation off',
+  subtitlesOff: 'Subtitles off',
+  subtitlesOn: 'Subtitles on',
   /** H blurred the subtitle line; it shows while the pointer is over it. */
   blurOn: 'Subtitle blurred until you hover it',
   /** H again: the subtitle shows plainly. */

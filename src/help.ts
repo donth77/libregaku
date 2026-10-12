@@ -1,7 +1,8 @@
 import { hasHelp, helpFor, type HelpBlock, type HelpContent, type HelpTopic } from './help/content';
 import { mountChat } from './help-chat';
-import { loadUiLanguage, setTranslationLoader } from './i18n';
+import { loadUiLanguage, setTranslationLoader, ui } from './i18n';
 import { markSites } from './site-info';
+import { en as english } from './i18n/en';
 import { directionOf, localeOf, uiLanguageFor } from './i18n/languages';
 import { pageHeader } from './page-header';
 import { loadSettings, onSettingsChange } from './settings';
@@ -84,6 +85,22 @@ function marked(text: string, words: readonly string[]): Node[] {
   return out;
 }
 
+/** The settings page's sections: the id each has there, and the string that names it. */
+const SECTIONS = [
+  ['languages', 'languagesHeading'], ['looking-words-up', 'lookupHeading'], ['word-popup', 'popupHeading'],
+  ['subtitles', 'subtitlesHeading'], ['underlines', 'underlinesHeading'], ['transcript', 'transcriptHeading'],
+  ['anki', 'ankiHeading'], ['anki-cards', 'ankiCardsHeading'], ['data-and-licences', 'creditsHeading'],
+] as const;
+
+/**
+ * The settings section a step of a path names, in the interface's language or in English, which
+ * is what a topic not yet translated says.
+ */
+function sectionNamed(step: string): string | undefined {
+  const wanted = normal(step);
+  return SECTIONS.find(([, key]) => normal(ui.settings[key]) === wanted || normal(english.settings[key]) === wanted)?.[0];
+}
+
 /**
  * A line of help text as nodes: `keys` drawn as keys, {Settings → Anki →
  * Picture} as the path to a setting, a web address as a link to it, [words](https://…)
@@ -101,9 +118,13 @@ export function inline(text: string, words: readonly string[], then = 'then'): N
       k.textContent = piece.slice(1, -1);
       out.push(k);
     } else if (/^\{[^}]+\}$/.test(piece)) {
-      const path = document.createElement('span');
+      const steps = piece.slice(1, -1).split('→').map((s) => s.trim());
+      // Where a path names a section of the settings, it goes there.
+      const section = steps.length > 1 ? sectionNamed(steps[1]!) : undefined;
+      const path = document.createElement(section ? 'a' : 'span');
       path.className = 'path';
-      piece.slice(1, -1).split('→').map((s) => s.trim()).forEach((step, i) => {
+      if (section) (path as HTMLAnchorElement).href = `options.html#lg-${section}`;
+      steps.forEach((step, i) => {
         if (i) {
           // Seen as ›, heard as "then": a span has no name of its own to give it.
           const sep = document.createElement('span');
@@ -144,6 +165,15 @@ export function inline(text: string, words: readonly string[], then = 'then'): N
     }
   }
   return out;
+}
+
+/**
+ * Go to a part of the page at once, where the page's own links glide to theirs:
+ * a link meant to take you somewhere else is not one to watch arrive.
+ */
+function jumpTo(id: string): void {
+  history.pushState(null, '', `#${id}`);
+  document.getElementById(id)?.scrollIntoView({ behavior: 'instant' });
 }
 
 function fill(el: HTMLElement, topic: HelpTopic, words: readonly string[], help: HelpContent): void {
@@ -189,7 +219,7 @@ function fill(el: HTMLElement, topic: HelpTopic, words: readonly string[], help:
     }
   }
   // "Protected sites" names its sites on hover, and goes to their chapter: not from inside it.
-  if (!topic.id.startsWith('protected-sites')) markSites(el, document.documentElement.lang || 'en', () => { location.hash = '#protected-sites'; });
+  if (!topic.id.startsWith('protected-sites')) markSites(el, document.documentElement.lang || 'en', () => jumpTo('protected-sites'));
 }
 
 interface Shown {
@@ -364,7 +394,7 @@ async function main(): Promise<void> {
   renderHelp(out, document.querySelector<HTMLElement>('.toc'), input, none, help);
   if (!location.hash) input.focus();
   // The page is built after it loads, so the browser found no anchor to go to.
-  else document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
+  else document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView({ behavior: 'instant' });
 }
 
 if (document.getElementById('help')) void main();

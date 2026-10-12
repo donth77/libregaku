@@ -1,4 +1,5 @@
 import { LineCache } from './analyser';
+import { compoundKeys, splitCompound, type CompoundRules } from './compound';
 import { IntlSegmenter } from './intl';
 import type { RubySegment, Segmenter, Token } from './types';
 
@@ -72,9 +73,11 @@ export const FORM_LABELS: readonly string[] = [
 const RENAMED: Record<string, string> = { conditional: 'conditional-mood' };
 
 /** One reading of a form as a label: the dictionary's words for it, in its order. */
-const labelOf = (tags: readonly string[], renamed: Readonly<Record<string, string>> = {}): string =>
+const labelOf = (tags: readonly string[], renamed: Readonly<Record<string, string>> = {}, omit: readonly string[] = []): string =>
   tags.join(' ').split(/\s+/).filter(Boolean)
-    .map((w) => w.split('/').map((x) => renamed[x] ?? RENAMED[x] ?? x).join('/')).join(' ');
+    // The dictionary runs choices together: "strong/weak/mixed" is three, each one to leave off.
+    .map((w) => w.split('/').filter((x) => !omit.includes(x)).map((x) => renamed[x] ?? RENAMED[x] ?? x).join('/'))
+    .filter(Boolean).join(' ');
 
 /**
  * The readings one label holds. The dictionary runs two together with
@@ -150,6 +153,12 @@ export interface LemmaHints {
    */
   renamed?: Readonly<Record<string, string>>;
   /**
+   * Words of a form's description a learner has no use for, left off the card:
+   * with them, the one reading "accusative singular masculine" is three, strong,
+   * weak and mixed, which differ only in which article goes before the word.
+   */
+  omit?: readonly string[];
+  /**
    * The pronouns that name who does a verb, each with the person and number
    * the verb after it is in: je is "first-person singular". A form that can be
    * read as two persons — connaissais is je and tu — is read as the one the
@@ -174,6 +183,27 @@ const NOMINAL = new Set(['n', 'np', 'ns', 'adj', 'name', 'num']);
 const BEFORE_NOUN = new Set(['artic', 'det', 'num']);
 /** Kinds nobody makes a card for: el, la, un, del, al. Looked up like any word, never counted as one to learn. */
 const NOT_VOCABULARY = new Set(['artic', 'contr']);
+/** The dictionary's codes that say what kind of word a word is; its other codes say more about that kind. */
+const PARTS_OF_SPEECH = new Set([
+  'n', 'name', 'v', 'adj', 'adv', 'pron', 'det', 'artic', 'num', 'counter', 'prep', 'prep-phrase', 'conj', 'ptcl',
+  'intj', 'phrase', 'prov', 'pref', 'suf', 'contr', 'adn', 'ptcpl',
+]);
+/** With pronouns, the words of a language's grammar: der and den, je, yo. */
+const GRAMMAR_ONLY = new Set(['artic', 'contr', 'pron']);
+
+/**
+ * A word of grammar and not of vocabulary: an article or a contraction,
+ * whatever else it is spelt like (la is also a note), or a word that is
+ * nothing but articles and pronouns (German der is both, den a pronoun only,
+ * and they are one word). nada, tout and que are other things too, and stay.
+ */
+export function grammatical(kind: readonly string[]): boolean {
+  if (kind.some((k) => NOT_VOCABULARY.has(k))) return true;
+  // What it is, without what is said of it beside: a pronoun is 'pron neut', 'pron fem pl'.
+  const parts = kind.filter((k) => PARTS_OF_SPEECH.has(k));
+  // nichts, jemand, alguien: "nothing" and "someone" are pronouns, and words a learner has to learn.
+  return parts.length > 0 && parts.every((k) => GRAMMAR_ONLY.has(k)) && !kind.includes('indef');
+}
 
 /**
  * A reading with a person in it is a conjugated verb: "third-person
@@ -306,7 +336,7 @@ export function lemmaOf(
     }
     c.nominal ||= NOMINAL.has(way.pos ?? '');
     c.verbal ||= way.pos === 'v';
-    const label = labelOf(way.tags, hints.renamed);
+    const label = labelOf(way.tags, hints.renamed, hints.omit);
     const into = isSpelling(way.tags) ? c.spelt : c.said;
     if (label && !into.includes(label)) into.push(label);
   }
@@ -399,6 +429,8 @@ const DIGITS = /^[\d.,]+$/;
  */
 export function lemmaTokens(
   tokens: Token[], forms: Forms, locale?: string, hints?: LemmaHints, fold: (surface: string) => string = (s) => s,
+  /** Count articles and pronouns as words to learn (the Underline articles and pronouns setting). */
+  grammarCounts = false,
 ): Token[] {
   let first = true;
   let expecting: Expecting;
@@ -434,7 +466,7 @@ export function lemmaTokens(
     return {
       ...t,
       // As Japanese particles are: drawn and looked up, never underlined as new.
-      content: !(info?.kind ?? []).some((k) => NOT_VOCABULARY.has(k)),
+      content: grammarCounts || !grammatical(info?.kind ?? []),
       lemma: found.lemma,
       lookup: found.lookup.map((key) => ({ key })),
       // The card's trace reads "hablábamos → hablar"; a word in its own form has none.
@@ -453,8 +485,12 @@ export class LemmaSegmenter implements Segmenter {
   readonly #hints: LemmaHints | undefined;
   readonly #prepare: (tokens: Token[]) => Token[];
   readonly #fold: (surface: string) => string;
+  readonly #grammarCounts: () => boolean;
+  readonly #compounds: CompoundRules | undefined;
+  /** What the lines kept were analysed with: a change of the setting starts them over. */
+  #counted = false;
   readonly #words: IntlSegmenter;
-  readonly #cache = new LineCache();
+  #cache = new LineCache();
 
   /**
    * `prepare` reshapes the browser's words before the dictionary is asked, for
@@ -463,16 +499,30 @@ export class LemmaSegmenter implements Segmenter {
    */
   constructor(
     locale: string, hints?: LemmaHints,
-    opts: { prepare?: (tokens: Token[]) => Token[]; fold?: (surface: string) => string } = {},
+    opts: {
+      prepare?: (tokens: Token[]) => Token[];
+      fold?: (surface: string) => string;
+      /** Whether articles and pronouns count as words to learn, asked at each line: a setting. */
+      grammarCounts?: () => boolean;
+      /** Cut a word the dictionary lacks into two it has (compound.ts). */
+      compounds?: CompoundRules;
+    } = {},
   ) {
     this.#locale = locale;
     this.#hints = hints;
     this.#prepare = opts.prepare ?? ((tokens) => tokens);
     this.#fold = opts.fold ?? ((surface) => surface);
+    this.#grammarCounts = opts.grammarCounts ?? (() => false);
+    this.#compounds = opts.compounds;
     this.#words = new IntlSegmenter(locale);
   }
 
   async segment(text: string): Promise<Token[]> {
+    const counts = this.#grammarCounts();
+    if (counts !== this.#counted) {
+      this.#counted = counts;
+      this.#cache = new LineCache();
+    }
     const hit = this.#cache.get(text);
     if (hit) return hit;
     const tokens = this.#prepare(this.#words.segment(text));
@@ -493,12 +543,38 @@ export class LemmaSegmenter implements Segmenter {
     // The dictionary is still coming: boundaries for now, and not kept, so
     // the line gains its dictionary forms once the table is in.
     if (!res?.ok || !res.forms) return tokens;
-    const out = lemmaTokens(tokens, res.forms, this.#locale, this.#hints, this.#fold);
+    let out = lemmaTokens(tokens, res.forms, this.#locale, this.#hints, this.#fold, counts);
+    if (this.#compounds) out = await this.#cutCompounds(out, res.forms, this.#compounds);
     this.#cache.set(text, out);
     return out;
+  }
+
+  /** Words the dictionary has nothing for, cut in two where both halves are words it has. */
+  async #cutCompounds(tokens: Token[], forms: Forms, rules: CompoundRules): Promise<Token[]> {
+    const lower = (s: string): string => this.#fold(s).toLocaleLowerCase(this.#locale);
+    const unknown = tokens.filter((t) =>
+      !t.punct && /^\p{L}+$/u.test(t.surface) && t.surface.length >= rules.minPart * 2
+      && !forms[this.#fold(t.surface)] && !forms[lower(t.surface)]);
+    if (!unknown.length) return tokens;
+    const asked = new Set<string>();
+    for (const t of unknown.slice(0, COMPOUNDS_PER_LINE)) for (const k of compoundKeys(t.surface, rules)) asked.add(k);
+    const res = (await chrome.runtime.sendMessage({
+      target: 'offscreen', type: 'dict-forms', forms: [...asked].slice(0, 400),
+    })) as FormsAnswer | undefined;
+    if (!res?.ok || !res.forms) return tokens;
+    const known = res.forms;
+    return tokens.map((t) => {
+      if (!unknown.includes(t)) return t;
+      const cut = splitCompound(t.surface, known, rules);
+      if (!cut) return t;
+      return { ...t, parts: [...cut.parts], compound: cut.lemmas, lookup: cut.lemmas.slice().reverse().map((key) => ({ key })) };
+    });
   }
 
   ruby(surface: string): RubySegment[] {
     return [{ text: surface }];
   }
 }
+
+/** How many words of one line are tried for a compound: a line of names is not a line of compounds. */
+const COMPOUNDS_PER_LINE = 4;

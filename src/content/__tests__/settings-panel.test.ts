@@ -179,6 +179,10 @@ describe('settings panel selects', () => {
     expect(builtLabel('2026-10-10T21:08:00Z')).toMatch(/^This copy was built .*10.*\.$/);
     expect(builtLabel('')).toBe('');
     expect(builtLabel('not a date')).toBe('');
+    // The year is written only for a copy from another year.
+    const now = new Date('2026-10-11T12:00:00Z');
+    expect(builtLabel('2026-10-10T21:08:00Z', now)).not.toMatch(/2026/);
+    expect(builtLabel('2025-03-02T09:00:00Z', now)).toMatch(/2025/);
   });
 
   it('shows Furigana and Kanji only while the language learned has them', async () => {

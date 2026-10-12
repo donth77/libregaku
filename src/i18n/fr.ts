@@ -126,6 +126,8 @@ export const fr: Translation = {
     blurPrimaryHint:
       'Pour travailler l’écoute : les sous-titres restent flous jusqu’à ce que vous les survoliez. ' +
       'Appuyez sur H pour activer ou désactiver.',
+    showSubtitles: 'Sous-titres sur la vidéo',
+    showSubtitlesHint: 'Affiche les sous-titres sur la vidéo. Désactivé, il reste la barre du haut, la transcription et le panneau. Le bouton de la barre fait défiler : traduction masquée, sous-titres masqués, puis les deux ; ↑ fait de même.',
     subtitleSize: 'Taille du texte',
     subtitleSizeOption: (n: number): string => percent(n),
     subtitleSizeHint: 'Suit la taille du lecteur : le rendu est le même en plein écran.',
@@ -162,6 +164,8 @@ export const fr: Translation = {
     underlinesHint: 'Désactivez pour des sous-titres simples, sans couleurs sous les mots.',
     markKnown: 'Souligner les mots connus',
     markKnownHint: 'Désactivé par défaut, pour que l’écran s’allège à mesure que vous apprenez.',
+    underlineGrammar: 'Souligner les articles et les pronoms',
+    underlineGrammarHint: 'Désactivé par défaut : des mots comme « le », « je » et « il » restent consultables, mais ne comptent pas comme mots à apprendre.',
     defaultColours: 'Couleurs par défaut',
     resetColours: 'Réinitialiser',
 
@@ -617,6 +621,9 @@ export const fr: Translation = {
     unblurSubtitle: 'Retirer le flou',
     showTranslation: 'Afficher la traduction',
     hideTranslation: 'Masquer la traduction',
+    hideSubtitles: 'Masquer les sous-titres',
+    showSubtitles: 'Afficher les sous-titres',
+    subtitles: 'Sous-titres',
     translation: 'Traduction',
     transcript: 'Transcription',
     pinHeader: 'Épingler l’en-tête',
@@ -631,6 +638,8 @@ export const fr: Translation = {
     noLineBefore: 'Aucune ligne avant celle-ci',
     translationOn: 'Traduction activée',
     translationOff: 'Traduction désactivée',
+    subtitlesOff: 'Sous-titres désactivés',
+    subtitlesOn: 'Sous-titres activés',
     blurOn: 'Sous-titre flouté jusqu’au survol',
     blurOff: 'Sous-titre visible',
     lineSaved: 'Ligne ajoutée aux favoris',

@@ -17,7 +17,7 @@ beforeEach(() => {
 
 function panel(): HTMLElement {
   const root = document.createElement('div');
-  root.innerHTML = ['languages', 'anki', 'data-and-licences']
+  root.innerHTML = ['languages', 'looking-words-up', 'word-popup', 'subtitles', 'underlines', 'transcript', 'anki', 'anki-cards', 'data-and-licences']
     .map((id) => `<section class="grp-section" id="lg-${id}"><div class="grp-head"><h2 class="grp">${id}</h2></div><div class="grp-rows"></div></section>`)
     .join('');
   return root;
@@ -26,14 +26,16 @@ const folded = (root: HTMLElement, id: string): boolean => root.querySelector(`#
 const flush = (): Promise<void> => new Promise((r) => setTimeout(r, 0));
 
 describe('settings groups that fold', () => {
-  it('start open, except Data and licences, and the heading keeps its words', async () => {
+  it('start open for Languages, Anki and Anki cards, and folded for the rest', async () => {
     const { foldable } = await import('../folds');
     const root = panel();
     foldable(root);
-    expect(['languages', 'anki', 'data-and-licences'].map((id) => folded(root, id))).toEqual([false, false, true]);
+    const ids = ['languages', 'looking-words-up', 'word-popup', 'subtitles', 'underlines', 'transcript', 'anki', 'anki-cards', 'data-and-licences'];
+    expect(ids.map((id) => folded(root, id))).toEqual([false, true, true, true, true, true, false, false, true]);
     expect(root.querySelector('#lg-anki .grp')?.textContent).toBe('anki');
     expect(root.querySelector('#lg-anki button.fold')?.getAttribute('aria-expanded')).toBe('true');
     expect(root.querySelector('#lg-data-and-licences button.fold')?.getAttribute('aria-expanded')).toBe('false');
+    expect(root.querySelector('#lg-anki-cards button.fold')?.getAttribute('aria-expanded')).toBe('true');
   });
 
   it('fold and open on a click, and remember it', async () => {
@@ -43,7 +45,7 @@ describe('settings groups that fold', () => {
     root.querySelector<HTMLButtonElement>('#lg-anki button.fold')!.click();
     expect(folded(root, 'anki')).toBe(true);
     await flush();
-    expect(stored['libregaku.settings.folded']).toEqual({ 'lg-anki': true });
+    expect(stored['libregaku.settings.folded.v2']).toEqual({ 'lg-anki': true });
 
     vi.resetModules();
     const again = await import('../folds');

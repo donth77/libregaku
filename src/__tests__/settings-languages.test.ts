@@ -186,3 +186,16 @@ describe('Cantonese', () => {
     expect(trackLanguageMatch('zh-Hans', 'zh')).toBe(2);
   });
 });
+
+describe('what the video shows', () => {
+  it('steps from both lines to the subtitles alone, to nothing, and back to both', async () => {
+    const { nextSubtitleView, subtitleView } = await import('../settings');
+    let now = { showSubtitles: true, dualSubtitles: true };
+    const seen: string[] = [subtitleView(now)];
+    for (let i = 0; i < 3; i++) {
+      now = nextSubtitleView(now);
+      seen.push(subtitleView(now));
+    }
+    expect(seen).toEqual(['both', 'subtitles', 'off', 'both']);
+  });
+});

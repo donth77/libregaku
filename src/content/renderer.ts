@@ -82,6 +82,16 @@ const STYLE = `
     /* Its own layer, so a phrase's band (below) can sit under every word in it. */
     isolation: isolate;
   }
+  /*
+   * A line written wholly in an alphabet has no readings to leave room for, and
+   * its letters do not fill the em as a character does: at 1.8 the underline
+   * hung well below the word. The same line height and padding all through, so
+   * the words and the marks between them keep to one baseline.
+   */
+  .primary.alpha { line-height: 1.4; }
+  .primary.alpha > .t, .primary.alpha > .p { padding-bottom: 2px; }
+  .primary.tight { line-height: 1.45; }
+  .primary.tight > .t, .primary.tight > .p { padding-bottom: 3px; }
   .secondary { font-size: calc(var(--size) * .66); font-weight: 500; color: #D5DCEC; user-select: text; }
   /* Square corners: a rounded box bent each underline up at its ends. */
   .t { position: relative; padding: 0 1px 4px; cursor: pointer; }
@@ -184,6 +194,8 @@ const STYLE = `
   .wrap.blurred .primary > * { filter: blur(.3em); transition: filter .12s ease-out; }
   .wrap.blurred .primary:hover > *, .wrap.blurred .primary:focus-within > * { filter: none; }
   .hidden { display: none; }
+  /* Subtitles off: nothing of the line is drawn, and nothing in it can be pointed at. */
+  .wrap.subs-off { display: none; }
   /* Hug the text. The wrapper is a full-width flex column, so outlining it
      drew a box across the whole player. */
   .debug .primary {
@@ -226,6 +238,9 @@ const isNew = (status: string): boolean => status === 'unknown' || status === 'l
 
 /** Nothing on the page has focus: what had it was taken away, and nothing took it since. */
 const focusIsNowhere = (): boolean => !document.activeElement || document.activeElement === document.body;
+
+/** A word written in an alphabet, as Spanish, French, German and Russian are: not in characters that fill their boxes. */
+const ALPHABETIC = /^[\p{Script=Latin}\p{Script=Cyrillic}\p{Script=Greek}\p{M}\p{N}'’\-]+$/u;
 
 export class Overlay {
   #host: HTMLElement;
@@ -522,6 +537,11 @@ export class Overlay {
     for (const [name, value] of Object.entries(vars)) this.#host.style.setProperty(name, value);
   }
 
+  /** Draw the line at all. Off leaves the video bare, for someone who reads the transcript. */
+  setShown(on: boolean): void {
+    this.#primary.parentElement?.classList.toggle('subs-off', !on);
+  }
+
   /** Blur the line until the cursor is on it. */
   setBlurred(on: boolean): void {
     this.#primary.parentElement?.classList.toggle('blurred', on);
@@ -558,6 +578,9 @@ export class Overlay {
     const annotated = tokens.filter((t) => !t.punct && this.#ruby(t).some((x) => x.ruby));
     this.#primary.classList.toggle('has-ruby', annotated.length > 0);
     this.#primary.classList.toggle('has-new-ruby', annotated.some((t) => isNew(this.#statusOf(t))));
+    this.#primary.classList.toggle('alpha', !annotated.length && tokens.some((t) => !t.punct) && tokens.every((t) => t.punct || ALPHABETIC.test(t.surface)));
+    // Characters with no readings above them (Korean, Chinese without pinyin): tighter than 1.8, as a line with readings keeps its room.
+    this.#primary.classList.toggle('tight', !annotated.length && !this.#primary.classList.contains('alpha'));
     this.#primary.classList.remove('phrased');
     // Whether what was just drawn is a word, or a mark closed up against one.
     let tight = false;

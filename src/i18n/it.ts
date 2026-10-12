@@ -124,6 +124,8 @@ export const it: Translation = {
     blurPrimaryHint:
       'Per esercitare l’ascolto: i sottotitoli restano sfocati finché non ci passi sopra con il mouse. ' +
       'Premi H per attivare o disattivare.',
+    showSubtitles: 'Sottotitoli sul video',
+    showSubtitlesHint: 'Disegna i sottotitoli sul video. Disattivati, restano la barra in alto, la trascrizione e il pannello. Il pulsante della barra scorre: traduzione nascosta, sottotitoli nascosti, poi entrambi; ↑ fa lo stesso.',
     subtitleSize: 'Dimensione del testo',
     subtitleSizeOption: (n: number): string => percent(n),
     subtitleSizeHint: 'Si adatta al player, quindi appare uguale a schermo intero.',
@@ -160,6 +162,8 @@ export const it: Translation = {
     underlinesHint: 'Disattiva per sottotitoli semplici, senza colori sotto le parole.',
     markKnown: 'Sottolinea le parole conosciute',
     markKnownHint: 'Disattivato di default, così lo schermo si alleggerisce man mano che impari.',
+    underlineGrammar: 'Sottolinea articoli e pronomi',
+    underlineGrammarHint: 'Disattivato per impostazione predefinita: parole come «il», «io» e «lui» si possono ancora cercare, ma non contano come parole da imparare.',
     defaultColours: 'Colori predefiniti',
     resetColours: 'Ripristina',
 
@@ -613,6 +617,9 @@ export const it: Translation = {
     unblurSubtitle: 'Togli sfocatura',
     showTranslation: 'Mostra traduzione',
     hideTranslation: 'Nascondi traduzione',
+    hideSubtitles: 'Nascondi i sottotitoli',
+    showSubtitles: 'Mostra i sottotitoli',
+    subtitles: 'Sottotitoli',
     translation: 'Traduzione',
     transcript: 'Trascrizione',
     pinHeader: 'Fissa intestazione',
@@ -627,6 +634,8 @@ export const it: Translation = {
     noLineBefore: 'Nessuna riga prima di questa',
     translationOn: 'Traduzione attivata',
     translationOff: 'Traduzione disattivata',
+    subtitlesOff: 'Sottotitoli disattivati',
+    subtitlesOn: 'Sottotitoli attivati',
     blurOn: 'Sottotitolo sfocato finché non ci passi sopra',
     blurOff: 'Sottotitolo visibile',
     lineSaved: 'Riga salvata',

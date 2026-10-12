@@ -99,6 +99,8 @@ export const es: Translation = {
     blurPrimaryHint:
       'Para practicar la comprensión auditiva: los subtítulos se quedan desenfocados hasta que pasas el cursor por encima. ' +
       'Pulsa H para cambiar.',
+    showSubtitles: 'Subtítulos en el video',
+    showSubtitlesHint: 'Dibuja los subtítulos sobre el video. Desactivado, quedan la barra superior, la transcripción y el panel. El botón de la barra recorre: traducción fuera, subtítulos fuera, y ambos de nuevo; ↑ hace lo mismo.',
     subtitleSize: 'Tamaño del texto',
     subtitleSizeOption: (n: number): string => percent(n),
     subtitleSizeHint: 'Se adapta al reproductor, así que se ve igual en pantalla completa.',
@@ -135,6 +137,8 @@ export const es: Translation = {
     underlinesHint: 'Desactívalo para ver subtítulos simples, sin colores bajo las palabras.',
     markKnown: 'Subrayar palabras conocidas',
     markKnownHint: 'Desactivado por defecto, para que la pantalla se vea más limpia a medida que aprendes.',
+    underlineGrammar: 'Subrayar artículos y pronombres',
+    underlineGrammarHint: 'Desactivado por defecto: palabras como «el», «yo» y «él» se pueden seguir consultando, pero no cuentan como palabras por aprender.',
     defaultColours: 'Colores predeterminados',
     resetColours: 'Restablecer',
 
@@ -585,6 +589,9 @@ export const es: Translation = {
     unblurSubtitle: 'Enfocar subtítulo',
     showTranslation: 'Mostrar traducción',
     hideTranslation: 'Ocultar traducción',
+    hideSubtitles: 'Ocultar subtítulos',
+    showSubtitles: 'Mostrar subtítulos',
+    subtitles: 'Subtítulos',
     translation: 'Traducción',
     transcript: 'Transcripción',
     pinHeader: 'Fijar encabezado',
@@ -599,6 +606,8 @@ export const es: Translation = {
     noLineBefore: 'No hay ninguna línea anterior',
     translationOn: 'Traducción activada',
     translationOff: 'Traducción desactivada',
+    subtitlesOff: 'Subtítulos desactivados',
+    subtitlesOn: 'Subtítulos activados',
     blurOn: 'Subtítulo desenfocado hasta que pases el cursor por encima',
     blurOff: 'Subtítulo visible',
     lineSaved: 'Línea guardada',

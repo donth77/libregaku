@@ -9,9 +9,13 @@
  * convenience of the view, not a setting, and is not synced.
  */
 
-/** The groups folded shut until the learner says otherwise: what few come to read. */
-const FOLDED_AT_FIRST: ReadonlySet<string> = new Set(['lg-data-and-licences']);
-const KEY = 'libregaku.settings.folded';
+/**
+ * The groups folded shut until the learner says otherwise: every group but the
+ * three a learner comes to first, the languages, Anki and the cards made in it.
+ */
+const OPEN_AT_FIRST: ReadonlySet<string> = new Set(['lg-languages', 'lg-anki', 'lg-anki-cards']);
+/** Versioned: choices stored before the defaults changed do not override them. */
+const KEY = 'libregaku.settings.folded.v2';
 
 const chosen = new Map<string, boolean>();
 let loaded: Promise<void> | null = null;
@@ -30,7 +34,7 @@ function loadFolds(): Promise<void> {
   return loaded;
 }
 
-const isFolded = (id: string): boolean => chosen.get(id) ?? FOLDED_AT_FIRST.has(id);
+const isFolded = (id: string): boolean => chosen.get(id) ?? !OPEN_AT_FIRST.has(id);
 
 function choose(id: string, shut: boolean): void {
   chosen.set(id, shut);

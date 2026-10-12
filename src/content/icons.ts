@@ -23,6 +23,10 @@ const ICONS: Record<string, string> = {
     '<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>',
   captions:
     '<rect width="18" height="14" x="3" y="5" rx="2"/><path d="M7 15h4"/><path d="M15 15h2"/><path d="M7 11h2"/><path d="M13 11h4"/>',
+  captionsOne:
+    '<rect width="18" height="14" x="3" y="5" rx="2"/><path d="M7 12h10"/>',
+  captionsOff:
+    '<rect width="18" height="14" x="3" y="5" rx="2"/><path d="M7 12h10"/><path d="m4 4 16 16"/>',
   ruby:
     '<path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/>',
   /* Furigana's three states, drawn: two words, with a reading over both, one, or neither. */

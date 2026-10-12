@@ -133,6 +133,8 @@ describe('finding what a question is about', () => {
     const near = relevant(docs, 'What can you do?');
     expect(near.map((d) => d.title)).toEqual(docs.slice(0, 3).map((d) => d.title));
     expect(near.length).toBe(3);
+    expect(relevant(docs, 'What can you help with?').length).toBe(3);
+    expect(relevant(docs, 'What features does Libregaku have?').length).toBe(3);
     // A question with words in it still goes by them, and finds nothing where the help has none.
     expect(relevant(docs, 'qzxv wvkq')).toEqual([]);
   });

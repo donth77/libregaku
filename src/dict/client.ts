@@ -157,9 +157,33 @@ export function lookupWord(lemma: string | undefined, surface: string, hint?: Lo
  * that pick 私【わたし】 over 私【あたし】 and この over 九. Anything else is
  * looked up by lemma, then surface.
  */
-export function lookupToken(token: Pick<Token, 'surface' | 'lemma' | 'lemmaReading' | 'pos' | 'lookup'>): Promise<LookupResult> {
+export function lookupToken(
+  token: Pick<Token, 'surface' | 'lemma' | 'lemmaReading' | 'pos' | 'lookup' | 'compound'>,
+): Promise<LookupResult> {
+  if (token.compound) return lookupCompound(token.surface, token.compound);
   if (token.lookup?.length) return lookupKeys(token.lookup.filter((k) => k.key));
   return lookupWord(token.lemma, token.surface, { reading: token.lemmaReading });
+}
+
+/**
+ * A word the dictionary has no entry for, made of two it has: one entry for
+ * the whole, saying what each part means. Where only one part is found, that
+ * part's own entry stands for the word.
+ */
+async function lookupCompound(surface: string, [modifier, head]: [string, string]): Promise<LookupResult> {
+  const [first, last] = await Promise.all([lookupKeys([{ key: modifier }]), lookupKeys([{ key: head }])]);
+  if (last.state !== 'ok') return last;
+  const headEntry = last.entries[0];
+  if (!headEntry) return last;
+  if (first.state !== 'ok' || !first.entries[0]) return last;
+  const part = (word: string, e: Entry): { pos: string[]; glosses: string[] } => ({
+    pos: [], glosses: [`${word}: ${e.senses.flatMap((s) => s.glosses).slice(0, 3).join('; ')}`],
+  });
+  const entry: Entry = {
+    ...headEntry, id: `compound-${surface}`, word: surface, forms: undefined,
+    senses: [part(modifier, first.entries[0]), part(head, headEntry)],
+  };
+  return { state: 'ok', entries: [entry] };
 }
 
 /** Forget negative results so a finished download takes effect immediately. */

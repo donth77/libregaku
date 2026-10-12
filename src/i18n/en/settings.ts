@@ -114,6 +114,8 @@ export const settings = {
   blurPrimary: 'Blur subtitles',
   /** H is the key, shown as it is. */
   blurPrimaryHint: 'For listening practice: subtitles stay blurred until you point at them. Press H to switch.',
+  showSubtitles: 'Subtitles on the video',
+  showSubtitlesHint: 'Draws the subtitles over the video. Off keeps the header, the transcript and the panel. The header button steps through translation off, subtitles off, then both on; ↑ does the same.',
   subtitleSize: 'Text size',
   /** A choice in its menu: the size as a percentage of the usual one. */
   subtitleSizeOption: (percent: number): string => `${percent}%`,
@@ -159,6 +161,9 @@ export const settings = {
   colorKnownHint: 'Words with a mature card, or marked known.',
   markKnown: 'Underline known words',
   markKnownHint: 'Off by default, so the screen gets quieter as you learn.',
+  /** Shown for Spanish, French and German. Articles: the, a. Pronouns: I, you, he. */
+  underlineGrammar: 'Underline articles and pronouns',
+  underlineGrammarHint: 'Off by default: words like “the”, “I” and “he” can still be looked up, but are not counted as words to learn.',
   /** A row with one button, which puts every underline colour back to its default. */
   defaultColours: 'Default colours',
   /** That button. */

@@ -149,6 +149,18 @@ describe('the help', () => {
     }
   });
 
+  it('links a path that names a section of the settings to that section', () => {
+    const link = inline('{Settings → Anki cards → Screenshot}', []).find((n) => (n as HTMLElement).className === 'path') as HTMLAnchorElement;
+    expect(link.tagName).toBe('A');
+    expect(link.getAttribute('href')).toBe('options.html#lg-anki-cards');
+    expect(link.textContent).toContain('Screenshot');
+    const anki = inline('{Settings → Anki}', []).find((n) => (n as HTMLElement).className === 'path') as HTMLAnchorElement;
+    expect(anki.getAttribute('href')).toBe('options.html#lg-anki');
+    // One that names no section stays text.
+    const plain = inline('{Settings → Nowhere → Thing}', []).find((n) => (n as HTMLElement).className === 'path') as HTMLElement;
+    expect(plain.tagName).toBe('SPAN');
+  });
+
   it('links a web address, in a new tab, shown without its https://', () => {
     const nodes = inline('Get Anki from https://apps.ankiweb.net.', ['anki']);
     const a = nodes.find((n) => (n as HTMLElement).tagName === 'A') as HTMLAnchorElement;

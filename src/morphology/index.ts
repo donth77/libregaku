@@ -1,10 +1,11 @@
 import { ensureAnalyser } from './analyser';
 import { ChineseSegmenter } from './chinese';
 import { FRENCH, splitElisions, straighten } from './french';
-import { GERMAN } from './german';
+import { GERMAN, GERMAN_COMPOUNDS } from './german';
 import { KoreanSegmenter } from './korean';
 import { LemmaSegmenter } from './lemma';
 import { LinderaSegmenter } from './lindera';
+import { settings } from '../settings';
 import { SPANISH } from './spanish';
 import type { Segmenter } from './types';
 
@@ -38,10 +39,13 @@ const ANALYSED: Record<string, { dict: string; make: () => Segmenter }> = {
  * with the word it is a form of. The browser finds the words and the
  * dictionary their dictionary forms, so there is nothing more to download.
  */
+/** The Underline articles and pronouns setting, as it stands when a line is analysed. */
+const grammarCounts = (): boolean => settings().underlineGrammar;
+
 const BY_FORMS: Record<string, () => Segmenter> = {
-  es: () => new LemmaSegmenter('es', SPANISH),
-  fr: () => new LemmaSegmenter('fr', FRENCH, { prepare: splitElisions, fold: straighten }),
-  de: () => new LemmaSegmenter('de', GERMAN),
+  es: () => new LemmaSegmenter('es', SPANISH, { grammarCounts }),
+  fr: () => new LemmaSegmenter('fr', FRENCH, { prepare: splitElisions, fold: straighten, grammarCounts }),
+  de: () => new LemmaSegmenter('de', GERMAN, { grammarCounts, compounds: GERMAN_COMPOUNDS }),
 };
 
 /** What turns a language's lines into words with dictionary forms. */

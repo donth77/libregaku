@@ -159,7 +159,7 @@ const en: HelpContent = {
               rows: [
                 ['`←` `→`', 'Previous or next line'],
                 ['`↓`', 'Replay the line'],
-                ['`↑`', 'Show or hide the translation'],
+                ['`↑`', 'Translation off, then subtitles off, then both on again'],
                 ['`A`', 'Add the word in the popup to Anki'],
                 ['`K`', 'Mark the word in the popup as known'],
                 ['`B`', 'Save the current line'],
@@ -325,6 +325,32 @@ const en: HelpContent = {
       questions: true,
       topics: [
         {
+          id: 'q-languages',
+          title: 'Which languages can I learn?',
+          body: [
+            'Japanese, Chinese, Cantonese, Korean and Spanish have a dictionary, and a word is matched to its card in whatever form it is said: 갔어요 finds a card for 가다, and hablábamos one for hablar. Japanese shows furigana above words, Chinese shows pinyin, and Cantonese shows Jyutping.',
+            'The other languages under {Settings → Languages → I\'m learning} are marked limited. Their words are split, and there is no dictionary yet.',
+            'A language’s dictionary is downloaded the first time you choose it. The download is 11 to 27 MB; on disk it takes 100 MB for Chinese, 200 MB for Korean and 470 MB for Spanish.',
+          ],
+          keywords: ['language', 'korean', 'chinese', 'mandarin', 'cantonese', 'jyutping', 'spanish', 'japanese', 'pinyin', 'limited', 'supported'],
+        },
+        {
+          id: 'q-ankiweb',
+          title: 'Does it work with AnkiWeb?',
+          body: [
+            'Not directly: Libregaku talks to Anki on your computer through the [AnkiConnect](https://ankiweb.net/shared/info/2055492159) add-on. Anki then syncs your cards to AnkiWeb and your phone as usual.',
+          ],
+          keywords: ['ankiweb', 'ankiconnect', 'phone', 'mobile', 'sync'],
+        },
+        {
+          id: 'q-data',
+          title: 'Does Libregaku send my data anywhere?',
+          body: [
+            'There is no account and no server. Dictionaries are downloaded once and kept in the browser; cards go straight to Anki on your computer. While the Japanese dictionary is still downloading, a word you look up is sent to Jotoba to answer it.',
+          ],
+          keywords: ['privacy', 'data', 'server', 'account'],
+        },
+        {
           id: 'q-track',
           title: 'What does Track do?',
           body: [
@@ -350,38 +376,6 @@ const en: HelpContent = {
           keywords: ['marks', 'deck', 'suspended', 'sync'],
         },
         {
-          id: 'q-remove',
-          title: 'Can I remove a card?',
-          body: [
-            'Right after adding, click Added to undo it. For an older card, click In Anki in the word’s popup and delete it in Anki. Libregaku never deletes a card you have studied.',
-          ],
-          keywords: ['delete', 'remove', 'undo'],
-        },
-        {
-          id: 'q-ankiweb',
-          title: 'Does it work with AnkiWeb?',
-          body: [
-            'Not directly: Libregaku talks to Anki on your computer through the [AnkiConnect](https://ankiweb.net/shared/info/2055492159) add-on. Anki then syncs your cards to AnkiWeb and your phone as usual.',
-          ],
-          keywords: ['ankiweb', 'ankiconnect', 'phone', 'mobile', 'sync'],
-        },
-        {
-          id: 'q-picture',
-          title: 'What is the screenshot on a card?',
-          body: [
-            'A still of the scene, on the back of the card, so you see where the word came from. It is taken from the video on YouTube; protected sites blank their video for extensions, so cards made there have none. {Settings → Anki cards → Screenshot} turns it off.',
-          ],
-          keywords: ['picture', 'image', 'screenshot', 'still'],
-        },
-        {
-          id: 'q-replay',
-          title: 'Why does the line play again when I add a card?',
-          body: [
-            'Its sound is recorded as it plays, so the line plays once more; playback then returns to where it was. {Settings → Anki cards → Sentence audio} turns it off.',
-          ],
-          keywords: ['replay', 'recording', 'sentence audio'],
-        },
-        {
           id: 'q-translation',
           title: 'Why is there no translation under the subtitle?',
           body: [
@@ -399,22 +393,28 @@ const en: HelpContent = {
           keywords: ['definitions', 'languages', 'jmdict', 'hungarian', 'slovenian', 'english', 'cc-cedict', 'wiktionary'],
         },
         {
-          id: 'q-languages',
-          title: 'Which languages can I learn?',
+          id: 'q-remove',
+          title: 'Can I remove a card?',
           body: [
-            'Japanese, Chinese, Cantonese, Korean and Spanish have a dictionary, and a word is matched to its card in whatever form it is said: 갔어요 finds a card for 가다, and hablábamos one for hablar. Japanese shows furigana above words, Chinese shows pinyin, and Cantonese shows Jyutping.',
-            'The other languages under {Settings → Languages → I\'m learning} are marked limited. Their words are split, and there is no dictionary yet.',
-            'A language’s dictionary is downloaded the first time you choose it. The download is 11 to 27 MB; on disk it takes 100 MB for Chinese, 200 MB for Korean and 470 MB for Spanish.',
+            'Right after adding, click Added to undo it. For an older card, click In Anki in the word’s popup and delete it in Anki. Libregaku never deletes a card you have studied.',
           ],
-          keywords: ['language', 'korean', 'chinese', 'mandarin', 'cantonese', 'jyutping', 'spanish', 'japanese', 'pinyin', 'limited', 'supported'],
+          keywords: ['delete', 'remove', 'undo'],
         },
         {
-          id: 'q-data',
-          title: 'Does Libregaku send my data anywhere?',
+          id: 'q-picture',
+          title: 'What is the screenshot on a card?',
           body: [
-            'There is no account and no server. Dictionaries are downloaded once and kept in the browser; cards go straight to Anki on your computer. While the Japanese dictionary is still downloading, a word you look up is sent to Jotoba to answer it.',
+            'A still of the scene, on the back of the card, so you see where the word came from. It is taken from the video on YouTube; protected sites blank their video for extensions, so cards made there have none. {Settings → Anki cards → Screenshot} turns it off.',
           ],
-          keywords: ['privacy', 'data', 'server', 'account'],
+          keywords: ['picture', 'image', 'screenshot', 'still'],
+        },
+        {
+          id: 'q-replay',
+          title: 'Why does the line play again when I add a card?',
+          body: [
+            'Its sound is recorded as it plays, so the line plays once more; playback then returns to where it was. {Settings → Anki cards → Sentence audio} turns it off.',
+          ],
+          keywords: ['replay', 'recording', 'sentence audio'],
         },
       ],
     },

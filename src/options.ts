@@ -288,6 +288,8 @@ async function main(): Promise<void> {
     if (href) unfold(built, href.slice(1), searching());
   });
   unfold(built, location.hash.slice(1));
+  // The page is built after it loads, so the browser found no anchor to go to; and a link from the help lands, not glides.
+  if (location.hash) document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView({ behavior: 'instant' });
   const toc = document.querySelector<HTMLElement>('.toc');
   const relist = toc ? contents(toc, panel) : null;
 

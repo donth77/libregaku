@@ -138,6 +138,8 @@ export interface LanguageFeatures {
    * one used until the learner picks another (targetVariant).
    */
   scripts?: readonly string[];
+  /** Articles and pronouns that are words of their own: der, le, yo. Its dictionary says which they are. */
+  articles?: boolean;
 }
 
 const LANGUAGE_FEATURES: Record<string, LanguageFeatures> = {
@@ -171,18 +173,21 @@ const LANGUAGE_FEATURES: Record<string, LanguageFeatures> = {
     readings: false,
     characters: false,
     definitions: false,
+    articles: true,
     dictionary: { name: 'SpanishDict', url: (w) => `https://www.spanishdict.com/translate/${encodeURIComponent(w)}` },
   },
   fr: {
     readings: false,
     characters: false,
     definitions: false,
+    articles: true,
     dictionary: { name: 'Wiktionary', url: (w) => `https://en.wiktionary.org/wiki/${encodeURIComponent(w)}#French` },
   },
   de: {
     readings: false,
     characters: false,
     definitions: false,
+    articles: true,
     dictionary: { name: 'Wiktionary', url: (w) => `https://en.wiktionary.org/wiki/${encodeURIComponent(w)}#German` },
   },
 };
@@ -414,6 +419,12 @@ export interface Settings {
   /** Underline known words too, rather than leaving them bare. */
   markKnown: boolean;
   /**
+   * Underline articles and pronouns as words to learn, where the language has
+   * them (featuresOf().articles): der, le, yo. Off, they are drawn and looked
+   * up like any word and never counted as new, as a Japanese particle is.
+   */
+  underlineGrammar: boolean;
+  /**
    * The underline for each word status, as #rrggbb. The subtitle, the
    * transcript and the popup's mark buttons all take theirs from these.
    */
@@ -429,6 +440,8 @@ export interface Settings {
    * so this has no effect there.
    */
   dualSubtitles: boolean;
+  /** Draw the subtitles over the video. Off leaves the header, the transcript and the panel. */
+  showSubtitles: boolean;
   /**
    * Subtitle text size, as a percentage of the default. The default is
    * relative to the viewport, so both hold their proportion in fullscreen.
@@ -492,12 +505,14 @@ export const DEFAULTS: Settings = {
   sidebarFollow: true,
   underlines: true,
   markKnown: false,
+  underlineGrammar: false,
   colorUnknown: '#e5806c',
   colorLearning: '#d9a64a',
   colorTracking: '#a78bfa',
   colorKnown: '#63af97',
   dualSubtitles: true,
-  subtitleSize: 100,
+  showSubtitles: true,
+  subtitleSize: 85,
   subtitleBottom: 12,
   sidebarOpen: true,
   headerBar: true,
@@ -589,6 +604,22 @@ function scriptsFrom(stored: unknown): Record<string, string> {
     if (typeof script === 'string' && featuresOf(lang).scripts?.includes(script)) out[lang] = script;
   }
   return out;
+}
+
+/** What the video shows: the subtitles and their translation, the subtitles alone, or neither. */
+export type SubtitleView = 'both' | 'subtitles' | 'off';
+
+export function subtitleView(s: Pick<Settings, 'showSubtitles' | 'dualSubtitles'>): SubtitleView {
+  return !s.showSubtitles ? 'off' : s.dualSubtitles ? 'both' : 'subtitles';
+}
+
+/** The settings for the next view, the one the header button and ↑ step to: translation off, subtitles off, then both on. */
+export function nextSubtitleView(s: Pick<Settings, 'showSubtitles' | 'dualSubtitles'>): Pick<Settings, 'showSubtitles' | 'dualSubtitles'> {
+  switch (subtitleView(s)) {
+    case 'both': return { showSubtitles: true, dualSubtitles: false };
+    case 'subtitles': return { showSubtitles: false, dualSubtitles: false };
+    default: return { showSubtitles: true, dualSubtitles: true };
+  }
 }
 
 /**

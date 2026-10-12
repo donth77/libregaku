@@ -105,7 +105,8 @@ const USAGE = new Map(Object.entries({
  * with no name here counts as usage. "pl pl-only" says one thing twice.
  */
 function codesOf(tags: string): string[] {
-  const all = [...new Set(tags.split(/\s+/).filter(Boolean))];
+  // "not comparable": true of most adjectives that are not, and said only of a few.
+  const all = [...new Set(tags.split(/\s+/).filter((t) => t && t !== 'not-comp'))];
   const codes = all.filter((t) => !(t === 'pl' && all.includes('pl-only')));
   return [...codes.filter((t) => GRAMMAR.has(t)), ...codes.filter((t) => !GRAMMAR.has(t))];
 }

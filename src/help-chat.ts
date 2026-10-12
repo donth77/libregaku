@@ -213,6 +213,13 @@ export function nearest(docs: readonly Doc[], question: string, count = 4): Doc[
 /** How many of the help's opening topics answer a question that is about nothing in particular. */
 const OPENING = 3;
 
+/** Words a question about the whole extension is made of, besides the filler above: "What can you help with?" */
+const GENERAL = new Set([
+  'help', 'helps', 'helping', 'about', 'use', 'using', 'extension', 'feature', 'features', 'overview', 'work',
+  'works', 'working', 'start', 'begin', 'libregaku', 'know', 'learn', 'do', 'does', 'capable', 'offer', 'support',
+  'have', 'has', 'show', 'tell',
+]);
+
 /**
  * What to answer from. A question with something in it goes by that. One with
  * nothing in it, like "What can you do?", is about the extension as a whole,
@@ -220,7 +227,10 @@ const OPENING = 3;
  * words and the help has none of them.
  */
 export function relevant(docs: readonly Doc[], question: string): Doc[] {
-  return wordsOf(question).length ? nearest(docs, question) : docs.slice(0, OPENING);
+  const words = wordsOf(question);
+  // A word counts whole or as the stem it was cut to: "features" is "featur" here, and "feature" there.
+  const general = words.every((w) => [...GENERAL].some((g) => g === w || (w.length >= 5 && g.startsWith(w))));
+  return words.length && !general ? nearest(docs, question) : docs.slice(0, OPENING);
 }
 
 /** The most of one doc that goes into the prompt: the model's room is small. */

@@ -21,6 +21,9 @@ export const header = {
   showTranslation: 'Show translation',
   /** The same button while the translation shows. */
   hideTranslation: 'Hide translation',
+  hideSubtitles: 'Hide subtitles',
+  showSubtitles: 'Show subtitles',
+  subtitles: 'Subtitles',
   /**
    * That button's name for screen readers, the same whether the translation
    * shows or not: they hear it as pressed or not pressed.

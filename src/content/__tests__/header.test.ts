@@ -62,7 +62,7 @@ describe('Header', () => {
     expect(tips).toEqual([
       ['R', 'Furigana: new words', 'R', 'Furigana: new words'],
       ['H', 'Blur subtitle', 'H', 'Blur subtitle'],
-      ['ArrowUp', 'Hide translation', '↑', 'Translation'],
+      ['ArrowUp', 'Hide translation', '↑', 'Subtitles'],
       ['S', 'Transcript', 'S', 'Transcript'],
     ]);
   });
@@ -78,20 +78,26 @@ describe('Header', () => {
     };
     try {
       expect(state('Blur subtitle')).toEqual(['false', 'Blur subtitle', 'false']);
-      expect(state('Translation')).toEqual(['false', 'Show translation', 'false']);
+      // Subtitles without their translation: one press from the subtitles off.
+      expect(state('Subtitles')).toEqual(['true', 'Hide subtitles', 'true']);
       expect(state('Pin header')).toEqual(['false', 'Pin header', 'false']);
       await setSetting('blurPrimary', true);
       await setSetting('dualSubtitles', true);
       await setSetting('headerPinned', true);
       header.update();
       expect(state('Blur subtitle')).toEqual(['true', 'Unblur subtitle', 'true']);
-      expect(state('Translation')).toEqual(['true', 'Hide translation', 'true']);
+      expect(state('Subtitles')).toEqual(['true', 'Hide translation', 'true']);
+      // Neither: the button says what brings them back.
+      await setSetting('showSubtitles', false);
+      header.update();
+      expect(state('Subtitles')).toEqual(['false', 'Show subtitles', 'false']);
       expect(state('Pin header')).toEqual(['true', 'Unpin header', 'true']);
       // On is drawn as more than a lighter colour.
       expect(host.shadowRoot!.querySelector('style')!.textContent).toMatch(/button\.on::after \{[^}]*border-top: 2px solid/);
     } finally {
       await setSetting('blurPrimary', false);
       await setSetting('dualSubtitles', true);
+      await setSetting('showSubtitles', true);
     }
   });
 

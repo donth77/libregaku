@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FRENCH, splitElisions, straighten } from '../french';
-import { GERMAN } from '../german';
+import { compoundKeys, splitCompound } from '../compound';
+import { GERMAN, GERMAN_COMPOUNDS } from '../german';
 import { IntlSegmenter } from '../intl';
 import { lemmaTokens, type FormInfo, type Forms } from '../lemma';
 
@@ -126,6 +127,111 @@ const DE: Forms = {
   Häuser: form({ lemma: 'Haus', tags: ['nominative plural'], pos: 'n', senses: 7 }),
 };
 
+describe('articles and pronouns, which are not words to learn unless the setting says so', () => {
+  // As the German file has them: der is an article in one row and a pronoun in others, den a pronoun only.
+  const forms: Forms = {
+    der: word(['artic', 'pron'], [], 9),
+    den: word(['pron'], [], 2),
+    ich: word(['pron'], [], 2),
+    // A pronoun's kind says more than "pronoun": she and they are 'pron fem pl'.
+    sie: word(['pron', 'fem', 'pl'], [], 4),
+    // "Nothing" is a pronoun too, and a word to learn: the file calls it indefinite.
+    nichts: word(['pron', 'neut', 'indef'], [], 2),
+    Jacke: word(['n'], [], 2),
+    Jacken: form({ lemma: 'Jacke', tags: ['nominative plural'], pos: 'n', senses: 2 }),
+    // Other things too, so words in their own right: "all" is a determiner, an adverb and a noun as well as a pronoun.
+    tout: word(['adv', 'det', 'n', 'pron'], [], 9),
+    // An article that is spelt like a noun is still the article.
+    la: word(['artic', 'pron', 'n'], [], 5),
+  };
+  const counted = (text: string, grammarCounts = false): Array<[string, boolean | undefined]> =>
+    lemmaTokens(tokens(text, 'de'), forms, 'de', GERMAN, undefined, grammarCounts)
+      .filter((t) => !t.punct).map((t) => [t.surface, t.content]);
+
+  it('leaves der and den alike, and ich, out of the words to learn', () => {
+    expect(counted('Der ist nicht bei den Jacken.')).toEqual([
+      ['Der', false], ['ist', true], ['nicht', true], ['bei', true], ['den', false], ['Jacken', true],
+    ]);
+    expect(counted('ich')).toEqual([['ich', false]]);
+    expect(counted('sie')).toEqual([['sie', false]]);
+    expect(counted('la')).toEqual([['la', false]]);
+  });
+
+  it('keeps a word that is a pronoun and other things besides, and "nothing" and "someone"', () => {
+    expect(counted('tout')).toEqual([['tout', true]]);
+    expect(counted('nichts')).toEqual([['nichts', true]]);
+  });
+
+  it('counts them all when the setting is on', () => {
+    expect(counted('Der ist bei den Jacken', true).every(([, content]) => content)).toBe(true);
+  });
+});
+
+describe('German adjective endings', () => {
+  it('says "accusative singular masculine" once, not once each for strong, weak and mixed', () => {
+    const forms: Forms = {
+      betriebenen: form(
+        { lemma: 'betrieben', tags: ['accusative singular masculine strong'], pos: 'adj', senses: 1 },
+        { lemma: 'betrieben', tags: ['accusative singular masculine weak'], pos: 'adj', senses: 1 },
+        { lemma: 'betrieben', tags: ['accusative singular masculine mixed'], pos: 'adj', senses: 1 },
+        // As the real file runs them together.
+        { lemma: 'betrieben', tags: ['accusative singular masculine strong/weak/mixed'], pos: 'adj', senses: 1 },
+      ),
+      betrieben: word(['adj'], [], 1),
+    };
+    const t = lemmaTokens(tokens('betriebenen', 'de'), forms, 'de', GERMAN)[0];
+    expect(t?.inflections).toEqual(['accusative-case singular masculine']);
+  });
+});
+
+describe('German compounds', () => {
+  const rules = GERMAN_COMPOUNDS;
+  const forms: Forms = {
+    // Riesen is a form of Riese and of Ries, and riesen a form of the verb reisen.
+    Riesen: form({ lemma: 'Ries', tags: ['dative plural'], pos: 'n', senses: 1 }, { lemma: 'Riese', tags: ['genitive singular'], pos: 'n', senses: 3 }),
+    riesen: form({ lemma: 'reisen', tags: ['third-person plural present'], pos: 'v', senses: 2 }),
+    Gruppen: form({ lemma: 'Gruppe', tags: ['nominative plural'], pos: 'n', senses: 4 }),
+    Sitzungen: form({ lemma: 'Sitzung', tags: ['nominative plural'], pos: 'n', senses: 2 }),
+    Riese: word(['n'], [], 3),
+    Schlange: word(['n'], [], 4),
+    Arbeit: word(['n'], [], 3),
+    Zimmer: word(['n'], [], 3),
+    Haus: word(['n'], [], 5),
+    Schlüssel: word(['n'], [], 3),
+    der: word(['artic'], [], 3),
+    und: word(['conj'], [], 2),
+  };
+
+  it('cuts a word the dictionary lacks into the two it has', () => {
+    expect(splitCompound('Riesenschlange', forms, rules)).toEqual({ parts: ['Riesen', 'schlange'], lemmas: ['Riese', 'Schlange'] });
+    expect(splitCompound('Hausschlüssel', forms, rules)).toEqual({ parts: ['Haus', 'schlüssel'], lemmas: ['Haus', 'Schlüssel'] });
+  });
+
+  it('takes a plural last part for the word it is a form of: Gruppensitzungen is Gruppe and Sitzung', () => {
+    expect(splitCompound('Gruppensitzungen', forms, rules)).toEqual({ parts: ['Gruppen', 'sitzungen'], lemmas: ['Gruppe', 'Sitzung'] });
+  });
+
+  it('keeps the case the word is written in: Riesen is Riese, not the verb riesen', () => {
+    expect(splitCompound('Riesenschlange', forms, rules)?.lemmas).toEqual(['Riese', 'Schlange']);
+  });
+
+  it('allows for the letter German puts between the parts: Arbeits-zimmer', () => {
+    expect(splitCompound('Arbeitszimmer', forms, rules)).toEqual({ parts: ['Arbeits', 'zimmer'], lemmas: ['Arbeit', 'Zimmer'] });
+  });
+
+  it('finds nothing in a word that is not two words, nor in a cut that leaves little words of grammar', () => {
+    expect(splitCompound('Tatoeba', forms, rules)).toBeNull();
+    expect(splitCompound('Derschlange', forms, rules)).toBeNull();
+    expect(splitCompound('Hausund', forms, rules)).toBeNull();
+  });
+
+  it('asks the dictionary about every way to cut a word, with and without its linking letter', () => {
+    const keys = compoundKeys('Arbeitszimmer', rules);
+    expect(keys).toEqual(expect.arrayContaining(['Arbeit', 'Arbeits', 'Zimmer', 'zimmer']));
+    expect(keys.length).toBeLessThan(400);
+  });
+});
+
 describe('German dictionary forms', () => {
   const lemmas = (text: string): string[] =>
     lemmaTokens(tokens(text, 'de'), DE, 'de', GERMAN).filter((t) => !t.punct).map((t) => t.lemma ?? t.surface);
@@ -149,7 +255,7 @@ describe('German dictionary forms', () => {
     };
     const say = (surface: string): string[] | undefined =>
       lemmaTokens(tokens(surface, 'de'), forms, 'de', GERMAN)[0]?.inflections;
-    expect(say('dem')).toEqual(['dative-case singular definite masculine', 'dative-case singular definite neuter']);
+    expect(say('dem')).toEqual(['dative-case singular masculine', 'dative-case singular neuter']);
     expect(say('den')).toEqual(['accusative-case singular masculine']);
   });
 

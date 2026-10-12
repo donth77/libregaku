@@ -130,6 +130,8 @@ a:hover { text-decoration-color: var(--ink); }
 
 /* The path to a setting, so it reads as a place to go. */
 .path { color: var(--ink); font-weight: 600; }
+a.path { text-decoration: underline; text-decoration-color: #5A6480; text-underline-offset: 3px; }
+a.path:hover { text-decoration-color: var(--ink); }
 .path .sep { color: var(--faint); font-weight: 400; padding: 0 2px; }
 /* Words for assistive tech alone, such as the "then" a › stands for. */
 .vh {
