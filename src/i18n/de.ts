@@ -247,7 +247,7 @@ export const de: Translation = {
     cardSentenceAudioHint:
       'Nimmt den Satz auf, indem er noch einmal abgespielt wird. Auf geschützten Websites ist dafür die Berechtigung unten nötig.',
     cardScreenshot: 'Screenshot',
-    cardScreenshotHint: 'Ein Standbild der Szene. Nicht auf geschützten Websites, weil sie es blockieren.',
+    cardScreenshotHint: 'Ein Standbild der Szene. Auf geschützten Websites nicht verfügbar, weil sie es blockieren.',
     capture: 'Satz-Audio auf geschützten Websites',
     captureAllow: 'Zulassen',
     captureAllowInSettings: 'In den Einstellungen zulassen',

@@ -78,14 +78,14 @@ const PHRASES: Record<string, RegExp> = {
   nl: /beschermde sites?/gi,
   pl: /chronion\p{L}* serwis\p{L}*/giu,
   pt: /sites? protegidos?/gi,
-  ru: /защищённ\p{L}* сайт\p{L}*/giu,
+  ru: /сайт\p{L}* с защищённым видео/giu,
   sv: /skyddade? webbplats(?:er|en)?/gi,
   th: /เว็บไซต์ที่มีการป้องกัน/g,
   tr: /korumalı (?:bir )?site\p{L}*/giu,
-  uk: /захищен\p{L}* сайт\p{L}*/giu,
+  uk: /сайт\p{L}* із захищеним відео/giu,
   vi: /(?:các )?trang web được bảo vệ/gi,
-  zh: /受保护的网站/g,
-  'zh-Hant': /受保護的網站/g,
+  zh: /受保护的?网站/g,
+  'zh-Hant': /受保護的?網站/g,
 };
 
 function phraseIn(locale: string): RegExp {

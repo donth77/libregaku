@@ -245,7 +245,7 @@ export const nl: Translation = {
     cardSentenceAudioHint:
       'Neemt de zin op door hem nog een keer af te spelen. Op beschermde sites is daarvoor de toestemming hieronder nodig.',
     cardScreenshot: 'Screenshot',
-    cardScreenshotHint: 'Een stilstaand beeld van de scène. Niet op beschermde sites, omdat die het blokkeren.',
+    cardScreenshotHint: 'Een stilstaand beeld van de scène. Niet beschikbaar op beschermde sites, omdat die het blokkeren.',
     capture: 'Zinsaudio op beschermde sites',
     captureAllow: 'Toestaan',
     captureAllowInSettings: 'Toestaan in instellingen',
@@ -253,7 +253,7 @@ export const nl: Translation = {
     captureAllowed:
       'Toegestaan. Klik op elk tabblad van een beschermde site op het Libregaku-icoon en kies “Zinsaudio hier opnemen”.',
     captureNeeded:
-      'Beschermde sites versleutelen hun video, dus wordt zinsaudio via het tabblad opgenomen. Daarvoor is je toestemming nodig.',
+      'Beschermde sites versleutelen hun video’s, dus wordt zinsaudio via het tabblad opgenomen. Daarvoor is je toestemming nodig.',
 
     // Gegevens en licenties
     creditsHeading: 'Gegevens en licenties',

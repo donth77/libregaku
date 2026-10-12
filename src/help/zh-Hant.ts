@@ -203,7 +203,7 @@ export const zhHant: HelpTranslation = {
                 ['Max', '從分頁錄製；沒有螢幕截圖。'],
               ],
             },
-            '從分頁錄音的方法見「受保護的網站」一章。沒有你所學語言字幕的影片沒有內容可顯示，Libregaku 會如此告知。',
+            '從分頁錄音的方法見「受保護網站」一章。沒有你所學語言字幕的影片沒有內容可顯示，Libregaku 會如此告知。',
           ],
           keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'hbo', '網站', '支援', '串流'],
         },
@@ -211,18 +211,18 @@ export const zhHant: HelpTranslation = {
     },
     {
       id: 'protected-sites',
-      title: '受保護的網站',
+      title: '受保護網站',
       about: '會加密影片的網站：Netflix、Disney+、Prime Video 和 Max。加密帶來的改變。',
       topics: [
         {
           id: 'protected-sites-audio',
-          title: '受保護的網站上的句子音訊',
+          title: '受保護網站上的句子音訊',
           body: [
             [
-              '開啟{設定 → Anki 卡片 → 受保護的網站上的句子音訊}，按下「允許」。',
+              '開啟{設定 → Anki 卡片 → 受保護網站上的句子音訊}，按下「允許」。',
               '在播放影片的分頁中，點選工具列上的 Libregaku 圖示，然後按「在此錄製句子音訊」。每個分頁做一次即可。',
             ],
-            '受保護的網站會加密影片，所以 Libregaku 無法像在 YouTube 上一樣從影片錄音，而是改為錄製分頁的聲音，而 Chrome 只允許用這種方式錄製。也因為同樣的原因，在這些網站製作的卡片沒有螢幕截圖。',
+            '受保護網站會加密影片，所以 Libregaku 無法像在 YouTube 上一樣從影片錄音，而是改為錄製分頁的聲音；Chrome 只允許用這種方式錄製。也因為同樣的原因，在這些網站製作的卡片沒有螢幕截圖。',
           ],
           keywords: ['netflix', 'disney', 'prime video', 'max', 'hbo', '權限', '授權', '分頁擷取', 'DRM', 'permission', 'tab capture'],
         },
@@ -296,7 +296,7 @@ export const zhHant: HelpTranslation = {
           id: 'q-picture',
           title: '卡片上的螢幕截圖是什麼？',
           body: [
-            '卡片背面的一張場景靜態畫面，讓你知道單字出自哪裡。在 YouTube 上是從影片擷取；受保護的網站會對擴充功能遮蔽影片畫面，所以在這些網站製作的卡片沒有螢幕截圖。{設定 → Anki 卡片 → 螢幕截圖}可以關閉這項功能。',
+            '卡片背面的一張場景靜態畫面，讓你知道單字出自哪裡。在 YouTube 上是從影片擷取；受保護網站會對擴充功能遮蔽影片畫面，所以在這些網站製作的卡片沒有螢幕截圖。{設定 → Anki 卡片 → 螢幕截圖}可以關閉這項功能。',
           ],
           keywords: ['圖片', '影像', '照片', 'image', 'picture', 'screenshot'],
         },

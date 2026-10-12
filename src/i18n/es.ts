@@ -335,7 +335,7 @@ export const es: Translation = {
     generatedTrack: (track: string): string => `${track} (automático)`,
     captureNeedsPermission: 'Para grabar aquí el audio de la oración hace falta permiso para capturar el sonido de esta pestaña.',
     captureAllowInSettings: 'Permitir en la configuración',
-    captureReady: 'El sonido de los sitios protegidos solo se puede grabar después de activarlo en esta pestaña.',
+    captureReady: 'El sonido de los sitios protegidos solo se puede grabar después de activar la grabación en esta pestaña.',
     captureStart: 'Grabar audio de la oración aquí',
     captureFailed: 'Chrome no pudo grabar esta pestaña.',
     toggleSidebar: 'Alternar barra lateral',

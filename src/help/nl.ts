@@ -220,7 +220,7 @@ export const nl: HelpTranslation = {
           body: [
             [
               'Open {Instellingen → Anki-kaarten → Zinsaudio op beschermde sites} en druk op “Toestaan”.',
-              'Klik in het tabblad waarin de video speelt op het Libregaku-icoon in de werkbalk en druk op “Zinsaudio hier opnemen”. Doe dit één keer per tabblad.',
+              'Ga naar het tabblad waarin de video speelt, klik op het Libregaku-icoon in de werkbalk en druk op “Zinsaudio hier opnemen”. Doe dit één keer per tabblad.',
             ],
             'Beschermde sites versleutelen hun video, dus Libregaku kan het geluid niet uit de video opnemen zoals op YouTube. Het neemt in plaats daarvan het tabblad op, wat Chrome alleen op deze manier toestaat. Om dezelfde reden hebben kaarten die je daar maakt geen screenshot.',
           ],

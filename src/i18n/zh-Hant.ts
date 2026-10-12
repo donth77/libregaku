@@ -214,15 +214,15 @@ export const zhHant: Translation = {
     cardAudio: '單字音訊',
     cardAudioHint: '單字的錄音（如果有的話）。絕不使用合成語音。',
     cardSentenceAudio: '句子音訊',
-    cardSentenceAudioHint: '將句子再播放一次來錄音。在受保護的網站上需要下方的權限。',
+    cardSentenceAudioHint: '將句子再播放一次來錄音。在受保護網站上需要下方的權限。',
     cardScreenshot: '螢幕截圖',
-    cardScreenshotHint: '場景的靜態畫面。受保護的網站會封鎖截圖，因此在這些網站上無法使用。',
-    capture: '受保護的網站上的句子音訊',
+    cardScreenshotHint: '場景的靜態畫面。受保護網站會封鎖截圖，因此在這些網站上無法使用。',
+    capture: '受保護網站上的句子音訊',
     captureAllow: '允許',
     captureAllowInSettings: '在設定中允許',
     captureRemove: '移除',
-    captureAllowed: '已允許。在受保護的網站的每個分頁中，點選 Libregaku 圖示，然後選擇「在此錄製句子音訊」。',
-    captureNeeded: '受保護的網站會加密影片，因此句子音訊是從分頁錄製。這需要你的許可。',
+    captureAllowed: '已允許。在受保護網站的每個分頁中，點選 Libregaku 圖示，然後選擇「在此錄製句子音訊」。',
+    captureNeeded: '受保護網站會加密影片，因此句子音訊是從分頁錄製。這需要你的許可。',
 
     // Data and licences
     creditsHeading: '資料與授權',
@@ -307,7 +307,7 @@ export const zhHant: Translation = {
     // Sentence audio on protected sites
     captureNeedsPermission: '要在這裡錄製句子音訊，需要擷取這個分頁聲音的權限。',
     captureAllowInSettings: '在設定中允許',
-    captureReady: '必須先為這個分頁開啟錄製，才能錄下受保護的網站上的聲音。',
+    captureReady: '必須先為這個分頁開啟錄製，才能錄下受保護網站上的聲音。',
     captureStart: '在此錄製句子音訊',
     captureFailed: 'Chrome 無法錄製這個分頁。',
 

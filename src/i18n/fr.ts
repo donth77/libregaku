@@ -274,7 +274,7 @@ export const fr: Translation = {
     captureAllowed:
       'Autorisé. Dans chaque onglet d’un site protégé, cliquez sur l’icône Libregaku et choisissez Enregistrer l’audio de la phrase ici.',
     captureNeeded:
-      'Les sites protégés chiffrent leur vidéo : l’audio de la phrase est donc enregistré depuis l’onglet. Il faut pour cela votre autorisation.',
+      'Les sites protégés chiffrent leurs vidéos : l’audio de la phrase est donc enregistré depuis l’onglet. Il faut pour cela votre autorisation.',
 
     // Données et licences
     creditsHeading: 'Données et licences',

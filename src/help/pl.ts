@@ -203,7 +203,7 @@ export const pl: HelpTranslation = {
                 ['Max', 'Nagrywane z karty przeglądarki; bez zrzutu ekranu.'],
               ],
             },
-            'Rozdział o chronionych serwisach wyjaśnia, jak nagrywa się dźwięk z karty. Wideo bez napisów w języku, którego się uczysz, nie ma czego pokazać, a Libregaku o tym mówi.',
+            'Rozdział o chronionych serwisach wyjaśnia, jak nagrywa się dźwięk z karty przeglądarki. Wideo bez napisów w języku, którego się uczysz, nie ma czego pokazać, a Libregaku o tym mówi.',
           ],
           keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'hbo', 'serwisy', 'strony', 'obsługiwane', 'streaming'],
         },

@@ -203,7 +203,7 @@ export const zh: HelpTranslation = {
                 ['Max', '从标签页录制；没有截图。'],
               ],
             },
-            '从标签页录音的方法见“受保护的网站”一章。没有你所学语言字幕的视频没有内容可显示，Libregaku 会如此告知。',
+            '从标签页录音的方法见“受保护网站”一章。没有你所学语言字幕的视频没有内容可显示，Libregaku 会如此告知。',
           ],
           keywords: ['youtube', 'netflix', 'disney', 'prime video', 'max', 'hbo', '网站', '支持', '流媒体'],
         },
@@ -211,18 +211,18 @@ export const zh: HelpTranslation = {
     },
     {
       id: 'protected-sites',
-      title: '受保护的网站',
+      title: '受保护网站',
       about: '对视频加密的网站：Netflix、Disney+、Prime Video 和 Max。这会带来哪些变化。',
       topics: [
         {
           id: 'protected-sites-audio',
-          title: '受保护的网站上的句子音频',
+          title: '受保护网站上的句子音频',
           body: [
             [
-              '在 {设置 → Anki 卡片 → 受保护的网站上的句子音频} 中点击“允许”。',
+              '在 {设置 → Anki 卡片 → 受保护网站上的句子音频} 中点击“允许”。',
               '在播放视频的标签页中，点击工具栏上的 Libregaku 图标，然后点击“在此录制句子音频”。每个标签页都需要操作一次。',
             ],
-            '受保护的网站对视频进行了加密，所以 Libregaku 无法像在 YouTube 上那样从视频录音，而是改为录制标签页的声音，而 Chrome 只允许这样录制。出于同样的原因，在这些网站上制作的卡片没有截图。',
+            '受保护网站对视频进行了加密，所以 Libregaku 无法像在 YouTube 上那样从视频录音，而是改为录制标签页的声音；Chrome 只允许这样录制。出于同样的原因，在这些网站上制作的卡片没有截图。',
           ],
           keywords: ['netflix', 'disney', 'prime video', 'max', 'hbo', '权限', '授权', '奈飞', '网飞', 'drm', 'tab capture'],
         },
@@ -296,7 +296,7 @@ export const zh: HelpTranslation = {
           id: 'q-picture',
           title: '卡片上的截图是什么？',
           body: [
-            '它是当时场景的画面，放在卡片背面，让你知道这个单词出自哪里。在 YouTube 上，截图取自视频；受保护的网站会对扩展屏蔽视频画面，所以在这些网站上制作的卡片没有截图。可在 {设置 → Anki 卡片 → 截图} 中关闭。',
+            '它是当时场景的画面，放在卡片背面，让你知道这个单词出自哪里。在 YouTube 上，截图取自视频；受保护网站会对扩展屏蔽视频画面，所以在这些网站上制作的卡片没有截图。可在 {设置 → Anki 卡片 → 截图} 中关闭。',
           ],
           keywords: ['图片', '图像', '截屏', '黑屏', 'screenshot'],
         },

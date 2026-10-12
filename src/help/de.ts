@@ -220,7 +220,7 @@ export const de: HelpTranslation = {
           body: [
             [
               'Öffne {Einstellungen → Anki-Karten → Satz-Audio auf geschützten Websites} und drücke „Zulassen“.',
-              'Klicke in dem Tab, in dem das Video läuft, in der Symbolleiste auf das Libregaku-Symbol und drücke „Satz-Audio hier aufnehmen“. Das machst du einmal pro Tab.',
+              'Wechsle zu dem Tab, in dem das Video läuft, klicke in der Symbolleiste auf das Libregaku-Symbol und drücke „Satz-Audio hier aufnehmen“. Das machst du einmal pro Tab.',
             ],
             'Geschützte Websites verschlüsseln ihre Videos, deshalb kann Libregaku den Ton nicht wie auf YouTube aus dem Video aufnehmen. Stattdessen nimmt es den Tab auf, was Chrome nur auf diesem Weg erlaubt. Aus demselben Grund haben dort erstellte Karten keinen Screenshot.',
           ],

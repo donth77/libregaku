@@ -361,7 +361,7 @@ export const it: Translation = {
     generatedTrack: (track: string): string => `${track} (automatici)`,
     captureNeedsPermission: 'Per registrare qui l’audio della frase serve il permesso di acquisire l’audio di questa scheda.',
     captureAllowInSettings: 'Consenti nelle impostazioni',
-    captureReady: 'L’audio dei siti protetti si può registrare solo dopo averlo attivato per questa scheda.',
+    captureReady: 'L’audio dei siti protetti si può registrare solo dopo aver attivato la registrazione per questa scheda.',
     captureStart: 'Registra qui l’audio della frase',
     captureFailed: 'Chrome non è riuscito a registrare questa scheda.',
     toggleSidebar: 'Mostra/nascondi barra laterale',

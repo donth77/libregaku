@@ -241,7 +241,7 @@ export const tr: Translation = {
     captureAllowInSettings: 'Ayarlarda izin ver',
     captureRemove: 'Kaldır',
     captureAllowed:
-      'İzin verildi. Korumalı bir sitenin her sekmesinde Libregaku simgesine tıklayın ve “Cümle sesini burada kaydet” seçeneğini seçin.',
+      'İzin verildi. Korumalı bir sitenin açık olduğu her sekmede Libregaku simgesine tıklayın ve “Cümle sesini burada kaydet” seçeneğini seçin.',
     captureNeeded: 'Korumalı siteler videolarını şifrelediği için cümle sesi sekmeden kaydedilir. Bunun için izniniz gerekir.',
 
     // Veriler ve lisanslar

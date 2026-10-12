@@ -242,7 +242,7 @@ export const pt: Translation = {
     captureAllowInSettings: 'Permitir nas configurações',
     captureRemove: 'Remover',
     captureAllowed: 'Permitido. Em cada guia de um site protegido, clique no ícone do Libregaku e escolha Gravar áudio da frase aqui.',
-    captureNeeded: 'Os sites protegidos criptografam o vídeo, então o áudio da frase é gravado da guia. Isso precisa da sua permissão.',
+    captureNeeded: 'Os sites protegidos criptografam o vídeo, então o áudio da frase é gravado a partir da guia. Isso precisa da sua permissão.',
 
     // Data and licences
     creditsHeading: 'Dados e licenças',

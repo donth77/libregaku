@@ -212,7 +212,7 @@ export const es: HelpTranslation = {
     {
       id: 'protected-sites',
       title: 'Sitios protegidos',
-      about: 'Los sitios que cifran su video: Netflix, Disney+, Prime Video y Max. Qué cambia por esa protección.',
+      about: 'Los sitios que cifran su video: Netflix, Disney+, Prime Video y Max. Qué cambia con esa protección.',
       topics: [
         {
           id: 'protected-sites-audio',
@@ -296,7 +296,7 @@ export const es: HelpTranslation = {
           id: 'q-picture',
           title: '¿Qué es la captura de pantalla de una tarjeta?',
           body: [
-            'Un fotograma de la escena, en el reverso de la tarjeta, para que veas de dónde viene la palabra. En YouTube se toma del video; los sitios protegidos ocultan su video a las extensiones, así que las tarjetas creadas ahí no tienen. {Configuración → Tarjetas de Anki → Captura de pantalla} la desactiva.',
+            'Un fotograma de la escena, en el reverso de la tarjeta, para que veas de dónde viene la palabra. En YouTube se toma del video; los sitios protegidos ocultan su video a las extensiones, así que las tarjetas creadas ahí no tienen ninguno. {Configuración → Tarjetas de Anki → Captura de pantalla} la desactiva.',
           ],
           keywords: ['imagen', 'foto', 'pantallazo', 'screenshot'],
         },
