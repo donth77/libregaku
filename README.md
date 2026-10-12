@@ -1,4 +1,17 @@
-# Libregaku
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="brand/libregaku-logo-horizontal-color-on-dark.svg">
+    <img alt="Libregaku" src="brand/libregaku-logo-horizontal-color.svg" width="360">
+  </picture>
+</p>
+
+<p align="center">
+  <a href="https://github.com/donth77/libregaku/actions/workflows/ci.yml"><img alt="CI status" src="https://github.com/donth77/libregaku/actions/workflows/ci.yml/badge.svg?branch=main"></a>
+  <a href="https://github.com/donth77/libregaku/actions/workflows/canary.yml"><img alt="Live-site canary status" src="https://github.com/donth77/libregaku/actions/workflows/canary.yml/badge.svg"></a>
+  <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue">
+  <img alt="Chrome 116 or later" src="https://img.shields.io/badge/Chrome-116%2B-4285F4?logo=googlechrome&logoColor=white">
+  <img alt="Manifest V3" src="https://img.shields.io/badge/Manifest-V3-informational">
+</p>
 
 Clickable subtitles for YouTube, Netflix, Disney+, Prime Video and Max, with a dictionary
 and a transcript. Make
