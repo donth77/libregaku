@@ -201,7 +201,7 @@ export const ar: HelpTranslation = {
                 ['Disney+\u200E', 'يُسجَّل من علامة التبويب؛ بلا لقطة شاشة.'],
                 ['Prime Video', 'يُسجَّل من علامة التبويب؛ بلا لقطة شاشة.'],
                 ['Max', 'يُسجَّل من علامة التبويب؛ بلا لقطة شاشة.'],
-                ['Apple TV+\u200E', 'يُسجَّل من علامة التبويب؛ بلا لقطة شاشة.'],
+                ['Apple TV', 'يُسجَّل من علامة التبويب؛ بلا لقطة شاشة.'],
               ],
             },
             'يشرح فصل المواقع المحمية كيف يُسجَّل الصوت من علامة التبويب. الفيديو الذي لا توجد له ترجمة باللغة التي تتعلمها ليس فيه ما يُعرض، ويخبرك Libregaku بذلك.',
@@ -213,7 +213,7 @@ export const ar: HelpTranslation = {
     {
       id: 'protected-sites',
       title: 'المواقع المحمية',
-      about: 'المواقع التي تشفّر الفيديو: Netflix وDisney+\u200E وPrime Video وMax وApple TV+\u200E. وما يغيّره ذلك.',
+      about: 'المواقع التي تشفّر الفيديو: Netflix وDisney+\u200E وPrime Video وMax وApple TV. وما يغيّره ذلك.',
       topics: [
         {
           id: 'protected-sites-audio',

@@ -1,5 +1,5 @@
 /**
- * Where Apple TV+ serves playlists and subtitle segments. A URL anywhere else
+ * Where Apple TV serves playlists and subtitle segments. A URL anywhere else
  * did not come from its player, and the adapter drops it.
  *
  * Its own module, and pure, so the daily canary (tests/contract) checks what

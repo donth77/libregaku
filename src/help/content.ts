@@ -273,7 +273,7 @@ const en: HelpContent = {
                 ['Disney+', 'Recorded from the tab; no screenshot.'],
                 ['Prime Video', 'Recorded from the tab; no screenshot.'],
                 ['Max', 'Recorded from the tab; no screenshot.'],
-                ['Apple TV+', 'Recorded from the tab; no screenshot.'],
+                ['Apple TV', 'Recorded from the tab; no screenshot.'],
               ],
             },
             'Where sound is recorded from the tab, the Protected sites chapter says how. A video with no subtitles in the language you are learning has nothing to show, and Libregaku says so.',
@@ -285,7 +285,7 @@ const en: HelpContent = {
     {
       id: 'protected-sites',
       title: 'Protected sites',
-      about: 'The sites that encrypt their video: Netflix, Disney+, Prime Video, Max and Apple TV+. What that changes.',
+      about: 'The sites that encrypt their video: Netflix, Disney+, Prime Video, Max and Apple TV. What that changes.',
       topics: [
         {
           id: 'protected-sites-audio',

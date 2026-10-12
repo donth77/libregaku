@@ -351,7 +351,7 @@ export const fr: Translation = {
     notActive:
       'Libregaku n’est pas actif sur cette page. Ouvrez une vidéo sur YouTube, Netflix ou un autre site pris en charge. Si vous venez d’installer ' +
       'ou de recharger Libregaku, rechargez l’onglet.',
-    unsupported: 'Libregaku fonctionne sur YouTube, Netflix, Disney+, Prime Video, Max et Apple TV+.',
+    unsupported: 'Libregaku fonctionne sur YouTube, Netflix, Disney+, Prime Video, Max et Apple TV.',
     worksOn: (site: string): string => `Libregaku fonctionne sur ${site}.`,
     waitingForSubtitles: (site: string): string =>
       `En attente des sous-titres sur ${site}. Vérifiez qu’ils sont activés.`,
@@ -710,8 +710,8 @@ export const fr: Translation = {
     netflixTrackList: 'Impossible de lire la liste des sous-titres de Netflix.',
     netflixCaptionText: 'Texte des sous-titres de Netflix introuvable sur la page.',
     disneyTrackList: 'Impossible de lire la liste des sous-titres de Disney+.',
-    appleTrackList: 'Impossible de lire la liste des sous-titres d’Apple TV+.',
-    appleTiming: 'Impossible de synchroniser les sous-titres d’Apple TV+ avec la vidéo.',
+    appleTrackList: 'Impossible de lire la liste des sous-titres d’Apple TV.',
+    appleTiming: 'Impossible de synchroniser les sous-titres d’Apple TV avec la vidéo.',
     disneyCaptionText: 'Texte des sous-titres de Disney+ introuvable sur la page.',
     primeTrackList: 'Impossible de lire la liste des sous-titres de Prime Video.',
     primeCaptionText: 'Texte des sous-titres de Prime Video introuvable sur la page.',

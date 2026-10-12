@@ -321,7 +321,7 @@ export const tr: Translation = {
     notActive:
       "Bu sayfada etkin değil. YouTube, Netflix veya desteklenen başka bir sitede bir video açın. Libregaku'yu yeni yüklediyseniz ya da " +
       'yeniden yüklediyseniz sekmeyi yeniden yükleyin.',
-    unsupported: "Libregaku, YouTube, Netflix, Disney+, Prime Video, Max ve Apple TV+'ta çalışır.",
+    unsupported: "Libregaku, YouTube, Netflix, Disney+, Prime Video, Max ve Apple TV'de çalışır.",
     worksOn: (site: string): string => `Libregaku şu sitede çalışır: ${site}.`,
     waitingForSubtitles: (site: string): string =>
       `${site} üzerinde altyazılar bekleniyor. Altyazıların açık olduğundan emin olun.`,
@@ -668,8 +668,8 @@ export const tr: Translation = {
     netflixTrackList: "Netflix'in altyazı listesi okunamadı.",
     netflixCaptionText: "Sayfada Netflix'in altyazı metni bulunamadı.",
     disneyTrackList: "Disney+'ın altyazı listesi okunamadı.",
-    appleTrackList: "Apple TV+'ın altyazı listesi okunamadı.",
-    appleTiming: 'Apple TV+ altyazıları videoyla eşleştirilemedi.',
+    appleTrackList: "Apple TV'nin altyazı listesi okunamadı.",
+    appleTiming: 'Apple TV altyazıları videoyla eşleştirilemedi.',
     disneyCaptionText: "Sayfada Disney+'ın altyazı metni bulunamadı.",
     primeTrackList: "Prime Video'nun altyazı listesi okunamadı.",
     primeCaptionText: "Sayfada Prime Video'nun altyazı metni bulunamadı.",

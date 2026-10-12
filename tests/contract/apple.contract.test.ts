@@ -5,7 +5,7 @@ import { describeFailure } from '../../src/assumptions';
 import { fetchCheckingHops } from './hosts';
 
 /**
- * Apple TV+ canaries.
+ * Apple TV canaries.
  *
  * An episode cannot be played in CI: it needs an account and DRM. A title's
  * page is served to anyone, though, and it carries the HLS playlist of the
@@ -85,7 +85,7 @@ function pick(renditions: HlsRendition[]): HlsRendition | undefined {
   return usable.find((r) => r.language === 'ja') ?? usable.find((r) => r.language === 'ko') ?? usable.find((r) => r.language === 'en') ?? usable[0];
 }
 
-describe('apple tv+ contract', () => {
+describe('apple tv contract', () => {
   it('apple.master — a title page names an HLS master playlist that lists subtitle renditions', async () => {
     const { page, url, master, renditions } = await trailer();
     expect(isAppleMediaUrl(url), `The playlist is served from ${new URL(url).host}, which the adapter does not take as Apple's.\n${describeFailure('apple.master')}`).toBe(true);
@@ -104,7 +104,7 @@ describe('apple tv+ contract', () => {
       `Every rendition is on a host the adapter drops (first: ${renditions[0]?.uri.slice(0, 80)}).\n${describeFailure('apple.master')}`,
     ).toBeGreaterThan(0);
     const languages = new Set(kept.map((r) => r.language));
-    console.log(`  apple tv+: ${renditions.length} subtitle renditions, ${languages.size} languages, from ${new URL(page).pathname.split('/')[3]}`);
+    console.log(`  apple tv: ${renditions.length} subtitle renditions, ${languages.size} languages, from ${new URL(page).pathname.split('/')[3]}`);
   }, 90_000);
 
   it('apple.vtt-segments — a rendition is a playlist of WebVTT segments with the timestamp map the adapter expects', async () => {
@@ -137,6 +137,6 @@ describe('apple tv+ contract', () => {
     }
     const cues = cuesFromSegments(texts);
     expect(cues.length, `No cues were read from ${texts.length} segments.\n${describeFailure('apple.vtt-segments')}`).toBeGreaterThan(0);
-    console.log(`  apple tv+: ${rendition.language} rendition, ${urls.length} segments, ${cues.length} cues in the first ${texts.length}`);
+    console.log(`  apple tv: ${rendition.language} rendition, ${urls.length} segments, ${cues.length} cues in the first ${texts.length}`);
   }, 120_000);
 });

@@ -5,7 +5,7 @@ import { cuesFromSegments, segmentUrls, subtitleRenditions, type HlsRendition } 
 import type { Cue, SubtitleSource, TrackInfo } from './types';
 
 /**
- * Apple TV+. The player plays HLS: the master playlist lists each subtitle
+ * Apple TV. The player plays HLS: the master playlist lists each subtitle
  * track as a rendition, and a rendition is a playlist of WebVTT segments, one
  * minute long each. `inject-apple.ts` passes on the master playlist the player
  * itself fetched, and every rendition and segment URL resolves against it.
@@ -105,13 +105,13 @@ export class AppleAdapter implements SubtitleSource {
 
   constructor() {
     window.addEventListener('message', (e: MessageEvent) => this.#onMessage(e));
-    // Apple TV+ is an SPA; the title changes without a page load.
+    // Apple TV is an SPA; the title changes without a page load.
     setInterval(() => this.#syncUrl(), 500);
     // The page hook may have seen the playlist before this script existed to hear about it.
     window.postMessage({ source: TAG, kind: 'apple-request-master' }, '*');
   }
 
-  /** A title's page, or its player. Apple TV+ also has pages of other kinds that play nothing. */
+  /** A title's page, or its player. Apple TV also has pages of other kinds that play nothing. */
   matches(url: string): boolean {
     return /^https:\/\/tv\.apple\.com\/[a-z]{2}(?:-[a-z0-9]+)?\/(?:show|episode|movie)\//i.test(url);
   }
@@ -131,7 +131,7 @@ export class AppleAdapter implements SubtitleSource {
     return named || null;
   }
 
-  /** Apple TV+ has no link that opens a title at a moment, so the card has none. */
+  /** Apple TV has no link that opens a title at a moment, so the card has none. */
   deepLink(_seconds: number): string | null {
     return null;
   }
@@ -148,7 +148,7 @@ export class AppleAdapter implements SubtitleSource {
 
   loadTrack(id: string): Promise<Cue[]> {
     const track = this.#tracks.find((t) => t.id === id);
-    if (!track) return Promise.reject(new Error(`libregaku: no Apple TV+ subtitle track "${id}"`));
+    if (!track) return Promise.reject(new Error(`libregaku: no Apple TV subtitle track "${id}"`));
     const cached = this.#cues.get(track.uri);
     if (cached) return cached;
     const loading = this.#load(track);
@@ -279,7 +279,7 @@ export class AppleAdapter implements SubtitleSource {
   }
 
   #onMessage(e: MessageEvent): void {
-    // Only this window's own page hook speaks for Apple TV+; a frame on the page does not.
+    // Only this window's own page hook speaks for Apple TV; a frame on the page does not.
     if (e.source !== window) return;
     const d: unknown = e.data;
     if (typeof d !== 'object' || d === null) return;

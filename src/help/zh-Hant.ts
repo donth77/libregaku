@@ -201,7 +201,7 @@ export const zhHant: HelpTranslation = {
                 ['Disney+', '從分頁錄製；沒有螢幕截圖。'],
                 ['Prime Video', '從分頁錄製；沒有螢幕截圖。'],
                 ['Max', '從分頁錄製；沒有螢幕截圖。'],
-                ['Apple TV+', '從分頁錄製；沒有螢幕截圖。'],
+                ['Apple TV', '從分頁錄製；沒有螢幕截圖。'],
               ],
             },
             '從分頁錄音的方法見「受保護網站」一章。沒有你所學語言字幕的影片沒有內容可顯示，Libregaku 會如此告知。',
@@ -213,7 +213,7 @@ export const zhHant: HelpTranslation = {
     {
       id: 'protected-sites',
       title: '受保護網站',
-      about: '會加密影片的網站：Netflix、Disney+、Prime Video、Max 和 Apple TV+。加密帶來的改變。',
+      about: '會加密影片的網站：Netflix、Disney+、Prime Video、Max 和 Apple TV。加密帶來的改變。',
       topics: [
         {
           id: 'protected-sites-audio',

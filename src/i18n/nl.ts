@@ -331,7 +331,7 @@ export const nl: Translation = {
     notActive:
       'Niet actief op deze pagina. Open een video op YouTube, Netflix of een andere ondersteunde site. Heb je Libregaku net geïnstalleerd of ' +
       'opnieuw geladen, laad het tabblad dan opnieuw.',
-    unsupported: 'Libregaku werkt op YouTube, Netflix, Disney+, Prime Video, Max en Apple TV+.',
+    unsupported: 'Libregaku werkt op YouTube, Netflix, Disney+, Prime Video, Max en Apple TV.',
     worksOn: (site: string): string => `Libregaku werkt op ${site}.`,
     waitingForSubtitles: (site: string): string => `Wachten op ondertitels van ${site}. Controleer of ze aanstaan.`,
     activeOn: (title: string): string => `Actief – ${title}`,
@@ -687,8 +687,8 @@ export const nl: Translation = {
     netflixTrackList: 'Kon de ondertitellijst van Netflix niet lezen.',
     netflixCaptionText: 'Kon de ondertiteltekst van Netflix niet vinden op de pagina.',
     disneyTrackList: 'Kon de ondertitellijst van Disney+ niet lezen.',
-    appleTrackList: 'Kon de ondertitellijst van Apple TV+ niet lezen.',
-    appleTiming: 'Kon de ondertitels van Apple TV+ niet op de video afstemmen.',
+    appleTrackList: 'Kon de ondertitellijst van Apple TV niet lezen.',
+    appleTiming: 'Kon de ondertitels van Apple TV niet op de video afstemmen.',
     disneyCaptionText: 'Kon de ondertiteltekst van Disney+ niet vinden op de pagina.',
     primeTrackList: 'Kon de ondertitellijst van Prime Video niet lezen.',
     primeCaptionText: 'Kon de ondertiteltekst van Prime Video niet vinden op de pagina.',

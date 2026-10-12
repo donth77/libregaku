@@ -1,5 +1,5 @@
 /**
- * Page-world script for Apple TV+.
+ * Page-world script for Apple TV.
  *
  * The player fetches an HLS master playlist for each title. It lists every
  * subtitle rendition, and the URL carries a signed token, so, as on YouTube,

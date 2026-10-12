@@ -407,7 +407,7 @@ export const ASSUMPTIONS: Assumption[] = [
     id: 'apple.master',
     site: 'apple',
     claim: 'The player fetches an HLS master playlist (.m3u8, by fetch or XMLHttpRequest, readable as text) whose #EXT-X-MEDIA:TYPE=SUBTITLES lines name each subtitle language and give a URI relative to it',
-    breaks: 'The track list on Apple TV+: no transcript, no second line',
+    breaks: 'The track list on Apple TV: no transcript, no second line',
     fallback: null,
   },
   {
@@ -428,7 +428,7 @@ export const ASSUMPTIONS: Assumption[] = [
     id: 'apple.native-hide',
     site: 'apple',
     claim: 'The player draws its captions with the browser\'s text track, which a page rule on video::cue can hide',
-    breaks: 'Apple TV+\'s own captions show alongside ours',
+    breaks: 'Apple TV\'s own captions show alongside ours',
     fallback: null,
   },
   {

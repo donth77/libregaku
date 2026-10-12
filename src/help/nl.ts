@@ -201,7 +201,7 @@ export const nl: HelpTranslation = {
                 ['Disney+', 'Opgenomen vanaf het tabblad; geen screenshot.'],
                 ['Prime Video', 'Opgenomen vanaf het tabblad; geen screenshot.'],
                 ['Max', 'Opgenomen vanaf het tabblad; geen screenshot.'],
-                ['Apple TV+', 'Opgenomen vanaf het tabblad; geen screenshot.'],
+                ['Apple TV', 'Opgenomen vanaf het tabblad; geen screenshot.'],
               ],
             },
             'Het hoofdstuk over beschermde sites legt uit hoe het geluid vanaf het tabblad wordt opgenomen. Een video zonder ondertitels in de taal die je leert heeft niets te tonen, en Libregaku zegt dat.',
@@ -213,7 +213,7 @@ export const nl: HelpTranslation = {
     {
       id: 'protected-sites',
       title: 'Beschermde sites',
-      about: 'De sites die hun video versleutelen: Netflix, Disney+, Prime Video, Max en Apple TV+. Wat dat verandert.',
+      about: 'De sites die hun video versleutelen: Netflix, Disney+, Prime Video, Max en Apple TV. Wat dat verandert.',
       topics: [
         {
           id: 'protected-sites-audio',

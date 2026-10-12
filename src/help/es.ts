@@ -201,7 +201,7 @@ export const es: HelpTranslation = {
                 ['Disney+', 'Se graba desde la pestaña; sin captura de pantalla.'],
                 ['Prime Video', 'Se graba desde la pestaña; sin captura de pantalla.'],
                 ['Max', 'Se graba desde la pestaña; sin captura de pantalla.'],
-                ['Apple TV+', 'Se graba desde la pestaña; sin captura de pantalla.'],
+                ['Apple TV', 'Se graba desde la pestaña; sin captura de pantalla.'],
               ],
             },
             'El capítulo de sitios protegidos explica cómo se graba el sonido desde la pestaña. Un video sin subtítulos en el idioma que aprendes no tiene nada que mostrar, y Libregaku lo dice.',
@@ -213,7 +213,7 @@ export const es: HelpTranslation = {
     {
       id: 'protected-sites',
       title: 'Sitios protegidos',
-      about: 'Los sitios que cifran su video: Netflix, Disney+, Prime Video, Max y Apple TV+. Qué cambia con esa protección.',
+      about: 'Los sitios que cifran su video: Netflix, Disney+, Prime Video, Max y Apple TV. Qué cambia con esa protección.',
       topics: [
         {
           id: 'protected-sites-audio',

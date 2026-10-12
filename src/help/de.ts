@@ -201,7 +201,7 @@ export const de: HelpTranslation = {
                 ['Disney+', 'Wird vom Tab aufgenommen; kein Screenshot.'],
                 ['Prime Video', 'Wird vom Tab aufgenommen; kein Screenshot.'],
                 ['Max', 'Wird vom Tab aufgenommen; kein Screenshot.'],
-                ['Apple TV+', 'Wird vom Tab aufgenommen; kein Screenshot.'],
+                ['Apple TV', 'Wird vom Tab aufgenommen; kein Screenshot.'],
               ],
             },
             'Wie der Ton vom Tab aufgenommen wird, erklärt das Kapitel zu geschützten Websites. Ein Video ohne Untertitel in der Sprache, die du lernst, hat nichts zu zeigen, und Libregaku sagt das.',
@@ -213,7 +213,7 @@ export const de: HelpTranslation = {
     {
       id: 'protected-sites',
       title: 'Geschützte Websites',
-      about: 'Die Websites, die ihre Videos verschlüsseln: Netflix, Disney+, Prime Video, Max und Apple TV+. Was dieser Kopierschutz ändert.',
+      about: 'Die Websites, die ihre Videos verschlüsseln: Netflix, Disney+, Prime Video, Max und Apple TV. Was dieser Kopierschutz ändert.',
       topics: [
         {
           id: 'protected-sites-audio',

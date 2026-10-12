@@ -201,7 +201,7 @@ export const sv: HelpTranslation = {
                 ['Disney+', 'Spelas in från fliken; ingen skärmbild.'],
                 ['Prime Video', 'Spelas in från fliken; ingen skärmbild.'],
                 ['Max', 'Spelas in från fliken; ingen skärmbild.'],
-                ['Apple TV+', 'Spelas in från fliken; ingen skärmbild.'],
+                ['Apple TV', 'Spelas in från fliken; ingen skärmbild.'],
               ],
             },
             'Kapitlet om skyddade webbplatser förklarar hur ljudet spelas in från fliken. En video utan undertexter på språket du lär dig har inget att visa, och Libregaku säger det.',
@@ -213,7 +213,7 @@ export const sv: HelpTranslation = {
     {
       id: 'protected-sites',
       title: 'Skyddade webbplatser',
-      about: 'Webbplatserna som krypterar sin video: Netflix, Disney+, Prime Video, Max och Apple TV+. Vad det ändrar.',
+      about: 'Webbplatserna som krypterar sin video: Netflix, Disney+, Prime Video, Max och Apple TV. Vad det ändrar.',
       topics: [
         {
           id: 'protected-sites-audio',

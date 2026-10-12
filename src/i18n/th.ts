@@ -305,7 +305,7 @@ export const th: Translation = {
     notActive:
       'ไม่ได้ทำงานในหน้านี้ เปิดวิดีโอบน YouTube, Netflix หรือเว็บไซต์อื่นที่รองรับ ' +
       'หากเพิ่งติดตั้งหรือโหลด Libregaku ใหม่ ให้โหลดแท็บซ้ำ',
-    unsupported: 'Libregaku ใช้ได้บน YouTube, Netflix, Disney+, Prime Video, Max และ Apple TV+',
+    unsupported: 'Libregaku ใช้ได้บน YouTube, Netflix, Disney+, Prime Video, Max และ Apple TV',
     worksOn: (site: string): string => `Libregaku ใช้ได้บน ${site}`,
     waitingForSubtitles: (site: string): string => `กำลังรอคำบรรยายบน ${site} ตรวจสอบว่าเปิดคำบรรยายอยู่`,
     activeOn: (title: string): string => `ทำงานอยู่ — ${title}`,
@@ -651,8 +651,8 @@ export const th: Translation = {
     netflixTrackList: 'อ่านรายการคำบรรยายของ Netflix ไม่ได้',
     netflixCaptionText: 'ไม่พบข้อความคำบรรยายของ Netflix ในหน้านี้',
     disneyTrackList: 'อ่านรายการคำบรรยายของ Disney+ ไม่ได้',
-    appleTrackList: 'อ่านรายการคำบรรยายของ Apple TV+ ไม่ได้',
-    appleTiming: 'จับเวลาคำบรรยายของ Apple TV+ ให้ตรงกับวิดีโอไม่ได้',
+    appleTrackList: 'อ่านรายการคำบรรยายของ Apple TV ไม่ได้',
+    appleTiming: 'ปรับเวลาคำบรรยายของ Apple TV ให้ตรงกับวิดีโอไม่ได้',
     disneyCaptionText: 'ไม่พบข้อความคำบรรยายของ Disney+ ในหน้านี้',
     primeTrackList: 'อ่านรายการคำบรรยายของ Prime Video ไม่ได้',
     primeCaptionText: 'ไม่พบข้อความคำบรรยายของ Prime Video ในหน้านี้',

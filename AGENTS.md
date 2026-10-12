@@ -144,7 +144,7 @@ src/offscreen.{html,ts} WASM host — the only place the tokenizer runs. The lin
                         loaded after it); JMdict in IndexedDB
 src/adapters/           one module per subtitle source (youtube, netflix, disney, prime, max, apple), their
                         parsers (ttml, json3, hls, dash), the DOM-reading fallback, and the
-                        offset Apple TV+'s player keeps from its subtitle files (apple-clock)
+                        offset Apple TV's player keeps from its subtitle files (apple-clock)
 src/morphology/         Segmenter implementations and which language gets which (index.ts),
                         merge rules for Japanese and Korean, furigana and pinyin alignment,
                         Spanish dictionary forms, the words from JMdict that IPADIC
@@ -167,7 +167,7 @@ src/content/
   inject-prime.ts       Prime Video page world: passes on the subtitle tracks in the playback
                         resources the player asked for
   inject-max.ts         Max page world: passes on the DASH manifest the player fetched
-  inject-apple.ts       Apple TV+ page world: passes on the HLS master playlist the player fetched
+  inject-apple.ts       Apple TV page world: passes on the HLS master playlist the player fetched
   index.ts              isolated world: orchestrates adapter → segmenter → UI
   track-choice.ts       which of a video's tracks is studied, and which is the line under it
   renderer.ts           subtitle overlay

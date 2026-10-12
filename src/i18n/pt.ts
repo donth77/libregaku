@@ -318,7 +318,7 @@ export const pt: Translation = {
     notActive:
       'Não está ativo nesta página. Abra um vídeo no YouTube, na Netflix ou em outro site compatível. Se você acabou de instalar ou recarregar ' +
       'o Libregaku, recarregue a guia.',
-    unsupported: 'O Libregaku funciona no YouTube, na Netflix, no Disney+, no Prime Video, no Max e no Apple TV+.',
+    unsupported: 'O Libregaku funciona no YouTube, na Netflix, no Disney+, no Prime Video, no Max e no Apple TV.',
     worksOn: (site: string): string => `O Libregaku funciona em ${site}.`,
     waitingForSubtitles: (site: string): string => `${site}: aguardando as legendas. Verifique se estão ativadas.`,
     activeOn: (title: string): string => `Ativo — ${title}`,
@@ -673,8 +673,8 @@ export const pt: Translation = {
     netflixTrackList: 'Não foi possível ler a lista de legendas da Netflix.',
     netflixCaptionText: 'Não foi possível encontrar o texto das legendas da Netflix na página.',
     disneyTrackList: 'Não foi possível ler a lista de legendas da Disney+.',
-    appleTrackList: 'Não foi possível ler a lista de legendas do Apple TV+.',
-    appleTiming: 'Não foi possível alinhar as legendas do Apple TV+ ao vídeo.',
+    appleTrackList: 'Não foi possível ler a lista de legendas do Apple TV.',
+    appleTiming: 'Não foi possível alinhar as legendas do Apple TV ao vídeo.',
     disneyCaptionText: 'Não foi possível encontrar o texto das legendas da Disney+ na página.',
     primeTrackList: 'Não foi possível ler a lista de legendas da Prime Video.',
     primeCaptionText: 'Não foi possível encontrar o texto das legendas da Prime Video na página.',

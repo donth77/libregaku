@@ -201,7 +201,7 @@ export const zh: HelpTranslation = {
                 ['Disney+', '从标签页录制；没有截图。'],
                 ['Prime Video', '从标签页录制；没有截图。'],
                 ['Max', '从标签页录制；没有截图。'],
-                ['Apple TV+', '从标签页录制；没有截图。'],
+                ['Apple TV', '从标签页录制；没有截图。'],
               ],
             },
             '从标签页录音的方法见“受保护网站”一章。没有你所学语言字幕的视频没有内容可显示，Libregaku 会如此告知。',
@@ -213,7 +213,7 @@ export const zh: HelpTranslation = {
     {
       id: 'protected-sites',
       title: '受保护网站',
-      about: '对视频加密的网站：Netflix、Disney+、Prime Video、Max 和 Apple TV+。这会带来哪些变化。',
+      about: '对视频加密的网站：Netflix、Disney+、Prime Video、Max 和 Apple TV。这会带来哪些变化。',
       topics: [
         {
           id: 'protected-sites-audio',

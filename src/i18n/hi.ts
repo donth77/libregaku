@@ -314,7 +314,7 @@ export const hi: Translation = {
     notActive:
       'इस पेज पर चालू नहीं है। YouTube, Netflix या किसी और समर्थित साइट पर कोई वीडियो खोलें। अगर आपने अभी Libregaku इंस्टॉल या ' +
       'रीलोड किया है, तो टैब रीलोड करें।',
-    unsupported: 'Libregaku, YouTube, Netflix, Disney+, Prime Video, Max और Apple TV+ पर काम करता है।',
+    unsupported: 'Libregaku, YouTube, Netflix, Disney+, Prime Video, Max और Apple TV पर काम करता है।',
     worksOn: (site: string): string => `Libregaku, ${site} पर काम करता है।`,
     waitingForSubtitles: (site: string): string => `${site} पर सबटाइटल का इंतज़ार है। देख लें कि वे चालू हैं।`,
     activeOn: (title: string): string => `चालू — ${title}`,
@@ -671,8 +671,8 @@ export const hi: Translation = {
     netflixTrackList: 'Netflix की सबटाइटल सूची नहीं पढ़ी जा सकी।',
     netflixCaptionText: 'पेज पर Netflix के सबटाइटल का टेक्स्ट नहीं मिला।',
     disneyTrackList: 'Disney+ की सबटाइटल सूची नहीं पढ़ी जा सकी।',
-    appleTrackList: 'Apple TV+ की सबटाइटल सूची नहीं पढ़ी जा सकी।',
-    appleTiming: 'Apple TV+ के सबटाइटल वीडियो से मिलाए नहीं जा सके।',
+    appleTrackList: 'Apple TV की सबटाइटल सूची नहीं पढ़ी जा सकी।',
+    appleTiming: 'Apple TV के सबटाइटल वीडियो से मिलाए नहीं जा सके।',
     disneyCaptionText: 'पेज पर Disney+ के सबटाइटल का टेक्स्ट नहीं मिला।',
     primeTrackList: 'Prime Video की सबटाइटल सूची नहीं पढ़ी जा सकी।',
     primeCaptionText: 'पेज पर Prime Video के सबटाइटल का टेक्स्ट नहीं मिला।',

@@ -1,5 +1,5 @@
 /**
- * The offset between Apple TV+'s subtitle files and the player's clock.
+ * The offset between Apple TV's subtitle files and the player's clock.
  *
  * The player shows a cue a fixed number of seconds after the file's own cue
  * time, about a minute: 58.06 s in one session, 56.47 s in another, and the

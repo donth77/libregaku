@@ -201,7 +201,7 @@ export const tr: HelpTranslation = {
                 ['Disney+', 'Sekmeden kaydedilir; ekran görüntüsü yok.'],
                 ['Prime Video', 'Sekmeden kaydedilir; ekran görüntüsü yok.'],
                 ['Max', 'Sekmeden kaydedilir; ekran görüntüsü yok.'],
-                ['Apple TV+', 'Sekmeden kaydedilir; ekran görüntüsü yok.'],
+                ['Apple TV', 'Sekmeden kaydedilir; ekran görüntüsü yok.'],
               ],
             },
             'Sesin sekmeden nasıl kaydedildiğini korumalı siteler bölümü anlatır. Öğrendiğiniz dilde altyazısı olmayan bir videoda gösterilecek bir şey yoktur ve Libregaku bunu söyler.',
@@ -213,7 +213,7 @@ export const tr: HelpTranslation = {
     {
       id: 'protected-sites',
       title: 'Korumalı siteler',
-      about: 'Videolarını şifreleyen siteler: Netflix, Disney+, Prime Video, Max ve Apple TV+. Bunun neleri değiştirdiği.',
+      about: 'Videolarını şifreleyen siteler: Netflix, Disney+, Prime Video, Max ve Apple TV. Bunun neleri değiştirdiği.',
       topics: [
         {
           id: 'protected-sites-audio',

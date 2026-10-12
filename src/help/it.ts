@@ -201,7 +201,7 @@ export const it: HelpTranslation = {
                 ['Disney+', 'Registrato dalla scheda; nessuno screenshot.'],
                 ['Prime Video', 'Registrato dalla scheda; nessuno screenshot.'],
                 ['Max', 'Registrato dalla scheda; nessuno screenshot.'],
-                ['Apple TV+', 'Registrato dalla scheda; nessuno screenshot.'],
+                ['Apple TV', 'Registrato dalla scheda; nessuno screenshot.'],
               ],
             },
             'Il capitolo sui siti protetti spiega come si registra il suono dalla scheda. Un video senza sottotitoli nella lingua che stai imparando non ha nulla da mostrare, e Libregaku lo dice.',
@@ -213,7 +213,7 @@ export const it: HelpTranslation = {
     {
       id: 'protected-sites',
       title: 'Siti protetti',
-      about: 'I siti che criptano i loro video: Netflix, Disney+, Prime Video, Max e Apple TV+. Cosa cambia con questa protezione.',
+      about: 'I siti che criptano i loro video: Netflix, Disney+, Prime Video, Max e Apple TV. Cosa cambia con questa protezione.',
       topics: [
         {
           id: 'protected-sites-audio',

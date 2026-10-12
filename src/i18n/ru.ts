@@ -335,7 +335,7 @@ export const ru: Translation = {
     notActive:
       'На этой странице не работает. Откройте видео на YouTube, Netflix или другом поддерживаемом сайте. Если вы только что установили ' +
       'или перезагрузили Libregaku, обновите вкладку.',
-    unsupported: 'Libregaku работает на YouTube, Netflix, Disney+, Prime Video, Max и Apple TV+.',
+    unsupported: 'Libregaku работает на YouTube, Netflix, Disney+, Prime Video, Max и Apple TV.',
     worksOn: (site: string): string => `Libregaku работает на ${site}.`,
     waitingForSubtitles: (site: string): string => `Ждём субтитры на ${site}. Убедитесь, что они включены.`,
     activeOn: (title: string): string => `Работает — ${title}`,
@@ -697,8 +697,8 @@ export const ru: Translation = {
     netflixTrackList: 'Не удалось прочитать список субтитров Netflix.',
     netflixCaptionText: 'Не удалось найти текст субтитров Netflix на странице.',
     disneyTrackList: 'Не удалось прочитать список субтитров Disney+.',
-    appleTrackList: 'Не удалось прочитать список субтитров Apple TV+.',
-    appleTiming: 'Не удалось совместить субтитры Apple TV+ с видео.',
+    appleTrackList: 'Не удалось прочитать список субтитров Apple TV.',
+    appleTiming: 'Не удалось синхронизировать субтитры Apple TV с видео.',
     disneyCaptionText: 'Не удалось найти текст субтитров Disney+ на странице.',
     primeTrackList: 'Не удалось прочитать список субтитров Prime Video.',
     primeCaptionText: 'Не удалось найти текст субтитров Prime Video на странице.',

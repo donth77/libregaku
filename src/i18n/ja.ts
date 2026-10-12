@@ -308,7 +308,7 @@ export const ja: Translation = {
     notActive:
       'このページでは動作していません。YouTubeやNetflixなどの対応サイトで動画を開いてください。' +
       'Libregakuをインストールまたは再読み込みした直後なら、タブを再読み込みしてください。',
-    unsupported: 'LibregakuはYouTube、Netflix、Disney+、Prime Video、Max、Apple TV+で使えます。',
+    unsupported: 'LibregakuはYouTube、Netflix、Disney+、Prime Video、Max、Apple TVで使えます。',
     worksOn: (site: string): string => `Libregakuは${site}で使えます。`,
     waitingForSubtitles: (site: string): string => `${site}の字幕を待っています。字幕がオンになっているか確認してください。`,
     activeOn: (title: string): string => `動作中：${title}`,
@@ -649,8 +649,8 @@ export const ja: Translation = {
     netflixTrackList: 'Netflixの字幕リストを読み取れませんでした。',
     netflixCaptionText: 'ページ上でNetflixの字幕テキストが見つかりませんでした。',
     disneyTrackList: 'Disney+の字幕リストを読み取れませんでした。',
-    appleTrackList: 'Apple TV+の字幕リストを読み取れませんでした。',
-    appleTiming: 'Apple TV+の字幕を動画の時間に合わせられませんでした。',
+    appleTrackList: 'Apple TVの字幕リストを読み取れませんでした。',
+    appleTiming: 'Apple TVの字幕を動画の時間に合わせられませんでした。',
     disneyCaptionText: 'ページ上でDisney+の字幕テキストが見つかりませんでした。',
     primeTrackList: 'Prime Videoの字幕リストを読み取れませんでした。',
     primeCaptionText: 'ページ上でPrime Videoの字幕テキストが見つかりませんでした。',
