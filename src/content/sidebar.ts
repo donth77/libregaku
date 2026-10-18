@@ -14,7 +14,7 @@ import { applyVars, onSettingsChange, setSetting, settings, underlineVars, type 
 import { markPhrase, phraseAt, phraseToken, selectWhole, selectedWords, textFrom } from './phrase';
 import { matcher } from './search-text';
 import { rubyOf } from '../morphology/ruby';
-import { roomFor, sidesOf, type Drawn } from './ruby-room';
+import { romanised, roomFor, sidesOf, type Drawn } from './ruby-room';
 import { PANEL_STYLE, buildSettings, keysView, syncSettingsControls } from './settings-panel';
 import { letterKey } from './keys';
 import { partsOfSpeech, popupIsOpen } from './popup';
@@ -449,6 +449,12 @@ const STYLE = `
     transform: translateX(-50%);
     font-size: .46em; line-height: 1; color: #B8C0D4;
     white-space: nowrap; user-select: none; pointer-events: none;
+  }
+  /* A romanised reading (pinyin, Jyutping) widens its character's box by a hidden copy of itself, as on the subtitle. */
+  .tx ruby[data-r] { text-align: center; }
+  .tx ruby[data-r]::after {
+    content: attr(data-r); display: block; height: 0; overflow: hidden; visibility: hidden;
+    font-size: .46em; white-space: nowrap; padding: 0 .12em;
   }
   /* A reading wider than its characters is given room, and leans off a neighbour's reading, as on the subtitle (ruby-room.ts). */
   .tx ruby[data-k] { padding: 0 var(--lg-after, 0em) 0 var(--lg-before, 0em); }
@@ -3485,14 +3491,17 @@ export class Sidebar {
           const rt = document.createElement('rt');
           rt.textContent = seg.ruby;
           r.appendChild(rt);
-          const [before, after] = sidesOf(drawn, j, i);
-          // One kana of a reading is .46em of the text under it here (.tx rt).
-          const room = roomFor(seg.text, seg.ruby, before, after, 0.46);
-          if (room) {
-            r.dataset.k = seg.ruby;
-            r.style.setProperty('--lg-before', `${room.left}em`);
-            r.style.setProperty('--lg-after', `${room.right}em`);
-            r.style.setProperty('--lg-lean', `${Math.round((room.lean / 0.46) * 1000) / 1000}em`);
+          if (romanised(seg.ruby)) r.dataset.r = seg.ruby;
+          else {
+            const [before, after] = sidesOf(drawn, j, i);
+            // One kana of a reading is .46em of the text under it here (.tx rt).
+            const room = roomFor(seg.text, seg.ruby, before, after, 0.46);
+            if (room) {
+              r.dataset.k = seg.ruby;
+              r.style.setProperty('--lg-before', `${room.left}em`);
+              r.style.setProperty('--lg-after', `${room.right}em`);
+              r.style.setProperty('--lg-lean', `${Math.round((room.lean / 0.46) * 1000) / 1000}em`);
+            }
           }
           w.appendChild(r);
         }

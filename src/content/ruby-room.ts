@@ -35,6 +35,16 @@ export interface Room {
 const round = (n: number): number => Math.round(n * 1000) / 1000;
 
 /**
+ * A reading in Latin letters: pinyin, Jyutping. Its letters are narrower than
+ * kana, so roomFor(), which counts characters, would part the characters under
+ * it far too wide. It is measured where it is drawn instead, by a hidden copy
+ * of itself that widens its character's box (data-r).
+ */
+export function romanised(reading: string): boolean {
+  return /^[\x21-\x7eÀ-ɏ̀-ͯ]+$/.test(reading);
+}
+
+/**
  * What a reading needs beyond its characters, or null when it fits.
  * `unit` is the width of one reading character in em of the text below;
  * `before` and `after` are how far it may hang over each side (FREE, EDGE or SHUT).

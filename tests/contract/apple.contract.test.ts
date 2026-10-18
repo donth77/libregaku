@@ -56,7 +56,8 @@ let cached: Promise<Found> | null = null;
 
 /** The first title page that names a playlist, and that playlist, fetched as the extension would be allowed to. */
 function trailer(): Promise<Found> {
-  cached ??= (async () => {
+  if (cached) return cached;
+  cached = (async () => {
     const tried: string[] = [];
     for (const page of TITLES) {
       const res = await fetch(page, { headers: HEADERS, redirect: 'follow' });
@@ -64,7 +65,7 @@ function trailer(): Promise<Found> {
         tried.push(`${page} returned HTTP ${res.status}`);
         continue;
       }
-      // The page's data is JSON in the HTML; a slash may be written as /.
+      // The page's data is JSON in the HTML; a slash may be written as \u002F.
       const html = (await res.text()).replace(/\\u002F/gi, '/').replace(/&amp;/g, '&');
       const url = /"hlsUrl":"(https:[^"]+\.m3u8[^"]*)"/.exec(html)?.[1];
       if (!url) {
@@ -81,6 +82,10 @@ function trailer(): Promise<Found> {
         'Apple may have changed how a title page names its trailer, which makes this canary blind rather than the adapter broken.',
     );
   })();
+  // A failure is not kept: the retries in vitest.contract.config.ts are for a blip, and fetch again.
+  cached.catch(() => {
+    cached = null;
+  });
   return cached;
 }
 

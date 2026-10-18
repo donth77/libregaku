@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EDGE, FREE, SHUT, roomFor, sidesOf, type Drawn } from '../ruby-room';
+import { EDGE, FREE, SHUT, romanised, roomFor, sidesOf, type Drawn } from '../ruby-room';
 
 /** The width of one reading character, in em of the text below, used throughout these. */
 const UNIT = 0.48;
@@ -83,5 +83,15 @@ describe('sidesOf', () => {
   it('is free beside a mark', () => {
     const line: Drawn[] = [plain('え'), 'mark', read('何', 'なに'), 'mark'];
     expect(sidesOf(line, 2, 0)).toEqual([FREE, FREE]);
+  });
+});
+
+describe('romanised', () => {
+  it('is a reading in Latin letters, with or without tone marks and numbers', () => {
+    for (const reading of ['xué', 'xiào', 'zyu2', 'gwong2', 'nǚ', 'lüè']) expect(romanised(reading), reading).toBe(true);
+  });
+
+  it('is not a reading in kana, or in Hangul', () => {
+    for (const reading of ['うけたまわ', 'ヨヤク', '한']) expect(romanised(reading), reading).toBe(false);
   });
 });

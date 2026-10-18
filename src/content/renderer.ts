@@ -1,7 +1,7 @@
 import type { RubySegment, Token } from '../morphology/types';
 import { uiDirection } from '../i18n';
 import { markPhrase, phraseAt, plainText, selectWhole, selectedWords, textFrom, type PhrasePick } from './phrase';
-import { roomFor, sidesOf, type Drawn } from './ruby-room';
+import { romanised, roomFor, sidesOf, type Drawn } from './ruby-room';
 
 /** A reading's font size, in em of the text under it (.t rt, below). */
 const RT_SIZE = 0.46;
@@ -655,7 +655,7 @@ export class Overlay {
           const rt = document.createElement('rt');
           rt.textContent = seg.ruby;
           ruby.appendChild(rt);
-          if (/^[\x21-\x7e\u00c0-\u024f\u0300-\u036f]+$/.test(seg.ruby)) ruby.dataset.r = seg.ruby;
+          if (romanised(seg.ruby)) ruby.dataset.r = seg.ruby;
           else {
             const [before, after] = sidesOf(drawn, j, i);
             const room = roomFor(seg.text, seg.ruby, before, after, RT_UNIT);

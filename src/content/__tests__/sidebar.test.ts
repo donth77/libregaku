@@ -1201,6 +1201,24 @@ describe('Sidebar readings and marks', () => {
     expect(css).toContain('.lines.ruby-off rt { display: none; }');
   });
 
+  it('widens a character by its romanised reading, as the subtitle does, and gives a kana reading the room it counts', async () => {
+    const transcript = new Transcript();
+    transcript.setFull([{ start: 0, end: 3, text: '学校 承り' }]);
+    const mixed: Segmenter = {
+      ...segmenter,
+      ruby: (surface) => (surface === '学校'
+        ? [{ text: '学', ruby: 'xué' }, { text: '校', ruby: 'xiào' }]
+        : [{ text: '承', ruby: 'うけたまわ' }, { text: 'り' }]),
+    };
+    const { root } = await build({ transcript, segmenter: () => mixed, statusOf: () => 'unknown' });
+    const rubies = Array.from(root.querySelectorAll<HTMLElement>('.tx ruby'));
+    // Latin letters are narrower than kana: counted as kana, pinyin parted the characters twice as far as it needed.
+    expect(rubies.map((r) => [r.dataset.r, r.dataset.k])).toEqual([['xué', undefined], ['xiào', undefined], [undefined, 'うけたまわ']]);
+    expect(rubies[0]!.style.getPropertyValue('--lg-before')).toBe('');
+    expect(parseFloat(rubies[2]!.style.getPropertyValue('--lg-before'))).toBeGreaterThan(0);
+    expect(root.querySelector('style')!.textContent).toContain('.tx ruby[data-r]::after');
+  });
+
   it('follows the furigana and known-word settings as they change', async () => {
     const { list } = await build();
     expect(list.classList.contains('ruby-all')).toBe(false);

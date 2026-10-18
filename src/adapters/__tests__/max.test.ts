@@ -22,7 +22,7 @@ describe('asTracks', () => {
     expect([got[1]?.cc, got[2]?.forced]).toEqual([true, true]);
   });
 
-  it('drops a track with any segment not on a HBO Max host', () => {
+  it('drops a track with any segment not on an HBO Max host', () => {
     expect(asTracks([{ language: 'ja', role: 'subtitle', label: 'ja', urls: [url(1), 'https://evil.example/2.vtt'] }])).toEqual([]);
     expect(asTracks([{ language: 'ja', role: 'subtitle', label: 'ja', urls: ['http://x.h264.io/1.vtt'] }])).toEqual([]);
   });
