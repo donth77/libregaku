@@ -1,5 +1,5 @@
 import { fetchJsonTgz } from './archive';
-import { keysFor, rank, readingsOf, toEntry, type Entry, type RankHint, type RawWord } from './jmdict';
+import { keysFor, rank, toEntry, wordsFor, type Entry, type FormReading, type RankHint, type RawWord } from './jmdict';
 import { toKanji, type CharacterInfo, type StoredKanji } from './kanji';
 
 /**
@@ -422,14 +422,7 @@ export async function formsOf(forms: string[], source: Source): Promise<Record<s
 }
 
 /** One dictionary word a written form stands for. */
-export interface Reading {
-  /** The entry's headword. */
-  word: string;
-  /** Its reading, in hiragana. */
-  reading: string;
-  /** The entry's first sense's part-of-speech codes. */
-  pos?: string[];
-}
+export type Reading = FormReading;
 
 /**
  * What each written form reads as, for the tokenizer.
@@ -445,13 +438,8 @@ export async function lexicon(forms: string[]): Promise<Record<string, Reading[]
   const db = await open();
   await Promise.all(
     [...new Set(forms)].map(async (form) => {
-      const ranked = rank(await candidates(db, form), form);
-      const readings = readingsOf(ranked, form);
-      if (!readings.length) return;
-      out[form] = readings.map((reading) => {
-        const entry = ranked.find((e) => (e.reading ?? (e.uk ? e.word : undefined)) === reading);
-        return { word: entry?.word ?? form, reading, pos: entry?.senses[0]?.pos };
-      });
+      const words = wordsFor(await candidates(db, form), form);
+      if (words.length) out[form] = words;
     }),
   );
   return out;
@@ -479,19 +467,25 @@ export async function eachEntry(fn: (entry: Entry) => void): Promise<void> {
   });
 }
 
-/** A list of words built for the analyser, if one was filed under `mark`. */
-export async function storedWords(mark: string): Promise<string | null> {
-  const db = await open();
-  const got = await request<{ mark: string; csv: string } | undefined>(
-    db.transaction(META).objectStore(META).get('extraWords'),
-  ).catch(() => undefined);
-  return got?.mark === mark ? got.csv : null;
+/** What was built from the dictionary for the analyser: the words added to it, and the words whose reading it is put right on. */
+export interface AnalyserWords {
+  csv: string;
+  readings: string;
 }
 
-export async function storeWords(mark: string, csv: string): Promise<void> {
+/** The lists built for the analyser, if they were filed under `mark`. */
+export async function storedWords(mark: string): Promise<AnalyserWords | null> {
+  const db = await open();
+  const got = await request<{ mark: string; csv: string; readings?: string } | undefined>(
+    db.transaction(META).objectStore(META).get('extraWords'),
+  ).catch(() => undefined);
+  return got?.mark === mark ? { csv: got.csv, readings: got.readings ?? '' } : null;
+}
+
+export async function storeWords(mark: string, words: AnalyserWords): Promise<void> {
   const db = await open();
   const tx = db.transaction(META, 'readwrite');
-  tx.objectStore(META).put({ mark, csv }, 'extraWords');
+  tx.objectStore(META).put({ mark, ...words }, 'extraWords');
   await done(tx);
 }
 

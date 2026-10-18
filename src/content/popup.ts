@@ -332,13 +332,39 @@ export interface CardDraft {
  */
 export function draftFor(result: LookupResult, token: Token, sentence: string): CardDraft {
   const top = result.state === 'ok' ? result.entries[0] : undefined;
+  const expression = top?.word ?? token.lemma ?? token.surface;
   return {
-    expression: top?.word ?? token.lemma ?? token.surface,
-    reading: top?.reading ?? token.reading ?? '',
+    expression,
+    reading: top?.reading ?? readingFor(token, expression) ?? '',
     meaning: top?.senses.flatMap((x) => x.glosses).slice(0, 4).join('; ') ?? '',
     sentence,
     ...(top?.alt ? { alt: top.alt } : {}),
   };
+}
+
+/**
+ * The analyser's reading of the word a card is about, where the dictionary
+ * gives none: the token's own where the word is the token as written, and its
+ * dictionary form's where it is that. Never the reading of the form on the
+ * line over another word: しましょう, シマショウ, is not how する is read, and a
+ * card headed ゲーム said ゲームシマショウ above it.
+ */
+function readingFor(token: Token, word: string): string | undefined {
+  if (word === token.surface) return token.reading;
+  return word === token.lemma ? token.lemmaReading : undefined;
+}
+
+/**
+ * Whether a reading says more than the word it stands over: not スル over
+ * する, nor ゲーム over ゲーム. Letter for letter as Intl compares them, the
+ * script and the case aside, so a word written in kana is its own reading.
+ */
+function saysMore(reading: string, word: string, lang: string | undefined): boolean {
+  try {
+    return new Intl.Collator(lang || undefined, { sensitivity: 'accent' }).compare(reading, word) !== 0;
+  } catch {
+    return reading !== word;
+  }
 }
 
 /**
@@ -485,7 +511,9 @@ export function showPopup(
 
   const top = entries[0];
   const word = top?.word ?? ctx.token.lemma ?? ctx.token.surface;
-  const reading = top?.reading ?? ctx.token.reading;
+  // The reading of the word the card is headed by, and only where it says more than the word does.
+  const own = top?.reading ?? readingFor(ctx.token, word);
+  const reading = own && saysMore(own, word, ctx.lang) ? own : undefined;
   const hasCard = ctx.hasCard === true;
 
   const card = document.createElement('div');
@@ -813,7 +841,9 @@ export function showPopup(
   }
 
   // The inflection trace: what this token was built from, and where it leads.
-  const { parts, lemma, surface, inflections } = ctx.token;
+  const { parts, surface, inflections } = ctx.token;
+  // What the form on the line is a form of: 勉強する for 勉強しています, though the word is 勉強.
+  const lemma = ctx.token.usedAs ?? ctx.token.lemma;
   const compound = Boolean(ctx.token.compound);
   if (parts?.length && lemma && (lemma !== surface || compound)) {
     const tr = document.createElement('div');

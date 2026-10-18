@@ -17,7 +17,7 @@ import init, {
   TokenizerBuilder, loadDictionaryFromBytes, loadUserDictionaryFromBytes, type Tokenizer,
 } from 'lindera-wasm';
 import { jmdictUrl } from '../src/dict/store';
-import { keysFor, rank, readingsOf, toEntry, type Entry, type RawWord } from '../src/dict/jmdict';
+import { keysFor, toEntry, wordsFor, type Entry, type RawWord } from '../src/dict/jmdict';
 import { EXTRA_COST, analyserRows, extraCollector, misreads } from '../src/morphology/extra-words';
 import { LINDERA_DICTS } from '../src/morphology/dictionaries';
 import { segmentWith } from '../src/morphology/lindera';
@@ -82,13 +82,8 @@ for (const w of raw.words) {
 function lexicon(forms: string[]): Record<string, LexiconEntry[]> {
   const out: Record<string, LexiconEntry[]> = {};
   for (const form of new Set(forms)) {
-    const ranked = rank(byForm.get(form) ?? [], form);
-    const readings = readingsOf(ranked, form);
-    if (!readings.length) continue;
-    out[form] = readings.map((reading) => {
-      const entry = ranked.find((e) => (e.reading ?? (e.uk ? e.word : undefined)) === reading);
-      return { word: entry?.word ?? form, reading, pos: entry?.senses[0]?.pos };
-    });
+    const words = wordsFor(byForm.get(form) ?? [], form);
+    if (words.length) out[form] = words;
   }
   return out;
 }

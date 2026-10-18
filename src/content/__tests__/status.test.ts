@@ -10,6 +10,8 @@ const api = vi.hoisted(() => ({
   /** The video's tracks, and what each one says — one Japanese track unless a test says otherwise. */
   tracks: [{ id: 'ja', lang: 'ja', label: 'Japanese' }] as Array<{ id: string; lang: string; label: string }>,
   cues: { ja: [{ start: 0, end: 10, text: '食べる' }] } as Record<string, Array<{ start: number; end: number; text: string }>>,
+  /** What the analyser says of a line, by its text, beyond the one word every line is here. */
+  said: {} as Record<string, Record<string, unknown>>,
 }));
 
 vi.mock('../../anki/status', async (original) => ({
@@ -40,7 +42,7 @@ vi.mock('../../morphology/lindera', () => ({
     static async ensure() { return { ok: true }; }
     ruby(surface: string) { return [{ text: surface }]; }
     segment(text: string) {
-      return [{ surface: text, lemma: '食べる', start: 0, end: text.length, content: true }];
+      return [{ surface: text, lemma: '食べる', start: 0, end: text.length, content: true, ...api.said[text] }];
     }
   },
 }));
@@ -133,6 +135,7 @@ beforeEach(async () => {
   });
   api.tracks = [{ id: 'ja', lang: 'ja', label: 'Japanese' }];
   api.cues = { ja: [{ start: 0, end: 10, text: '食べる' }] };
+  api.said = {};
   api.buildStatusMap.mockReset().mockResolvedValue(snapshot('unknown'));
   api.addNote.mockReset().mockResolvedValue(1);
   api.takeBack.mockReset().mockResolvedValue(undefined);
@@ -475,6 +478,106 @@ describe('taking a card back', () => {
     expect(api.takeBack).toHaveBeenCalledWith(1791680000000);
     expect(popup.querySelector('.toast')?.textContent).toBe('taken back out of Vocabulary');
     expect(token().dataset.s).toBe('unknown');
+  });
+});
+
+describe('a noun made a verb by する', () => {
+  /** ゲームしましょう as the analyser hands it on: the word is the noun, the verb's own form beside it. */
+  const game = { lemma: 'ゲーム', usedAs: 'ゲームする', reading: 'ゲームシマショウ', lemmaReading: 'ゲーム' };
+  const MARKS = 'libregaku.marks.byLanguage';
+  /** Anki, with cards for these words and no others. */
+  const knows = (...words: string[]): StatusMap =>
+    ({ size: words.length, get: (word) => (words.includes(word) ? 'known' : 'unknown') });
+  /** Read Anki and the marks again, as the page does when its scope changes. */
+  async function reread(scope: string): Promise<void> {
+    const { setSetting } = await import('../../settings');
+    await setSetting('statusScope', scope);
+    await flush();
+    await flush();
+  }
+  beforeEach(async () => {
+    api.said = { ゲームしましょう: game };
+    await lines([[0, 10, 'ゲームしましょう']]);
+  });
+
+  it('is known by a card for the noun, which is the card it makes, and by one written with する', async () => {
+    expect(token().dataset.s).toBe('unknown');
+    api.buildStatusMap.mockResolvedValue(knows('ゲーム'));
+    await reread('Japanese');
+    expect(token().dataset.s).toBe('known');
+    // A deck that writes its する verbs out.
+    api.buildStatusMap.mockResolvedValue(knows('ゲームする'));
+    await reread('Genki');
+    expect(token().dataset.s).toBe('known');
+    api.buildStatusMap.mockResolvedValue(knows('食べる'));
+    await reread('Japanese');
+    expect(token().dataset.s).toBe('unknown');
+  });
+
+  it('is marked as its noun, the word its card is headed by', async () => {
+    const popup = await openWord();
+    expect(popup.querySelector('.hw .word')?.textContent).toBe('ゲーム');
+    popup.querySelector<HTMLButtonElement>('.mk.known')!.click();
+    await flush();
+    expect(token().dataset.s).toBe('known');
+    expect(local[MARKS]).toEqual({ ja: { ゲーム: 'known' } });
+    // And the mark is its own to take off.
+    const again = await openWord();
+    expect(again.querySelector('.mk.known')?.getAttribute('aria-pressed')).toBe('true');
+    again.querySelector<HTMLButtonElement>('.mk.known')!.click();
+    await flush();
+    expect(token().dataset.s).toBe('unknown');
+    expect(JSON.stringify(local[MARKS])).not.toContain('ゲーム');
+  });
+
+  it('keeps a mark made on the する form before, shows it, and takes that one off', async () => {
+    local[MARKS] = { ja: { ゲームする: 'known' } };
+    await reread('Japanese');
+    expect(token().dataset.s).toBe('known');
+    const popup = await openWord();
+    expect(popup.querySelector('.mk.known')?.getAttribute('aria-pressed')).toBe('true');
+    popup.querySelector<HTMLButtonElement>('.mk.known')!.click();
+    await flush();
+    expect(token().dataset.s).toBe('unknown');
+    expect(JSON.stringify(local[MARKS])).not.toContain('ゲーム');
+  });
+
+  it('never leaves the word two marks: a new one replaces the one on the する form', async () => {
+    local[MARKS] = { ja: { ゲームする: 'known' } };
+    await reread('Japanese');
+    const popup = await openWord();
+    popup.querySelector<HTMLButtonElement>('.mk.ignore')!.click();
+    await flush();
+    expect(token().dataset.s).toBe('ignored');
+    expect(local[MARKS]).toEqual({ ja: { ゲーム: 'ignored' } });
+  });
+
+  it('takes K as the card does, and a card off both forms', async () => {
+    local[MARKS] = { ja: { ゲームする: 'known' } };
+    await reread('Japanese');
+    await openWord();
+    key('k');
+    await flush();
+    expect(token().dataset.s).toBe('unknown');
+    expect(JSON.stringify(local[MARKS])).not.toContain('ゲーム');
+
+    local[MARKS] = { ja: { ゲームする: 'tracking' } };
+    await reread('Genki');
+    expect(token().dataset.s).toBe('tracking');
+    // Anki, from here on, with whatever cards were made, under the word written on each.
+    api.buildStatusMap.mockImplementation(async () => {
+      const made = api.addNote.mock.calls.map((call) => call[0]?.expression);
+      return { size: made.length, get: (word) => (made.includes(word) ? 'learning' : 'unknown') };
+    });
+    const popup = await openWord();
+    popup.querySelector<HTMLButtonElement>('button.add')!.click();
+    await flush();
+    await flush();
+    // The card is the noun's, and now speaks for the word: no mark is left to hide it.
+    expect(api.addNote.mock.calls[0]?.[0]).toMatchObject({ expression: 'ゲーム' });
+    expect(JSON.stringify(local[MARKS])).not.toContain('ゲーム');
+    // And Anki's answer finds it: the word does not go back to new once the card is in.
+    expect(token().dataset.s).toBe('learning');
   });
 });
 

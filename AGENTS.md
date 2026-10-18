@@ -87,6 +87,25 @@ it, `katakana-words.ts`, the same way. That step once read カレー as から�
 never run over real sentences: nothing that rewrites what the analyser is
 given goes in unmeasured.
 
+UniDic also says which word a spelling in kanji is, where IPADIC says another:
+金がない is きん to IPADIC, or キム, a surname, and かね to UniDic. Neither is
+right alone (every 米 is べい, America, to UniDic), so UniDic's reading is taken
+only where JMdict bears it out. `secondOpinions()` in `merge.ts` says when.
+`READINGS=1 node scripts/compare-unidic.mjs` measures it against Tatoeba's word
+index, which names the dictionary word for each word of 150,000 sentences, and
+writes out every word put right and every word put wrong. Run it before
+changing that rule, and read both lists. The index says which word a spelling
+is, not how it is said (何ですか is なに to it), so a rule about how a word is
+said, like 何 before です, cannot be measured with it.
+
+A few words neither analyser can be asked about, because each reads them one
+way whatever the line says: 金 (money or gold), 風 (the wind, or a way of
+doing), 下 (under a table, or under a law), 今 before a noun (now, or "this").
+The line says which, by a short list of what stands beside the word
+(`goldOrMoney()`, `habit()` and `spoken()` in `merge.ts`). Each list was
+measured against the index and over every Tatoeba sentence, and its numbers
+are in the comment above it: measure again before adding to one.
+
 `WRITE=1 node scripts/compare-unidic.mjs` writes the parser fixtures again:
 `fixtures/ipadic.ts` (each line as the extension reads it once everything has
 loaded, and as IPADIC alone reads it where that differs) and
@@ -240,6 +259,13 @@ own. The analyser reads each Lindera dictionary through its own reader in
 differently. Whatever draws a word asks the segmenter how its reading goes above
 it (`Segmenter.ruby`), and a control only some languages have a use for is asked
 about by feature (`featuresOf`), never by the language's name.
+
+A word the line uses in another form than a dictionary lists it under is the
+segmenter's to say, too. 勉強しています is 勉強する, and every Japanese
+dictionary lists that under 勉強: so the token's `lemma` is 勉強, which is what
+is carded, marked and matched against Anki, and `usedAs` is 勉強する, which the
+card shows the line's form leading to. Status and marks try both, so a deck
+that writes 勉強する still counts, and none of them asks which language it is.
 
 *Known leaks, to close rather than copy:* the lookup card names an entry's kind
 through one table of every dictionary's codes (`ui.popup.partOfSpeech`), the status

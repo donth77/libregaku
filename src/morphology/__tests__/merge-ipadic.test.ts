@@ -82,9 +82,38 @@ describe('行った', () => {
 describe('サ変 nouns', () => {
   it('become noun + する only with する itself', () => {
     const t = only('勉強している');
-    expect(t.lemma).toBe('勉強する');
-    // JMdict files it under the noun, so that is the next key.
+    // The word is the noun, which JMdict files it under and a card is made for; the verb's form goes with it.
+    expect(t).toMatchObject({ lemma: '勉強', usedAs: '勉強する', lemmaReading: 'ベンキョウ', reading: 'ベンキョウシテイル' });
     expect(keys(t)).toEqual(['勉強する', '勉強']);
+    // The noun alone is the same word, and says nothing of する.
+    expect(tokens('勉強が好き')[0]).toMatchObject({ lemma: '勉強' });
+    expect(tokens('勉強が好き')[0]?.usedAs).toBeUndefined();
+  });
+
+  it('are the verb where the dictionary has it as a word of its own: 損する, 得する', () => {
+    expect(only('損した')).toMatchObject({ lemma: '損する', lemmaReading: 'ソンスル' });
+    expect(only('損した').usedAs).toBeUndefined();
+    // IPADIC knows 損 only as a plain noun: without the dictionary to say so, the two stay apart.
+    expect(words('損した', false)).toEqual(['損', 'した']);
+    // Read as the verb reads it: 目される is もくされる, where 目 alone is め.
+    expect(tokens('鷹派と目される')[2]).toMatchObject({ surface: '目される', lemma: '目する', reading: 'モクサレル', inflections: ['passive'] });
+    // Not after a prefix, nor a word that describes a noun: 全損 is a word, and どの位 is どのくらい.
+    expect(words('全損した')).toEqual(['全損', 'した']);
+    expect(words('どの位したら会は始まるか。').slice(0, 3)).toEqual(['どの', '位', 'したら']);
+  });
+
+  it('are not the adjective a noun and し look like: 恋して is 恋する, not 恋しい', () => {
+    expect(only('恋してる')).toMatchObject({ lemma: '恋する', reading: 'コイシテル', inflections: ['ongoing'] });
+    expect(tokens('彼女に恋している。')[2]).toMatchObject({ surface: '恋している', lemma: '恋する' });
+    expect(tokens('楽して稼ごう')[0]).toMatchObject({ surface: '楽して', lemma: '楽', usedAs: '楽する', reading: 'ラクシテ' });
+    // The adjective goes on as 恋しくて.
+    expect(tokens('恋しくて泣いた')[0]).toMatchObject({ surface: '恋しくて', lemma: '恋しい' });
+    // And as IPADIC alone reads it, until UniDic has loaded.
+    expect(early('恋してる')[0]).toMatchObject({ lemma: '恋しい' });
+  });
+
+  it('are the noun in katakana too: ゲームしましょう', () => {
+    expect(only('ゲームしましょう')).toMatchObject({ lemma: 'ゲーム', usedAs: 'ゲームする', lemmaReading: 'ゲーム' });
   });
 
   it('do not swallow the next verb when a particle is dropped', () => {
@@ -110,7 +139,7 @@ describe('サ変 nouns', () => {
 
   it('see through an honorific prefix', () => {
     const t = tokens('ご説明します')[0]!;
-    expect(t.lemma).toBe('説明する');
+    expect(t).toMatchObject({ lemma: '説明', usedAs: '説明する' });
     expect(keys(t)).toContain('説明');
   });
 });
@@ -349,7 +378,7 @@ describe('compound verbs the analyser split', () => {
     // 来てる is 来る, ongoing — not a verb 来てる.
     expect(tokens('電車来てるよ！').find((t) => t.surface === '来てる')?.lemma).toBe('来る');
     // 賞賛し合う is 賞賛する + 合う: the し stays with its noun.
-    expect(tokens('彼らは互いに賞賛し合っている。').map((t) => t.lemma)).toContain('賞賛する');
+    expect(tokens('彼らは互いに賞賛し合っている。').map((t) => t.usedAs ?? t.lemma)).toContain('賞賛する');
   });
 });
 
@@ -702,7 +731,7 @@ describe('loanwords written as one', () => {
   });
 
   it('still take する: イメージチェンジした', () => {
-    expect(only('イメージチェンジした').lemma).toBe('イメージチェンジする');
+    expect(only('イメージチェンジした')).toMatchObject({ lemma: 'イメージチェンジ', usedAs: 'イメージチェンジする' });
   });
 });
 
@@ -819,8 +848,8 @@ describe('what UniDic\'s second opinion puts right', () => {
     expect(tokens('モテない')).toMatchObject([{ surface: 'モテない', lemma: 'もてる', inflections: ['negative'] }]);
     expect(read('ググってる')).toEqual([['ググってる', 'ググる']]);
     expect(read('キモいんだろうね')[0]).toEqual(['キモい', 'きもい']);
-    expect(tokens('試着したいんですが')[0]).toMatchObject({ surface: '試着したい', lemma: '試着する', reading: 'シチャクシタイ' });
-    expect(tokens('盗撮された')).toMatchObject([{ lemma: '盗撮する', reading: 'トウサツサレタ' }]);
+    expect(tokens('試着したいんですが')[0]).toMatchObject({ surface: '試着したい', lemma: '試着', usedAs: '試着する', reading: 'シチャクシタイ' });
+    expect(tokens('盗撮された')).toMatchObject([{ lemma: '盗撮', usedAs: '盗撮する', reading: 'トウサツサレタ' }]);
   });
 
   it('reads くださり as 下さる, and おススメ as a noun', () => {
@@ -849,6 +878,92 @@ describe('what UniDic\'s second opinion is not taken on', () => {
 
   it('a lone kanji, or a word the two read as different kinds: 三択, くれたまえ', () => {
     expect(surfaces('三択')).toEqual(['三', '択']);
-    expect(surfaces('ぼやっとしないでくれたまえ。').slice(-3)).toEqual(['ま', 'え', '。']);
+    // UniDic's まえ, 前, is not taken where IPADIC has ま and え: the two are read as the order they are, たまえ.
+    const order = tokens('ぼやっとしないでくれたまえ。').slice(-2)[0];
+    expect(order).toMatchObject({ surface: 'しないでくれたまえ', lemma: 'する' });
+    expect(order?.inflections).toContain('imperative');
+  });
+});
+
+describe('words the line reads, where neither analyser can be asked', () => {
+  /** Each word of a line with its reading. */
+  const said = (text: string): Array<[string, string | undefined]> => tokens(text).map((t) => [t.surface, t.reading]);
+  const reads = (text: string, word: string): string | undefined => tokens(text).find((t) => t.surface === word)?.reading;
+
+  it('reads 今 before a noun as いま, "now", where both take it for こん, "this"', () => {
+    expect(said('彼女は今宿題をやっている。').slice(2, 4)).toEqual([['今', 'イマ'], ['宿題', 'シュクダイ']]);
+    expect(said('今金欠で').slice(0, 2)).toEqual([['今', 'イマ'], ['金欠', 'キンケツ']]);
+    // こん before a term in a run of them, and where the dictionary has the two as a word.
+    expect(tokens('彼女は今学期がんばって勉強している。')[2]).toMatchObject({ surface: '今学期', reading: 'コンガッキ' });
+    expect(tokens('今シーズンは我々のチームがリーグで優勝した。')[0]).toMatchObject({ surface: '今シーズン', reading: 'コンシーズン' });
+    // And as IPADIC alone reads it, until the dictionary answers.
+    expect(tokens('彼女は今宿題をやっている。', false)[2]).toMatchObject({ surface: '今宿題' });
+  });
+
+  it('reads 今 and a noun that both have a name for as the two words: 今金がない, 今本を読んでいる', () => {
+    expect(said('今金がない')).toEqual([['今', 'イマ'], ['金', 'カネ'], ['が', 'ガ'], ['ない', 'ナイ']]);
+    expect(said('今金の持ち合わせがない。').slice(0, 2)).toEqual([['今', 'イマ'], ['金', 'カネ']]);
+    expect(said('彼は今本を読んでいるところです。').slice(2, 4)).toEqual([['今', 'イマ'], ['本', 'ホン']]);
+    // A name before what a name takes.
+    expect(tokens('今本さんが来た')[0]).toMatchObject({ surface: '今本さん', lemma: '今本' });
+    expect(tokens('今金町に行った')[0]?.surface).toBe('今金町');
+  });
+
+  it('cuts a name that is a word of time and another word, as UniDic does: 毎日新聞を読む', () => {
+    expect(said('毎日新聞を読みなさい').slice(0, 2)).toEqual([['毎日', 'マイニチ'], ['新聞', 'シンブン']]);
+    expect(said('彼らは今船に乗っている。').slice(2, 4)).toEqual([['今', 'イマ'], ['船', 'フネ']]);
+    expect(said('春の海ひねもすのたりのたり哉。').slice(0, 3)).toEqual([['春', 'ハル'], ['の', 'ノ'], ['海', 'ウミ']]);
+    // Not a given name, whatever UniDic makes of it.
+    expect(tokens('私は夏子です。')[2]).toMatchObject({ surface: '夏子', reading: 'ナツコ' });
+    // And the name it was to IPADIC alone.
+    expect(early('毎日新聞を読みなさい')[0]?.surface).toBe('毎日新聞');
+  });
+
+  it('reads 金 as money, and as gold where the line says so', () => {
+    for (const money of ['金がない', '金を払おう', '俺金ないよ', '金でできぬ事はこの世にはないわ。']) expect(reads(money, '金'), money).toBe('カネ');
+    for (const gold of ['金と銀', '金を掘る', '金の指輪を買った', 'このカップは金でできている。', '沈黙は金']) expect(reads(gold, '金'), gold).toBe('キン');
+    // Friday among days, an ending, and Mr Kim are none of its business.
+    expect(reads('私は、月・水・金と一日おきに仕事をします。', '金')).toBe('キン');
+    expect(tokens('金さんが来た')[0]).toMatchObject({ surface: '金さん' });
+    expect(tokens('前払金を受けた')[0]?.reading).toMatch(/キン$/);
+    // Money without UniDic too, which IPADIC alone reads きん every time.
+    expect(early('金がない')[0]).toMatchObject({ surface: '金', reading: 'カネ' });
+  });
+
+  it("does not take UniDic's habits for the line's: 風に, 数, 一足, テーブルの下で", () => {
+    expect(reads('風にゆれるあの花々をごらんなさい。', '風')).toBe('カゼ');
+    expect(reads('彼は数に圧倒された。', '数')).toBe('カズ');
+    expect(reads('靴を一足買ったよ。', '一足')).toBe('イッソク');
+    expect(reads('ペルシャ猫がテーブルの下で眠っていた。', '下')).toBe('シタ');
+    expect(said('それはもう一つ下の階ですよ。').slice(3, 5)).toEqual([['一つ', 'ヒトツ'], ['下', 'シタ']]);
+    // もと under a rule or a person, which is no table.
+    expect(reads('彼の指導の下で商売は繁盛した。', '下')).toBe('モト');
+    expect(reads('彼の下で働くなら辞めた方がましだ。', '下')).toBe('モト');
+  });
+
+  it('reads 風 as ふう, a way, after a word that asks or says in what way', () => {
+    expect(reads('あんな風に怒らなくてもよかったのに。', '風')).toBe('フウ');
+    expect(reads('知った風な口利くなよ。', '風')).toBe('フウ');
+    // どういう風の吹き回し is the wind.
+    expect(reads('どういう風の吹き回しかな。', '風')).toBe('カゼ');
+  });
+
+  it('looks a verb in kana up as the expression it stands in writes it: 目がさめた is 覚める', () => {
+    const woke = tokens('目がさめた')[2]!;
+    expect(woke).toMatchObject({ surface: 'さめた', lemma: 'さめる' });
+    expect(keys(woke).slice(0, 2)).toEqual(['覚める', 'さめる']);
+    expect(woke.lookup?.[0]).toMatchObject({ key: '覚める', reading: 'サメル', pos: '動詞,自立' });
+    expect(keys(tokens('腹がたつ')[2]!)[0]).toBe('立つ');
+    expect(keys(tokens('写真をとった')[2]!)[0]).toBe('撮る');
+    // Under UniDic's name for the verb, where the dictionary has the expression so written: 時間が経つ.
+    expect(keys(tokens('時間がたつ')[2]!)).toEqual(['経つ', 'たつ']);
+    // No expression, or one the dictionary writes in kana itself: as it was.
+    expect(keys(tokens('スープがさめた')[2]!)[0]).toBe('さめる');
+    expect(keys(tokens('汗をかいた')[2]!)[0]).toBe('かく');
+  });
+
+  it('keeps a verb called out whole, and finds the noun under an honorific one', () => {
+    expect(tokens('助けてくれえ！')[0]).toMatchObject({ surface: '助けてくれえ', lemma: '助ける', reading: 'タスケテクレエ' });
+    expect(keys(tokens('お待ちしております')[0]!)).toEqual(['お待ちする', 'お待ち', '待ち']);
   });
 });

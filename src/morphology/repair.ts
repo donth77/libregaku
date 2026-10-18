@@ -1,4 +1,5 @@
-import type { Morpheme } from './merge';
+import { bound, lemmaReadingOf, unvoiced, type Morpheme, type SecondReading } from './merge';
+import type { UnidicMorpheme } from './unidic';
 
 /**
  * UniDic's second opinion on IPADIC's reading of a line.
@@ -18,7 +19,7 @@ import type { Morpheme } from './merge';
  *     no reading and no dictionary form, and cuts what follows wrongly.
  *
  * UniDic reads all of these right. So a line is read by both, and UniDic
- * decides three things, each only where the two cut the line differently:
+ * decides five things, each only where the two cut the line differently:
  *
  *   1. A word in kana that IPADIC cut up. Where UniDic has one word and
  *      IPADIC pieces, and the pieces are not a verb with its endings or a
@@ -30,6 +31,23 @@ import type { Morpheme } from './merge';
  *      as UniDic does is taken.
  *   3. Words IPADIC does not have. The stretch around one — out to where the
  *      two agree a word ends — is UniDic's, if UniDic knew every word in it.
+ *   4. A noun and する that IPADIC takes for an adjective's stem: 恋して is
+ *      恋しい to it, 楽してる 楽しい. Before an ending no adjective's stem takes,
+ *      the two are cut apart as UniDic cuts them (stemOfSuru()).
+ *   5. A word of time and the word after it that IPADIC has a name for:
+ *      毎日新聞を読む is the newspaper to it, 今船に乗っている a company. Cut as
+ *      UniDic cuts them (timeAndWord()).
+ *
+ * And two more, where the two cut alike, which neither settles alone:
+ *
+ *   6. Which word a kana spelling is. UniDic names each word in kanji, 側 for
+ *      そば and 方 for ほう, and IPADIC's word carries that name on, for the
+ *      dictionary to choose by between entries it has under one spelling and
+ *      nothing else to tell apart.
+ *   7. Which word a spelling in kanji is. 金 is かね to UniDic where IPADIC has
+ *      きん, 家 in 明日家に a house where IPADIC has the ending of 専門家. UniDic's
+ *      reading is carried on IPADIC's word, and taken in the merge where the
+ *      dictionary bears it out (secondOpinions() in merge.ts).
  *
  * UniDic is wrong too — 彼女はやるたびに is はやる, "to be in fashion", to it, and
  * 邪魔をしたくはない is したく, "preparations" — so each of these is kept narrow,
@@ -40,7 +58,10 @@ import type { Morpheme } from './merge';
  * subtitle lines; 2,481 more only gain the reading of a word in katakana. Of
  * 130 changed lines drawn at random, none read worse. Some of UniDic's own
  * misreadings do come through, each seen once or twice: くれえ, "about", as
- * 黒い; グル, a guru, as ぐる, "in league"; うわっ as a verb.
+ * 黒い; グル, a guru, as ぐる, "in league"; うわっ as a verb. That is of the
+ * first three; what the fourth and fifth change is counted where each is
+ * written, below, and what the readings of the seventh change where they are
+ * taken, in merge.ts.
  */
 
 /** One of IPADIC's readings of a stretch of text, and its cost: the lower, the likelier. */
@@ -54,6 +75,9 @@ export interface Reading {
  * first, each cut differently, none costing more than `within` above the first.
  */
 export type Others = (text: string, within: number) => Reading[];
+
+/** UniDic's reading of another text: a stretch of the line, put another way. */
+export type Again = (text: string) => UnidicMorpheme[];
 
 /**
  * How far behind its likeliest reading IPADIC's others are asked for, in its
@@ -195,6 +219,50 @@ interface Want {
   cuts: number[];
   /** UniDic's word, for one to keep whole. */
   word?: Morpheme;
+  /** What the pieces must be, where they are words and not endings: 恋 and し for 恋し, 毎日 and 新聞. */
+  pieces?: (inside: readonly Morpheme[]) => boolean;
+}
+
+/** What a verb's stem takes and an adjective's bare stem never does: て, た, ます, and the helpers said with て in them. */
+const ON_A_STEM = new Set(['て', 'たり', 'ちゃ', 'ながら', 'た', 'ます', 'たい', 'ない', 'ぬ', 'ん', 'てる', 'ちゃう', 'ちまう', 'とく']);
+
+/**
+ * 恋して, 楽してる: the bare stem of an adjective to IPADIC — 恋しい, 楽しい —
+ * before an ending no adjective takes there, where UniDic has a noun and
+ * する. An adjective goes on as 恋しくて; 恋して is 恋する. All 16 of Tatoeba's
+ * sentences with one are the verb.
+ */
+function stemOfSuru(s: Span): boolean {
+  const [stem] = s.mine;
+  const [noun, suru] = s.theirs;
+  if (s.mine.length !== 1 || s.theirs.length !== 2 || !s.next) return false;
+  if (stem?.pos !== '形容詞' || stem.conjForm !== 'ガル接続' || !stem.surface.endsWith('し')) return false;
+  if (noun?.pos !== '名詞' || suru?.surface !== 'し' || suru.lemma !== 'する') return false;
+  return (GRAMMAR.has(s.next.pos ?? '') || (s.next.pos === '動詞' && s.next.pos1 === '非自立')) && ON_A_STEM.has(s.next.lemma ?? s.next.surface);
+}
+
+/** A noun and the する after it. */
+const nounAndSuru = (inside: readonly Morpheme[]): boolean =>
+  inside.length === 2 && inside[0]!.pos === '名詞' && inside[1]!.lemma === 'する';
+
+/** A word of time and the words after it, none of them a name or unknown. */
+const timeThenWords = (inside: readonly Morpheme[]): boolean =>
+  inside.length > 1 && inside[0]!.pos === '名詞' && inside[0]!.pos1 === '副詞可能' &&
+  inside.every((m) => m.pos1 !== '固有名詞' && !unknown(m) && !unread(m));
+
+/**
+ * 毎日新聞を読む, 今船に乗っている, あの時水がなければ: a name to IPADIC — a
+ * newspaper, a company, a village — where UniDic reads a word of time and the
+ * words after it. A time takes no particle before what happens in it, so the
+ * two stand together wherever a line is written, and IPADIC, raised on
+ * newspapers, has a name for the pair. Not a given name, which IPADIC knows
+ * for one where UniDic may not (夏子 is not 夏 and 子), and not before さん.
+ * All 18 of Tatoeba's sentences with one are the two words.
+ */
+function timeAndWord(s: Span): boolean {
+  const [name] = s.mine;
+  if (s.mine.length !== 1 || name?.pos1 !== '固有名詞' || name.given || PERSON.has(s.next?.surface ?? '')) return false;
+  return timeThenWords(s.theirs);
 }
 
 const inflects = (m: Morpheme): boolean => m.pos === '動詞' || m.pos === '形容詞';
@@ -221,6 +289,9 @@ function wanted(s: Span): Want | null {
     if (marksANoun(s.next)) return null;
     return { from: s.from, to: s.to, cuts: ends(s.theirs).slice(0, -1).map((e) => s.from + e) };
   }
+  const cuts = (): number[] => ends(s.theirs).slice(0, -1).map((e) => s.from + e);
+  if (stemOfSuru(s)) return { from: s.from, to: s.to, cuts: cuts(), pieces: nounAndSuru };
+  if (timeAndWord(s)) return { from: s.from, to: s.to, cuts: cuts(), pieces: timeThenWords };
   return null;
 }
 
@@ -286,6 +357,11 @@ function makes(reading: Placed, w: Want): 'given' | 'other' | null {
   }
   const cut = new Set(reading.map((p) => p.to));
   if (!w.cuts.every((c) => cut.has(c))) return null;
+  // 恋 and し, 毎日 and 新聞: words, cut there and nowhere else.
+  if (w.pieces) {
+    const inside = reading.filter((p) => p.from >= w.from && p.to <= w.to);
+    return inside.length === w.cuts.length + 1 && w.pieces(inside.map((p) => p.word)) ? 'given' : 'other';
+  }
   return reading.every((p) => p.to <= w.from || p.from >= w.to || grammatical(p.word)) ? 'given' : 'other';
 }
 
@@ -379,11 +455,121 @@ function borrow(all: readonly Span[], asked: readonly Want[]): Morpheme[] {
  * the two do not cover the same text. Without `others`, IPADIC's other
  * readings cannot be asked for, and what UniDic corrects is UniDic's words.
  */
-export function repair(ipadic: readonly Morpheme[], unidic: readonly Morpheme[], others?: Others): Morpheme[] {
+export function repair(
+  ipadic: readonly Morpheme[], unidic: readonly UnidicMorpheme[], others?: Others, again?: Again,
+): Morpheme[] {
   const first = spans(ipadic, unidic);
   if (!first) return [...ipadic];
   const chosen = choose(ipadic, first, others);
-  if (!chosen.unmet.length && !chosen.words.some(unknown)) return chosen.words;
+  if (!chosen.unmet.length && !chosen.words.some(unknown)) return noted(chosen.words, unidic, again);
   const then = spans(chosen.words, unidic);
-  return then ? borrow(then, chosen.unmet) : chosen.words;
+  return noted(then ? borrow(then, chosen.unmet) : chosen.words, unidic, again);
+}
+
+/* ── Where the two cut alike ─────────────────────────────────────── */
+
+const HAN = /[\p{sc=Han}々]/u;
+
+/** A word of UniDic's as the merge rules take one: without what only this file reads. */
+function plain(m: UnidicMorpheme): Morpheme {
+  if (m.lexeme === undefined && m.native === undefined) return m;
+  const { lexeme: _lexeme, native: _native, ...word } = m;
+  return word;
+}
+
+/**
+ * UniDic's reading of a word in kanji, where it reads the word another way
+ * than IPADIC and the two could be two words. They are one word, and IPADIC's
+ * stands, where:
+ *
+ *   - UniDic's own name for the word reads as IPADIC has it, and UniDic gives
+ *     only how it is said here: 何 said ナン is ナニ to it, 得る said ウル is エル.
+ *     It says every 何 so, 何が and 何を among them.
+ *   - The two differ in the voicing of the first sound, which is the word in a
+ *     compound: 定石通り is ドオリ to IPADIC and トオリ to UniDic, and 箱 on its
+ *     own バコ to UniDic.
+ *
+ * Nor is there a reading to weigh for a number or the counter after one,
+ * which the merge reads from the dictionary (一人, 三日); for a word one takes
+ * for an adjective and the other for a verb (欲し in 欲しがる is 欲する to
+ * UniDic); for a word of its own that UniDic takes for an ending, a prefix
+ * or the bare stem of an adjective (心 in 心熱けれど, 長 in 班の長なので); for a
+ * name before さん, or called out on its own (真理、お茶入れて is Mari, not
+ * 真理, the truth); or for an ending after a name, which is the name's:
+ * エベレスト山 is さん, where UniDic has やま. `before` is UniDic's word before
+ * this one.
+ */
+function secondReading(
+  mine: Morpheme, theirs: UnidicMorpheme, prev: Morpheme | undefined, next: Morpheme | undefined, before?: UnidicMorpheme,
+): SecondReading | undefined {
+  if (!HAN.test(mine.surface) || !mine.reading || !theirs.reading || mine.reading === theirs.reading || unread(theirs)) return undefined;
+  if (mine.pos1 === '数' || (mine.pos1 === '接尾' && prev?.pos1 === '数')) return undefined;
+  if (mine.pos1 === '接尾' && before && (before.pos1 === '固有名詞' || unread(before))) return undefined;
+  const sameSpelling = (theirs.lemma ?? theirs.surface) === (mine.lemma ?? mine.surface);
+  if (sameSpelling && theirs.lexeme !== undefined && theirs.lexeme === lemmaReadingOf(mine)) return undefined;
+  if (unvoiced(mine.reading) === unvoiced(theirs.reading)) return undefined;
+  if (inflects(mine) && inflects(theirs) && mine.pos !== theirs.pos) return undefined;
+  if (!bound(mine.pos, mine.pos1) && bound(theirs.pos, theirs.pos1) && theirs.pos1 !== '固有名詞') return undefined;
+  if (!inflects(mine) && theirs.pos === '形容詞' && theirs.conjForm === 'ガル接続') return undefined;
+  if (mine.pos1 === '固有名詞' && PERSON.has(next?.surface ?? '')) return undefined;
+  if (mine.pos1 === '固有名詞' && (!prev || breaksRun(prev)) && (!next || breaksRun(next))) return undefined;
+
+  const second: SecondReading = { reading: theirs.reading };
+  // Another kind of word to UniDic, or a word where IPADIC has an ending, a prefix or a name: UniDic's whole.
+  const whole = mine.pos !== theirs.pos || (bound(mine.pos, mine.pos1) && !bound(theirs.pos, theirs.pos1));
+  if (whole) {
+    second.pos = theirs.pos;
+    second.pos1 = theirs.pos1;
+  }
+  if (theirs.lemma && theirs.lemma !== mine.lemma && (whole || inflects(mine))) second.lemma = theirs.lemma;
+  if (theirs.conjForm && (whole || second.lemma)) second.conjForm = theirs.conjForm;
+  if (theirs.native) second.native = true;
+  return second;
+}
+
+/**
+ * The words with what UniDic says of each that IPADIC cannot, where both
+ * have one word over the same stretch: its name in kanji for a word written
+ * in kana — if it is the same kind of word to both — and its reading of a
+ * word in kanji, if that is another.
+ */
+function noted(words: readonly Morpheme[], unidic: readonly UnidicMorpheme[], again?: Again): Morpheme[] {
+  const all = spans(words, unidic);
+  if (!all) return words.map(plain);
+  const out: Morpheme[] = [];
+  let before: UnidicMorpheme | undefined;
+  for (const s of all) {
+    const last = s.theirs[s.theirs.length - 1] as UnidicMorpheme | undefined;
+    if (s.mine.length !== 1 || s.theirs.length !== 1) {
+      out.push(...s.mine.map(plain));
+      before = last;
+      continue;
+    }
+    let theirs = s.theirs[0]! as UnidicMorpheme;
+    const word = plain(s.mine[0]!);
+    const kanji = theirs.kanji && !word.kanji && word.pos === theirs.pos ? theirs.kanji : undefined;
+    // A name to UniDic, and not the same name to IPADIC: what the word is to UniDic where no name can stand.
+    const named = theirs.pos1 === '固有名詞' && HAN.test(word.surface) && !PERSON.has(s.next?.surface ?? '') &&
+      !(word.pos1 === '固有名詞' && word.reading === theirs.reading);
+    if (again && named) theirs = ordinary(theirs, words.slice(s.at + 1), again) ?? theirs;
+    const second = secondReading(word, theirs, out[out.length - 1], s.next, before);
+    out.push(kanji || second ? { ...word, ...(kanji ? { kanji } : {}), ...(second ? { second } : {}) } : word);
+    before = last;
+  }
+  return out;
+}
+
+/**
+ * A word UniDic takes for a name, as it reads it where no name can stand:
+ * after その. 金がない, where a line begins, is キン to it, a name — names begin
+ * lines — and キム to IPADIC; その金がない is かね. Only a word of Japanese's own
+ * is handed on: read so, 金星 is きんぼし, a win over a champion, and not the
+ * planet. `rest` is the line after the word, read with it as far as the next
+ * mark.
+ */
+function ordinary(theirs: UnidicMorpheme, rest: readonly Morpheme[], again: Again): UnidicMorpheme | undefined {
+  const end = rest.findIndex(breaksRun);
+  const [frame, word] = again(`その${theirs.surface}${textOf(end < 0 ? rest : rest.slice(0, end))}`);
+  if (frame?.surface !== 'その' || word?.surface !== theirs.surface) return undefined;
+  return word.pos === '名詞' && word.pos1 !== '固有名詞' && word.native ? word : undefined;
 }

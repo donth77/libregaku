@@ -13,7 +13,10 @@ import {
 } from './dict/store';
 import { IPADIC, READINGS, fromIpadic, readJapanese, type Row } from './morphology/japanese';
 import { fromUnidic, type UnidicWord } from './morphology/unidic';
-import { EXTRA_COST, EXTRA_FORMAT, analyserRows, extraCollector, misreads, type ExtraWord } from './morphology/extra-words';
+import {
+  EXTRA_COST, EXTRA_FORMAT, analyserRows, extraCollector, firstReadingCollector, firstReadingRows, firstReadingTable,
+  firstReadingsBy, firstReadingsKept, misreads, type AnalysedPiece, type ExtraWord, type FirstReading,
+} from './morphology/extra-words';
 import { LINDERA_DICTS as DICTS } from './morphology/dictionaries';
 import { lexiconQueries, type Morpheme } from './morphology/merge';
 
@@ -52,7 +55,10 @@ interface Reader {
 
 const READERS: Record<string, Reader> = {
   ipadic: {
-    columns: [[IPADIC.pos, 'part_of_speech'], [IPADIC.base, 'base_form'], [IPADIC.reading, 'reading']],
+    columns: [
+      [IPADIC.pos, 'part_of_speech'], [IPADIC.pos2, 'part_of_speech_subcategory_2'], [IPADIC.base, 'base_form'],
+      [IPADIC.reading, 'reading'],
+    ],
     read: fromIpadic,
   },
   // KoMorpheme, src/morphology/merge-ko.ts: the tag, and for a unit of more
@@ -65,7 +71,8 @@ const READERS: Record<string, Reader> = {
   // as a second opinion on its reading (ensureSecond).
   unidic: {
     columns: [
-      [0, 'part_of_speech'], [5, 'conjugation_form'], [7, 'lexeme'], [9, 'phonological_surface_form'], [10, 'orthographic_base_form'],
+      [0, 'part_of_speech'], [5, 'conjugation_form'], [6, 'reading'], [7, 'lexeme'], [9, 'phonological_surface_form'],
+      [10, 'orthographic_base_form'], [12, 'word_type'],
     ],
     read: (surface, details) => ({ surface, details }),
     finish: (rows) => fromUnidic(rows as UnidicWord[]),
@@ -225,6 +232,7 @@ async function loadNow(name: string): Promise<void> {
     // The words added from JMdict were in the analyser just replaced.
     extras.state = 'none';
     extras.count = 0;
+    firstReadings = undefined;
     state.ready = true;
     state.phase = 'ready';
     state.percent = 100;
@@ -274,6 +282,7 @@ function analyse(text: string): unknown[] {
         (first.tokenizeNbest(t, READINGS, true, BigInt(within)) as Array<{ tokens: RawToken[]; cost: number | bigint }>)
           .map((reading) => ({ rows: rowsOf(reading.tokens), cost: Number(reading.cost) })),
       ...(other ? { unidic: (t: string) => rowsOf(other.tokenize(t)) } : {}),
+      ...(firstReadings ? { firstReadings } : {}),
     });
   }
   const rows = (first.tokenize(text) as RawToken[]).map((t) => r.read(t.surface, t.details ?? []));
@@ -293,11 +302,32 @@ const SECOND: Record<string, string> = { ipadic: 'unidic' };
 const second = { tokenizer: null as Tokenizer | null, state: 'none' as 'none' | 'loading' | 'ready' | 'failed' };
 let secondLoading: Promise<void> | null = null;
 
+/** UniDic's name for each spelling it was asked about. Remembered: the same few words are asked about again and again. */
+const named = new Map<string, string | undefined>();
+
+/**
+ * UniDic's name for a spelling, where it has one word for it: 側 for 側, and
+ * 驕る for 奢る, which it takes for the same word (rank() in src/dict/jmdict.ts).
+ * Nothing until UniDic is in.
+ */
+function nameOf(form: string): string | undefined {
+  const t = second.tokenizer;
+  if (!t) return undefined;
+  if (named.has(form)) return named.get(form);
+  if (named.size > 20000) named.clear();
+  const rows = rowsOf(t.tokenize(form));
+  // A name with its sense after a hyphen is the name: そう-様態.
+  const name = rows.length === 1 ? col(rows[0]!.details, 7)?.replace(/-.*$/, '') : undefined;
+  named.set(form, name);
+  return name;
+}
+
 /** The second analyser goes with the first it was a second opinion on. */
 function dropSecond(): void {
   if (second.tokenizer) release(second.tokenizer);
   second.tokenizer = null;
   second.state = 'none';
+  named.clear();
 }
 
 /**
@@ -609,6 +639,8 @@ async function finished(tokens: unknown[]): Promise<Analysis> {
 
 const extras = { state: 'none' as 'none' | 'building' | 'ready' | 'failed', count: 0 };
 let extrasLoading: Promise<void> | null = null;
+/** The words IPADIC reads the rarer way, 日本 as ニッポン, once that list is made or loaded with the one above. */
+let firstReadings: ReadonlyMap<string, FirstReading> | undefined;
 
 /**
  * Once the analyser and JMdict are both in, the words IPADIC misreads are
@@ -636,26 +668,41 @@ async function loadExtras(): Promise<void> {
     const data = await dataMark();
     if (!data) throw new Error('the dictionary is not complete');
     const mark = `${data}|${DICTS[name] ?? name}|${EXTRA_FORMAT}|${EXTRA_COST}`;
-    let csv = await storedWords(mark);
-    if (csv === null) {
+    let kept = await storedWords(mark);
+    if (!kept) {
       const collect = extraCollector();
-      await eachEntry((e) => collect.add(e));
-      const words: ExtraWord[] = [];
-      for (const w of collect.words()) {
-        const pieces = (plain.tokenize(w.surface) as RawToken[]).map((t) => ({
-          surface: t.surface,
-          reading: col(t.details ?? [], IPADIC.reading),
-        }));
-        if (misreads(w, pieces)) words.push(w);
-      }
-      csv = analyserRows(words);
-      await storeWords(mark, csv);
+      const later = firstReadingCollector();
+      await eachEntry((e) => {
+        collect.add(e);
+        later.add(e);
+      });
+      /** What the analyser makes of a word given to it alone. */
+      const alone = (surface: string): AnalysedPiece[] => (plain.tokenize(surface) as RawToken[]).map((t) => {
+        const d = t.details ?? [];
+        return {
+          surface: t.surface, reading: col(d, IPADIC.reading), lemma: col(d, IPADIC.base),
+          pos: col(d, IPADIC.pos), pos1: col(d, IPADIC.pos1), pos2: col(d, IPADIC.pos2),
+        };
+      });
+      const words: ExtraWord[] = collect.words().filter((w) => misreads(w, alone(w.surface)));
+      // The words it reads by a reading the dictionary lists second, less those where that reading is another word.
+      const read = firstReadingsBy(later.candidates(), alone);
+      const spelled = await lexicon(read.map((x) => x.surface));
+      kept = { csv: analyserRows(words), readings: firstReadingRows(firstReadingsKept(read, (surface) => spelled[surface])) };
+      await storeWords(mark, kept);
     }
+    const csv = kept.csv;
     const count = csv ? csv.split('\n').length : 0;
+    // Another language's analyser may have taken this one's place while the lists were built.
+    if (tokenizer !== plain) {
+      extras.state = 'none';
+      return;
+    }
+    // The readings need nothing built: they hold whatever becomes of the words added below.
+    firstReadings = firstReadingTable(kept.readings);
     if (count) {
       const t = await buildTokenizer(name, r, csv);
       if (tokenizer !== plain) {
-        // Another language's analyser took its place while this was built.
         release(t);
         extras.state = 'none';
         return;
@@ -665,7 +712,7 @@ async function loadExtras(): Promise<void> {
     }
     extras.state = 'ready';
     extras.count = count;
-    console.log(`[libregaku] ${count} words from JMdict added to the analyser`);
+    console.log(`[libregaku] ${count} words from JMdict added to the analyser, and ${firstReadings.size} it reads the rarer way put right`);
   } catch (e) {
     extras.state = 'failed';
     console.warn('[libregaku] words from JMdict not added; the analyser reads as before:', e);
@@ -786,6 +833,10 @@ interface Message {
   fallback?: { source?: string; edition?: string };
   reading?: string;
   pos?: string;
+  /** dict-lookup: the analyser's name for the word, in kanji, where it is written in kana. */
+  spelling?: string;
+  /** dict-lookup: how the verb conjugates, as the analyser names it. */
+  conj?: string;
   chars?: string[];
   forms?: string[];
   native?: string;
@@ -887,7 +938,11 @@ chrome.runtime.onMessage.addListener((msg: Message, _s, respond) => {
       return true;
 
     case 'dict-lookup':
-      void answerLookup(msg.key ?? '', { reading: msg.reading, pos: msg.pos }).then(respond);
+      void answerLookup(msg.key ?? '', {
+        reading: msg.reading, pos: msg.pos, ...(msg.conj ? { conj: msg.conj } : {}),
+        // The word's name to UniDic says which entry only while UniDic is there to name each entry's spellings.
+        ...(msg.spelling && second.tokenizer ? { spelling: msg.spelling, names: nameOf } : {}),
+      }).then(respond);
       return true;
 
     /* What written forms are forms of, for a language found by its word boundaries (src/morphology/lemma.ts). */

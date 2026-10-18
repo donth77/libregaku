@@ -90,8 +90,11 @@ describe('store', () => {
     ]);
     await store.build('eng');
     const lex = await store.lexicon(['一人', '一日', '三匹']);
-    expect(lex['一人']).toEqual([{ word: '一人', reading: 'ひとり', pos: ['n'] }]);
+    // A common word, and with no other under the spelling it leads.
+    expect(lex['一人']).toEqual([{ word: '一人', reading: 'ひとり', pos: ['n'], common: true, leads: true }]);
     expect(lex['一日']?.map((r) => r.reading).sort()).toEqual(['いちにち', 'ついたち']);
+    // Two words level in all the dictionary says of them: neither leads, whichever its file has first.
+    expect(lex['一日']?.some((r) => r.leads)).toBe(false);
     expect(lex['三匹']).toBeUndefined();
   });
 });

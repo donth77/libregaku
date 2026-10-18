@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { keysFor, rank, readingsOf, toEntry, type Entry } from '../jmdict';
+import { keysFor, rank, readingsOf, toEntry, wordsFor, type Entry } from '../jmdict';
 import { KEYS, WORDS } from './fixtures/jmdict-frequent';
 
 /**
@@ -137,6 +137,108 @@ describe('readingsOf', () => {
   it('ignores entries where the form is only a rare spelling', () => {
     // 儂 (わし) lists 私 as rarely used; 私 is never read わし.
     expect(readingsOf(candidates('私'), '私')).not.toContain('わし');
+  });
+});
+
+describe('wordsFor — what the tokenizer is told of a spelling', () => {
+  const entry = (id: string, reading: string, senses: number, common = true): Entry => ({
+    id, word: '後', reading, common, senses: Array.from({ length: senses }, () => ({ pos: ['n'], glosses: ['x'] })),
+    forms: [{ text: '後', kana: false, common }, { text: reading, kana: true, common }],
+  }) as unknown as Entry;
+
+  it('gives each word spelled so, the likeliest first, and whether it is common', () => {
+    const words = wordsFor([entry('2', 'のち', 4), entry('1', 'あと', 8), entry('3', 'しりえ', 1, false)], '後');
+    expect(words.map((w) => [w.reading, w.common])).toEqual([['あと', true], ['のち', true], ['しりえ', undefined]]);
+    expect(words[0]?.pos).toEqual(['n']);
+  });
+
+  it('says the first leads only where something tells it from the second: not their order in the file', () => {
+    // More uses: あと leads のち.
+    expect(wordsFor([entry('1', 'あと', 8), entry('2', 'のち', 4)], '後').map((w) => w.leads)).toEqual([true, undefined]);
+    // Level in all the dictionary says: じつ is before み in the file, and does not lead.
+    expect(wordsFor([entry('1', 'じつ', 4), entry('2', 'み', 4)], '後').map((w) => w.leads)).toEqual([undefined, undefined]);
+    // A spelling with one word: it leads.
+    expect(wordsFor([entry('1', 'あと', 1)], '後')[0]?.leads).toBe(true);
+    expect(wordsFor([], '後')).toEqual([]);
+  });
+
+  it('says where a word is usually written in kana: つらい, under 辛い', () => {
+    const tsurai = { ...entry('2', 'つらい', 3), word: 'つらい', reading: undefined, uk: true } as unknown as Entry;
+    const karai = { ...entry('1', 'からい', 4), word: '辛い' } as unknown as Entry;
+    const forms = (e: Entry, kana: string): Entry => ({ ...e, forms: [{ text: '辛い', kana: false, common: true }, { text: kana, kana: true, common: true }] }) as Entry;
+    const words = wordsFor([forms(karai, 'からい'), forms(tsurai, 'つらい')], '辛い');
+    expect(words.map((w) => [w.reading, w.kana])).toEqual([['からい', undefined], ['つらい', true]]);
+  });
+});
+
+describe('rank — a kana word the analyser names', () => {
+  const entry = (id: string, kanji: string[], senses: number): Entry => ({
+    id, word: kanji[0]!, reading: 'そば', common: true, senses: Array.from({ length: senses }, () => ({ pos: ['n'], glosses: ['x'] })),
+    forms: [...kanji.map((text) => ({ text, kana: false, common: true })), { text: 'そば', kana: true, common: true }],
+  }) as unknown as Entry;
+  const soba = [entry('1', ['蕎麦'], 3), entry('2', ['側', '傍'], 2)];
+  /** UniDic's names: each spelling its own word, but 傍, which is 側 to it. */
+  const names = (form: string): string | undefined => (form === '傍' ? '側' : form);
+
+  it('is the entry one of whose spellings the analyser gives that name: そば is 側, beside', () => {
+    expect(rank(soba, 'そば')[0]?.word).toBe('蕎麦');
+    expect(rank(soba, 'そば', { spelling: '側', names })[0]?.word).toBe('側');
+    expect(rank(soba, 'そば', { spelling: '蕎麦', names })[0]?.word).toBe('蕎麦');
+  });
+
+  it('is in the dictionary\'s own order where the analyser cannot be asked what it calls each spelling', () => {
+    expect(rank(soba, 'そば', { spelling: '側' })[0]?.word).toBe('蕎麦');
+  });
+
+  it('is in the dictionary\'s own order between entries the analyser takes for one word: 奢る and 驕る', () => {
+    const ogoru = [entry('1', ['奢る'], 3), entry('2', ['驕る'], 1)];
+    expect(rank(ogoru, 'そば', { spelling: '驕る', names: () => '驕る' })[0]?.word).toBe('奢る');
+  });
+});
+
+describe('rank — a verb in kana the analyser names', () => {
+  const verb = (id: string, word: string, kanji: string, common: boolean): Entry => ({
+    id, word, reading: 'うる', common: true, senses: [{ pos: ['v5r'], glosses: ['x'] }],
+    forms: [{ text: kanji, kana: false, common }, { text: 'うる', kana: true, common: true }],
+  }) as unknown as Entry;
+  const uru = [verb('1', '売る', '売る', true), verb('2', '得る', '得る', true)];
+
+  it('is the verb spelled as the analyser names it: うる is 得る, not 売る', () => {
+    expect(rank(uru, 'うる', { pos: '動詞,非自立' })[0]?.word).toBe('売る');
+    expect(rank(uru, 'うる', { pos: '動詞,非自立', spelling: '得る', names: () => '得る' })[0]?.word).toBe('得る');
+  });
+
+  it('is not a rare spelling the analyser names', () => {
+    const rare = [verb('1', '売る', '売る', true), verb('2', '得る', '得る', false)];
+    expect(rank(rare, 'うる', { pos: '動詞,非自立', spelling: '得る', names: () => '得る' })[0]?.word).toBe('売る');
+  });
+});
+
+describe('rank — a verb in kana, by how it conjugates', () => {
+  const verb = (id: string, word: string, code: string, senses: number): Entry => ({
+    id, word, reading: 'いる', common: true, senses: Array.from({ length: senses }, () => ({ pos: [code], glosses: ['x'] })),
+    forms: [{ text: word, kana: false, common: true }, { text: 'いる', kana: true, common: true }],
+  }) as unknown as Entry;
+  const iru = [verb('1', '居る', 'v1', 5), verb('2', '要る', 'v5r', 2), verb('3', '射る', 'v1', 2)];
+
+  it('is the verb that conjugates so: いら in いらない is 要る, 五段, not 居る', () => {
+    expect(rank(iru, 'いる', { pos: '動詞,自立' })[0]?.word).toBe('居る');
+    expect(rank(iru, 'いる', { pos: '動詞,自立', conj: '五段・ラ行' })[0]?.word).toBe('要る');
+    expect(rank(iru, 'いる', { pos: '動詞,自立', conj: '一段' })[0]?.word).toBe('居る');
+  });
+
+  it('is in the usual order where no verb of the spelling conjugates so, or the kind is one it does not know', () => {
+    expect(rank(iru, 'いる', { pos: '動詞,自立', conj: '五段・カ行イ音便' })[0]?.word).toBe('居る');
+    expect(rank(iru, 'いる', { pos: '動詞,自立', conj: '特殊・タ' })[0]?.word).toBe('居る');
+  });
+
+  it('knows the helpers of the old language: うる in ありうる is 得る, 下二', () => {
+    const uru = [
+      { ...verb('1', '売る', 'v5r', 3), reading: 'うる', forms: [{ text: '売る', kana: false, common: true }, { text: 'うる', kana: true, common: true }] },
+      { ...verb('2', '得る', 'v2a-s', 1), reading: 'うる', forms: [{ text: '得る', kana: false, common: true }, { text: 'うる', kana: true, common: true }] },
+    ] as Entry[];
+    expect(rank(uru, 'うる', { pos: '動詞,非自立' })[0]?.word).toBe('売る');
+    expect(rank(uru, 'うる', { pos: '動詞,非自立', conj: '下二・ア行' })[0]?.word).toBe('得る');
   });
 });
 

@@ -165,6 +165,26 @@ export interface RankHint {
    * determiner, not この the rare reading of 九.
    */
   pos?: string;
+  /**
+   * The analyser's name for the word, in kanji, where it is written in kana:
+   * 側 for そば. Decides between entries nothing else tells apart, そば beside
+   * and そば the noodles.
+   */
+  spelling?: string;
+  /**
+   * How the verb conjugates, as the analyser names it: "五段・ラ行", "一段".
+   * Decides between verbs that share a kana spelling and conjugate
+   * differently: いる the 五段 verb is 要る, to need, not 居る, to be.
+   */
+  conj?: string;
+  /**
+   * The analyser's name for a spelling, where it can be asked. Its names are
+   * coarser than the dictionary's entries — 奢る, to treat, and 驕る, to be
+   * proud, are both 驕る to it — so an entry is the word named only if the
+   * analyser gives one of its own spellings that name, and `spelling` is not
+   * used without this.
+   */
+  names?: (form: string) => string | undefined;
 }
 
 const hira = (s: string): string =>
@@ -180,7 +200,23 @@ const KANA_ONLY = /^[ぁ-ゖァ-ヺー・ゝゞヽヾ]+$/;
  * 今日 is 名詞,副詞可能 — a temporal noun — and should beat 京, a plain noun
  * that happens to share the reading きょう.
  */
-function fitFor(pos?: string): ((code: string) => number) | null {
+/** JMdict's codes for the verbs that conjugate as IPADIC says one does: 五段・ラ行 is v5r, 一段 v1, 下二・ア行 v2a-s. */
+function conjugatesAs(conj?: string): RegExp | null {
+  if (!conj) return null;
+  if (conj.startsWith('一段')) return /^v1/;
+  const row = /^五段・(.)行/.exec(conj)?.[1];
+  if (row) {
+    const code = ({ カ: 'k', ガ: 'g', サ: 's', タ: 't', ナ: 'n', バ: 'b', マ: 'm', ラ: 'r|aru', ワ: 'u' } as Record<string, string>)[row];
+    return code ? new RegExp(`^v5(${code})`) : null;
+  }
+  if (conj.startsWith('サ変')) return /^v[sz]/;
+  if (conj.startsWith('カ変')) return /^vk/;
+  if (/^[上下]二/.test(conj)) return /^v2/;
+  if (conj.startsWith('四段')) return /^v4/;
+  return null;
+}
+
+function fitFor(pos?: string, conj?: string): ((code: string) => number) | null {
   if (!pos) return null;
   const [p, p1] = pos.split(',');
   const fit = (exact: string[], loose: string[] = []) => (c: string) =>
@@ -201,7 +237,11 @@ function fitFor(pos?: string): ((code: string) => number) | null {
           return (c) => (c === 'n-suf' || c === 'suf' ? 3 : ['n', 'aux', 'n-adv', 'adj-na'].includes(c) ? 2 : ['adv', 'prt', 'exp'].includes(c) ? 1 : 0);
         default: return fit(['n'], ['n-adv', 'n-t', 'n-suf', 'pn', 'adj-no', 'num', 'ctr', 'adj-na', 'vs']);
       }
-    case '動詞': return (c) => (/^v(1|5|k|z|2|4|n|r|s-)/.test(c) ? 2 : c === 'aux-v' ? 1 : 0);
+    case '動詞': {
+      // A verb that conjugates as this one does, before the other verbs of the spelling.
+      const same = conjugatesAs(conj);
+      return (c) => (same?.test(c) ? 3 : /^v(1|5|k|z|2|4|n|r|s-)/.test(c) ? 2 : c === 'aux-v' ? 1 : 0);
+    }
     case '形容詞': return fit(['adj-i', 'adj-ix'], ['aux-adj']);
     case '副詞': return fit(['adv', 'adv-to'], ['n-adv']);
     case '連体詞': return fit(['adj-pn'], ['adj-f']);
@@ -222,7 +262,8 @@ function fitFor(pos?: string): ((code: string) => number) | null {
  *  1. The key is one of the entry's spellings (remote results are fuzzy).
  *  2. The analyser's reading, for keys with kanji: 私 read わたし, not あたし.
  *  3. The analyser's part of speech: この the determiner, not the rare
- *     reading of 九; 何 the pronoun for なん, not 難.
+ *     reading of 九; 何 the pronoun for なん, not 難. And for a verb, how it
+ *     conjugates: いら in いらない is 要る, a 五段 verb, not 居る.
  *  4. That spelling, specifically, is common: 時 before the rare とき "please
  *     do", 此方 before 忽地 for こっち.
  *  5. The key is how the entry is normally written — its regular kanji, or
@@ -230,20 +271,49 @@ function fitFor(pos?: string): ((code: string) => number) | null {
  *     variant of 結う's.
  *  6. For kana keys, a word written in kana: 又 over 股 for また, the particle
  *     は over 派.
- *  7. More senses: a word with many uses is the more general one. 事 over 琴.
- *  8. JMdict's sequence number, only so the order is stable.
+ *  7. The analyser's own name for the word, where it has one: そば is 側,
+ *     beside, in a line UniDic reads so, and 蕎麦 otherwise. Last of what is
+ *     known about the word, since it is right less often than the rest: one
+ *     kana word in fourteen has two entries level to here.
+ *  8. More senses: a word with many uses is the more general one. 事 over 琴.
+ *  9. JMdict's sequence number, only so the order is stable.
  *
  * Checked against the most frequent kana words in OpenSubtitles: 208 of 223
  * resolve to their everyday entry from the key alone and 214 with the
  * analyser's hints, where the old order managed 171.
  */
 export function rank(entries: Entry[], key: string, hint: RankHint = {}): Entry[] {
+  const score = scoring(key, hint);
+  const scored = entries.map((e) => ({ e, s: score(e) }));
+  scored.sort((a, b) => {
+    const d = ahead(a.s, b.s);
+    if (d) return -d;
+    const ai = Number(a.e.id);
+    const bi = Number(b.e.id);
+    if (Number.isFinite(ai) && Number.isFinite(bi) && ai !== bi) return ai - bi;
+    return a.e.id.localeCompare(b.e.id);
+  });
+  return scored.map((x) => x.e);
+}
+
+/** How far the first score is ahead of the second, at the first thing they differ in: above zero, ahead. */
+function ahead(a: number[], b: number[]): number {
+  for (let i = 0; i < a.length; i++) {
+    const d = (a[i] ?? 0) - (b[i] ?? 0);
+    if (d) return d;
+  }
+  return 0;
+}
+
+/** What rank() weighs for each entry under a key, in the order it weighs it. */
+function scoring(key: string, hint: RankHint): (e: Entry) => number[] {
   const kanaKey = KANA_ONLY.test(key);
   const hKey = hira(key);
   const hintReading = hint.reading ? hira(hint.reading) : undefined;
-  const fit = fitFor(hint.pos);
+  const fit = fitFor(hint.pos, hint.conj);
+  const verb = hint.pos?.startsWith('動詞') === true;
 
-  const score = (e: Entry): number[] => {
+  return (e: Entry): number[] => {
     const forms = e.forms;
     const matched = forms?.find((f) => f.text === key) ?? forms?.find((f) => f.kana && hira(f.text) === hKey);
     const exact = forms ? Boolean(matched) : e.word === key || e.reading === key;
@@ -270,21 +340,15 @@ export function rank(entries: Entry[], key: string, hint: RankHint = {}): Entry[
 
     const written = Number(kanaKey && e.word === key);
 
-    return [Number(exact), readingMatch, pos, common, usual, written, e.senses.length];
-  };
+    const names = hint.spelling ? hint.names : undefined;
+    const spelled = Number(Boolean(names && forms?.some((f) => !f.kana && names(f.text) === hint.spelling)));
+    // A verb the analyser names, one of the entry's common spellings exactly, before the rest: 得る, not 売る,
+    // for うる. Only the verbs spelled() names, whose names were never wrong in Tatoeba.
+    const named = Number(Boolean(names && verb && forms?.some((f) => !f.kana && f.common && f.text === hint.spelling)));
+    if (verb) return [Number(exact), readingMatch, pos, named, spelled, common, usual, written, e.senses.length];
 
-  const scored = entries.map((e) => ({ e, s: score(e) }));
-  scored.sort((a, b) => {
-    for (let i = 0; i < a.s.length; i++) {
-      const d = (b.s[i] ?? 0) - (a.s[i] ?? 0);
-      if (d) return d;
-    }
-    const ai = Number(a.e.id);
-    const bi = Number(b.e.id);
-    if (Number.isFinite(ai) && Number.isFinite(bi) && ai !== bi) return ai - bi;
-    return a.e.id.localeCompare(b.e.id);
-  });
-  return scored.map((x) => x.e);
+    return [Number(exact), readingMatch, pos, common, usual, written, spelled, e.senses.length];
+  };
 }
 
 /**
@@ -305,4 +369,44 @@ export function readingsOf(entries: Entry[], form: string): string[] {
     if (r && !out.includes(r)) out.push(r);
   }
   return out;
+}
+
+/** One dictionary word a written form stands for. */
+export interface FormReading {
+  /** The entry's headword. */
+  word: string;
+  /** Its reading, in hiragana. */
+  reading: string;
+  /** The entry's first sense's part-of-speech codes. */
+  pos?: string[];
+  /** JMdict marks the entry as a word in common use. */
+  common?: boolean;
+  /** JMdict marks the word as usually written in kana: つらい, where 辛い is more often からい. */
+  kana?: boolean;
+  /**
+   * On the first word only: rank() puts it above the next for a reason — it is the
+   * commoner, or has the more uses — and not by where the two stand in JMdict's
+   * file. 後 read あと leads のち; 実 read じつ and み are level.
+   */
+  leads?: boolean;
+}
+
+/**
+ * The words a written form stands for, most likely first, from the entries
+ * found under it: one for each reading the form has. What the tokenizer asks
+ * the dictionary (lexicon() in store.ts).
+ */
+export function wordsFor(entries: Entry[], form: string): FormReading[] {
+  const ranked = rank(entries, form);
+  const of = (reading: string): Entry | undefined => ranked.find((e) => (e.reading ?? (e.uk ? e.word : undefined)) === reading);
+  const score = scoring(form, {});
+  return readingsOf(ranked, form).map((reading, i, all) => {
+    const entry = of(reading);
+    const next = i === 0 && all[1] !== undefined ? of(all[1]) : undefined;
+    const leads = i === 0 && entry !== undefined && (!next || ahead(score(entry), score(next)) > 0);
+    return {
+      word: entry?.word ?? form, reading, pos: entry?.senses[0]?.pos,
+      ...(entry?.common ? { common: true } : {}), ...(entry?.uk ? { kana: true } : {}), ...(leads ? { leads: true } : {}),
+    };
+  });
 }

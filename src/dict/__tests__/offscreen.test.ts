@@ -19,6 +19,10 @@ const lindera = vi.hoisted(() => ({
       { surface: '一', details: ['名詞', '数', '*', '*', '*', '*', '一', 'イチ', 'イチ'] },
       { surface: '回', details: ['名詞', '接尾', '助数詞', '*', '*', '*', '回', 'カイ', 'カイ'] },
     ],
+    // 日本: a name to IPADIC, read the rarer way.
+    日本: [
+      { surface: '日本', details: ['名詞', '固有名詞', '地域', '国', '*', '*', '日本', 'ニッポン', 'ニッポン'] },
+    ],
     // ko-dic: tag, meaning, final consonant, reading, type, first tag, last tag, expression.
     갔어요: [
       { surface: '갔', details: ['VV+EP', '*', 'T', '갔', 'Inflect', 'VV', 'EP', '가/VV/*+았/EP/*'] },
@@ -41,6 +45,14 @@ const lindera = vi.hoisted(() => ({
     癒やす: [
       { surface: '癒やす', details: ['動詞', '一般', '*', '*', '五段-サ行', '終止形-一般', 'イヤス', '癒やす', '癒やす', 'イヤス', '癒やす', 'イヤス', '和', '*', '*', '*', '*'] },
     ],
+    // 奢る, to treat, is 驕る, to be proud, to UniDic: one word under two spellings.
+    奢る: [
+      { surface: '奢る', details: ['動詞', '一般', '*', '*', '五段-ラ行', '終止形-一般', 'オゴル', '驕る', '奢る', 'オゴル', '奢る', 'オゴル', '和', '*', '*', '*', '*'] },
+    ],
+    蕎麦屋: [
+      { surface: '蕎麦', details: ['名詞', '普通名詞', '一般', '*', '*', '*', 'ソバ', '蕎麦', '蕎麦', 'ソバ', '蕎麦', 'ソバ', '和', '*', '*', '*', '*'] },
+      { surface: '屋', details: ['接尾辞', '名詞的', '一般', '*', '*', '*', 'ヤ', '屋', '屋', 'ヤ', '屋', 'ヤ', '和', '*', '*', '*', '*'] },
+    ],
   } as Record<string, Array<{ surface: string; details: string[] }>>,
 }));
 
@@ -48,12 +60,14 @@ vi.mock('lindera-wasm', () => ({
   default: vi.fn(async () => undefined),
   // A dictionary is told by its columns: UniDic has a lexeme, which no other has.
   loadDictionaryFromBytes: vi.fn((metadata: Uint8Array) => ({ unidic: new TextDecoder().decode(metadata).includes('lexeme') })),
+  loadUserDictionaryFromBytes: vi.fn(() => ({})),
   TokenizerBuilder: class {
     unidic = false;
     setDictionaryInstance(dictionary?: { unidic?: boolean }) {
       this.unidic = Boolean(dictionary?.unidic);
       return this;
     }
+    setUserDictionaryInstance() { return this; }
     setMode() { return this; }
     build() {
       const rows = this.unidic ? lindera.unidic : lindera.rows;
@@ -382,6 +396,39 @@ describe('tokenizing', () => {
     expect(await send({ type: 'tokenize', text: '猫' })).toMatchObject({ ok: true, complete: true });
     expect(store.lexicon).not.toHaveBeenCalled();
   });
+
+  it('reads a word by the dictionary\'s first reading where IPADIC has a later one: 日本 is にほん', async () => {
+    const { send, store } = await boot();
+    await send({ type: 'load', dict: 'ipadic' });
+    // Before the dictionary is there, as IPADIC reads it.
+    expect(await send({ type: 'tokenize', text: '日本' })).toMatchObject({ tokens: [{ surface: '日本', reading: 'ニッポン' }] });
+
+    const japan = {
+      id: '1', word: '日本', reading: 'にほん', common: true, senses: [{ pos: ['n'], glosses: ['Japan'] }],
+      forms: [{ text: '日本', kana: false, common: true }, { text: 'にほん', kana: true, common: true }, { text: 'にっぽん', kana: true, common: true }],
+    };
+    vi.mocked(store.isPopulated).mockResolvedValue(true);
+    vi.mocked(store.dataMark).mockResolvedValue('jmdict@test');
+    vi.mocked(store.eachEntry).mockImplementation(async (fn) => fn(japan));
+    vi.mocked(store.lexicon).mockResolvedValue({ 日本: [{ word: '日本', reading: 'にほん', pos: ['n'] }] });
+    await send({ type: 'dict-load', edition: 'eng' });
+    await send({ type: 'load', dict: 'ipadic' });
+
+    // The list is made once and kept with the words added to the analyser.
+    expect(store.storeWords).toHaveBeenCalledWith(expect.stringContaining('jmdict@test'), { csv: expect.any(String), readings: '日本\tニッポン\tニホン\tname' });
+    expect(await send({ type: 'tokenize', text: '日本' })).toMatchObject({ tokens: [{ surface: '日本', reading: 'ニホン' }] });
+  });
+
+  it('loads that list where it is kept, and makes it again where the dictionary says the reading is another word', async () => {
+    const { send, store } = await boot();
+    vi.mocked(store.isPopulated).mockResolvedValue(true);
+    vi.mocked(store.dataMark).mockResolvedValue('jmdict@test');
+    vi.mocked(store.storedWords).mockResolvedValue({ csv: '', readings: '日本\tニッポン\tニホン\tname' });
+    await send({ type: 'dict-load', edition: 'eng' });
+    await send({ type: 'load', dict: 'ipadic' });
+    expect(store.eachEntry).not.toHaveBeenCalled();
+    expect(await send({ type: 'tokenize', text: '日本' })).toMatchObject({ tokens: [{ reading: 'ニホン' }] });
+  });
 });
 
 describe('dictionary lookups', () => {
@@ -407,6 +454,27 @@ describe('dictionary lookups', () => {
     await send({ type: 'dict-load', edition: 'eng' });
     await send({ type: 'dict-lookup', key: '私', reading: 'ワタシ', pos: '名詞,代名詞' });
     expect(store.lookup).toHaveBeenCalledWith('私', { reading: 'ワタシ', pos: '名詞,代名詞' }, store.JMDICT);
+  });
+
+  it('pass the word\'s name in kanji only with UniDic there to name each entry\'s spellings', async () => {
+    const { send, store, opfs } = await boot();
+    vi.mocked(store.isPopulated).mockResolvedValue(true);
+    await send({ type: 'dict-load', edition: 'eng' });
+    // IPADIC alone: the name is not passed on, and the dictionary's own order stands.
+    await send({ type: 'dict-lookup', key: 'そば', reading: 'ソバ', pos: '名詞,一般', spelling: '側' });
+    expect(store.lookup).toHaveBeenLastCalledWith('そば', { reading: 'ソバ', pos: '名詞,一般' }, store.JMDICT);
+
+    vi.mocked(opfs.loadDictionaryFiles).mockImplementation(async (name: string) => files(name === 'unidic' ? UNIDIC_FIELDS : IPADIC_FIELDS));
+    await send({ type: 'load', dict: 'ipadic' });
+    await send({ type: 'second' });
+    await send({ type: 'dict-lookup', key: 'そば', reading: 'ソバ', pos: '名詞,一般', spelling: '側' });
+    const hint = vi.mocked(store.lookup).mock.lastCall?.[1] as { spelling?: string; names?: (form: string) => string | undefined };
+    expect(hint.spelling).toBe('側');
+    // UniDic's name for a spelling: its own word for it, which may be another spelling's too.
+    expect(hint.names?.('癒やす')).toBe('癒やす');
+    expect(hint.names?.('奢る')).toBe('驕る');
+    // No one word of UniDic's: no name.
+    expect(hint.names?.('蕎麦屋')).toBeUndefined();
   });
 
   it('go remote after the local dictionary failed', async () => {

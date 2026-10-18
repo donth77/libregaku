@@ -87,6 +87,7 @@ export function place(text: string, merged: MergedToken[], how: Placing = {}): T
       parts: t.parts.length > 1 ? t.parts : undefined,
       inflections: t.inflections.length ? t.inflections : undefined,
       lemmaReading: t.lemmaReading,
+      ...(t.usedAs ? { usedAs: t.usedAs } : {}),
       lookup: t.lookup.length ? t.lookup : undefined,
       ...(t.name ? { name: true } : {}),
       ...(t.properName ? { properName: true } : {}),

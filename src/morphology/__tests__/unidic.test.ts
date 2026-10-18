@@ -10,8 +10,26 @@ describe("UniDic's words, as the merge rules read them", () => {
       row('食べ', '動詞,一般,*,*,下一段-バ行,連用形-一般,タベル,食べる,食べ,タベ,食べる,タベル,和,*,*,*,*'),
       row('た', '助動詞,*,*,*,助動詞-タ,終止形-一般,タ,た,た,タ,た,タ,和,*,*,*,*'),
     ]);
-    expect(stem).toEqual({ surface: '食べ', pos: '動詞', pos1: '自立', lemma: '食べる', reading: 'タベ', conjForm: '連用形' });
+    expect(stem).toEqual({
+      surface: '食べ', pos: '動詞', pos1: '自立', lemma: '食べる', reading: 'タベ', conjForm: '連用形',
+      // How it conjugates, as IPADIC names it: 下一段-バ行 is 一段.
+      conjType: '一段',
+      // What only UniDic says of a word: the reading of the word it takes it for, and that it is a word of Japanese's own.
+      lexeme: 'タベル', native: true,
+    });
     expect([ta?.pos, ta?.lemma, ta?.conjForm]).toEqual(['助動詞', 'た', '基本形']);
+  });
+
+  it('says which word it takes a word for, and whether it is one of Japanese\'s own: 何 said ナン is ナニ; 金 is きん from Chinese', () => {
+    const [nan, kin] = fromUnidic([
+      row('何', '代名詞,*,*,*,*,*,ナニ,何,何,ナン,何,ナン,和,*,*,*,*'),
+      row('金', '名詞,普通名詞,一般,*,*,*,キン,金,金,キン,金,キン,漢,*,*,*,*'),
+    ]);
+    expect([nan?.reading, nan?.lexeme, nan?.native]).toEqual(['ナン', 'ナニ', true]);
+    expect([kin?.reading, kin?.lexeme, kin?.native]).toEqual(['キン', 'キン', undefined]);
+    // 大勢, おおぜい: おお is Japanese's own, and the word counts as one.
+    const [crowd] = fromUnidic([row('大勢', '名詞,普通名詞,一般,*,*,*,オオゼイ,大勢,大勢,オーゼー,大勢,オーゼー,混,*,*,*,*')]);
+    expect([crowd?.reading, crowd?.native]).toEqual(['オオゼイ', true]);
   });
 
   it('writes the dictionary form as it is written: する, not 為る; やばい for ヤバい', () => {

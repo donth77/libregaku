@@ -159,7 +159,9 @@ export function phraseToken(words: Token[], text: string): Token {
    * is looked up as 名所 when the dictionary has no 新名所, and 名所 is not that
    * word's form, so a phrase ending in it would lose the 新.
    */
-  const form = last?.lemma && !(last.lemma !== last.surface && last.surface.endsWith(last.lemma)) ? last.lemma : undefined;
+  // The form as the line uses the word, where its own is another: 勉強して is 勉強する in a phrase, not 勉強.
+  const lemma = last?.usedAs ?? last?.lemma;
+  const form = lemma && !(lemma !== last?.surface && last?.surface.endsWith(lemma)) ? lemma : undefined;
   return {
     surface: text,
     lemma: head !== null && form ? head + form : text,

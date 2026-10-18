@@ -20,6 +20,17 @@ export interface UnidicWord {
   details: string[];
 }
 
+/** One of UniDic's words in IPADIC's shape, with what only UniDic says of it. */
+export interface UnidicMorpheme extends Morpheme {
+  /** The reading of the word UniDic takes this for, in katakana: ナニ for 何 said ナン, エル for 得る said ウル. */
+  lexeme?: string;
+  /**
+   * A word of Japanese's own (和語), or one with a part that is (混種語: 大勢,
+   * おおぜい), not one from Chinese or a loanword.
+   */
+  native?: boolean;
+}
+
 const col = (d: string[], i: number): string | undefined => (d[i] && d[i] !== '*' ? d[i] : undefined);
 
 /** UniDic's word classes as IPADIC's [part of speech, detail]. */
@@ -78,6 +89,18 @@ function formOf(d: string[]): string | undefined {
   return f;
 }
 
+/** UniDic's conjugation types as IPADIC names them: 五段-ラ行 is 五段・ラ行, 下一段-バ行 is 一段. */
+function typeOf(d: string[]): string | undefined {
+  const t = col(d, 4);
+  if (!t) return undefined;
+  if (/^(上|下)一段/.test(t)) return '一段';
+  const row = /^五段-(.)行/.exec(t)?.[1];
+  if (row) return `五段・${row}行`;
+  if (t.startsWith('カ行変格')) return 'カ変';
+  if (t.startsWith('サ行変格')) return 'サ変';
+  return undefined;
+}
+
 const KATAKANA_LONG = /ー/;
 const KANA_WORD = /^[ぁ-ゖァ-ヺー]+$/;
 const KATAKANA = /[ァ-ヺ]/;
@@ -113,8 +136,8 @@ export function kanaReading(pron: string | undefined, lemmaReading: string | und
 }
 
 /** The sentence as IPADIC-shaped morphemes. A word is read with the ones beside it. */
-export function fromUnidic(words: readonly UnidicWord[]): Morpheme[] {
-  const out: Morpheme[] = [];
+export function fromUnidic(words: readonly UnidicWord[]): UnidicMorpheme[] {
+  const out: UnidicMorpheme[] = [];
   words.forEach((w, i) => {
     const d = w.details;
     let [pos, pos1] = classOf(d);
@@ -155,8 +178,11 @@ export function fromUnidic(words: readonly UnidicWord[]): Morpheme[] {
       pos1 = '一般';
     }
 
-    const m: Morpheme = { surface: w.surface, pos };
+    const m: UnidicMorpheme = { surface: w.surface, pos };
     if (pos1) m.pos1 = pos1;
+    const lexeme = col(d, 6);
+    if (lexeme) m.lexeme = lexeme;
+    if (d[12] === '和' || d[12] === '混') m.native = true;
     /*
      * The dictionary form as it is written: する and ない, not UniDic's 為る and 無い. An ending is named by
      * its lemma (す is です, っす is です), and so is a word written in katakana for effect: やばい for ヤバい.
@@ -177,8 +203,12 @@ export function fromUnidic(words: readonly UnidicWord[]): Morpheme[] {
       m.lemma = form;
     }
     if (reading) m.reading = reading;
+    // Which word a kana spelling is: UniDic names every word in kanji, 側 for そば and 方 for ほう.
+    if (lemma && KANA_WORD.test(w.surface) && /[一-鿿々]/.test(lemma)) m.kanji = lemma;
     const form = named ? undefined : formOf(d);
     if (form) m.conjForm = form;
+    const type = pos === '動詞' && !named ? typeOf(d) : undefined;
+    if (type) m.conjType = type;
 
     // 行こう, 食べよう, だろう: one word to UniDic; to IPADIC a stem and う, which the merge names "volitional".
     if ((d[5] ?? '').startsWith('意志推量形') && w.surface.length > 1 && w.surface.endsWith('う')) {

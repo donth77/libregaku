@@ -67,6 +67,13 @@ describe('phraseToken', () => {
     expect(phraseToken([tok('気に'), tok('した', { lemma: 'する' })], '気にした').lemma).toBe('気にする');
   });
 
+  it('ends on a する verb as the line uses it, though its own word is the noun', () => {
+    const t = phraseToken([tok('日本語'), tok('を'), tok('勉強して', { lemma: '勉強', usedAs: '勉強する' })], '日本語を勉強して');
+    expect(t.lemma).toBe('日本語を勉強する');
+    // In its dictionary form already: as written.
+    expect(phraseToken([tok('日本語'), tok('を'), tok('勉強する', { lemma: '勉強', usedAs: '勉強する' })], '日本語を勉強する').lemma).toBe('日本語を勉強する');
+  });
+
   it('keeps spaces between words, and does not run their readings together', () => {
     const t = phraseToken([tok('give', { reading: 'x' }), tok('up', { lemma: 'up', reading: 'y' })], 'give up');
     expect(t.lemma).toBe('give up');

@@ -38,12 +38,19 @@ export interface Token {
   /** Reading of `lemma`, when the analysis pins it down. Tier 2 only. */
   lemmaReading?: string;
   /**
+   * The dictionary form of the word as the line uses it, where a dictionary
+   * lists it under another: 勉強する for 勉強しています, which is listed, carded
+   * and marked as 勉強, its `lemma`. What a card shows the line's form leads
+   * to; and a card or a mark written this way still counts for the word.
+   */
+  usedAs?: string;
+  /**
    * How to look this token up: dictionary keys, best first, each carrying
    * what the analyser knows to tell homographs apart. Opaque above the
    * dictionary client — pass the token to `lookupToken`, never read this.
    * Tier 2 only; without it a lookup uses `lemma`, then `surface`.
    */
-  lookup?: Array<{ key: string; reading?: string; pos?: string }>;
+  lookup?: Array<{ key: string; reading?: string; pos?: string; spelling?: string; conj?: string }>;
   /**
    * Punctuation and whitespace. Rendered so the line reads correctly, but
    * never interactive — nobody looks up a question mark.

@@ -244,7 +244,7 @@ async function refreshMarkReadings(): Promise<void> {
 function statusOf(tok: Token): Status {
   if (tok.punct || !tok.content) return 'ignored';
   const key = tok.lemma ?? tok.surface;
-  const manual = overrides.get(key) ?? markedByReading(key);
+  const manual = overrides.get(key) ?? markedByReading(key) ?? (tok.usedAs ? overrides.get(tok.usedAs) : undefined);
   if (manual) return manual;
   const fromAnki = ankiStatus(tok);
   return (addedCards.has(key) || queuedWords.has(key)) && fromAnki !== 'known' ? 'learning' : fromAnki;
@@ -259,7 +259,46 @@ function statusOf(tok: Token): Status {
 function ankiStatus(tok: Token): Status {
   if (!status) return 'unknown';
   const key = tok.lemma ?? tok.surface;
-  return status.get(key, lemmaReading(key, tok.surface, tok.reading));
+  const own = status.get(key, lemmaReading(key, tok.surface, tok.reading));
+  if (!tok.usedAs || own === 'known') return own;
+  // A card written as the line uses the word counts for it too: 勉強する for 勉強している, whose word is 勉強.
+  const other = status.get(tok.usedAs, lemmaReading(tok.usedAs, tok.surface, tok.reading));
+  return other === 'known' || own === 'unknown' ? other : own;
+}
+
+/**
+ * The form of a token's word a hand mark is on: the word, or the word as the
+ * line uses it — 勉強する, where a する verb was marked before it was marked as
+ * its noun. Undefined where it has none.
+ */
+function markOn(tok: Token): string | undefined {
+  const key = tok.lemma ?? tok.surface;
+  if (overrides.has(key)) return key;
+  return tok.usedAs && overrides.has(tok.usedAs) ? tok.usedAs : undefined;
+}
+
+/**
+ * Take the hand mark off a word a card now speaks for, on whichever form of
+ * the word it is. Off the page at once; resolves when the browser has it.
+ */
+function dropMark(tok: Token): Promise<unknown> {
+  const forms = [tok.lemma ?? tok.surface, ...(tok.usedAs ? [tok.usedAs] : [])];
+  for (const form of forms) overrides.delete(form);
+  return Promise.all(forms.map((form) => setMark(targetLang(), form, null)));
+}
+
+/**
+ * A mark from a word's card or its key. It goes on the word; and a mark on
+ * another form of it comes off, whether that is what was asked or the new
+ * mark replaces it, so a word never carries two.
+ */
+function markToken(tok: Token, word: string, next: OverrideStatus | null): Promise<void> {
+  const old = markOn(tok);
+  if (!old || old === word) return mark(word, next, lemmaReading(word, tok.surface, tok.reading));
+  if (!next) return mark(old, null);
+  overrides.delete(old);
+  void setMark(targetLang(), old, null);
+  return mark(word, next, lemmaReading(word, tok.surface, tok.reading));
 }
 
 /**
@@ -1412,10 +1451,10 @@ async function addCard(draft: CardDraft, token: Token, line: LineContext): Promi
     if (kept === 'failed') throw new Error(ui.player.notKept);
     if (kept === 'already') return { said: ui.player.alreadyQueued };
     manualRevision++;
-    overrides.delete(word);
+    const dropped = dropMark(token);
     queuedWords.add(word);
     repaint();
-    await setMark(targetLang(), word, null);
+    await dropped;
     watchQueue(true);
     return { said: ui.player.queued(deck), undo: unqueued(card, word) };
   }
@@ -1424,11 +1463,11 @@ async function addCard(draft: CardDraft, token: Token, line: LineContext): Promi
   // replace it. A stored "learning" override would hide maturity or deletion.
   statusRequest++;   // an older query may have started before this card existed
   manualRevision++;
-  overrides.delete(word);
+  // A card now speaks for the word; a hand mark would hide what it says.
+  const dropped = dropMark(token);
   addedCards.add(word);
   repaint();
-  // A card now speaks for the word; a hand mark would hide what it says.
-  await setMark(targetLang(), word, null);
+  await dropped;
   void refreshStatus();
   return {
     said: ui.player.added(deck, missing),
@@ -1704,8 +1743,8 @@ async function openLookup(mount: HTMLElement, el: HTMLElement, token: Token, byH
       sentence,
       phrase: phrases.has(token),
       status: statusOf(token),
-      marked: overrides.get(token.lemma ?? token.surface) ?? null,
-      onMark: (word, next) => mark(word, next, lemmaReading(word, token.surface, token.reading)),
+      marked: overrides.get(markOn(token) ?? '') ?? null,
+      onMark: (word, next) => markToken(token, word, next),
       onAddCard: (draft) => addCard(draft, token, line),
       onAddLine: sentence.trim() ? () => addLineCard(sentence, line) : undefined,
       onShowInAnki: () => showInAnki(token),
@@ -1834,8 +1873,8 @@ function mountSidebar(mount: HTMLElement, video: HTMLVideoElement, adapter: Subt
         sentence,
         phrase: phrases.has(token),
         status: statusOf(token),
-        marked: overrides.get(token.lemma ?? token.surface) ?? null,
-        onMark: (word, next) => mark(word, next, lemmaReading(word, token.surface, token.reading)),
+        marked: overrides.get(markOn(token) ?? '') ?? null,
+        onMark: (word, next) => markToken(token, word, next),
         onAddCard: (draft) => addCard(draft, token, line),
         onAddLine: sentence.trim() ? () => addLineCard(sentence, line) : undefined,
         onShowInAnki: () => showInAnki(token),
@@ -2104,14 +2143,14 @@ function keyOnWord(action: 'add' | 'known'): void {
   if (action === 'known') {
     closePopup();
     // As the card's Known button does: on a word marked known, the mark comes off.
-    const marked = overrides.get(word) === 'known';
+    const marked = overrides.get(markOn(last.token) ?? '') === 'known';
     if (!marked && statusOf(last.token) === 'known') {
       // Known from its cards: there is no mark to take off, and none needed.
       if (mount) flash(mount, ui.player.alreadyKnown(word));
       return;
     }
     // mark() says where it went.
-    void mark(word, marked ? null : 'known', lemmaReading(word, last.token.surface, last.token.reading));
+    void markToken(last.token, word, marked ? null : 'known');
     return;
   }
   // A card already there is said, not made again.

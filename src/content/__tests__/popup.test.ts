@@ -333,6 +333,76 @@ describe('the status buttons', () => {
   });
 });
 
+describe('the word a card is headed by', () => {
+  const GAME: LookupResult = {
+    state: 'ok',
+    entries: [{ id: '2', word: 'ゲーム', common: true, senses: [{ pos: ['n'], glosses: ['game'] }] }],
+  };
+  // ゲームしましょう as the analyser hands it on: the word is the noun, the verb's own form beside it.
+  const said = {
+    surface: 'ゲームしましょう', lemma: 'ゲーム', usedAs: 'ゲームする', reading: 'ゲームシマショウ', lemmaReading: 'ゲーム',
+    parts: ['ゲーム', 'し', 'ましょ', 'う'], inflections: ['polite', 'volitional'], start: 0, end: 8,
+  };
+  const reading = (card: ShadowRoot): string | undefined => card.querySelector('.hw .reading')?.textContent ?? undefined;
+
+  it('has no reading from the form on the line: ゲーム, not ゲームシマショウ over it', () => {
+    const card = open({ token: said, lang: 'ja' }, said.surface, GAME);
+    expect(card.querySelector('.hw .word')?.textContent).toBe('ゲーム');
+    expect(reading(card)).toBeUndefined();
+  });
+
+  it('shows what the form on the line is a form of, する and all, and marks the word in the title', () => {
+    const onMark = vi.fn();
+    const card = open({ token: said, lang: 'ja', onMark }, said.surface, GAME);
+    expect(card.querySelector('.trace')?.textContent).toContain('ゲーム + し + ましょ + う  →  ゲームする');
+    card.querySelector<HTMLElement>('.mk.known')!.click();
+    expect(onMark).toHaveBeenLastCalledWith('ゲーム', 'known');
+  });
+
+  it('has no trace for a する verb in its dictionary form, which leads nowhere', () => {
+    const plain = { surface: 'ゲームする', lemma: 'ゲーム', usedAs: 'ゲームする', reading: 'ゲームスル', parts: ['ゲーム', 'する'], start: 0, end: 5 };
+    expect(open({ token: plain, lang: 'ja' }, plain.surface, GAME).querySelector('.trace')).toBeNull();
+  });
+
+  it("keeps the dictionary's reading of a word in kanji, whatever form the line has", () => {
+    const studying = { surface: '勉強しています', lemma: '勉強', usedAs: '勉強する', reading: 'ベンキョウシテイマス', lemmaReading: 'ベンキョウ', start: 0, end: 7 };
+    expect(reading(open({ token: studying, lang: 'ja' }, studying.surface))).toBe('べんきょう');
+  });
+
+  it('shows no reading that only repeats a word written in kana: する is not headed スル', () => {
+    const suru: LookupResult = { state: 'ok', entries: [{ id: '3', word: 'する', common: true, senses: [{ pos: ['vs-i'], glosses: ['to do'] }] }] };
+    const did = { surface: 'しました', lemma: 'する', reading: 'シマシタ', lemmaReading: 'スル', start: 0, end: 4 };
+    expect(reading(open({ token: did, lang: 'ja' }, did.surface, suru))).toBeUndefined();
+    closePopup();
+    const does = { surface: 'する', lemma: 'する', reading: 'スル', lemmaReading: 'スル', start: 0, end: 2 };
+    expect(reading(open({ token: does, lang: 'ja' }, does.surface, suru))).toBeUndefined();
+  });
+
+  it("falls back to the analyser's reading of the word itself where the dictionary has none", () => {
+    const none = { state: 'empty' } as LookupResult;
+    // A name no dictionary lists: as it was read on the line, which is the word.
+    const name = { surface: '田中', lemma: '田中', reading: 'タナカ', start: 0, end: 2 };
+    expect(reading(open({ token: name, lang: 'ja' }, name.surface, none))).toBe('タナカ');
+    closePopup();
+    // An inflected word with no entry: its dictionary form's reading, or none — never the line's.
+    const ran = { surface: '走った', lemma: '走る', reading: 'ハシッタ', lemmaReading: 'ハシル', start: 0, end: 3 };
+    expect(reading(open({ token: ran, lang: 'ja' }, ran.surface, none))).toBe('ハシル');
+    closePopup();
+    const { lemmaReading: _none, ...unread } = ran;
+    expect(reading(open({ token: unread, lang: 'ja' }, unread.surface, none))).toBeUndefined();
+    closePopup();
+    // Letters read out are not the word again: ＣＤ, シーディー.
+    const cd = { surface: 'CD', lemma: 'CD', reading: 'シーディー', start: 0, end: 2 };
+    expect(reading(open({ token: cd, lang: 'ja' }, cd.surface, none))).toBe('シーディー');
+  });
+
+  it('keeps a reading in another script than the word: pinyin over a Chinese word', () => {
+    const hello: LookupResult = { state: 'ok', entries: [{ id: '4', word: '你好', reading: 'nǐ hǎo', common: false, senses: [{ pos: [], glosses: ['hello'] }] }] };
+    const token = { surface: '你好', lemma: '你好', reading: 'nǐ hǎo', lemmaReading: 'nǐ hǎo', start: 0, end: 2 };
+    expect(reading(open({ token, lang: 'zh' }, token.surface, hello))).toBe('nǐ hǎo');
+  });
+});
+
 describe('adding, and taking it back', () => {
   it('turns Add into Undo once the card is in, and takes it back out on a later press', async () => {
     vi.useFakeTimers();
@@ -563,9 +633,24 @@ describe('adding from the card', () => {
     expect(draftFor(RESULT, said, '毎日勉強して')).toEqual({
       expression: '勉強', reading: 'べんきょう', meaning: 'study; diligence', sentence: '毎日勉強して',
     });
+    // With no entry the word is the dictionary form, and its reading that form's: never the one on the line's.
     expect(draftFor({ state: 'empty' } as LookupResult, said, 'x')).toEqual({
-      expression: '勉強する', reading: 'ベンキョウシテ', meaning: '', sentence: 'x',
+      expression: '勉強する', reading: '', meaning: '', sentence: 'x',
     });
+    expect(draftFor({ state: 'empty' } as LookupResult, { ...said, lemmaReading: 'ベンキョウスル' }, 'x')).toEqual({
+      expression: '勉強する', reading: 'ベンキョウスル', meaning: '', sentence: 'x',
+    });
+    // As it was said, where that is the word.
+    const plain = { surface: '田中', lemma: '田中', reading: 'タナカ', start: 0, end: 2 };
+    expect(draftFor({ state: 'empty' } as LookupResult, plain, 'x').reading).toBe('タナカ');
+  });
+
+  it("gives a word the dictionary writes in kana no reading from the line: ゲーム, not ゲームシマショウ", () => {
+    const game: LookupResult = { state: 'ok', entries: [{ id: '2', word: 'ゲーム', common: true, senses: [{ pos: ['n'], glosses: ['game'] }] }] };
+    const said = {
+      surface: 'ゲームしましょう', lemma: 'ゲーム', usedAs: 'ゲームする', reading: 'ゲームシマショウ', lemmaReading: 'ゲーム', start: 0, end: 8,
+    };
+    expect(draftFor(game, said, 'ゲームしましょう')).toMatchObject({ expression: 'ゲーム', reading: 'ゲーム' });
   });
 
   it('is what the A key presses, when a card is open', async () => {

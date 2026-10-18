@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import type { FirstReading } from '../extra-words';
+import { withFirstReadings } from '../japanese';
 import type { Morpheme } from '../merge';
 import { repair, unknown, type Others, type Reading } from '../repair';
+import type { UnidicMorpheme } from '../unidic';
 import { LINES } from './fixtures/ipadic';
 import { SECOND } from './fixtures/second-opinion';
 
@@ -207,6 +210,73 @@ describe('a noun that is endings', () => {
   });
 });
 
+describe("a noun and する that IPADIC takes for an adjective's stem", () => {
+  const stem: Morpheme = { surface: '恋し', lemma: '恋しい', pos: '形容詞', pos1: '自立', conjForm: 'ガル接続' };
+  const koi = noun('恋');
+  const shi = verb('し', 'する', '連用形');
+  const te = particle('て', '接続助詞');
+  const iru = verb('いる', 'いる', '基本形', '非自立');
+
+  it("is cut as UniDic cuts it, in IPADIC's own reading: 恋して is 恋 and し, not 恋しい", () => {
+    const line = [stem, te, iru];
+    const theirs = [noun('恋', 'サ変接続'), shi, te, iru];
+    const read = repair(line, theirs, readings(line, [koi, shi, te, iru]));
+    expect(read).toEqual([koi, shi, te, iru]);
+    // The words either side are the line's own.
+    expect(read[2]).toBe(te);
+  });
+
+  it("is UniDic's words where no reading of IPADIC's cuts it so", () => {
+    const line = [stem, verb('てる', 'てる', '基本形', '非自立')];
+    const theirs = [noun('恋', 'サ変接続'), shi, ending('てる')];
+    expect(surfaces(repair(line, theirs, readings(line)))).toEqual(['恋', 'し', 'てる']);
+    expect(surfaces(repair(line, theirs))).toEqual(['恋', 'し', 'てる']);
+  });
+
+  it('stays the adjective before what its stem does take: 恋しそう, 恋しさ, 恋しすぎる', () => {
+    for (const next of [noun('そう', '接尾'), noun('さ', '接尾'), verb('すぎる', 'すぎる', '基本形', '非自立')]) {
+      const line = [stem, next];
+      expect(repair(line, [noun('恋', 'サ変接続'), shi, next], readings(line, [koi, shi, next])), next.surface).toEqual(line);
+    }
+    // And where nothing follows it, or UniDic has something other than a noun and する.
+    expect(repair([stem], [noun('恋', 'サ変接続'), shi], readings([stem], [koi, shi]))).toEqual([stem]);
+    const line = [stem, te];
+    expect(repair(line, [noun('恋'), particle('し', '接続助詞'), te], readings(line, [koi, shi, te]))).toEqual(line);
+  });
+});
+
+describe('a word of time and the word after it that IPADIC has a name for', () => {
+  const name = (surface: string, more: Partial<Morpheme> = {}): Morpheme => ({ ...noun(surface, '固有名詞'), ...more });
+  const wo = particle('を');
+  const yomu = verb('読む', '読む', '基本形');
+  const mainichi = noun('毎日', '副詞可能');
+  const shinbun = noun('新聞');
+
+  it("is cut as UniDic cuts it, in IPADIC's own words where it has them: 毎日新聞を読む", () => {
+    const line = [name('毎日新聞'), wo, yomu];
+    const read = repair(line, [mainichi, shinbun, wo, yomu], readings(line, [mainichi, shinbun, wo, yomu]));
+    expect(read).toEqual([mainichi, shinbun, wo, yomu]);
+    expect(read[2]).toBe(wo);
+    // And in UniDic's where no reading of IPADIC's cuts it so.
+    expect(surfaces(repair(line, [mainichi, shinbun, wo, yomu]))).toEqual(['毎日', '新聞', 'を', '読む']);
+  });
+
+  it('stays a name where it is a given name, or before さん: 夏子, 今船さん', () => {
+    const natsu = noun('夏', '副詞可能');
+    const given = [name('夏子', { given: true }), ending('です')];
+    expect(repair(given, [natsu, noun('子'), ending('です')])).toEqual(given);
+    const called = [name('今船'), noun('さん', '接尾')];
+    expect(repair(called, [noun('今', '副詞可能'), noun('船'), noun('さん', '接尾')])).toEqual(called);
+  });
+
+  it('stays a name where UniDic does not begin with a word of time, or has a name inside', () => {
+    const tanaka = [name('田中'), wo, yomu];
+    expect(repair(tanaka, [noun('田'), noun('中', '接尾'), wo, yomu])).toEqual(tanaka);
+    const imamura = [name('今村山'), wo, yomu];
+    expect(repair(imamura, [noun('今', '副詞可能'), name('村山'), wo, yomu])).toEqual(imamura);
+  });
+});
+
 describe('a line the two do not read the same text of, or read alike', () => {
   it('is IPADIC\'s', () => {
     const line = [noun('今日', '副詞可能'), particle('は', '係助詞')];
@@ -216,13 +286,125 @@ describe('a line the two do not read the same text of, or read alike', () => {
   });
 });
 
+describe('a word in kanji the two read differently', () => {
+  /** A word as each analyser gives it: IPADIC's, and UniDic's with what only UniDic says. */
+  const read = (surface: string, reading: string, pos1 = '一般', more: Partial<UnidicMorpheme> = {}): UnidicMorpheme =>
+    ({ surface, lemma: surface, reading, pos: '名詞', pos1, ...more });
+  const ga = particle('が');
+  const nai: Morpheme = { surface: 'ない', lemma: 'ない', reading: 'ナイ', pos: '形容詞', pos1: '自立', conjForm: '基本形' };
+
+  it('carries UniDic\'s reading, for the merge to weigh: 金 is きん to IPADIC and かね to UniDic', () => {
+    const kin = read('金', 'キン');
+    const [word, particle_] = repair([kin, ga], [read('金', 'カネ', '一般', { lexeme: 'カネ', native: true }), ga]);
+    expect(word).toEqual({ ...kin, second: { reading: 'カネ', native: true } });
+    // IPADIC's own word is not written on, and a word the two read alike is the one it was.
+    expect(kin.second).toBeUndefined();
+    expect(particle_).toBe(ga);
+  });
+
+  it('has nothing to carry where UniDic names the same word and only says it another way: 何 said ナン is ナニ', () => {
+    const nani = read('何', 'ナニ', '代名詞');
+    expect(repair([nani, ga], [read('何', 'ナン', '代名詞', { lexeme: 'ナニ', native: true }), ga])[0]).toBe(nani);
+  });
+
+  it('has nothing to carry where the two differ in the voicing of the first sound: 定石通り', () => {
+    const doori = read('通り', 'ドオリ', '接尾');
+    const line = [read('定石', 'ジョウセキ'), doori];
+    expect(repair(line, [line[0]!, read('通り', 'トオリ', '一般', { native: true })])[1]).toBe(doori);
+  });
+
+  it('leaves numbers and their counters to the dictionary', () => {
+    const [ni, hon] = [read('二', 'ニ', '数'), read('本', 'ホン', '接尾')];
+    const theirs = [read('二', 'フタ', '数', { native: true }), read('本', 'ポン', '接尾')];
+    expect(repair([ni, hon], theirs)).toEqual([ni, hon]);
+  });
+
+  it('does not take an adjective for a verb, or a word for an ending, a prefix or an adjective\'s stem', () => {
+    const hoshi: Morpheme = { surface: '欲し', lemma: '欲しい', reading: 'ホシ', pos: '形容詞', pos1: '自立', conjForm: 'ガル接続' };
+    const hossuru: Morpheme = { surface: '欲し', lemma: '欲する', reading: 'ホッシ', pos: '動詞', pos1: '自立', conjForm: '連用形' };
+    expect(repair([hoshi], [hossuru])).toEqual([hoshi]);
+    const kokoro = read('心', 'ココロ');
+    expect(repair([kokoro], [{ ...read('心', 'シン'), pos: '接頭詞', pos1: '名詞接続' }])).toEqual([kokoro]);
+    const chou = read('長', 'チョウ');
+    expect(repair([chou], [{ surface: '長', lemma: '長い', reading: 'ナガ', pos: '形容詞', pos1: '自立', conjForm: 'ガル接続' }])).toEqual([chou]);
+  });
+
+  it('leaves a name a name before さん, called out on its own, and its ending after it', () => {
+    const kim = read('金', 'キム', '固有名詞');
+    const kane = read('金', 'カネ', '一般', { native: true });
+    const san: Morpheme = { surface: 'さん', lemma: 'さん', reading: 'サン', pos: '名詞', pos1: '接尾' };
+    expect(repair([kim, san], [kane, san])).toEqual([kim, san]);
+    const mari = read('真理', 'マリ', '固有名詞');
+    const comma = mark('、');
+    expect(repair([mari, comma], [read('真理', 'シンリ'), comma])).toEqual([mari, comma]);
+    const everest = read('エベレスト', 'エベレスト', '固有名詞');
+    const san2 = read('山', 'サン', '接尾');
+    expect(repair([everest, san2], [everest, read('山', 'ヤマ', '一般', { native: true })])).toEqual([everest, san2]);
+  });
+
+  it('carries the whole word where IPADIC has an ending, a prefix or a name: 家 in 明日家に, 今 in 今受験生', () => {
+    const ashita = read('明日', 'アシタ', '副詞可能');
+    const [, ie] = repair([ashita, read('家', 'カ', '接尾')], [ashita, read('家', 'イエ', '一般', { native: true })]);
+    expect(ie?.second).toEqual({ reading: 'イエ', pos: '名詞', pos1: '一般', native: true });
+    const kon: Morpheme = { surface: '今', lemma: '今', reading: 'コン', pos: '接頭詞', pos1: '名詞接続' };
+    const [ima] = repair([kon, read('受験生', 'ジュケンセイ')], [read('今', 'イマ', '副詞可能', { native: true }), read('受験生', 'ジュケンセイ')]);
+    expect(ima?.second).toEqual({ reading: 'イマ', pos: '名詞', pos1: '副詞可能', native: true });
+  });
+
+  it('carries another verb with its form: 降り is 降りる to IPADIC and 降る to UniDic', () => {
+    const ori = verb('降り', '降りる', '連用形');
+    const [word] = repair([{ ...ori, reading: 'オリ' }], [{ ...verb('降り', '降る', '連用形'), reading: 'フリ', native: true } as UnidicMorpheme]);
+    expect(word?.second).toEqual({ reading: 'フリ', lemma: '降る', conjForm: '連用形', native: true });
+  });
+
+  it('asks what a name is where no name can stand, and carries a word of Japanese\'s own: 金がない', () => {
+    const kim = read('金', 'キム', '固有名詞');
+    const kin = read('金', 'キン', '固有名詞');
+    const sono: UnidicMorpheme = { surface: 'その', lemma: 'その', reading: 'ソノ', pos: '連体詞' };
+    const asked: string[] = [];
+    const again = (kane: UnidicMorpheme) => (text: string): UnidicMorpheme[] => {
+      asked.push(text);
+      return [sono, kane, ga, nai];
+    };
+    const [word] = repair([kim, ga, nai], [kin, ga, nai], undefined, again(read('金', 'カネ', '一般', { native: true })));
+    expect(asked).toEqual(['その金がない']);
+    expect(word?.second).toEqual({ reading: 'カネ', pos: '名詞', pos1: '一般', native: true });
+    // Not a reading from Chinese: 金星 after その is きんぼし, a win over a champion, and the planet is UniDic's name.
+    const [star] = repair([read('金星', 'カナボシ', '固有名詞'), ga], [read('金星', 'キンセイ', '固有名詞'), ga], undefined, () =>
+      [sono, read('金星', 'キンボシ'), ga]);
+    expect(star?.second).toEqual({ reading: 'キンセイ' });
+    // And nothing is asked where the two have the same name: 日本.
+    asked.length = 0;
+    const nihon = read('日本', 'ニッポン', '固有名詞');
+    expect(repair([nihon, ga], [nihon, ga], undefined, again(nihon))).toEqual([nihon, ga]);
+    expect(asked).toEqual([]);
+  });
+
+  it('carries UniDic\'s name for a word in kana, where it is the same kind of word to both: そば is 側', () => {
+    const soba = read('そば', 'ソバ');
+    const [word] = repair([soba, ga], [{ ...soba, kanji: '側' }, ga]);
+    expect(word).toEqual({ ...soba, kanji: '側' });
+    expect(soba.kanji).toBeUndefined();
+    // Another kind of word to UniDic is another word: its name says nothing of IPADIC's.
+    const [other] = repair([soba, ga], [{ ...soba, pos: '副詞', kanji: '側' }, ga]);
+    expect(other).toBe(soba);
+  });
+
+  it('hands the merge none of what only UniDic says, on a word taken from UniDic whole', () => {
+    const iyasu: UnidicMorpheme = { ...verb('癒やす', '癒やす', '基本形'), lexeme: 'イヤス', native: true };
+    expect(repair([lacking('癒'), ending('やす')], [iyasu])).toEqual([verb('癒やす', '癒やす', '基本形')]);
+  });
+});
+
 describe('what UniDic changed in the parser fixture\'s lines', () => {
   it('comes out of repair() as the fixture has it, from what the analysers gave', () => {
     const lines = Object.entries(SECOND);
     expect(lines.length).toBeGreaterThan(20);
     for (const [text, given] of lines) {
-      const read = repair(given.ipadic, given.unidic, (run) => given.others[run] ?? []);
-      expect(read, text).toEqual(LINES[text]?.morphemes);
+      const read = repair(given.ipadic, given.unidic, (run) => given.others[run] ?? [], (t) => given.again?.[t] ?? []);
+      // As readJapanese() goes on: the dictionary's first reading for a word IPADIC reads the rarer way.
+      const first = new Map((given.first ?? []).map((r): [string, FirstReading] => [r.surface, r]));
+      expect(withFirstReadings(read, first), text).toEqual(LINES[text]?.morphemes);
     }
   });
 
