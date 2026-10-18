@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { availableParallelism } from 'node:os';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
@@ -21,5 +22,10 @@ export default defineConfig({
     setupFiles: ['src/__tests__/setup.ts'],
     // Contract tests hit live sites. They belong on a schedule, not on push.
     exclude: ['**/node_modules/**', '**/dist/**', '**/*.contract.test.ts'],
+    // Every worker asks the one transform server for its modules. With a worker per core on a 32-core
+    // machine it answered too slowly: the tests that import a module inside the test (the content
+    // script, the offscreen document) timed out waiting, in most runs. 16 workers passed every run, as
+    // fast. Below 17 cores this is the default; CI has two.
+    maxWorkers: Math.max(1, Math.min(16, availableParallelism() - 1)),
   },
 });

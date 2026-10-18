@@ -50,7 +50,10 @@ the test when you can't. YouTube serves a bot-check page to CI runners, and
 Amazon some days a robot check, so those canaries report "inconclusive" there
 rather than failing. Every wait in a canary needs a limit: a browser check
 that waited on a promise the page never settled ran six hours a day, until
-the month's Actions minutes were gone.
+the month's Actions minutes were gone. The YouTube browser check is
+inconclusive on most CI days for the same reason, so it says little there:
+run `node scripts/smoke-youtube.mjs` from your own connection before a
+release.
 
 **Add an assumption to that registry whenever you rely on a new selector, field
 or endpoint.** An unregistered assumption is one that will fail silently.
