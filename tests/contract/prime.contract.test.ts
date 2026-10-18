@@ -30,19 +30,26 @@ const HEADERS = { 'user-agent': UA, 'accept-language': 'en-US,en;q=0.9' };
 const CLIENT = /https:\/\/m\.media-amazon\.com\/images\/S\/sash\/[^"'\s<>\\]+DVWebClient_[a-z]+\.[0-9a-f]+\.js/g;
 
 /**
- * Amazon answers some requests from datacenter addresses with a robot check
- * in place of the page: a captcha form, or a 503 that asks automated clients
- * to write in. The storefront then has no titles on it, which says nothing
- * about Prime Video's shape, so the run is inconclusive, as YouTube's is
- * behind its bot check. On four of the six days to 16 October GitHub's
- * runner was given a storefront with no title on it, or an error, where a
- * browser elsewhere saw titles; what it was given was not kept. Any other
- * page without a title still fails, and now says what it was.
+ * Why this runner was not shown the storefront, where it was not. Amazon
+ * answers some requests from datacenter addresses, GitHub's runners among
+ * them, with something else: a robot check (a captcha form, or a page asking
+ * automated clients to write in), a 503 "Website Temporarily Unavailable", or
+ * a redirect to the offers page it shows a visitor it will not let browse
+ * (/offers/nonprimehomepage?ref_=dv_web_force_root). None of them says
+ * anything about Prime Video's shape, so the run is inconclusive, as
+ * YouTube's is behind its bot check. On four of the six days to 16 October
+ * the storefront had no title for the runner; on 17 October it was sent to
+ * the offers page and then given the 503 on each retry, where a browser
+ * elsewhere saw the storefront with 360 titles. Any other page without a
+ * title still fails, and says what it was.
  */
-export function robotCheck(html: string): string | null {
-  return /\/errors\/validateCaptcha|api-services-support@amazon\.com|not a robot|characters you see/i.test(html)
-    ? 'Prime Video served a robot check'
-    : null;
+export function notShown(status: number, url: string, html: string): string | null {
+  if (/\/errors\/validateCaptcha|api-services-support@amazon\.com|not a robot|characters you see/i.test(html)) {
+    return 'Prime Video served a robot check';
+  }
+  if (status === 503) return 'Prime Video answered 503';
+  const path = URL.canParse(url) ? new URL(url).pathname : '';
+  return path.startsWith('/offers/') ? 'Prime Video sent this runner to its offers page' : null;
 }
 
 function inconclusive(ctx: TestContext, why: string): never {
@@ -68,8 +75,8 @@ function client(): Promise<Client> {
     // Not the root, which sends a visitor without a session to an offers page with no titles on it.
     const store = await fetch('https://www.primevideo.com/storefront', { headers: HEADERS, redirect: 'follow' });
     const html = await store.text();
-    const robot = robotCheck(html);
-    if (robot) return { blocked: `${robot} (${served(store, html)})` };
+    const why = notShown(store.status, store.url, html);
+    if (why) return { blocked: `${why} (${served(store, html)})` };
     expect(store.ok, `primevideo.com/storefront: ${served(store, html)}`).toBe(true);
     // A title is taken from the page rather than hard-coded: titles leave the catalogue.
     const title = html.match(/\/detail\/[A-Za-z0-9]{8,}/)?.[0];
@@ -128,9 +135,17 @@ describe('prime contract', () => {
     ).toBe(true);
   }, 90_000);
 
-  it('recognises a robot check, so it is never mistaken for a broken site', () => {
-    expect(robotCheck('<form method="get" action="/errors/validateCaptcha" name="">')).toMatch(/robot check/);
-    expect(robotCheck('To discuss automated access to Amazon data please contact api-services-support@amazon.com.')).toMatch(/robot check/);
-    expect(robotCheck('<a href="/detail/0ABCDEFGH1/ref=atv_hm_hom_c_9zZ8D2_1_1">')).toBeNull();
+  it('recognises a page the runner was given in place of the storefront, so it is never mistaken for a broken site', () => {
+    const store = 'https://www.primevideo.com/storefront';
+    expect(notShown(200, store, '<form method="get" action="/errors/validateCaptcha" name="">')).toMatch(/robot check/);
+    expect(notShown(200, store, 'To discuss automated access to Amazon data please contact api-services-support@amazon.com.')).toMatch(/robot check/);
+    // What GitHub's runner was given on 17 October, first and on each retry.
+    expect(notShown(200, 'https://www.primevideo.com/offers/nonprimehomepage?ref_=dv_web_force_root', '<title>Welcome to Prime Video</title>'))
+      .toMatch(/offers page/);
+    expect(notShown(503, store, '<title>Website Temporarily Unavailable</title>')).toMatch(/503/);
+    // The storefront itself, and any other page, is for the test to judge.
+    expect(notShown(200, store, '<a href="/detail/0ABCDEFGH1/ref=atv_hm_hom_c_9zZ8D2_1_1">')).toBeNull();
+    expect(notShown(500, store, '<title>Server Error</title>')).toBeNull();
+    expect(notShown(200, '', '')).toBeNull();
   });
 });
