@@ -7,6 +7,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # A run takes about two minutes. One that hangs stops here, not at
+    # GitHub's six hours, which would use a private repository's month of
+    # Actions minutes in a few days.
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

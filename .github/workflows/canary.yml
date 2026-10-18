@@ -23,6 +23,10 @@ permissions:
 jobs:
   contract:
     runs-on: ubuntu-latest
+    # A day's run takes two or three minutes. GitHub's own limit is six
+    # hours, which a hung browser check reached every day from 11 October
+    # until the month's Actions minutes were gone.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -52,17 +56,26 @@ jobs:
 
       # Exit 2 is "inconclusive": YouTube served a bot check in place of the
       # video, which says nothing about the extension, so it passes with a
-      # warning. A failure is tried three times before it counts.
+      # warning. A failure is tried three times before it counts. The script
+      # gives up after five minutes; a try still running at six is stopped,
+      # and counts as a failure (timeout's 124, or 137 once it is killed).
+      # Past 20 minutes the step itself is stopped: a step's timeout, unlike
+      # the job's, still lets the steps below keep the logs and file the issue.
       - name: Load the extension on a YouTube video
         id: smoke
         shell: bash
+        timeout-minutes: 20
         run: |
           for attempt in 1 2 3; do
             echo "--- attempt $attempt" | tee -a smoke.log
             set +e
-            xvfb-run -a node scripts/smoke-youtube.mjs 2>&1 | tee -a smoke.log
+            timeout --kill-after=30s 6m xvfb-run -a node scripts/smoke-youtube.mjs 2>&1 | tee -a smoke.log
             code=${PIPESTATUS[0]}
             set -e
+            if [ "$code" = 124 ] || [ "$code" = 137 ]; then
+              echo "FAIL: the attempt was stopped after six minutes" | tee -a smoke.log
+              code=1
+            fi
             [ "$code" != 1 ] && break
           done
           if [ "$code" = 2 ]; then echo "::warning::YouTube browser check was inconclusive"; fi

@@ -4,9 +4,10 @@
 //   node scripts/smoke-youtube.mjs [video-id]
 //
 // Exit codes: 0 the overlay drew; 1 the page was fine and it did not (the
-// extension broke, or YouTube changed under it); 2 inconclusive — YouTube
-// served a bot check, a consent page or an ad that never ended, so nothing
-// can be said about the extension. CI treats 2 as "try again tomorrow".
+// extension broke, or YouTube changed under it), or the check itself never
+// finished; 2 inconclusive — YouTube served a bot check, a consent page, a
+// video it would not play here or an ad that never ended, so nothing can be
+// said about the extension. CI treats 2 as "try again tomorrow".
 //
 // Needs a display (xvfb-run in CI): headless Chrome does not run extension
 // pages. Run `pnpm build` first.
@@ -22,6 +23,19 @@ if (!existsSync(join(dist, 'manifest.json'))) {
   console.error('dist/ is not built: run `pnpm build` first');
   process.exit(1);
 }
+
+const stage = { page: false, captionsRequested: false, playing: false, overlay: false };
+
+// Each wait below has a limit, but a promise the page never settles has
+// none, and CI waited on one for six hours a day until the month's Actions
+// minutes were gone. So the run has a limit of its own. Past it the check
+// is what broke, which is a failure, not a verdict on YouTube.
+const LIMIT_MS = 5 * 60_000;
+setTimeout(() => {
+  console.log(`FAIL: the check did not finish in ${LIMIT_MS / 60_000} minutes`);
+  console.log('stages reached:', JSON.stringify(stage));
+  process.exit(1);
+}, LIMIT_MS).unref();
 
 const profile = mkdtempSync(join(tmpdir(), 'libregaku-smoke-'));
 const context = await chromium.launchPersistentContext(profile, {
@@ -39,11 +53,11 @@ const context = await chromium.launchPersistentContext(profile, {
   viewport: { width: 1400, height: 860 },
 });
 
-const stage = { page: false, captionsRequested: false, playing: false, overlay: false };
 const finish = async (code, why) => {
   console.log(`${code === 0 ? 'PASS' : code === 2 ? 'INCONCLUSIVE' : 'FAIL'}: ${why}`);
   console.log('stages reached:', JSON.stringify(stage));
-  await context.close().catch(() => {});
+  // Closing can hang like anything else, and the verdict is already out.
+  await Promise.race([context.close().catch(() => {}), new Promise((done) => setTimeout(done, 10_000))]);
   process.exit(code);
 };
 
@@ -106,6 +120,22 @@ try {
 }
 stage.page = true;
 
+// The player draws its bot check once it has loaded, after the page text
+// above was read, and a video it will not play still has a <video>. YouTube's
+// own verdict on the video says whether this browser was ever going to see
+// it: the player response's playabilityStatus, which the contract tests read
+// too. Without one the run goes on as before.
+const playability = await page
+  .evaluate(() => {
+    const response = document.querySelector('#movie_player')?.getPlayerResponse?.() ?? window.ytInitialPlayerResponse;
+    const { status, reason } = response?.playabilityStatus ?? {};
+    return status ? { status, reason } : null;
+  })
+  .catch(() => null);
+if (playability && playability.status !== 'OK') {
+  await finish(2, `YouTube will not play the video here: ${playability.status}${playability.reason ? ` (${playability.reason})` : ''}`);
+}
+
 // A pre-roll ad blocks the video and carries no captions; let it play through.
 const adGone = await page
   .waitForFunction(() => !document.querySelector('#movie_player')?.classList.contains('ad-showing'), null, {
@@ -114,7 +144,12 @@ const adGone = await page
   .then(() => true, () => false);
 if (!adGone) await finish(2, 'an ad was still playing after 60 s');
 
-await page.evaluate(() => document.querySelector('video')?.play());
+// play() settles when the video starts, which on a page that will not play
+// it is never: it is asked for and not waited on, and whether the video
+// plays is read after.
+await page.evaluate(() => {
+  document.querySelector('video')?.play()?.catch(() => {});
+});
 await page.waitForTimeout(1500);
 stage.playing = await page.evaluate(() => {
   const v = document.querySelector('video');

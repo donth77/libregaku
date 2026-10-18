@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, type TestContext } from 'vitest';
 import { describeFailure } from '../../src/assumptions';
 
 /**
@@ -29,19 +29,53 @@ const HEADERS = { 'user-agent': UA, 'accept-language': 'en-US,en;q=0.9' };
 
 const CLIENT = /https:\/\/m\.media-amazon\.com\/images\/S\/sash\/[^"'\s<>\\]+DVWebClient_[a-z]+\.[0-9a-f]+\.js/g;
 
-let cached: Promise<{ title: string; bundles: number; body: string }> | null = null;
+/**
+ * Amazon answers some requests from datacenter addresses with a robot check
+ * in place of the page: a captcha form, or a 503 that asks automated clients
+ * to write in. The storefront then has no titles on it, which says nothing
+ * about Prime Video's shape, so the run is inconclusive, as YouTube's is
+ * behind its bot check. On four of the six days to 16 October GitHub's
+ * runner was given a storefront with no title on it, or an error, where a
+ * browser elsewhere saw titles; what it was given was not kept. Any other
+ * page without a title still fails, and now says what it was.
+ */
+export function robotCheck(html: string): string | null {
+  return /\/errors\/validateCaptcha|api-services-support@amazon\.com|not a robot|characters you see/i.test(html)
+    ? 'Prime Video served a robot check'
+    : null;
+}
 
-/** A title page found from the home page, and the text of the web client it loads. */
-function client(): Promise<{ title: string; bundles: number; body: string }> {
-  cached ??= (async () => {
+function inconclusive(ctx: TestContext, why: string): never {
+  // A GitHub annotation, so an inconclusive day is visible on the run.
+  console.log(`::warning title=Prime Video canary inconclusive::${why} — this runner cannot see the storefront`);
+  return ctx.skip() as never;
+}
+
+/** What a page was, for a message: its status, where it ended up, its title and its size. */
+function served(res: Response, html: string): string {
+  const title = html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1]?.trim();
+  return `HTTP ${res.status} from ${res.url}${title ? `, titled "${title}"` : ''}, ${Math.round(html.length / 1024)} KB`;
+}
+
+type Client = { blocked: string } | { title: string; bundles: number; body: string };
+
+let cached: Promise<Client> | null = null;
+
+/** A title page found from the home page, and the text of the web client it loads; or why this runner saw neither. */
+function client(): Promise<Client> {
+  if (cached) return cached;
+  cached = (async (): Promise<Client> => {
     // Not the root, which sends a visitor without a session to an offers page with no titles on it.
     const store = await fetch('https://www.primevideo.com/storefront', { headers: HEADERS, redirect: 'follow' });
-    expect(store.ok, `primevideo.com/storefront returned HTTP ${store.status}`).toBe(true);
+    const html = await store.text();
+    const robot = robotCheck(html);
+    if (robot) return { blocked: `${robot} (${served(store, html)})` };
+    expect(store.ok, `primevideo.com/storefront: ${served(store, html)}`).toBe(true);
     // A title is taken from the page rather than hard-coded: titles leave the catalogue.
-    const title = (await store.text()).match(/\/detail\/[A-Za-z0-9]{8,}/)?.[0];
+    const title = html.match(/\/detail\/[A-Za-z0-9]{8,}/)?.[0];
     expect(
       title,
-      'Could not find a /detail/<id> link on primevideo.com/storefront.\n' +
+      `Could not find a /detail/<id> link on primevideo.com/storefront (${served(store, html)}).\n` +
         'Prime Video may have changed how title pages are linked — which is itself worth a look.',
     ).toBeTruthy();
 
@@ -63,12 +97,19 @@ function client(): Promise<{ title: string; bundles: number; body: string }> {
     );
     return { title: title!, bundles: urls.length, body: bodies.join('\n') };
   })();
+  // A failure is not kept: the retries in vitest.contract.config.ts are for a blip, and fetch again.
+  // Kept, each retry failed on the first answer in a millisecond.
+  cached.catch(() => {
+    cached = null;
+  });
   return cached;
 }
 
 describe('prime contract', () => {
-  it('a title page and its web client are still publicly fetchable', async () => {
-    const { title, bundles, body } = await client();
+  it('a title page and its web client are still publicly fetchable', async (ctx) => {
+    const found = await client();
+    if ('blocked' in found) inconclusive(ctx, found.blocked);
+    const { title, bundles, body } = found;
     expect(body.length).toBeGreaterThan(1_000_000);
     console.log(`  prime video: ${title}, ${bundles} bundles (${Math.round(body.length / 1024)} KB)`);
   }, 90_000);
@@ -78,11 +119,18 @@ describe('prime contract', () => {
    * the page itself focuses and measures, so this says the page still calls it
    * that, not that the player is still drawn inside it.
    */
-  it('pv.video — the web client still names #dv-web-player', async () => {
-    const { body } = await client();
+  it('pv.video — the web client still names #dv-web-player', async (ctx) => {
+    const found = await client();
+    if ('blocked' in found) inconclusive(ctx, found.blocked);
     expect(
-      body.includes('dv-web-player'),
+      found.body.includes('dv-web-player'),
       `"dv-web-player" is gone from Prime Video's web client.\n${describeFailure('pv.video')}`,
     ).toBe(true);
   }, 90_000);
+
+  it('recognises a robot check, so it is never mistaken for a broken site', () => {
+    expect(robotCheck('<form method="get" action="/errors/validateCaptcha" name="">')).toMatch(/robot check/);
+    expect(robotCheck('To discuss automated access to Amazon data please contact api-services-support@amazon.com.')).toMatch(/robot check/);
+    expect(robotCheck('<a href="/detail/0ABCDEFGH1/ref=atv_hm_hom_c_9zZ8D2_1_1">')).toBeNull();
+  });
 });

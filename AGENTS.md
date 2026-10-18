@@ -46,8 +46,11 @@ wording when the extension gives up, so the user sees which one broke.
 A canary that checks a *name* in a site's bundle is weaker than one that checks
 the behaviour: Netflix's stayed green through a manifest rename because the old
 field names were still in the code. Prefer checking the real response; say in
-the test when you can't. YouTube serves a bot-check page to CI runners, so its
-watch-page canaries report "inconclusive" there rather than failing.
+the test when you can't. YouTube serves a bot-check page to CI runners, and
+Amazon some days a robot check, so those canaries report "inconclusive" there
+rather than failing. Every wait in a canary needs a limit: a browser check
+that waited on a promise the page never settled ran six hours a day, until
+the month's Actions minutes were gone.
 
 **Add an assumption to that registry whenever you rely on a new selector, field
 or endpoint.** An unregistered assumption is one that will fail silently.
