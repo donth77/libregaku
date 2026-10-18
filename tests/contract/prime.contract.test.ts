@@ -38,7 +38,7 @@ const CLIENT = /https:\/\/m\.media-amazon\.com\/images\/S\/sash\/[^"'\s<>\\]+DVW
  * (/offers/nonprimehomepage?ref_=dv_web_force_root). None of them says
  * anything about Prime Video's shape, so the run is inconclusive, as
  * YouTube's is behind its bot check. On four of the six days to 16 October
- * the storefront had no title for the runner; on 17 October it was sent to
+ * the storefront had no title for the runner; on 18 October it was sent to
  * the offers page and then given the 503 on each retry, where a browser
  * elsewhere saw the storefront with 360 titles. Any other page without a
  * title still fails, and says what it was.
@@ -139,7 +139,7 @@ describe('prime contract', () => {
     const store = 'https://www.primevideo.com/storefront';
     expect(notShown(200, store, '<form method="get" action="/errors/validateCaptcha" name="">')).toMatch(/robot check/);
     expect(notShown(200, store, 'To discuss automated access to Amazon data please contact api-services-support@amazon.com.')).toMatch(/robot check/);
-    // What GitHub's runner was given on 17 October, first and on each retry.
+    // What GitHub's runner was given on 18 October, first and on each retry.
     expect(notShown(200, 'https://www.primevideo.com/offers/nonprimehomepage?ref_=dv_web_force_root', '<title>Welcome to Prime Video</title>'))
       .toMatch(/offers page/);
     expect(notShown(503, store, '<title>Website Temporarily Unavailable</title>')).toMatch(/503/);

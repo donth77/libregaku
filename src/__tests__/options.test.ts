@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { en } from '../i18n/en';
 
 /**
@@ -93,6 +93,11 @@ const setup = (): HTMLElement => document.getElementById('setup') as HTMLElement
 beforeEach(() => {
   document.body.replaceChildren();
 });
+
+// A pick in the contents gives a scroll 150 ms to start (src/options.ts), on a timer of the page's own. The
+// tests after the last pick can finish sooner; once the page is gone the timer still fires, finds no window,
+// and fails the run (CI, 18 October). So the file waits for it.
+afterAll(() => new Promise<void>((done) => setTimeout(done, 200)));
 
 describe('the contents', () => {
   const link = (name: string): HTMLAnchorElement =>
