@@ -276,6 +276,8 @@ export const nl: Translation = {
     creditHandedict: 'Chinees uitgelegd in het Duits. © HanDeDict en bijdragers, gebruikt onder CC BY-SA 3.0.',
     creditUnihan:
       'Welke lezing van een Chinees karakter eerst wordt getoond. © Unicode, Inc., gebruikt onder de Unicode License.',
+    creditTatoeba:
+      'Welk werkwoord een in kana geschreven Japans werkwoord is, geleerd uit deze voorbeeldzinnen. © Bijdragers aan Tatoeba, gebruikt onder CC BY 2.0 FR.',
     creditJotoba: 'Gebruikt voor opzoeken zolang het woordenboek downloadt. Beide gebruiken JMdict.',
     creditLucide: 'Iconen. ISC-licentie.',
     creditCommons: 'Opnamen van Spaanse, Chinese en Koreaanse woorden, ingesproken door vrijwilligers. Elke opname heeft een eigen licentie, meestal CC BY-SA 4.0. Die staat met de naam van de spreker bij het afspelen en op de kaart.',

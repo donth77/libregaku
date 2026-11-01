@@ -1460,6 +1460,7 @@ function credits(): HTMLElement {
   entry('CC-Canto', 'https://cantonese.org/', ui.settings.creditCanto);
   entry('Lindera · IPADIC · UniDic · mecab-ko-dic', 'https://github.com/lindera/lindera', ui.settings.creditLindera);
   entry('Unihan', 'https://www.unicode.org/reports/tr38/', ui.settings.creditUnihan);
+  entry('Tatoeba', 'https://tatoeba.org/', ui.settings.creditTatoeba);
   entry('Jotoba · Jisho', 'https://jotoba.de/', ui.settings.creditJotoba);
   entry('Lingua Libre · Wikimedia Commons', 'https://commons.wikimedia.org/wiki/Commons:Lingua_Libre', ui.settings.creditCommons);
   entry('audio-cmn · Shtooka', 'https://github.com/hugolpz/audio-cmn', ui.settings.creditAudioCmn);

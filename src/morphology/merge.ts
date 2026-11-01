@@ -45,6 +45,8 @@ export interface Morpheme {
    * writes it: 覚める for さめ in 目がさめた, which is 目が覚める (phrasedVerbs()).
    */
   phrased?: string;
+  /** A verb written in kana: what it follows, as the dictionary is asked (followedVerbs()). */
+  follows?: string;
 }
 
 /** A word in kanji as the second analyser reads it, where the first reads it another way. */
@@ -83,6 +85,12 @@ export interface LookupKey {
    * so — tells いら in いらない, 要る (五段・ラ行), from 居る (一段).
    */
   conj?: string;
+  /**
+   * What a verb in kana follows: a noun and its particle, ピアノ|を, a noun
+   * alone, 年|, or nothing that says, ''. The dictionary knows by it which
+   * verb it is: ひく after ピアノ|を is 弾く (src/dict/kana-verbs.ts).
+   */
+  follows?: string;
 }
 
 /** One dictionary word a written form stands for. */
@@ -2108,9 +2116,54 @@ function conjugated(token: MergedToken, group: Morpheme[]): MergedToken {
   return { ...token, lookup: token.lookup.map((k) => (k.key === lead.lemma ? { ...k, conj: lead.conjType } : k)) };
 }
 
+/*
+ * Which verb a kana spelling is where no expression says, from the words
+ * before it: ピアノをひく is 弾く, 雨がやむ 止む, 駅につく 着く, 二年たつ 経つ.
+ * And where nothing before it says, what it most often is: つく alone is 付く,
+ * where the dictionary opened 吐く, to breathe out; とる 取る, not 摂る.
+ *
+ * The merge says only what the verb follows; the dictionary knows which verb
+ * that makes it (src/dict/kana-verbs.ts, learned from Tatoeba), and weighs it
+ * after how the verb conjugates, which says more where the form decides it.
+ * Not after a verb's stem, where it is the second half of a compound, whatever
+ * it most often is: ふざけあう is 合う.
+ *
+ * Learned from the half of Tatoeba's sentences with even ids and measured on
+ * the other half, the card opens the verb the word index names for 17,617 of
+ * its 17,946 verbs in kana, where it did for 17,213: 444 put right, 40 put
+ * wrong. Of the 40, 21 are wrong (なすすべがない is 為す, not 成す;
+ * 君がおこっている 怒る), 13 could be written either way (二食しかとらない,
+ * ラジオをつける), and 6 are the index's own slips (電話がなる, which it has
+ * as 成る).
+ */
+
+/** What stands before a verb, as kana-verbs.ts is keyed: a noun and its particle, 雨|が, or a noun alone, 年| in 二年たつ. */
+export function before(morphemes: Morpheme[], i: number): string | undefined {
+  const word = (m: Morpheme): string => m.lemma ?? m.surface;
+  const [two, one] = [morphemes[i - 2], morphemes[i - 1]];
+  if (one?.pos === '名詞') return `${word(one)}|`;
+  if (one?.pos === '助詞' && two?.pos === '名詞') return `${word(two)}|${one.surface}`;
+  return undefined;
+}
+
+function followedVerbs(morphemes: Morpheme[]): Morpheme[] {
+  return morphemes.map((m, i) => {
+    if (m.phrased || m.pos !== '動詞' || m.pos1 !== '自立' || !m.lemma || !KANA_ONLY.test(m.lemma)) return m;
+    if (morphemes[i - 1]?.pos === '動詞') return m;
+    return { ...m, follows: before(morphemes, i) ?? '' };
+  });
+}
+
+/** The token with, on the key that is its verb's dictionary form, what the verb follows. */
+function followed(token: MergedToken, group: Morpheme[]): MergedToken {
+  const lead = group.find((m) => m.pos !== '接頭詞') ?? group[0];
+  if (lead?.follows === undefined) return token;
+  return { ...token, lookup: token.lookup.map((k) => (k.key === lead.lemma ? { ...k, follows: lead.follows } : k)) };
+}
+
 export function mergeMorphemes(morphemes: Morpheme[], lexicon?: Lexicon): MergedToken[] {
-  const words = phrasedVerbs(spoken(countryNames(cottonOrFluff(goldOrMoney(personOrSide(secondOpinions(morphemes, lexicon)))), lexicon), lexicon), lexicon);
-  const token = (group: Morpheme[]): MergedToken => phrased(conjugated(spelled(merge(group, lexicon), group), group), group);
+  const words = followedVerbs(phrasedVerbs(spoken(countryNames(cottonOrFluff(goldOrMoney(personOrSide(secondOpinions(morphemes, lexicon)))), lexicon), lexicon), lexicon));
+  const token = (group: Morpheme[]): MergedToken => phrased(followed(conjugated(spelled(merge(group, lexicon), group), group), group), group);
   return constructions(groups(joinCompoundVerbs(joinCompounds(words, lexicon), lexicon)).flatMap((group) =>
     (unknownPair(group, lexicon) ? group.map((m) => token([m])) : [token(group)])));
 }

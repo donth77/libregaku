@@ -263,6 +263,8 @@ export const pt: Translation = {
       'Dicionário de cantonês e leituras em Jyutping para o CC-CEDICT. © Pleco Inc., usado sob a licença CC BY-SA 3.0.',
     creditHandedict: 'Chinês explicado em alemão. © HanDeDict e colaboradores, usado sob a licença CC BY-SA 3.0.',
     creditUnihan: 'Qual leitura de um caractere chinês aparece primeiro. © Unicode, Inc., usado sob a Unicode License.',
+    creditTatoeba:
+      'Qual verbo é um verbo japonês escrito em kana, aprendido destas frases de exemplo. © Colaboradores do Tatoeba, usado sob CC BY 2.0 FR.',
     creditJotoba: 'Usados para consultas enquanto o dicionário é baixado. Ambos usam o JMdict.',
     creditLucide: 'Ícones. Licença ISC.',
     creditCommons: 'Gravações de palavras em espanhol, chinês e coreano, feitas por voluntários. Cada uma tem sua própria licença, CC BY-SA 4.0 na maioria, indicada com o nome de quem fala ao reproduzir e no cartão.',

@@ -254,6 +254,8 @@ export const id: Translation = {
       'Bahasa Tionghoa dijelaskan dalam bahasa Jerman. © HanDeDict dan para kontributornya, digunakan dengan lisensi ' +
       'CC BY-SA 3.0.',
     creditUnihan: 'Cara baca karakter Tionghoa yang ditampilkan pertama. © Unicode, Inc., digunakan dengan Unicode License.',
+    creditTatoeba:
+      'Kata kerja apa yang dimaksud kata kerja Jepang yang ditulis dalam kana, dipelajari dari kalimat-kalimat contoh ini. © Kontributor Tatoeba, digunakan dengan CC BY 2.0 FR.',
     creditJotoba: 'Dipakai untuk pencarian selama kamus diunduh. Keduanya memakai JMdict.',
     creditLucide: 'Ikon. Lisensi ISC.',
     creditCommons: 'Rekaman kata bahasa Spanyol, Tionghoa, dan Korea yang diucapkan para sukarelawan. Setiap rekaman punya lisensinya sendiri, kebanyakan CC BY-SA 4.0, yang ditampilkan bersama nama penuturnya saat diputar dan di kartu.',

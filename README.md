@@ -96,12 +96,14 @@ Spanish.
 The code is MIT. See [`LICENSE`](LICENSE).
 
 Dictionary data has its own licences. It's downloaded when you use it, not shipped with
-the extension. There are two exceptions, and each keeps its source's licence:
+the extension. There are three exceptions, and each keeps its source's licence:
 
 - Small samples used in tests: JMdict (`src/dict/__tests__/fixtures/jmdict-frequent.ts`),
   and a few lines of the other dictionaries inside their tests.
 - `src/dict/zh-readings.ts`, a 9 KB table of which reading a Chinese character shows
   first. It is built from Unihan and CC-CEDICT by `scripts/build-zh-readings.mjs`.
+- `src/dict/kana-verbs.ts`, a 42 KB table of which verb a Japanese verb written in kana
+  is. It is learned from Tatoeba's sentences by `scripts/compare-unidic.mjs`.
 
 The sources:
 
@@ -111,4 +113,5 @@ The sources:
 - [kaikki.org](https://kaikki.org/): Wiktionary via Wiktextract, CC BY-SA, as packaged
   by [wiktionary-to-yomitan](https://github.com/yomidevs/wiktionary-to-yomitan)
 - [Unihan](https://www.unicode.org/reports/tr38/): Unicode, Inc., Unicode License
+- [Tatoeba](https://tatoeba.org/): Tatoeba contributors, CC BY 2.0 FR
 - [Lindera](https://github.com/lindera/lindera) dictionaries: each has its own terms

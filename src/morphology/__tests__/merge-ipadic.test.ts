@@ -962,6 +962,19 @@ describe('words the line reads, where neither analyser can be asked', () => {
     expect(keys(tokens('汗をかいた')[2]!)[0]).toBe('かく');
   });
 
+  it('says what a verb in kana follows, for the dictionary to know which verb it is: ピアノをひいた is 弾く', () => {
+    const follows = (text: string, surface: string) =>
+      tokens(text).find((t) => t.surface === surface)?.lookup?.find((k) => k.follows !== undefined)?.follows;
+    expect(follows('ピアノをひいた', 'ひいた')).toBe('ピアノ|を');
+    expect(follows('うそはつかない', 'つかない')).toBe('うそ|は');
+    // A noun alone, a counter: 二年たった is 経つ.
+    expect(follows('二年たった', 'たった')).toBe('年|');
+    // Nothing that says: the dictionary takes what the verb most often is.
+    expect(follows('もうつきました', 'つきました')).toBe('');
+    // A verb an expression of the dictionary's names is that verb.
+    expect(tokens('目がさめた')[2]!.lookup?.some((k) => k.follows !== undefined)).toBe(false);
+  });
+
   it('keeps a verb called out whole, and finds the noun under an honorific one', () => {
     expect(tokens('助けてくれえ！')[0]).toMatchObject({ surface: '助けてくれえ', lemma: '助ける', reading: 'タスケテクレエ' });
     expect(keys(tokens('お待ちしております')[0]!)).toEqual(['お待ちする', 'お待ち', '待ち']);

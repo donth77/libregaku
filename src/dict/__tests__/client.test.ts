@@ -74,6 +74,15 @@ describe('lookupToken', () => {
     ]);
   });
 
+  it('passes what a verb in kana follows, and asks again where that is another thing', async () => {
+    offscreen((m) => (m.type === 'dict-lookup' ? { ok: true, source: 'local', entries: [entry(`つく after ${String(m.follows)}`)] } : undefined));
+    const tsuku = (follows: string) => lookupToken({ surface: 'つく', lemma: 'つく', lookup: [{ key: 'つく', pos: '動詞,自立', follows }] });
+    expect(await tsuku('駅|に')).toEqual({ state: 'ok', entries: [entry('つく after 駅|に')] });
+    expect(await tsuku('')).toEqual({ state: 'ok', entries: [entry('つく after ')] });
+    await tsuku('駅|に');
+    expect(sent.map((m) => m.follows)).toEqual(['駅|に', '']);
+  });
+
   it('falls back to lemma then surface for a token with no plan', async () => {
     offscreen(() => ({ ok: true, source: 'local', entries: [] }));
     expect(await lookupToken({ surface: 'たべた', lemma: 'たべる' })).toEqual({ state: 'empty' });

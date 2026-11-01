@@ -278,6 +278,8 @@ export const de: Translation = {
     creditHandedict: 'Chinesisch, auf Deutsch erklärt. © HanDeDict und Mitwirkende, verwendet unter CC BY-SA 3.0.',
     creditUnihan:
       'Welche Lesung eines chinesischen Schriftzeichens zuerst erscheint. © Unicode, Inc., verwendet unter der Unicode License.',
+    creditTatoeba:
+      'Welches Verb ein in Kana geschriebenes japanisches Verb ist, gelernt aus diesen Beispielsätzen. © Tatoeba-Mitwirkende, verwendet unter CC BY 2.0 FR.',
     creditJotoba: 'Zum Nachschlagen, solange das Wörterbuch lädt. Beide nutzen JMdict.',
     creditLucide: 'Symbole. ISC-Lizenz.',
     creditCommons: 'Aufnahmen spanischer, chinesischer und koreanischer Wörter, gesprochen von Freiwilligen. Jede hat ihre eigene Lizenz, meist CC BY-SA 4.0; sie steht mit dem Namen der Sprecherin oder des Sprechers bei der Wiedergabe und auf der Karte.',

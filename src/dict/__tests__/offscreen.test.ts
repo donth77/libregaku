@@ -454,6 +454,11 @@ describe('dictionary lookups', () => {
     await send({ type: 'dict-load', edition: 'eng' });
     await send({ type: 'dict-lookup', key: '私', reading: 'ワタシ', pos: '名詞,代名詞' });
     expect(store.lookup).toHaveBeenCalledWith('私', { reading: 'ワタシ', pos: '名詞,代名詞' }, store.JMDICT);
+    // What a verb in kana follows, nothing included.
+    await send({ type: 'dict-lookup', key: 'ひく', reading: 'ヒク', pos: '動詞,自立', follows: 'ピアノ|を' });
+    expect(store.lookup).toHaveBeenLastCalledWith('ひく', { reading: 'ヒク', pos: '動詞,自立', follows: 'ピアノ|を' }, store.JMDICT);
+    await send({ type: 'dict-lookup', key: 'つく', reading: 'ツク', pos: '動詞,自立', follows: '' });
+    expect(store.lookup).toHaveBeenLastCalledWith('つく', { reading: 'ツク', pos: '動詞,自立', follows: '' }, store.JMDICT);
   });
 
   it('pass the word\'s name in kanji only with UniDic there to name each entry\'s spellings', async () => {

@@ -239,6 +239,7 @@ export const zh: Translation = {
     creditCanto: '粤语词典，以及 CC-CEDICT 词条的 Jyutping 读音。© Pleco Inc.，依据 CC BY-SA 3.0 使用。',
     creditHandedict: '用德语解释中文。© HanDeDict 及其贡献者，依据 CC BY-SA 3.0 使用。',
     creditUnihan: '决定汉字优先显示哪个读音。© Unicode, Inc.，依据 Unicode License 使用。',
+    creditTatoeba: '判断用假名书写的日语动词是哪个动词，从这些例句中学得。© Tatoeba 贡献者，依据 CC BY 2.0 FR 使用。',
     creditJotoba: '词典下载期间用于查词。两者都使用 JMdict。',
     creditLucide: '图标。ISC 许可。',
     creditCommons: '西班牙语、中文和韩语单词的录音，由志愿者朗读。每段录音各有许可，多数为 CC BY-SA 4.0，播放时和卡片上会连同朗读者姓名一并标明。',

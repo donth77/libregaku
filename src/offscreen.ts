@@ -837,6 +837,8 @@ interface Message {
   spelling?: string;
   /** dict-lookup: how the verb conjugates, as the analyser names it. */
   conj?: string;
+  /** dict-lookup: what a verb in kana follows, which says which verb it is. */
+  follows?: string;
   chars?: string[];
   forms?: string[];
   native?: string;
@@ -939,7 +941,7 @@ chrome.runtime.onMessage.addListener((msg: Message, _s, respond) => {
 
     case 'dict-lookup':
       void answerLookup(msg.key ?? '', {
-        reading: msg.reading, pos: msg.pos, ...(msg.conj ? { conj: msg.conj } : {}),
+        reading: msg.reading, pos: msg.pos, ...(msg.conj ? { conj: msg.conj } : {}), ...(typeof msg.follows === 'string' ? { follows: msg.follows } : {}),
         // The word's name to UniDic says which entry only while UniDic is there to name each entry's spellings.
         ...(msg.spelling && second.tokenizer ? { spelling: msg.spelling, names: nameOf } : {}),
       }).then(respond);

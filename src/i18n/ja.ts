@@ -253,6 +253,7 @@ export const ja: Translation = {
     creditCanto: '広東語辞書と、CC-CEDICT用のJyutpingの読み。© Pleco Inc.、CC BY-SA 3.0のもとで使用しています。',
     creditHandedict: '中国語をドイツ語で説明します。© HanDeDictとその貢献者。CC BY-SA 3.0のもとで使用しています。',
     creditUnihan: '中国語の漢字で、最初に表示する読みを決めます。© Unicode, Inc.、Unicode Licenseのもとで使用しています。',
+    creditTatoeba: 'かなで書かれた動詞がどの動詞かを、この例文集から学んでいます。© Tatoebaの貢献者、CC BY 2.0 FRのもとで使用しています。',
     creditJotoba: '辞書のダウンロード中に単語を調べるために使います。どちらもJMdictを使用しています。',
     creditLucide: 'アイコン。ISCライセンス。',
     creditCommons: 'スペイン語・中国語・韓国語の単語の録音。ボランティアが読み上げたものです。ライセンスは録音ごとに異なり（多くはCC BY-SA 4.0）、再生時とカードに話者名とともに表示されます。',

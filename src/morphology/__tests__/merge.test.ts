@@ -428,7 +428,7 @@ describe('a word in kana the analyser names in kanji', () => {
 
   it('is looked up without it where it is a verb: たつ is 経つ to UniDic whatever stands', () => {
     const tatsu: Morpheme = { surface: 'たつ', lemma: 'たつ', reading: 'タツ', pos: '動詞', pos1: '自立', conjForm: '基本形', kanji: '経つ' };
-    expect(mergeMorphemes([tatsu])[0]?.lookup).toEqual([{ key: 'たつ', reading: 'タツ', pos: '動詞,自立' }]);
+    expect(mergeMorphemes([tatsu])[0]?.lookup).toEqual([{ key: 'たつ', reading: 'タツ', pos: '動詞,自立', follows: '' }]);
   });
 
   it('is looked up with it for a verb whose name was never wrong: うる in ありうる is 得る', () => {
@@ -436,9 +436,18 @@ describe('a word in kana the analyser names in kanji', () => {
     expect(mergeMorphemes([uru])[0]?.lookup).toEqual([{ key: 'うる', reading: 'ウル', pos: '動詞,非自立', spelling: '得る' }]);
   });
 
+  it("says nothing of what a verb follows after a verb's stem, where it is the second half of a compound", () => {
+    const fuzake: Morpheme = { surface: 'ふざけ', lemma: 'ふざける', reading: 'フザケ', pos: '動詞', pos1: '自立', conjForm: '連用形', conjType: '一段' };
+    const au: Morpheme = { surface: 'あう', lemma: 'あう', reading: 'アウ', pos: '動詞', pos1: '自立', conjForm: '基本形', conjType: '五段・ワ行促音便' };
+    const keys = mergeMorphemes([fuzake, au]).flatMap((t) => t.lookup);
+    expect(keys.map((k) => k.key)).toContain('あう');
+    expect(keys.find((k) => k.key === 'あう')?.follows).toBeUndefined();
+    expect(mergeMorphemes([au])[0]?.lookup[0]?.follows).toBe('');
+  });
+
   it('is looked up without it for a verb it names wrongly once: 気にやむ is 病む, not 止む', () => {
     const yamu: Morpheme = { surface: 'やむ', lemma: 'やむ', reading: 'ヤム', pos: '動詞', pos1: '自立', conjForm: '基本形', kanji: '止む' };
-    expect(mergeMorphemes([yamu])[0]?.lookup).toEqual([{ key: 'やむ', reading: 'ヤム', pos: '動詞,自立' }]);
+    expect(mergeMorphemes([yamu])[0]?.lookup).toEqual([{ key: 'やむ', reading: 'ヤム', pos: '動詞,自立', follows: '' }]);
   });
 });
 

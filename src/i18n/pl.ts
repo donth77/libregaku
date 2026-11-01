@@ -273,6 +273,8 @@ export const pl: Translation = {
     creditCanto: 'Słownik kantoński i czytania Jyutping dla CC-CEDICT. © Pleco Inc., na licencji CC BY-SA 3.0.',
     creditHandedict: 'Chiński objaśniony po niemiecku. © HanDeDict i współtwórcy, na licencji CC BY-SA 3.0.',
     creditUnihan: 'Które czytanie chińskiego znaku jest pokazywane jako pierwsze. © Unicode, Inc., na licencji Unicode License.',
+    creditTatoeba:
+      'Którym czasownikiem jest japoński czasownik zapisany kaną, na podstawie tych przykładowych zdań. © Współtwórcy Tatoeba, na licencji CC BY 2.0 FR.',
     creditJotoba: 'Używane do sprawdzania słów, gdy słownik się pobiera. Oba korzystają z JMdict.',
     creditLucide: 'Ikony. Licencja ISC.',
     creditCommons: 'Nagrania słów hiszpańskich, chińskich i koreańskich, czytanych przez wolontariuszy. Każde ma własną licencję, najczęściej CC BY-SA 4.0, podaną wraz z imieniem lektora przy odtwarzaniu i na karcie.',

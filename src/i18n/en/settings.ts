@@ -353,6 +353,10 @@ export const settings = {
   creditHandedict: 'Chinese explained in German. © HanDeDict and its contributors, used under CC BY-SA 3.0.',
   /** Under Unihan, the Unicode database of Chinese characters. */
   creditUnihan: 'Which reading a Chinese character shows first. © Unicode, Inc., used under the Unicode License.',
+  /** Under Tatoeba, a collection of example sentences and their translations. */
+  creditTatoeba:
+    'Which verb a Japanese verb written in kana is, learned from these example sentences. ' +
+    '© Tatoeba contributors, used under CC BY 2.0 FR.',
   /** Under Jotoba · Jisho. */
   creditJotoba: 'Used for lookups while the dictionary downloads. Both use JMdict.',
   /**

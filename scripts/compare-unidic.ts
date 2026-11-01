@@ -17,6 +17,15 @@
  *   WRITE=1 node scripts/compare-unidic.mjs         # write the parser fixtures again, as the extension now reads their lines
  *   WRITE=1 MORE='新しい行|もう一つ' node scripts/compare-unidic.mjs   # and add these lines to them
  *   READINGS=1 node scripts/compare-unidic.mjs      # words in kanji against the readings in Tatoeba's word index
+ *   VERBS=base node scripts/compare-unidic.mjs      # verbs in kana: the entry each card opens, saved to compare with
+ *   VERBS=1 node scripts/compare-unidic.mjs         # the same against that, every card put right and put wrong
+ *   VERBS=write node scripts/compare-unidic.mjs     # learn which verb a verb in kana is, and write src/dict/kana-verbs.ts
+ *   VERBS=write HALF=1 …, then VERBS=1 ODD=1 …      # learn from the even sentence ids, measure on the odd
+ *
+ * VERBS=1 is the same index for verbs: つく written in kana is 付く, 着く,
+ * 就く or 吐く, and the index says which. Each card is opened as the extension
+ * opens it, its keys in turn ranked by rank() in src/dict/jmdict.ts, and
+ * counted right where the entry is the index's verb.
  *
  * READINGS=1 measures the one thing reading the lines cannot: which word a
  * spelling is, 金 as かね or きん. Tatoeba's index (the Tanaka corpus's, made by
@@ -40,15 +49,16 @@ import { fileURLToPath } from 'node:url';
 import init, {
   TokenizerBuilder, loadDictionaryFromBytes, loadUserDictionaryFromBytes, type Tokenizer,
 } from 'lindera-wasm';
-import { keysFor, toEntry, wordsFor, type Entry, type RawWord } from '../src/dict/jmdict';
+import { keysFor, rank, toEntry, wordsFor, type Entry, type RawWord } from '../src/dict/jmdict';
 import { LINDERA_DICTS } from '../src/morphology/dictionaries';
 import {
   analyserRows, extraCollector, firstReadingCollector, firstReadingsBy, firstReadingsKept, misreads, type AnalysedPiece, type FirstReading,
 } from '../src/morphology/extra-words';
 import { IPADIC, READINGS, fromIpadic, readJapanese, withFirstReadings, type Analysers, type Row } from '../src/morphology/japanese';
 import { forAnalysis, segmentWith } from '../src/morphology/lindera';
-import { lexiconQueries, type LexiconEntry, type Morpheme } from '../src/morphology/merge';
+import { before, lexiconQueries, type LexiconEntry, type Morpheme } from '../src/morphology/merge';
 import { repair, type Reading } from '../src/morphology/repair';
+import type { Token } from '../src/morphology/types';
 import { fromUnidic, type UnidicMorpheme } from '../src/morphology/unidic';
 import { LINES as FIXTURES } from '../src/morphology/__tests__/fixtures/ipadic';
 
@@ -231,8 +241,8 @@ ${opinions.join('\n')}
   process.exit(0);
 }
 
-// READINGS=1: words in kanji against the readings in Tatoeba's word index, with UniDic's reading of a word and without.
-if (process.env.READINGS) {
+/** Tatoeba's word index, by sentence id: each word as head(reading)[sense]{as written}~. */
+function wordIndex(): Map<string, string> {
   if (!existsSync(`${CACHE}/jpn_indices.done`)) {
     const from = 'https://downloads.tatoeba.org/exports/jpn_indices.tar.bz2';
     console.log(`downloading ${from}`);
@@ -240,6 +250,19 @@ if (process.env.READINGS) {
     execFileSync('tar', ['-xjf', `${CACHE}/jpn_indices.tar.bz2`, '-C', CACHE, 'jpn_indices.csv']);
     writeFileSync(`${CACHE}/jpn_indices.done`, '');
   }
+  const index = new Map<string, string>();
+  for (const l of readFileSync(`${CACHE}/jpn_indices.csv`, 'utf8').split('\n')) {
+    const [id, , text] = l.split('\t');
+    if (id && text) index.set(id, text);
+  }
+  return index;
+}
+const WORD = /^([^(\[{~|]+)(?:\|\d+)?(?:\(([^)]*)\))?(?:\[\d+\])*(?:\{([^}]*)\})?~?$/u;
+const HAN = /[\u4E00-\u9FFF\u3400-\u4DBF々]/u;
+
+// READINGS=1: words in kanji against the readings in Tatoeba's word index, with UniDic's reading of a word and without.
+if (process.env.READINGS) {
+  const index = wordIndex();
   const hira = (s: string): string => s.replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60));
   /** A spelling in kanji, and each dictionary word's readings of it. */
   const readingsFor = new Map<string, string[][]>();
@@ -255,14 +278,6 @@ if (process.env.READINGS) {
   const wordOf = (head: string, reading: string): Set<string> =>
     new Set([reading, ...(readingsFor.get(head) ?? []).filter((rs) => rs.includes(reading)).flat()]);
 
-  // The index: sentence id, meaning id, and each word as head(reading)[sense]{as written}~.
-  const index = new Map<string, string>();
-  for (const l of readFileSync(`${CACHE}/jpn_indices.csv`, 'utf8').split('\n')) {
-    const [id, , text] = l.split('\t');
-    if (id && text) index.set(id, text);
-  }
-  const HAN = /[\u4E00-\u9FFF\u3400-\u4DBF々]/u;
-  const WORD = /^([^(\[{~|]+)(?:\|\d+)?(?:\(([^)]*)\))?(?:\[\d+\])*(?:\{([^}]*)\})?~?$/u;
   interface Indexed { at: number; end: number; head: string; reading: string; form: string }
   /** The words in kanji the index gives a reading, each with where it stands in the sentence. */
   const indexed = (text: string, entry: string): Indexed[] => {
@@ -326,6 +341,231 @@ if (process.env.READINGS) {
   console.log(`${tally.words} words in kanji that the index gives a reading, in ${sentences.length} sentences`);
   console.log(`read as the index has them: ${tally.before} (${pct(tally.before)}) without UniDic's reading of a word, ${tally.after} (${pct(tally.after)}) with`);
   console.log(`${total(better)} put right, ${total(worse)} put wrong: ${out}`);
+  process.exit(0);
+}
+
+const KANA = /^[ぁ-ゖー]+$/u;
+/** The verbs in kanji of a sentence's index that the sentence writes in kana, each with where it stands. */
+const verbsIn = (text: string, entry: string): Array<{ at: number; head: string }> => {
+  const verbs: Array<{ at: number; head: string }> = [];
+  let cursor = 0;
+  for (const w of entry.split(' ')) {
+    const [, head, , written] = WORD.exec(w) ?? [];
+    const form = written ?? head;
+    const at = form ? text.indexOf(form, cursor) : -1;
+    if (!head || !form || at < 0) continue;
+    cursor = at + form.length;
+    if (HAN.test(head) && KANA.test(form) && /[うくぐすつぬぶむる]$/u.test(head)) verbs.push({ at, head });
+  }
+  return verbs;
+};
+/** The index's verb is one the word in kana is, as the line spells it: not させる for する. */
+const spelledAs = (head: string, kana: string): boolean => (byForm.get(head) ?? []).some((e) => e.forms?.some((f) => f.kana && f.text === kana));
+/** Tatoeba's sentences: id, and the sentence. HALF=1 and ODD=1 keep the even ids and the odd. */
+const tatoebaRows = readFileSync(`${CACHE}/jpn.tsv`, 'utf8').split('\n').map((l) => l.split('\t')).filter((p) => p[0] && p[2])
+  .filter((p) => (process.env.HALF ? Number(p[0]) % 2 === 0 : process.env.ODD ? Number(p[0]) % 2 === 1 : true))
+  .map((p) => [p[0], p[2]] as [string, string]);
+
+// VERBS=write: which verb in kanji each verb in kana is, by the words before it or by what it most often is,
+// learned from Tatoeba and written to src/dict/kana-verbs.ts (followedVerbs() in src/morphology/merge.ts reads
+// what a verb follows, rank() in src/dict/jmdict.ts the table). HALF=1 learns from the sentences with even ids
+// only, for VERBS=1 ODD=1 to measure on the others.
+if (process.env.VERBS === 'write') {
+  const index = wordIndex();
+  type Counts = Map<string, Map<string, number>>;
+  const add = (counts: Counts, key: string, verb: string): void => {
+    const m = counts.get(key) ?? new Map<string, number>();
+    counts.set(key, m);
+    m.set(verb, (m.get(verb) ?? 0) + 1);
+  };
+  /** A kana verb's verbs in kanji, by how often the index names each. */
+  const usual: Counts = new Map();
+  /** A kana verb and what stands before it, tab apart: the verbs in kanji it is there. */
+  const after: Counts = new Map();
+  const hira = (s: string): string => s.replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60));
+  /** The kana dictionary form of a verb in kanji, as its reading in the line begins: 付く read ツイ is つく. */
+  const kanaOf = (m: Morpheme): string | undefined => {
+    const said = hira(m.reading ?? '');
+    const forms = new Set<string>();
+    for (const e of byForm.get(m.lemma ?? '') ?? []) {
+      if (!e.senses.some((s) => s.pos.some((p) => /^v/.test(p)))) continue;
+      for (const f of e.forms ?? []) if (f.kana && !f.rare && f.text.length > 1 && said.startsWith(f.text.slice(0, -1))) forms.add(f.text);
+    }
+    return [...forms].sort((a, b) => b.length - a.length)[0];
+  };
+  // Every verb written in kanji, with what stands before it.
+  for (const [, text] of tatoebaRows) {
+    const ms = readBoth(text);
+    ms.forEach((m, i) => {
+      if (m.pos !== '動詞' || m.pos1 !== '自立' || !m.lemma || !HAN.test(m.surface) || !HAN.test(m.lemma)) return;
+      const kana = kanaOf(m);
+      const at = kana ? before(ms, i) : undefined;
+      if (at) add(after, `${kana}\t${at}`, m.lemma);
+    });
+  }
+  // Every verb written in kana that the index names: what it is, and what stands before it.
+  for (const [id, text] of tatoebaRows) {
+    const words = index.get(id);
+    const verbs = words ? verbsIn(text, words) : [];
+    if (!verbs.length) continue;
+    const ms = readBoth(text);
+    const starts = ms.map((_, i) => ms.slice(0, i).reduce((n, m) => n + m.surface.length, 0));
+    for (const { at, head } of verbs) {
+      const i = starts.indexOf(at);
+      const m = ms[i];
+      if (!m || m.pos !== '動詞' || m.pos1 !== '自立' || !m.lemma || !KANA.test(m.lemma) || !spelledAs(head, m.lemma)) continue;
+      // The second half of a compound is no use of the verb on its own: ふざけあう.
+      if (ms[i - 1]?.pos !== '動詞') add(usual, m.lemma, head);
+      const where = before(ms, i);
+      if (where) add(after, `${m.lemma}\t${where}`, head);
+    }
+  }
+
+  /** The commonest verb, how often, and of how many. */
+  const top = (m: Map<string, number>): { verb: string; n: number; all: number } => {
+    const [verb, n] = [...m].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]!;
+    return { verb, n, all: [...m.values()].reduce((a, b) => a + b, 0) };
+  };
+  /** The entry the dictionary opens for a kana verb on its own (rank()). */
+  const opensAlone = (kana: string): Entry | undefined => rank(byForm.get(kana) ?? [], kana, { pos: '動詞,自立' })[0];
+  /** Two spellings of one verb read as the kana is: 付く and 附く for つく. */
+  const sameVerb = (a: string, b: string, kana: string): boolean =>
+    a === b || (byForm.get(a) ?? []).some((e) => e.forms?.some((f) => f.text === b) && e.forms?.some((f) => f.kana && f.text === kana));
+  const table = new Map<string, { usual?: string; after?: Record<string, string> }>();
+  // What a verb most often is: the verb the index names most, at least five times and three times as often as the
+  // entry opened today. Not for these, whose kana in Tatoeba are not what they are in speech: its による are no verbs to
+  // the index, so its よる are 寄る; and its writers spell 帰る in kanji, so its かえる are 変える.
+  const NO_DEFAULT = new Set(['よる', 'かえる']);
+  for (const [kana, heads] of usual) {
+    const { verb, n } = top(heads);
+    const today = opensAlone(kana);
+    const asToday = [...heads].filter(([h]) => today?.forms?.some((f) => f.text === h)).reduce((a, [, k]) => a + k, 0);
+    if (NO_DEFAULT.has(kana) || n < 5 || n < 3 * Math.max(1, asToday) || today?.forms?.some((f) => f.text === verb)) continue;
+    table.set(kana, { usual: verb });
+  }
+  // What it is after a noun and particle, seen at least twice and more often than all else, where that is another verb.
+  for (const [key, verbs] of [...after].sort((a, b) => a[0].localeCompare(b[0]))) {
+    const [kana, at] = key.split('\t') as [string, string];
+    const { verb, n, all } = top(verbs);
+    if (all < 2 || n * 2 <= all) continue;
+    const known = table.get(kana) ?? {};
+    const otherwise = known.usual ?? opensAlone(kana)?.forms?.find((f) => !f.kana)?.text;
+    if (otherwise && sameVerb(otherwise, verb, kana)) continue;
+    table.set(kana, { ...known, after: { ...known.after, [at]: verb } });
+  }
+
+  const file = `${ROOT}src/dict/kana-verbs.ts`;
+  const rows = [...table].sort((a, b) => a[0].localeCompare(b[0])).map(([kana, v]) => `  ${JSON.stringify(kana)}: ${JSON.stringify(v)},`);
+  writeFileSync(file, `/**
+ * Which verb in kanji a verb written in kana is, by what it follows in the line (followedVerbs() in
+ * src/morphology/merge.ts): ひく after ピアノ|を is 弾く, たつ after 年| 経つ. After anything not listed, 'usual' is
+ * what it most often is: つく 付く. Only where that is another verb than the dictionary opens for the kana on its
+ * own. rank() in jmdict.ts weighs it after how the verb conjugates.
+ *
+ * Learned from Tatoeba (CC BY 2.0 FR): every verb written in kanji in its Japanese sentences, and every verb written
+ * in kana that its word index names. Written by scripts/compare-unidic.mjs (VERBS=write${process.env.HALF ? ' HALF=1' : ''}): regenerate, never hand-edit.
+ */
+export const KANA_VERBS: Record<string, { usual?: string; after?: Record<string, string> }> = {
+${rows.join('\n')}
+};
+`);
+  const contexts = [...table.values()].reduce((n, v) => n + Object.keys(v.after ?? {}).length, 0);
+  console.log(`${file}: ${table.size} verbs, ${[...table.values()].filter((v) => v.usual).length} with what they most often are, ${contexts} words before them`);
+  process.exit(0);
+}
+
+// VERBS=1: verbs written in kana against the verb in kanji Tatoeba's word index names, by the entry each card opens
+// first. VERBS=base saves the run as the one later runs are compared with; ODD=1 measures the sentences with odd ids.
+if (process.env.VERBS) {
+  const index = wordIndex();
+  const named = new Map<string, string | undefined>();
+  /** UniDic's name for a spelling, as nameOf() in offscreen.ts asks it. */
+  const nameOf = (form: string): string | undefined => {
+    if (!named.has(form)) {
+      const found = both.unidic!(form);
+      const name = found.length === 1 ? found[0]!.details[7]?.replace(/-.*$/, '') : undefined;
+      named.set(form, name && name !== '*' ? name : undefined);
+    }
+    return named.get(form);
+  };
+  /** The entry a token's card opens first: its keys in turn, as lookupKeys() in src/dict/client.ts tries them. */
+  const opens = (t: Token): Entry | undefined => {
+    for (const k of t.lookup ?? []) {
+      const found = byForm.get(k.key);
+      if (!found?.length) continue;
+      return rank(found, k.key, {
+        reading: k.reading, pos: k.pos, ...(k.conj ? { conj: k.conj } : {}), ...(k.follows !== undefined ? { follows: k.follows } : {}),
+        ...(k.spelling ? { spelling: k.spelling, names: nameOf } : {}),
+      })[0];
+    }
+    return undefined;
+  };
+  // Each verb: where it stands, whether its card opens the index's verb, the word, the entry opened, the index's verb, the line.
+  const each: Array<[at: string, right: string, word: string, opened: string, indexed: string, line: string]> = [];
+  const sentences = tatoebaRows.filter(([id]) => index.has(id));
+  for (const [id, text] of sentences) {
+    const verbs = verbsIn(text, index.get(id)!);
+    if (!verbs.length) continue;
+    const tokens = (await segmentWith(text, via(readBoth))).tokens;
+    for (const { at, head } of verbs) {
+      const t = tokens.find((x) => x.start === at);
+      if (!t?.lemma || t.pos !== '動詞' || !spelledAs(head, t.lemma)) continue;
+      const entry = opens(t);
+      const right = Boolean(entry?.forms?.some((f) => f.text === head));
+      each.push([`${id}:${at}`, right ? '1' : '0', t.lemma, entry ? entry.kanji ?? entry.word : '-', head, text]);
+    }
+  }
+
+  const counted = (m: Map<string, number>): string => [...m].sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ${n}`).join(', ');
+  const add = (m: Map<string, number>, k: string): void => void m.set(k, (m.get(k) ?? 0) + 1);
+  // By verb: which entries its cards open, and which verbs the index names.
+  const byVerb = new Map<string, { n: number; wrong: number; opens: Map<string, number>; names: Map<string, number> }>();
+  for (const [, ok, lemma, opened, head] of each) {
+    const v = byVerb.get(lemma) ?? { n: 0, wrong: 0, opens: new Map(), names: new Map() };
+    byVerb.set(lemma, v);
+    v.n++;
+    if (ok === '0') v.wrong++;
+    add(v.opens, opened);
+    add(v.names, head);
+  }
+  const verbs = [...byVerb].filter(([, v]) => v.wrong).sort((a, b) => b[1].wrong - a[1].wrong)
+    .map(([lemma, v]) => `${v.wrong} of ${v.n}\t${lemma}\topens ${counted(v.opens)}\tthe index: ${counted(v.names)}`);
+
+  // Against the base: each verb whose card opens another entry now.
+  const base = `${CACHE}/verbs-base.tsv`;
+  const changes: Record<'right' | 'wrong' | 'other', Map<string, { n: number; eg: string }>> = { right: new Map(), wrong: new Map(), other: new Map() };
+  const compared = process.env.VERBS !== 'base' && existsSync(base);
+  if (compared) {
+    const was = new Map(readFileSync(base, 'utf8').split('\n').filter(Boolean).map((l) => l.split('\t')).map((r) => [r[0]!, r]));
+    for (const [at, ok, lemma, opened, head, text] of each) {
+      const then = was.get(at);
+      if (!then || then[3] === opened) continue;
+      const list = changes[then[1] === ok ? 'other' : ok === '1' ? 'right' : 'wrong'];
+      const key = `${lemma}\t${then[3]} -> ${opened}\tthe index: ${head}`;
+      const kind = list.get(key);
+      if (kind) kind.n++;
+      else list.set(key, { n: 1, eg: text });
+    }
+  }
+  const total = (list: Map<string, { n: number }>): number => [...list.values()].reduce((n, k) => n + k.n, 0);
+  const listed = (list: Map<string, { n: number; eg: string }>): string =>
+    [...list].sort((x, y) => y[1].n - x[1].n).map(([k, v]) => `${v.n}\t${k}\t${v.eg}`).join('\n');
+
+  const right = each.filter((r) => r[1] === '1').length;
+  writeFileSync(process.env.VERBS === 'base' ? base : `${CACHE}/verbs.tsv`, each.map((r) => r.join('\t')).join('\n'));
+  const out = `${CACHE}/verbs-report.txt`;
+  writeFileSync(out, [
+    ...(compared ? [
+      `PUT RIGHT: ${total(changes.right)} verbs\n${listed(changes.right)}`,
+      `PUT WRONG: ${total(changes.wrong)} verbs\n${listed(changes.wrong)}`,
+      `ANOTHER ENTRY, NEITHER THE INDEX'S: ${total(changes.other)} verbs\n${listed(changes.other)}`,
+    ] : []),
+    `BY VERB: ${each.length - right} cards open another verb than the index's\n${verbs.join('\n')}`,
+  ].join('\n\n'));
+  console.log(`${each.length} verbs in kana that the index names in kanji, in ${sentences.length} sentences`);
+  console.log(`the card opens the index's verb for ${right} (${(100 * right / each.length).toFixed(2)}%)`);
+  if (compared) console.log(`against verbs-base.tsv: ${total(changes.right)} put right, ${total(changes.wrong)} put wrong, ${total(changes.other)} another wrong entry`);
+  console.log(`by verb${compared ? ', and every change' : ''}: ${out}`);
   process.exit(0);
 }
 

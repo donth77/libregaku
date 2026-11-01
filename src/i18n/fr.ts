@@ -296,6 +296,8 @@ export const fr: Translation = {
       'Dictionnaire cantonais et lectures en Jyutping pour CC-CEDICT. © Pleco Inc., utilisé sous licence CC BY-SA 3.0.',
     creditHandedict: 'Le chinois expliqué en allemand. © HanDeDict et ses contributeurs, utilisé sous licence CC BY-SA 3.0.',
     creditUnihan: 'La lecture affichée en premier pour un caractère chinois. © Unicode, Inc., utilisé sous la Unicode License.',
+    creditTatoeba:
+      'Quel verbe est un verbe japonais écrit en kana, appris de ces phrases d’exemple. © Contributeurs de Tatoeba, utilisé sous CC BY 2.0 FR.',
     creditJotoba: 'Utilisés pour les recherches pendant le téléchargement du dictionnaire. Tous deux utilisent JMdict.',
     creditLucide: 'Icônes. Licence ISC.',
     creditCommons: 'Enregistrements de mots espagnols, chinois et coréens, dits par des bénévoles. Chacun a sa propre licence, CC BY-SA 4.0 pour la plupart, indiquée avec le nom du locuteur à la lecture et sur la carte.',

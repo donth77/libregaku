@@ -30,6 +30,8 @@ export interface LookupHint {
   spelling?: string;
   /** How the verb conjugates, as the analyser names it: 五段・ラ行 for いら in いらない. */
   conj?: string;
+  /** What a verb in kana follows, which says which verb it is: ピアノ|を before ひく. */
+  follows?: string;
 }
 
 interface Key extends LookupHint {
@@ -88,7 +90,7 @@ export async function dictStatus(): Promise<DictStatus> {
   return res ?? { ready: false, phase: 'unavailable', percent: 0, error: noAnswer() };
 }
 
-const idOf = (k: Key): string => `${k.key}\u0000${k.reading ?? ''}\u0000${k.pos ?? ''}\u0000${k.spelling ?? ''}\u0000${k.conj ?? ''}`;
+const idOf = (k: Key): string => `${k.key}\u0000${k.reading ?? ''}\u0000${k.pos ?? ''}\u0000${k.spelling ?? ''}\u0000${k.conj ?? ''}\u0000${k.follows ?? ''}`;
 
 /**
  * Try each key in turn until one has entries.
@@ -116,6 +118,7 @@ async function lookupKeys(keys: Key[]): Promise<LookupResult> {
       pos: k.pos,
       spelling: k.spelling,
       conj: k.conj,
+      follows: k.follows,
     })) as { ok?: boolean; entries?: Entry[]; error?: string; reason?: string; source?: string } | undefined;
 
     // No reply is not "still loading": with nothing listening, the status

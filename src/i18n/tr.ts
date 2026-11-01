@@ -266,6 +266,8 @@ export const tr: Translation = {
     creditHandedict:
       'Çince, Almanca açıklamalarla. © HanDeDict ve katkıda bulunanlar; CC BY-SA 3.0 kapsamında kullanılmaktadır.',
     creditUnihan: 'Bir Çince karakterin önce hangi okunuşunun gösterileceği. © Unicode, Inc.; Unicode License kapsamında kullanılmaktadır.',
+    creditTatoeba:
+      'Kana ile yazılmış bir Japonca fiilin hangi fiil olduğu, bu örnek cümlelerden öğrenilir. © Tatoeba katkıcıları; CC BY 2.0 FR kapsamında kullanılmaktadır.',
     creditJotoba: 'Sözlük inerken aramalar için kullanılır. İkisi de JMdict kullanır.',
     creditLucide: 'Simgeler. ISC lisansı.',
     creditCommons: 'Gönüllülerin seslendirdiği İspanyolca, Çince ve Korece sözcük kayıtları. Her kaydın kendi lisansı vardır, çoğunda CC BY-SA 4.0; çalınırken ve kartta konuşanın adıyla birlikte gösterilir.',

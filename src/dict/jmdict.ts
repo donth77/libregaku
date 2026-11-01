@@ -5,6 +5,7 @@
  * a lookup arrives as whatever the analyser produced — 食べる from a lemma, but
  * 御飯 or ごはん from a surface. One store, many keys.
  */
+import { KANA_VERBS } from './kana-verbs';
 
 export interface RawWord {
   id: string;
@@ -178,6 +179,14 @@ export interface RankHint {
    */
   conj?: string;
   /**
+   * What a verb in kana follows in the line: a noun and its particle,
+   * ピアノ|を, a noun alone, 年|, or nothing that says, ''. Says which verb it
+   * is, by what Tatoeba writes there in kanji (kana-verbs.ts): 弾く for ひく
+   * after ピアノ|を, and 付く for つく after nothing. Weighed after how the
+   * verb conjugates, which says more where the line's form decides it.
+   */
+  follows?: string;
+  /**
    * The analyser's name for a spelling, where it can be asked. Its names are
    * coarser than the dictionary's entries — 奢る, to treat, and 驕る, to be
    * proud, are both 驕る to it — so an entry is the word named only if the
@@ -263,7 +272,9 @@ function fitFor(pos?: string, conj?: string): ((code: string) => number) | null 
  *  2. The analyser's reading, for keys with kanji: 私 read わたし, not あたし.
  *  3. The analyser's part of speech: この the determiner, not the rare
  *     reading of 九; 何 the pronoun for なん, not 難. And for a verb, how it
- *     conjugates: いら in いらない is 要る, a 五段 verb, not 居る.
+ *     conjugates: いら in いらない is 要る, a 五段 verb, not 居る. Then, for a
+ *     verb in kana, the verb the words before it say it is: ピアノをひく is
+ *     弾く (kana-verbs.ts).
  *  4. That spelling, specifically, is common: 時 before the rare とき "please
  *     do", 此方 before 忽地 for こっち.
  *  5. The key is how the entry is normally written — its regular kanji, or
@@ -312,6 +323,9 @@ function scoring(key: string, hint: RankHint): (e: Entry) => number[] {
   const hintReading = hint.reading ? hira(hint.reading) : undefined;
   const fit = fitFor(hint.pos, hint.conj);
   const verb = hint.pos?.startsWith('動詞') === true;
+  // The verb what it follows says a verb in kana is, or what it most often is.
+  const follows = verb ? hint.follows : undefined;
+  const meant = follows === undefined ? undefined : KANA_VERBS[key]?.after?.[follows] ?? KANA_VERBS[key]?.usual;
 
   return (e: Entry): number[] => {
     const forms = e.forms;
@@ -345,7 +359,8 @@ function scoring(key: string, hint: RankHint): (e: Entry) => number[] {
     // A verb the analyser names, one of the entry's common spellings exactly, before the rest: 得る, not 売る,
     // for うる. Only the verbs spelled() names, whose names were never wrong in Tatoeba.
     const named = Number(Boolean(names && verb && forms?.some((f) => !f.kana && f.common && f.text === hint.spelling)));
-    if (verb) return [Number(exact), readingMatch, pos, named, spelled, common, usual, written, e.senses.length];
+    const told = Number(Boolean(meant && forms?.some((f) => !f.kana && f.text === meant)));
+    if (verb) return [Number(exact), readingMatch, pos, told, named, spelled, common, usual, written, e.senses.length];
 
     return [Number(exact), readingMatch, pos, common, usual, written, spelled, e.senses.length];
   };

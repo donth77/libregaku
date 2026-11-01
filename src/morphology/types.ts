@@ -50,7 +50,7 @@ export interface Token {
    * dictionary client — pass the token to `lookupToken`, never read this.
    * Tier 2 only; without it a lookup uses `lemma`, then `surface`.
    */
-  lookup?: Array<{ key: string; reading?: string; pos?: string; spelling?: string; conj?: string }>;
+  lookup?: Array<{ key: string; reading?: string; pos?: string; spelling?: string; conj?: string; follows?: string }>;
   /**
    * Punctuation and whitespace. Rendered so the line reads correctly, but
    * never interactive — nobody looks up a question mark.

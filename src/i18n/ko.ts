@@ -249,6 +249,7 @@ export const ko: Translation = {
     creditCanto: '광둥어 사전과 CC-CEDICT용 Jyutping 표기. © Pleco Inc., CC BY-SA 3.0에 따라 사용합니다.',
     creditHandedict: '중국어를 독일어로 설명합니다. © HanDeDict 및 기여자. CC BY-SA 3.0에 따라 사용합니다.',
     creditUnihan: '한자의 여러 읽는 법 중 먼저 보여 줄 것을 정합니다. © Unicode, Inc., Unicode License에 따라 사용합니다.',
+    creditTatoeba: '가나로 쓴 일본어 동사가 어떤 동사인지 이 예문들에서 배웁니다. © Tatoeba 기여자, CC BY 2.0 FR에 따라 사용합니다.',
     creditJotoba: '사전을 다운로드하는 동안 단어 찾기에 사용합니다. 둘 다 JMdict를 씁니다.',
     creditLucide: '아이콘. ISC 라이선스.',
     creditCommons: '자원봉사자들이 읽은 스페인어, 중국어, 한국어 단어 녹음입니다. 녹음마다 라이선스가 다르며(대부분 CC BY-SA 4.0), 재생할 때와 카드에 화자 이름과 함께 표시됩니다.',

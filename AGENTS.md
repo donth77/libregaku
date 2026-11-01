@@ -112,6 +112,22 @@ The line says which, by a short list of what stands beside the word
 measured against the index and over every Tatoeba sentence, and its numbers
 are in the comment above it: measure again before adding to one.
 
+A verb written in kana is several verbs to the dictionary: つく is 付く, 着く,
+就く and 吐く, and JMdict says nothing of which is common. What the verb
+follows says which (ピアノをひく is 弾く, 駅につく 着く), and after anything
+else, what it most often is (つく alone is 付く). The merge says only what it
+follows (`followedVerbs()` in `merge.ts`); `src/dict/kana-verbs.ts` says which
+verb that makes it, and `rank()` weighs that after how the verb conjugates.
+The table is learned from Tatoeba: every verb written in kanji, with what
+stands before it, and every verb in kana that the word index names.
+`VERBS=write node scripts/compare-unidic.mjs` writes it; regenerate, never
+hand-edit. `VERBS=1` measures it: each verb in kana the index names, and
+whether its card opens that verb, against a run saved with `VERBS=base`, every
+card put right and put wrong written out. A table scores itself too well on
+the sentences it was learned from, so learn from half (`VERBS=write HALF=1`),
+measure on the rest (`VERBS=1 ODD=1`), then write the whole table again. Do
+that before changing how it is learned or what `rank()` weighs for a verb.
+
 `WRITE=1 node scripts/compare-unidic.mjs` writes the parser fixtures again:
 `fixtures/ipadic.ts` (each line as the extension reads it once everything has
 loaded, and as IPADIC alone reads it where that differs) and
@@ -155,7 +171,8 @@ src/morphology/         Segmenter implementations and which language gets which 
                         IPADIC's reading of a line (japanese.ts, repair.ts)
 src/dict/               one dictionary per language (sources.ts): download, storage and
                         lookup for JMdict, KANJIDIC2, CC-CEDICT and Wiktionary; remote
-                        fallbacks for Japanese
+                        fallbacks for Japanese; which verb a Japanese verb in kana is
+                        (kana-verbs.ts, learned from Tatoeba by compare-unidic)
 src/anki/               AnkiConnect client, note type, word status, hand marks, cards
                         waiting for Anki
 src/audio/              pronunciation and where a word's recording is found (recordings.ts),

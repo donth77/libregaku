@@ -283,6 +283,8 @@ export const ar: Translation = {
     creditCanto: 'القاموس الكانتوني وقراءات Jyutping لقاموس CC-CEDICT. © Pleco Inc.، مستخدم بموجب ترخيص CC BY-SA 3.0.',
     creditHandedict: 'الصينية مشروحة بالألمانية. © HanDeDict والمساهمون فيه، مستخدم بموجب ترخيص CC BY-SA 3.0.',
     creditUnihan: 'أي قراءة للحرف الصيني تظهر أولًا. © Unicode, Inc.، مستخدم بموجب Unicode License.',
+    creditTatoeba:
+      'أي فعل هو الفعل الياباني المكتوب بالكانا، مستخلص من هذه الجمل النموذجية. © مساهمو Tatoeba، مستخدم بموجب CC BY 2.0 FR.',
     creditJotoba: 'يُستخدمان للبحث أثناء تنزيل القاموس. كلاهما يعتمد على JMdict.',
     creditLucide: 'الرموز. ترخيص ISC.',
     creditCommons: 'تسجيلات لكلمات إسبانية وصينية وكورية بأصوات متطوعين. لكل تسجيل ترخيصه، وهو CC BY-SA 4.0 في الغالب، ويُذكر مع اسم المتحدث عند تشغيله وعلى البطاقة.',

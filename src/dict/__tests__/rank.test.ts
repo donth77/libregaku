@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { keysFor, rank, readingsOf, toEntry, wordsFor, type Entry } from '../jmdict';
+import { keysFor, rank, readingsOf, toEntry, wordsFor, type Entry, type RankHint } from '../jmdict';
 import { KEYS, WORDS } from './fixtures/jmdict-frequent';
 
 /**
@@ -239,6 +239,35 @@ describe('rank — a verb in kana, by how it conjugates', () => {
     ] as Entry[];
     expect(rank(uru, 'うる', { pos: '動詞,非自立' })[0]?.word).toBe('売る');
     expect(rank(uru, 'うる', { pos: '動詞,非自立', conj: '下二・ア行' })[0]?.word).toBe('得る');
+  });
+});
+
+describe('rank — a verb in kana, by what it follows (kana-verbs.ts)', () => {
+  const verb = (id: string, word: string, kana: string, code: string, senses: number, uk = false): Entry => ({
+    id, word: uk ? kana : word, ...(uk ? { uk: true, kanji: word } : { reading: kana }), common: true,
+    senses: Array.from({ length: senses }, () => ({ pos: [code], glosses: ['x'] })),
+    forms: [{ text: word, kana: false, common: true }, { text: kana, kana: true, common: true }],
+  }) as unknown as Entry;
+  // As JMdict has them: 吐く read つく is usually written in kana, so it led every つく.
+  const tsuku = [verb('1', '就く', 'つく', 'v5k', 4), verb('2', '着く', 'つく', 'v5k', 2), verb('3', '吐く', 'つく', 'v5k', 3, true), verb('4', '付く', 'つく', 'v5k', 14)];
+  const first = (hint: RankHint) => rank(tsuku, 'つく', { pos: '動詞,自立', ...hint })[0]?.forms?.[0]?.text;
+
+  it('is the verb the noun and particle before it say: 駅につく is 着く, うそはつかない 吐く', () => {
+    expect(first({ follows: '駅|に' })).toBe('着く');
+    expect(first({ follows: 'うそ|は' })).toBe('吐く');
+  });
+
+  it('is what it most often is after anything else: つく alone is 付く', () => {
+    expect(first({ follows: '' })).toBe('付く');
+    expect(first({ follows: 'それ|から' })).toBe('付く');
+    // Not asked, the dictionary's own order.
+    expect(first({})).toBe('吐く');
+  });
+
+  it("gives way to how the verb conjugates, where the line's form decides it", () => {
+    const kaeru = [verb('1', '帰る', 'かえる', 'v5r', 3), verb('2', '変える', 'かえる', 'v1', 2)];
+    expect(rank(kaeru, 'かえる', { pos: '動詞,自立', follows: '写真|を' })[0]?.word).toBe('変える');
+    expect(rank(kaeru, 'かえる', { pos: '動詞,自立', follows: '写真|を', conj: '五段・ラ行' })[0]?.word).toBe('帰る');
   });
 });
 

@@ -262,6 +262,8 @@ export const sv: Translation = {
     creditCanto: 'Kantonesisk ordbok och Jyutping-läsningar för CC-CEDICT. © Pleco Inc., används under CC BY-SA 3.0.',
     creditHandedict: 'Kinesiska förklarad på tyska. © HanDeDict och bidragsgivarna, används under CC BY-SA 3.0.',
     creditUnihan: 'Vilken läsning av ett kinesiskt tecken som visas först. © Unicode, Inc., används under Unicode License.',
+    creditTatoeba:
+      'Vilket verb ett japanskt verb skrivet med kana är, inlärt från de här exempelmeningarna. © Tatoebas bidragsgivare, används under CC BY 2.0 FR.',
     creditJotoba: 'Används för uppslag medan ordboken laddas ned. Båda använder JMdict.',
     creditLucide: 'Ikoner. ISC-licens.',
     creditCommons: 'Inspelningar av spanska, kinesiska och koreanska ord, inlästa av frivilliga. Varje inspelning har sin egen licens, oftast CC BY-SA 4.0, som visas med talarens namn vid uppspelning och på kortet.',

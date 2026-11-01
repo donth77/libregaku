@@ -255,6 +255,8 @@ export const vi: Translation = {
     creditHandedict:
       'Tiếng Trung được giải thích bằng tiếng Đức. © HanDeDict và những người đóng góp, dùng theo giấy phép CC BY-SA 3.0.',
     creditUnihan: 'Cách đọc nào của chữ Hán được hiện trước. © Unicode, Inc., dùng theo Unicode License.',
+    creditTatoeba:
+      'Động từ tiếng Nhật viết bằng kana là động từ nào, học từ các câu ví dụ này. © Những người đóng góp cho Tatoeba, dùng theo CC BY 2.0 FR.',
     creditJotoba: 'Dùng để tra từ trong lúc từ điển đang tải. Cả hai đều dùng JMdict.',
     creditLucide: 'Biểu tượng. Giấy phép ISC.',
     creditCommons: 'Bản ghi âm các từ tiếng Tây Ban Nha, tiếng Trung và tiếng Hàn do tình nguyện viên đọc. Mỗi bản có giấy phép riêng, phần lớn là CC BY-SA 4.0, được ghi kèm tên người đọc khi phát và trên thẻ.',
