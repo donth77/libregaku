@@ -10,8 +10,9 @@
  */
 import { build } from 'esbuild';
 import { mkdirSync } from 'node:fs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const root = new URL('..', import.meta.url).pathname;
+const root = fileURLToPath(new URL('..', import.meta.url));
 const out = `${root}node_modules/.cache/libregaku-words/compare-unidic.mjs`;
 mkdirSync(new URL('../node_modules/.cache/libregaku-words/', import.meta.url), { recursive: true });
 await build({
@@ -24,4 +25,4 @@ await build({
   // The script finds the repository from its own path; keep that the source's.
   define: { 'import.meta.url': JSON.stringify(new URL('./compare-unidic.ts', import.meta.url).href) },
 });
-await import(out);
+await import(pathToFileURL(out).href);

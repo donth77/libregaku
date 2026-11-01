@@ -23,10 +23,10 @@
 import { build } from 'esbuild';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { gunzipSync } from 'node:zlib';
 
-const ROOT = new URL('..', import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const CACHE = `${ROOT}node_modules/.cache/libregaku-zh`;
 const OUT = `${ROOT}src/dict/zh-readings.ts`;
 const UNIHAN = 'https://www.unicode.org/Public/16.0.0/ucd/Unihan.zip';

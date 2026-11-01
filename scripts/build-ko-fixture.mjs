@@ -25,9 +25,9 @@
  * dictionary always write the same file.
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const ROOT = new URL('..', import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const [dir, lines = `${ROOT}scripts/ko-fixture-lines.txt`, out = `${ROOT}src/morphology/__tests__/fixtures/ko-dic.ts`] =
   process.argv.slice(2);
 

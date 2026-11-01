@@ -13,6 +13,7 @@
  */
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import init, {
   TokenizerBuilder, loadDictionaryFromBytes, loadUserDictionaryFromBytes, type Tokenizer,
 } from 'lindera-wasm';
@@ -24,7 +25,7 @@ import { segmentWith } from '../src/morphology/lindera';
 import { lexiconQueries, type LexiconEntry, type Morpheme } from '../src/morphology/merge';
 import { LINES as FIXTURES } from '../src/morphology/__tests__/fixtures/ipadic';
 
-const ROOT = new URL('..', import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const CACHE = `${ROOT}node_modules/.cache/libregaku-words`;
 const COST = Number(process.env.COST ?? EXTRA_COST);
 const SAMPLE = Number(process.env.SAMPLE ?? 20000);

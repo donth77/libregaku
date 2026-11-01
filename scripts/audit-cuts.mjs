@@ -14,9 +14,10 @@
  * sentence.
  */
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import init, { TokenizerBuilder, loadDictionaryFromBytes } from 'lindera-wasm';
 
-const ROOT = new URL('..', import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const CACHE = `${ROOT}node_modules/.cache/libregaku-words`;
 if (!existsSync(`${CACHE}/jpn.tsv`)) {
   console.error('No data yet: run `node scripts/compare-words.mjs` once, which downloads IPADIC, JMdict and Tatoeba.');
