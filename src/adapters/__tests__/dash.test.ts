@@ -64,3 +64,34 @@ describe('textTracks', () => {
     expect(textTracks('not xml <<<', BASE)).toEqual([]);
   });
 });
+
+describe('textTracks, where each track is one whole file', () => {
+  // Viki's shape: no SegmentTemplate, the Representation's BaseURL is the track, and its name an attribute.
+  const WHOLE = `<?xml version="1.0" encoding="UTF-8"?>
+<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" profiles="urn:mpeg:dash:profile:isoff-on-demand:2011">
+  <Period id="0">
+    <AdaptationSet id="1" contentType="audio" lang="ko-KR"><Representation id="a" mimeType="audio/mp4"/></AdaptationSet>
+    <AdaptationSet contentType="text" lang="ko" label="한국어" mimeType="text/vtt">
+      <Representation id="subtitle/ko" bandwidth="0">
+        <BaseURL>https://api.viki.io/v4/videos/1v/auth_subtitles/ko.vtt?app=1&amp;token=t</BaseURL>
+      </Representation>
+    </AdaptationSet>
+    <AdaptationSet contentType="text" lang="en" mimeType="text/vtt">
+      <Representation id="subtitle/en" bandwidth="0"><BaseURL>en.vtt</BaseURL></Representation>
+    </AdaptationSet>
+    <AdaptationSet contentType="text" lang="fr" mimeType="text/vtt"><Representation id="subtitle/fr"/></AdaptationSet>
+  </Period>
+</MPD>`;
+  const got = textTracks(WHOLE, 'https://manifest-viki.viki.io/v1/1v/manifest.mpd?sig=1');
+
+  it('takes the BaseURL as the track, its entities decoded, and resolves a relative one', () => {
+    expect(got.map((t) => t.urls)).toEqual([
+      ['https://api.viki.io/v4/videos/1v/auth_subtitles/ko.vtt?app=1&token=t'],
+      ['https://manifest-viki.viki.io/v1/1v/en.vtt'],
+    ]);
+  });
+
+  it('names a track by its label attribute, else its language', () => {
+    expect(got.map((t) => [t.language, t.label, t.role])).toEqual([['ko', '한국어', 'subtitle'], ['en', 'en', 'subtitle']]);
+  });
+});

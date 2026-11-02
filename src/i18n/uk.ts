@@ -336,7 +336,7 @@ export const uk: Translation = {
     notActive:
       'На цій сторінці не працює. Відкрийте відео на YouTube, Netflix або іншому підтримуваному сайті. Якщо ви щойно встановили чи ' +
       'перезавантажили Libregaku, оновіть вкладку.',
-    unsupported: 'Libregaku працює на YouTube, Netflix, Disney+, Prime Video, HBO Max і Apple TV.',
+    unsupported: 'Libregaku працює на YouTube, Netflix, Disney+, Prime Video, HBO Max, Apple TV і Viki.',
     worksOn: (site: string): string => `Libregaku працює на ${site}.`,
     waitingForSubtitles: (site: string): string => `Чекаємо на субтитри на ${site}. Переконайтеся, що їх увімкнено.`,
     activeOn: (title: string): string => `Працює — ${title}`,
@@ -705,6 +705,8 @@ export const uk: Translation = {
     primeCaptionText: 'Не вдалося знайти текст субтитрів Prime Video на сторінці.',
     maxTrackList: 'Не вдалося прочитати список субтитрів HBO Max.',
     maxCaptionText: 'Не вдалося знайти текст субтитрів HBO Max на сторінці.',
+    vikiTrackList: 'Не вдалося прочитати список субтитрів Viki.',
+    vikiCaptionText: 'Не вдалося знайти текст субтитрів Viki на сторінці.',
     netflixBlocked: 'Netflix заблокував частину Libregaku, яка читає субтитри.',
 
     // Субтитри цього відео

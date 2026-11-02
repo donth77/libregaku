@@ -19,6 +19,7 @@ const targets = [
   { entry: 'src/content/inject-apple.ts', out: 'inject-apple', format: 'iife' },
   { entry: 'src/content/inject-prime.ts', out: 'inject-prime', format: 'iife' },
   { entry: 'src/content/inject-max.ts', out: 'inject-max', format: 'iife' },
+  { entry: 'src/content/inject-viki.ts', out: 'inject-viki', format: 'iife' },
   { entry: 'src/offscreen.ts',       out: 'offscreen',       format: 'esm'  },
   { entry: 'src/options.ts',         out: 'options',         format: 'esm'  },
   { entry: 'src/action.ts',          out: 'action',          format: 'esm'  },

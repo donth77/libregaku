@@ -49,7 +49,7 @@ const OURS = '.libregaku-root, .libregaku-notice';
  * Vertical bands of the player already covered by somebody else's subtitles,
  * as fractions of player height.
  */
-export function occupiedBands(player: HTMLElement, nativeSelector: string): Array<[number, number]> {
+export function occupiedBands(player: HTMLElement, nativeSelector: string, controls = ''): Array<[number, number]> {
   const box = player.getBoundingClientRect();
   if (!box.height) return [];
 
@@ -63,8 +63,9 @@ export function occupiedBands(player: HTMLElement, nativeSelector: string): Arra
     bands.push([(r.top - box.top) / box.height, (r.bottom - box.top) / box.height]);
   };
 
+  // Ours, the site's own subtitles, and the site's own controls (SubtitleSource.controls).
   const mine = (el: Element): boolean =>
-    Boolean(el.closest(OURS)) || Boolean(nativeSelector && el.closest(nativeSelector));
+    Boolean(el.closest(OURS)) || Boolean(nativeSelector && el.closest(nativeSelector)) || Boolean(controls && el.closest(controls));
 
   // HTML subtitle blocks: positioned, text-bearing, spanning a good part of
   // the player. Wrappers are skipped so one line is not counted twice.

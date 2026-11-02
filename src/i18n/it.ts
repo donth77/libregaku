@@ -351,7 +351,7 @@ export const it: Translation = {
     notActive:
       'Non attivo in questa pagina. Apri un video su YouTube, Netflix o un altro sito supportato. Se hai appena installato o ricaricato ' +
       'Libregaku, ricarica la scheda.',
-    unsupported: 'Libregaku funziona su YouTube, Netflix, Disney+, Prime Video, HBO Max e Apple TV.',
+    unsupported: 'Libregaku funziona su YouTube, Netflix, Disney+, Prime Video, HBO Max, Apple TV e Viki.',
     worksOn: (site: string): string => `Libregaku funziona su ${site}.`,
     waitingForSubtitles: (site: string): string =>
       `In attesa dei sottotitoli su ${site}. Assicurati che siano attivi.`,
@@ -717,6 +717,8 @@ export const it: Translation = {
     primeCaptionText: 'Testo dei sottotitoli di Prime Video non trovato nella pagina.',
     maxTrackList: 'Impossibile leggere l’elenco dei sottotitoli di HBO Max.',
     maxCaptionText: 'Testo dei sottotitoli di HBO Max non trovato nella pagina.',
+    vikiTrackList: 'Impossibile leggere l’elenco dei sottotitoli di Viki.',
+    vikiCaptionText: 'Testo dei sottotitoli di Viki non trovato nella pagina.',
     netflixBlocked: 'Netflix ha bloccato la parte di Libregaku che legge i sottotitoli.',
 
     // I sottotitoli di questo video

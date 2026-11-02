@@ -333,7 +333,7 @@ export const nl: Translation = {
     notActive:
       'Niet actief op deze pagina. Open een video op YouTube, Netflix of een andere ondersteunde site. Heb je Libregaku net geïnstalleerd of ' +
       'opnieuw geladen, laad het tabblad dan opnieuw.',
-    unsupported: 'Libregaku werkt op YouTube, Netflix, Disney+, Prime Video, HBO Max en Apple TV.',
+    unsupported: 'Libregaku werkt op YouTube, Netflix, Disney+, Prime Video, HBO Max, Apple TV en Viki.',
     worksOn: (site: string): string => `Libregaku werkt op ${site}.`,
     waitingForSubtitles: (site: string): string => `Wachten op ondertitels van ${site}. Controleer of ze aanstaan.`,
     activeOn: (title: string): string => `Actief – ${title}`,
@@ -696,6 +696,8 @@ export const nl: Translation = {
     primeCaptionText: 'Kon de ondertiteltekst van Prime Video niet vinden op de pagina.',
     maxTrackList: 'Kon de ondertitellijst van HBO Max niet lezen.',
     maxCaptionText: 'Kon de ondertiteltekst van HBO Max niet vinden op de pagina.',
+    vikiTrackList: 'Kon de ondertitellijst van Viki niet lezen.',
+    vikiCaptionText: 'Kon de ondertiteltekst van Viki niet vinden op de pagina.',
     netflixBlocked: 'Netflix heeft het deel van Libregaku geblokkeerd dat ondertitels leest.',
 
     // De ondertitels van deze video

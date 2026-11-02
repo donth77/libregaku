@@ -132,10 +132,11 @@ describe('the status line off a video', () => {
     expect(await popupOn('https://play.hbomax.com/')).toBe('Libregaku works on HBO Max.');
     expect(await popupOn('https://www.hbomax.com/video/watch/8779f57f/1')).toBe('Libregaku works on HBO Max.');
     expect(await popupOn('https://tv.apple.com/us')).toBe('Libregaku works on Apple TV.');
+    expect(await popupOn('https://www.viki.com/tv/37375c')).toBe('Libregaku works on Viki.');
   });
 
   it('lists the sites where the tab is on none of them', async () => {
-    expect(await popupOn('https://example.com/')).toBe('Libregaku works on YouTube, Netflix, Disney+, Prime Video, HBO Max and Apple TV.');
+    expect(await popupOn('https://example.com/')).toBe('Libregaku works on YouTube, Netflix, Disney+, Prime Video, HBO Max, Apple TV and Viki.');
   });
 
   it('knows each site by its address', async () => {

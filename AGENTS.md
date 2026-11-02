@@ -154,7 +154,7 @@ whether the tokenizer works.
 ## Layout
 
 ```
-build.mjs               esbuild build — twelve entry points, no plugin framework
+build.mjs               esbuild build — thirteen entry points, no plugin framework
 src/manifest.json       MV3 manifest
 src/assumptions.ts      every live-site assumption, and the notices shown when one breaks
 src/settings.ts         settings, defaults, and which languages get which tier
@@ -163,7 +163,7 @@ src/background.ts       service worker: offscreen lifecycle, the AnkiConnect rel
 src/offscreen.{html,ts} WASM host — the only place the tokenizer runs. The lindera
                         dictionaries live in OPFS (two for Japanese: IPADIC, and UniDic
                         loaded after it); JMdict in IndexedDB
-src/adapters/           one module per subtitle source (youtube, netflix, disney, prime, max, apple), their
+src/adapters/           one module per subtitle source (youtube, netflix, disney, prime, max, apple, viki), their
                         parsers (ttml, json3, hls, dash), the DOM-reading fallback, and the
                         offset Apple TV's player keeps from its subtitle files (apple-clock)
 src/morphology/         Segmenter implementations and which language gets which (index.ts),
@@ -190,6 +190,7 @@ src/content/
                         resources the player asked for
   inject-max.ts         HBO Max page world: passes on the DASH manifest the player fetched
   inject-apple.ts       Apple TV page world: passes on the HLS master playlist the player fetched
+  inject-viki.ts        Viki page world: passes on the DASH manifest the player fetched
   index.ts              isolated world: orchestrates adapter → segmenter → UI
   track-choice.ts       which of a video's tracks is studied, and which is the line under it
   renderer.ts           subtitle overlay

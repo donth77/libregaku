@@ -10,7 +10,10 @@ export interface DashTrack {
   /** The Role's value: "subtitle", "caption", "forced-subtitle". */
   role: string;
   label: string;
-  /** One WebVTT file per segment, in order, resolved against the manifest's URL. */
+  /**
+   * One WebVTT file per segment, in order, resolved against the manifest's
+   * URL; or, where the track is one whole file (Viki's), that file alone.
+   */
   urls: string[];
 }
 
@@ -78,26 +81,36 @@ export function textTracks(mpd: string, base: string): DashTrack[] {
       const rep = set.querySelector('Representation');
       const kind = set.getAttribute('contentType') ?? set.getAttribute('mimeType') ?? rep?.getAttribute('mimeType') ?? '';
       if (!/^text|vtt|ttml/i.test(kind) && !/vtt|ttml/i.test(rep?.getAttribute('mimeType') ?? '')) continue;
-      const template = rep?.querySelector('SegmentTemplate') ?? set.querySelector('SegmentTemplate');
+      if (!rep) continue;
+      const template = rep.querySelector('SegmentTemplate') ?? set.querySelector('SegmentTemplate');
       const media = template?.getAttribute('media');
-      if (!rep || !template || !media) continue;
 
-      const startNumber = Number(template.getAttribute('startNumber') ?? 1);
       const urls: string[] = [];
-      segmentStarts(template, periodSeconds).forEach((time, i) => {
+      if (template && media) {
+        const startNumber = Number(template.getAttribute('startNumber') ?? 1);
+        segmentStarts(template, periodSeconds).forEach((time, i) => {
+          try {
+            urls.push(new URL(fill(media, { number: startNumber + i, time, id: rep.getAttribute('id') ?? '' }), base).href);
+          } catch {
+            /* not a URL: leave the segment out */
+          }
+        });
+      } else {
+        // No segments: the Representation's BaseURL is the whole track.
+        const file = rep.querySelector('BaseURL')?.textContent?.trim();
         try {
-          urls.push(new URL(fill(media, { number: startNumber + i, time, id: rep.getAttribute('id') ?? '' }), base).href);
+          if (file) urls.push(new URL(file, base).href);
         } catch {
-          /* not a URL: leave the segment out */
+          /* not a URL: no track */
         }
-      });
+      }
       if (!urls.length) continue;
 
       const language = set.getAttribute('lang') ?? '';
       out.push({
         language,
         role: set.querySelector('Role')?.getAttribute('value') ?? 'subtitle',
-        label: set.querySelector('Label')?.textContent?.trim() || language,
+        label: set.querySelector('Label')?.textContent?.trim() || set.getAttribute('label')?.trim() || language,
         urls,
       });
     }

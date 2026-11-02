@@ -3,7 +3,7 @@
  *
  * From the <video> element itself where the site allows it: captureStream()
  * gives its sound to a MediaRecorder, and a canvas copies a frame. YouTube
- * allows both. Netflix, Disney+, Prime Video, HBO Max and Apple TV encrypt their
+ * allows both. Netflix, Disney+, Prime Video, HBO Max, Apple TV and Viki encrypt their
  * video, and Chrome will neither capture nor copy encrypted media — so there
  * the sound comes from capturing the tab (an optional permission, started from
  * the toolbar popup; see src/audio/tab-capture.ts), and there is no picture to

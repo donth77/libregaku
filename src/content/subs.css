@@ -27,4 +27,6 @@
 .libregaku-active [class*="CaptionWindow-Fuse-Web-Play"] { display: none !important; }
 /* Prime Video */
 .libregaku-active .atvwebplayersdk-captions-text { display: none !important; }
+/* Viki: its video.js player draws the subtitles over the picture. */
+.libregaku-active #vmplayer_id .vjs-text-track-display { display: none !important; }
 .libregaku-reading .player-timedtext { opacity: 0 !important; pointer-events: none !important; }

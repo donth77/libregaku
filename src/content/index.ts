@@ -4,6 +4,7 @@ import { MaxAdapter } from '../adapters/max';
 import { NetflixAdapter } from '../adapters/netflix';
 import { PrimeAdapter } from '../adapters/prime';
 import { mergeRepeats, pairCues } from '../adapters/pair';
+import { VikiAdapter } from '../adapters/viki';
 import { YouTubeAdapter } from '../adapters/youtube';
 import type { Cue, SubtitleSource, TrackInfo } from '../adapters/types';
 import { IntlSegmenter } from '../morphology/intl';
@@ -122,7 +123,7 @@ const quiet = (msg: string, id?: string, detail?: () => string) => {
   log(msg);
 };
 
-const ADAPTERS: SubtitleSource[] = [new YouTubeAdapter(), new NetflixAdapter(), new DisneyAdapter(), new PrimeAdapter(), new MaxAdapter(), new AppleAdapter()];
+const ADAPTERS: SubtitleSource[] = [new YouTubeAdapter(), new NetflixAdapter(), new DisneyAdapter(), new PrimeAdapter(), new MaxAdapter(), new AppleAdapter(), new VikiAdapter()];
 
 let overlay: Overlay | null = null;
 let cues: Cue[] = [];
@@ -1152,7 +1153,7 @@ function startDomFallback(
 function applyAnchor(o: Overlay, mount: HTMLElement, adapter: SubtitleSource): void {
   const place = (): void => {
     const floor = settings().subtitleBottom;
-    const bands = occupiedBands(mount, adapter.domCaptions.container);
+    const bands = occupiedBands(mount, adapter.domCaptions.container, adapter.controls);
     const offset = bottomOffset(bands, floor);
     o.setBottom(offset);
     if (offset !== floor) {

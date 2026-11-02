@@ -15,7 +15,7 @@ import type { Strings } from './i18n/en';
 export interface Assumption {
   id: string;
   /** 'external' is a third-party service we borrow, not a site we render on. */
-  site: 'youtube' | 'netflix' | 'disney' | 'prime' | 'max' | 'apple' | 'external';
+  site: 'youtube' | 'netflix' | 'disney' | 'prime' | 'max' | 'apple' | 'viki' | 'external';
   /** What we rely on. */
   claim: string;
   /** What stops working when it stops being true. */
@@ -502,6 +502,41 @@ export const ASSUMPTIONS: Assumption[] = [
     fallback: null,
   },
   {
+    id: 'vk.address',
+    site: 'viki',
+    claim: 'A video plays on its own page, www.viki.com/videos/<id>v followed by its name, and the next episode opens without a page load',
+    breaks: 'Everything on Viki: the extension does not run on the page, or keeps the last episode\'s subtitles',
+    fallback: null,
+  },
+  {
+    id: 'vk.manifest',
+    site: 'viki',
+    claim: 'The player fetches a DASH manifest from manifest-viki.viki.io/v1/<video id>/…/manifest.mpd (by fetch or XMLHttpRequest, readable as text) whose text AdaptationSets, one per language, carry lang (zh and zt for Simplified and Traditional Chinese), a label, and one Representation whose BaseURL is the whole track',
+    breaks: 'The track list on Viki: no transcript, no second line',
+    fallback: 'DOM reading, current line only (vk.caption-dom)',
+  },
+  {
+    id: 'vk.subtitle-files',
+    site: 'viki',
+    claim: 'Each track is one WebVTT file at api.viki.io/v4/videos/<video id>/auth_subtitles/<language>.vtt, fetchable from the page, whose cue times are on the same clock as the <video>\'s currentTime',
+    breaks: 'No cues: the track is dropped as not Viki\'s, its fetch is refused, or every line is early or late',
+    fallback: null,
+  },
+  {
+    id: 'vk.caption-dom',
+    site: 'viki',
+    claim: 'The player (video.js) draws its subtitles in the page\'s own DOM, in .vjs-text-track-display inside #vmplayer_id, one .vjs-text-track-cue to a line',
+    breaks: 'Viki\'s own subtitles are not hidden, so two sets show; and the DOM fallback',
+    fallback: null,
+  },
+  {
+    id: 'vk.video',
+    site: 'viki',
+    claim: 'The player has one <video> inside #vmplayer_id, which also holds its control bar, and setting the <video>\'s currentTime seeks. Unverified: adverts do not play in it',
+    breaks: 'Nothing renders, or clicking a transcript line does nothing, or lines show over an advert',
+    fallback: null,
+  },
+  {
     id: 'anki.media',
     site: 'external',
     claim: 'addNote stores each file in note.audio and note.picture from its base64 data under its filename, and appends [sound:filename] or <img src="filename"> to the fields it names, in order',
@@ -551,6 +586,9 @@ export const NOTICES: Record<string, NoticeTitle> = {
   'mx.manifest': 'maxTrackList',
   'mx.segments': 'maxTrackList',
   'mx.caption-dom': 'maxCaptionText',
+  'vk.manifest': 'vikiTrackList',
+  'vk.subtitle-files': 'vikiTrackList',
+  'vk.caption-dom': 'vikiCaptionText',
   'no-subtitles-on': 'subtitlesOff',
   'no-target-track': 'noTargetTrack',
   'no-second-track': 'noSecondTrack',

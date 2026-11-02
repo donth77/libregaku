@@ -24,7 +24,7 @@ export const action = {
   notActive:
     'Not active on this page. Open a video on YouTube, Netflix, or another supported site. If you just installed or reloaded Libregaku, reload the tab.',
   /** The page is not on a site the extension works on. */
-  unsupported: 'Libregaku works on YouTube, Netflix, Disney+, Prime Video, HBO Max and Apple TV.',
+  unsupported: 'Libregaku works on YouTube, Netflix, Disney+, Prime Video, HBO Max, Apple TV and Viki.',
   /** On one of those sites, with no video open. `site` is the site's name. */
   worksOn: (site: string): string => `Libregaku works on ${site}.`,
   /** On a supported site, with no subtitles yet. `site` is the site's name. */

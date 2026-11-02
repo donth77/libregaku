@@ -293,7 +293,7 @@ export const zhHant: Translation = {
     // What the extension is doing on this page
     checkingPage: '正在檢查這個網頁…',
     notActive: '未在這個網頁上啟用。請在 YouTube、Netflix 或其他支援的網站上開啟影片。如果剛安裝或重新載入 Libregaku，請重新載入分頁。',
-    unsupported: 'Libregaku 適用於 YouTube、Netflix、Disney+、Prime Video、HBO Max 和 Apple TV。',
+    unsupported: 'Libregaku 適用於 YouTube、Netflix、Disney+、Prime Video、HBO Max、Apple TV 和 Viki。',
     worksOn: (site: string): string => `Libregaku 適用於 ${site}。`,
     waitingForSubtitles: (site: string): string => `正在等待 ${site} 的字幕。請確認字幕已開啟。`,
     activeOn: (title: string): string => `已啟用：${title}`,
@@ -641,6 +641,8 @@ export const zhHant: Translation = {
     primeCaptionText: '在網頁上找不到 Prime Video 的字幕文字。',
     maxTrackList: '無法讀取 HBO Max 的字幕清單。',
     maxCaptionText: '在網頁上找不到 HBO Max 的字幕文字。',
+    vikiTrackList: '無法讀取 Viki 的字幕清單。',
+    vikiCaptionText: '在網頁上找不到 Viki 的字幕文字。',
     netflixBlocked: 'Netflix 封鎖了 Libregaku 讀取字幕的元件。',
 
     // This video's subtitles

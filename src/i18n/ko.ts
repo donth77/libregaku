@@ -305,7 +305,7 @@ export const ko: Translation = {
     notActive:
       '이 페이지에서는 작동하지 않습니다. YouTube, Netflix 또는 다른 지원 사이트의 동영상을 여세요. ' +
       'Libregaku를 방금 설치했거나 새로고침했다면 탭을 새로고침하세요.',
-    unsupported: 'Libregaku는 YouTube, Netflix, Disney+, Prime Video, HBO Max, Apple TV에서 작동합니다.',
+    unsupported: 'Libregaku는 YouTube, Netflix, Disney+, Prime Video, HBO Max, Apple TV, Viki에서 작동합니다.',
     worksOn: (site: string): string => `Libregaku는 ${site}에서 작동합니다.`,
     waitingForSubtitles: (site: string): string => `${site} 자막을 기다리는 중입니다. 자막이 켜져 있는지 확인하세요.`,
     activeOn: (title: string): string => `작동 중 — ${title}`,
@@ -646,6 +646,8 @@ export const ko: Translation = {
     primeCaptionText: '페이지에서 Prime Video 자막 텍스트를 찾을 수 없습니다.',
     maxTrackList: 'HBO Max 자막 목록을 읽을 수 없습니다.',
     maxCaptionText: '페이지에서 HBO Max 자막 텍스트를 찾을 수 없습니다.',
+    vikiTrackList: 'Viki 자막 목록을 읽을 수 없습니다.',
+    vikiCaptionText: '페이지에서 Viki 자막 텍스트를 찾을 수 없습니다.',
     netflixBlocked: 'Netflix가 Libregaku의 자막 읽기 기능을 차단했습니다.',
 
     // Titles: this video's subtitles

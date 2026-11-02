@@ -28,6 +28,7 @@
     "https://tv.apple.com/*",
     "https://*.tv.apple.com/*",
     "https://*.itunes.apple.com/*",
+    "https://www.viki.com/*",
     "https://assets.languagepod101.com/*",
     "https://cdn.innovativelanguage.com/*",
     "https://commons.wikimedia.org/*",
@@ -114,13 +115,24 @@
     },
     {
       "matches": [
+        "https://www.viki.com/*"
+      ],
+      "js": [
+        "inject-viki.js"
+      ],
+      "world": "MAIN",
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
         "https://www.youtube.com/*",
         "https://www.netflix.com/*",
         "https://www.disneyplus.com/*",
         "https://www.primevideo.com/*",
         "https://play.hbomax.com/*",
         "https://www.hbomax.com/*",
-        "https://tv.apple.com/*"
+        "https://tv.apple.com/*",
+        "https://www.viki.com/*"
       ],
       "js": [
         "content.js"

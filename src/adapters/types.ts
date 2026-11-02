@@ -49,6 +49,14 @@ export interface SubtitleSource {
   /** Where this site renders captions, for the DOM-reading fallback. */
   readonly domCaptions: { container: string; segment: string; join?: string };
   /**
+   * The site's own controls inside the player — its progress bar, its buttons.
+   * While they show they are blocks of text across the picture, and never
+   * another extension's subtitles, so the line does not stack above them
+   * (src/content/coexist.ts). Optional: a site whose controls are not
+   * mistaken for subtitles leaves it out.
+   */
+  readonly controls?: string;
+  /**
    * Candidate mount points, outermost-first. Must be at or above the site's own
    * control layer in the tree, or that layer paints over the overlay and eats
    * pointer events regardless of z-index.

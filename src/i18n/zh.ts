@@ -289,7 +289,7 @@ export const zh: Translation = {
     settingsTip: '所有设置',
     checkingPage: '正在检查此页面…',
     notActive: '未在此页面上启用。请在 YouTube、Netflix 或其他支持的网站上打开视频。如果刚安装或重新加载了 Libregaku，请刷新此标签页。',
-    unsupported: 'Libregaku 支持 YouTube、Netflix、Disney+、Prime Video、HBO Max 和 Apple TV。',
+    unsupported: 'Libregaku 支持 YouTube、Netflix、Disney+、Prime Video、HBO Max、Apple TV 和 Viki。',
     worksOn: (site: string): string => `Libregaku 支持 ${site}。`,
     waitingForSubtitles: (site: string): string => `正在等待 ${site} 的字幕。请确认字幕已打开。`,
     activeOn: (title: string): string => `已启用——${title}`,
@@ -628,6 +628,8 @@ export const zh: Translation = {
     primeCaptionText: '在页面上找不到 Prime Video 的字幕文本。',
     maxTrackList: '无法读取 HBO Max 的字幕列表。',
     maxCaptionText: '在页面上找不到 HBO Max 的字幕文本。',
+    vikiTrackList: '无法读取 Viki 的字幕列表。',
+    vikiCaptionText: '在页面上找不到 Viki 的字幕文本。',
     netflixBlocked: 'Netflix 阻止了 Libregaku 中读取字幕的部分。',
 
     // Titles: this video's subtitles

@@ -330,7 +330,7 @@ export const pl: Translation = {
     notActive:
       'Nieaktywne na tej stronie. Otwórz film na YouTube, Netflixie lub w innym obsługiwanym serwisie. Jeśli Libregaku zostało właśnie zainstalowane ' +
       'lub przeładowane, odśwież stronę.',
-    unsupported: 'Libregaku działa w serwisach YouTube, Netflix, Disney+, Prime Video, HBO Max i Apple TV.',
+    unsupported: 'Libregaku działa w serwisach YouTube, Netflix, Disney+, Prime Video, HBO Max, Apple TV i Viki.',
     worksOn: (site: string): string => `Libregaku działa w serwisie ${site}.`,
     waitingForSubtitles: (site: string): string =>
       `Oczekiwanie na napisy w serwisie ${site}. Upewnij się, że są włączone.`,
@@ -696,6 +696,8 @@ export const pl: Translation = {
     primeCaptionText: 'Nie znaleziono na stronie tekstu napisów Prime Video.',
     maxTrackList: 'Nie udało się odczytać listy napisów HBO Max.',
     maxCaptionText: 'Nie znaleziono na stronie tekstu napisów HBO Max.',
+    vikiTrackList: 'Nie udało się odczytać listy napisów Viki.',
+    vikiCaptionText: 'Nie znaleziono na stronie tekstu napisów Viki.',
     netflixBlocked: 'Netflix zablokował część Libregaku, która odczytuje napisy.',
 
     // Napisy tego filmu

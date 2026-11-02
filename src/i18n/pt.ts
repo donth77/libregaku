@@ -320,7 +320,7 @@ export const pt: Translation = {
     notActive:
       'Não está ativo nesta página. Abra um vídeo no YouTube, na Netflix ou em outro site compatível. Se você acabou de instalar ou recarregar ' +
       'o Libregaku, recarregue a guia.',
-    unsupported: 'O Libregaku funciona no YouTube, na Netflix, no Disney+, no Prime Video, na HBO Max e no Apple TV.',
+    unsupported: 'O Libregaku funciona no YouTube, na Netflix, no Disney+, no Prime Video, na HBO Max, no Apple TV e no Viki.',
     worksOn: (site: string): string => `O Libregaku funciona em ${site}.`,
     waitingForSubtitles: (site: string): string => `${site}: aguardando as legendas. Verifique se estão ativadas.`,
     activeOn: (title: string): string => `Ativo — ${title}`,
@@ -682,6 +682,8 @@ export const pt: Translation = {
     primeCaptionText: 'Não foi possível encontrar o texto das legendas da Prime Video na página.',
     maxTrackList: 'Não foi possível ler a lista de legendas da HBO Max.',
     maxCaptionText: 'Não foi possível encontrar o texto das legendas da HBO Max na página.',
+    vikiTrackList: 'Não foi possível ler a lista de legendas do Viki.',
+    vikiCaptionText: 'Não foi possível encontrar o texto das legendas do Viki na página.',
     netflixBlocked: 'A Netflix bloqueou a parte do Libregaku que lê as legendas.',
 
     // This video's subtitles

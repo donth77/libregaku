@@ -59,7 +59,7 @@ async function askPage(tabId: number, msg: unknown): Promise<PageState | null> {
 
 /** A site as people write it: the content script reports its adapter's id, "netflix". */
 function siteName(site: string | null): string {
-  return ({ youtube: 'YouTube', netflix: 'Netflix', disney: 'Disney+', prime: 'Prime Video', max: 'HBO Max', apple: 'Apple TV' } as Record<string, string>)[site ?? ''] ?? String(site);
+  return ({ youtube: 'YouTube', netflix: 'Netflix', disney: 'Disney+', prime: 'Prime Video', max: 'HBO Max', apple: 'Apple TV', viki: 'Viki' } as Record<string, string>)[site ?? ''] ?? String(site);
 }
 
 /** The site a tab is on, by its address, where it is one the extension works on. */
@@ -78,6 +78,7 @@ export function siteOfUrl(url: string | undefined): string | null {
   if (on('hbomax.com')) return 'max';
   // Only the service's own host: apple.com is a great deal else.
   if (on('tv.apple.com')) return 'apple';
+  if (on('viki.com')) return 'viki';
   return null;
 }
 
