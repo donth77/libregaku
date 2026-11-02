@@ -467,6 +467,13 @@ export const ASSUMPTIONS: Assumption[] = [
     fallback: null,
   },
   {
+    id: 'mx.address',
+    site: 'max',
+    claim: 'The player plays a title at /video/watch/<id> on play.hbomax.com or www.hbomax.com; play.hbomax.com sends every path to the same one on www.hbomax.com (since 30 October 2026)',
+    breaks: 'Everything on HBO Max: the extension does not run on the page, so nothing shows and no notice can say why',
+    fallback: null,
+  },
+  {
     id: 'mx.manifest',
     site: 'max',
     claim: 'The player fetches a DASH manifest (.mpd, by fetch or XMLHttpRequest, readable as text) whose text AdaptationSets, one per subtitle track, carry lang, a Role (subtitle, caption, forced) and a SegmentTemplate with a SegmentTimeline and a $Number$ media URL',

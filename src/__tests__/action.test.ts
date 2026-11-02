@@ -130,6 +130,7 @@ describe('the status line off a video', () => {
     expect(await popupOn('https://www.netflix.com/browse')).toBe('Libregaku works on Netflix.');
     expect(await popupOn('https://www.disneyplus.com/home')).toBe('Libregaku works on Disney+.');
     expect(await popupOn('https://play.hbomax.com/')).toBe('Libregaku works on HBO Max.');
+    expect(await popupOn('https://www.hbomax.com/video/watch/8779f57f/1')).toBe('Libregaku works on HBO Max.');
     expect(await popupOn('https://tv.apple.com/us')).toBe('Libregaku works on Apple TV.');
   });
 

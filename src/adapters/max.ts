@@ -39,6 +39,15 @@ export function watchIdOf(pathname: string): string | null {
   return /\/video\/watch\/([^/?#]+)/.exec(pathname)?.[1] ?? null;
 }
 
+/**
+ * A watch page, on either host the player has been served from (mx.address):
+ * play.hbomax.com until 30 October 2026, when it began sending every path to
+ * the same one on www.hbomax.com.
+ */
+export function isWatchPage(url: string): boolean {
+  return /^https:\/\/(play|www)\.hbomax\.com\/video\/watch\//.test(url);
+}
+
 async function fetchText(url: string): Promise<string> {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), FETCH_TIMEOUT_MS);
@@ -108,7 +117,7 @@ export class MaxAdapter implements SubtitleSource {
   }
 
   matches(url: string): boolean {
-    return /^https:\/\/play\.(hbomax|max)\.com\/video\/watch\//.test(url);
+    return isWatchPage(url);
   }
 
   video(): HTMLVideoElement | null {
@@ -132,7 +141,7 @@ export class MaxAdapter implements SubtitleSource {
   /** The watch page. HBO Max has no documented way to open one at a moment, so the card links to the title. */
   deepLink(_seconds: number): string | null {
     const id = watchIdOf(location.pathname);
-    return id ? `https://play.hbomax.com/video/watch/${id}` : null;
+    return id ? `${location.origin}/video/watch/${id}` : null;
   }
 
   async listTracks(): Promise<TrackInfo[]> {

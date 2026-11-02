@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { asTracks, watchIdOf } from '../max';
+import { asTracks, isWatchPage, watchIdOf } from '../max';
 
 const url = (n: number): string => `https://x.cf.prd.media.h264.io/gcs/a/t/h/t6/${n}.vtt`;
 
@@ -7,6 +7,16 @@ describe('watchIdOf', () => {
   it('reads the id from a watch page, and nothing from any other', () => {
     expect(watchIdOf('/video/watch/8779f57f-dc7f-4bfd-8ce2-6ed41044519f')).toBe('8779f57f-dc7f-4bfd-8ce2-6ed41044519f');
     expect(watchIdOf('/show/7888496f')).toBeNull();
+  });
+});
+
+describe('isWatchPage', () => {
+  it('knows a watch page on the old host and the new, and nothing else', () => {
+    expect(isWatchPage('https://play.hbomax.com/video/watch/8779f57f/1')).toBe(true);
+    expect(isWatchPage('https://www.hbomax.com/video/watch/8779f57f/1')).toBe(true);
+    expect(isWatchPage('https://www.hbomax.com/')).toBe(false);
+    expect(isWatchPage('https://www.hbomax.com/auth/login')).toBe(false);
+    expect(isWatchPage('https://www.hbomax.com.evil.example/video/watch/8779f57f')).toBe(false);
   });
 });
 

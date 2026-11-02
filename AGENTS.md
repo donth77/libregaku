@@ -48,7 +48,9 @@ the behaviour: Netflix's stayed green through a manifest rename because the old
 field names were still in the code. Prefer checking the real response; say in
 the test when you can't. YouTube serves a bot-check page to CI runners, and
 Amazon some days a robot check, a 503 or its offers page, so those canaries
-report "inconclusive" there rather than failing. Every wait in a canary needs a limit: a browser check
+report "inconclusive" there rather than failing. HBO Max has served its player only to a signed-in
+browser since 30 October 2026, when play.hbomax.com began sending every address to www.hbomax.com,
+so its canary checks only where a watch page lands now. Every wait in a canary needs a limit: a browser check
 that waited on a promise the page never settled ran six hours a day, until
 the month's Actions minutes were gone. The YouTube browser check is
 inconclusive on most CI days for the same reason, so it says little there:

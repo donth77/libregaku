@@ -99,10 +99,18 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TITLE="canary: a live-site assumption broke"
+          # The logs are coloured for this page, and an issue shows the colour
+          # codes as text ([90m, [2m). They are taken out, and so are the
+          # ::error and ::warning lines, which repeat what the log says. Of the
+          # contract tests, what failed is posted, not the log's last lines.
+          ESC=$(printf '\033')
+          clean() { sed "s/${ESC}\[[0-9;]*[A-Za-z]//g" "$1" 2>/dev/null | grep -v '^::' | uniq; }
+          FAILED=$(clean canary.log | sed -n '/Failed Tests/,$p' | head -80)
+          [ -n "$FAILED" ] || FAILED=$(clean canary.log | tail -60)
           BODY=$(printf 'The daily canary failed. A site likely changed shape.\n\nContract tests: %s. Browser check: %s.\n\nRun: %s\n\n```\n%s\n```\n\n```\n%s\n```\n' \
             "${{ steps.contract.outcome }}" "${{ steps.smoke.outcome }}" \
             "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
-            "$(tail -60 canary.log)" "$(tail -15 smoke.log 2>/dev/null)")
+            "$FAILED" "$(clean smoke.log | tail -15)")
           # The label is how the open issue is found again; make sure it exists.
           gh label create canary --color B60205 \
             --description "The daily canary found a broken site assumption" 2>/dev/null || true

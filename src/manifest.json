@@ -93,7 +93,8 @@
     },
     {
       "matches": [
-        "https://play.hbomax.com/*"
+        "https://play.hbomax.com/*",
+        "https://www.hbomax.com/*"
       ],
       "js": [
         "inject-max.js"
@@ -118,6 +119,7 @@
         "https://www.disneyplus.com/*",
         "https://www.primevideo.com/*",
         "https://play.hbomax.com/*",
+        "https://www.hbomax.com/*",
         "https://tv.apple.com/*"
       ],
       "js": [
