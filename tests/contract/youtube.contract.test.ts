@@ -13,12 +13,27 @@ const UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' +
   '(KHTML, like Gecko) Chrome/126.0 Safari/537.36';
 
-async function watchPage(id: string): Promise<string> {
-  const res = await fetch(`https://www.youtube.com/watch?v=${id}&hl=en`, {
+/**
+ * The watch page, asked for once. Every test below reads the same page, and
+ * vitest tries a failing test three times, so on 16 November, when YouTube
+ * answered a runner 429, the page was asked for up to fifteen times. A
+ * request that fails outright is asked again on the next try.
+ */
+let watch: Promise<{ status: number; html: string }> | null = null;
+
+async function watchPage(ctx: TestContext): Promise<string> {
+  watch ??= fetch(`https://www.youtube.com/watch?v=${VIDEO}&hl=en`, {
     headers: { 'user-agent': UA, 'accept-language': 'en-US,en;q=0.9' },
+  }).then(async (res) => ({ status: res.status, html: await res.text() }));
+  const asked = watch;
+  const { status, html } = await asked.catch((e: unknown) => {
+    if (watch === asked) watch = null;
+    throw e;
   });
-  expect(res.ok, `YouTube returned HTTP ${res.status}`).toBe(true);
-  return res.text();
+  // Too many requests from this address, which says nothing of the page.
+  if (status === 429) inconclusive(ctx, 'YouTube answered 429, too many requests');
+  expect(status >= 200 && status < 300, `YouTube returned HTTP ${status}`).toBe(true);
+  return html;
 }
 
 /**
@@ -45,7 +60,7 @@ function inconclusive(ctx: TestContext, why: string): never {
 }
 
 async function realWatchPage(ctx: TestContext): Promise<string> {
-  const html = await watchPage(VIDEO);
+  const html = await watchPage(ctx);
   const why = blockedBecause(html);
   if (why) inconclusive(ctx, why);
   return html;
@@ -100,7 +115,7 @@ describe('youtube contract', () => {
    * these does turn it red, and it is the part that can run everywhere.
    */
   it('yt.player-api, yt.ad-showing, yt.controls, yt.caption-dom — the player still names what we drive', async (ctx) => {
-    const html = await watchPage(VIDEO);
+    const html = await watchPage(ctx);
     const js = html.match(/"jsUrl":"([^"]+\/base\.js)"/)?.[1];
     if (!js) inconclusive(ctx, 'the watch page named no player script');
 
