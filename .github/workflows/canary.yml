@@ -121,6 +121,19 @@ jobs:
             gh issue create --title "$TITLE" --body "$BODY" --label canary
           fi
 
+      # A day when everything passes closes the issue, so an open one is always
+      # a break still unmended. An inconclusive check counts as passing here, as
+      # it does above; if the break comes back, the next red run opens a new one.
+      - name: Close the issue once every check passes
+        if: steps.contract.outcome == 'success' && steps.smoke.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          EXISTING=$(gh issue list --state open --label canary --json number --jq '.[0].number')
+          if [ -n "$EXISTING" ]; then
+            gh issue close "$EXISTING" --comment "Every check passed: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          fi
+
       - name: Fail the job so the run is red
         if: steps.contract.outcome == 'failure' || steps.smoke.outcome == 'failure'
         run: exit 1
