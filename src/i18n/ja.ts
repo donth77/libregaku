@@ -243,20 +243,19 @@ export const ja: Translation = {
     creditLindera:
       '日本語、韓国語、中国語を単語に分割します。MITライセンス。IPADIC、UniDic、mecab-ko-dic、CC-CEDICTには、それぞれ独自の条件があります。',
     creditCedict: '中国語辞書 © MDBGとその貢献者。CC BY-SA 4.0のもとで使用しています。',
-    creditWiktionary:
-      '韓国語とスペイン語の辞書、および母語で書かれた一部の辞書。' +
-      'Wiktionaryからkaikki.orgとwiktionary-to-yomitanを経て作成しています。CC BY-SA 4.0。',
+    creditWiktionary: '多くの言語の辞書、および母語で書かれた一部の辞書。Wiktionaryからkaikki.orgとwiktionary-to-yomitanを経て作成しています。CC BY-SA 4.0。',
     creditKrdict:
       '韓国語の単語を母語で説明します。© National Institute of Korean Language。CC BY-SA 2.0 KRのもとで使用しています。' +
       'ファイルはLyroxideが作成したものです。',
     creditCfdict: '中国語をフランス語で説明します。CFDICT © chine.in。CxDICTが更新を続けています。CC BY-SA 4.0。',
     creditCanto: '広東語辞書と、CC-CEDICT用のJyutpingの読み。© Pleco Inc.、CC BY-SA 3.0のもとで使用しています。',
     creditHandedict: '中国語をドイツ語で説明します。© HanDeDictとその貢献者。CC BY-SA 3.0のもとで使用しています。',
+    creditWikdict: '母語で書かれた一部の辞書。Karl BartelがDBnaryを通じてWiktionaryの訳語から作成したものです。CC BY-SA 4.0。',
     creditUnihan: '中国語の漢字で、最初に表示する読みを決めます。© Unicode, Inc.、Unicode Licenseのもとで使用しています。',
     creditTatoeba: 'かなで書かれた動詞がどの動詞かを、この例文集から学んでいます。© Tatoebaの貢献者、CC BY 2.0 FRのもとで使用しています。',
     creditJotoba: '辞書のダウンロード中に単語を調べるために使います。どちらもJMdictを使用しています。',
     creditLucide: 'アイコン。ISCライセンス。',
-    creditCommons: 'スペイン語・中国語・韓国語の単語の録音。ボランティアが読み上げたものです。ライセンスは録音ごとに異なり（多くはCC BY-SA 4.0）、再生時とカードに話者名とともに表示されます。',
+    creditCommons: '単語の録音。ボランティアが読み上げたものです。ライセンスは録音ごとに異なり（多くはCC BY-SA 4.0）、再生時とカードに話者名とともに表示されます。',
     creditAudioCmn: '中国語の単語の録音。Yue Tan（カーン大学）による。CC BY-SA 3.0 US。',
     creditNaver: '韓国語の単語の録音（Naver辞書）。単語カードの表示でのみ再生されます。再利用のライセンスがないため、Ankiのカードには付けません。',
     creditSpanishdict: 'SpanishDictによるスペイン語の合成音声。録音がないとき、発音ボタンで再生されます。再利用のライセンスがないため、Ankiのカードには付けません。',

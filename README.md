@@ -25,6 +25,9 @@ Watch something in the language you're learning. Unknown words are highlighted. 
 one, read the definition, make a card. Over time the highlighting fades as the words
 become yours.
 
+[`SUPPORTED-SITES.md`](SUPPORTED-SITES.md) lists the sites it works on, and what
+differs between them.
+
 
 ## Requirements
 
@@ -68,28 +71,29 @@ pnpm typecheck
 
 ## Languages
 
-Japanese, Chinese, Korean and Spanish are fully supported. Other languages are only
-split into words for now.
-
-| Languages | Support | When |
-|---|---|---|
-| Japanese | Full, with furigana | Now (v1) |
-| Chinese (Mandarin) | Full, with pinyin | Now |
-| Korean, Spanish | Full | Now |
-| French, German, Italian, Portuguese | Planned | v1.1 |
-| Thai | Planned | v1.3 |
-| Any other language Wiktionary covers | Basic | v1.1 |
+| Languages | Support |
+|---|---|
+| Japanese | Full, with furigana |
+| Chinese (Mandarin) | Full, with pinyin |
+| Cantonese | Full, with Jyutping |
+| Korean, Spanish, French, German | Full |
+| Italian, Portuguese, Thai, English, Hindi, Arabic, Turkish | Words only, for now |
 
 "Full" means a word is looked up, and matched to its card, in whatever form it is said:
-`갔어요` finds `가다`, and `hablábamos` finds `hablar`. Definitions for Chinese, Korean
-and Spanish are in English.
+`갔어요` finds `가다`, and `hablábamos` finds `hablar`.
 
-"Basic" means you can look words up, but an inflected word (say, "went" for "go") may
-not match its card. Libregaku tells you when this applies.
+"Words only" means the line is split into words, but there are no lookups yet, and a word
+matches a card only as it is written. Libregaku says so when you choose one.
+
+Definitions are in your own language where a dictionary in it exists for the pair, such
+as Korean explained in Spanish or Chinese in French, and in English otherwise.
+[`LANGUAGE-PAIRS.md`](LANGUAGE-PAIRS.md) lists every pair and the dictionaries it uses.
 
 Each language's dictionary is downloaded the first time you choose it. The download is
-11 to 27 MB; on disk it takes 100 MB for Chinese, 200 MB for Korean and 470 MB for
-Spanish.
+11 to 27 MB; on disk it takes 100 MB for Chinese, 140 MB for French, 200 MB for Korean
+and German, and 470 MB for Spanish. A dictionary in your own language, where there is
+one, is a second download of up to 18 MB. Japanese also downloads a second dictionary,
+used to split lines into words: 46 MB, and 190 MB on disk.
 
 ## Licence
 
@@ -110,8 +114,21 @@ The sources:
 - [JMdict / KANJIDIC2](https://www.edrdg.org/): Electronic Dictionary Research and
   Development Group, CC BY-SA 4.0
 - [CC-CEDICT](https://www.mdbg.net/chinese/dictionary?page=cc-cedict): MDBG, CC BY-SA 4.0
+- [CC-Canto](https://cantonese.org/): Pleco, CC BY-SA 3.0
 - [kaikki.org](https://kaikki.org/): Wiktionary via Wiktextract, CC BY-SA, as packaged
   by [wiktionary-to-yomitan](https://github.com/yomidevs/wiktionary-to-yomitan)
+- [WikDict](https://www.wikdict.com/): Wiktionary via DBnary, by Karl Bartel, CC BY-SA 4.0
+- [KRDict](https://krdict.korean.go.kr/) (한국어기초사전): National Institute of Korean
+  Language, CC BY-SA 2.0 KR, as packaged by
+  [yomitan-ko-dic](https://github.com/Lyroxide/yomitan-ko-dic)
+- [CFDICT](https://github.com/licryle/CxDICT): chine.in, kept up to date by CxDICT,
+  CC BY-SA 4.0
+- [HanDeDict](https://handedict.zydeo.net/): HanDeDict and its contributors, CC BY-SA 3.0
+- [Lingua Libre](https://commons.wikimedia.org/wiki/Commons:Lingua_Libre) recordings on
+  Wikimedia Commons: each under its own licence, CC BY-SA 4.0 for most, named with its
+  speaker where it plays and on the card
+- [audio-cmn](https://github.com/hugolpz/audio-cmn): Yue Tan, University of Caen,
+  CC BY-SA 3.0 US
 - [Unihan](https://www.unicode.org/reports/tr38/): Unicode, Inc., Unicode License
 - [Tatoeba](https://tatoeba.org/): Tatoeba contributors, CC BY 2.0 FR
 - [Lindera](https://github.com/lindera/lindera) dictionaries: each has its own terms

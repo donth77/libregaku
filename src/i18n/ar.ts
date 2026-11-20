@@ -274,20 +274,20 @@ export const ar: Translation = {
       'يقسّم اليابانية والكورية والصينية إلى كلمات. ترخيص MIT؛ ولكلٍّ من IPADIC وUniDic وmecab-ko-dic وCC-CEDICT ' +
       'شروطه الخاصة.',
     creditCedict: 'القاموس الصيني © MDBG والمساهمون فيه، مستخدم بموجب ترخيص CC BY-SA 4.0.',
-    creditWiktionary:
-      'القاموسان الكوري والإسباني، وبعض القواميس بلغتك، من Wiktionary عبر kaikki.org وwiktionary-to-yomitan. CC BY-SA 4.0.',
+    creditWiktionary: 'قواميس معظم اللغات، وبعض القواميس بلغتك، من Wiktionary عبر kaikki.org وwiktionary-to-yomitan. CC BY-SA 4.0.',
     creditKrdict:
       'كلمات كورية مشروحة بلغتك. © National Institute of Korean Language، مستخدم بموجب ترخيص CC BY-SA 2.0 KR. ' +
       'الملفات من إعداد Lyroxide.',
     creditCfdict: 'الصينية مشروحة بالفرنسية. CFDICT © chine.in، ويُبقيه CxDICT محدّثًا. CC BY-SA 4.0.',
     creditCanto: 'القاموس الكانتوني وقراءات Jyutping لقاموس CC-CEDICT. © Pleco Inc.، مستخدم بموجب ترخيص CC BY-SA 3.0.',
     creditHandedict: 'الصينية مشروحة بالألمانية. © HanDeDict والمساهمون فيه، مستخدم بموجب ترخيص CC BY-SA 3.0.',
+    creditWikdict: 'بعض القواميس بلغتك، صنعها Karl Bartel من ترجمات Wiktionary عبر DBnary. CC BY-SA 4.0.',
     creditUnihan: 'أي قراءة للحرف الصيني تظهر أولًا. © Unicode, Inc.، مستخدم بموجب Unicode License.',
     creditTatoeba:
       'أي فعل هو الفعل الياباني المكتوب بالكانا، مستخلص من هذه الجمل النموذجية. © مساهمو Tatoeba، مستخدم بموجب CC BY 2.0 FR.',
     creditJotoba: 'يُستخدمان للبحث أثناء تنزيل القاموس. كلاهما يعتمد على JMdict.',
     creditLucide: 'الرموز. ترخيص ISC.',
-    creditCommons: 'تسجيلات لكلمات إسبانية وصينية وكورية بأصوات متطوعين. لكل تسجيل ترخيصه، وهو CC BY-SA 4.0 في الغالب، ويُذكر مع اسم المتحدث عند تشغيله وعلى البطاقة.',
+    creditCommons: 'تسجيلات لكلمات بأصوات متطوعين. لكل تسجيل ترخيصه، وهو CC BY-SA 4.0 في الغالب، ويُذكر مع اسم المتحدث عند تشغيله وعلى البطاقة.',
     creditAudioCmn: 'تسجيلات لكلمات صينية بصوت Yue Tan من جامعة كان. ترخيص CC BY-SA 3.0 US.',
     creditNaver: 'تسجيلات لكلمات كورية من قاموس نافر، تُشغَّل في بطاقة البحث فقط. لا يسمح ترخيصها بإعادة الاستخدام، فلا توضع على بطاقة أبدًا.',
     creditSpanishdict: 'صوت مولَّد لكلمات إسبانية من SpanishDict، يُشغَّل بزر النطق عندما لا يوجد تسجيل. لا يسمح ترخيصه بإعادة الاستخدام، فلا يوضع على بطاقة أبدًا.',

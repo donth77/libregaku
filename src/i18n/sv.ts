@@ -252,21 +252,20 @@ export const sv: Translation = {
       'Delar upp japanska, koreanska och kinesiska i ord. MIT-licens; IPADIC, UniDic, mecab-ko-dic och CC-CEDICT har ' +
       'egna villkor.',
     creditCedict: 'Kinesisk ordbok © MDBG och bidragsgivarna, används under CC BY-SA 4.0.',
-    creditWiktionary:
-      'Koreanska och spanska ordböcker, och några på ditt eget språk, från Wiktionary via kaikki.org och ' +
-      'wiktionary-to-yomitan. CC BY-SA 4.0.',
+    creditWiktionary: 'Ordböcker för de flesta språk, och några på ditt eget språk, från Wiktionary via kaikki.org och wiktionary-to-yomitan. CC BY-SA 4.0.',
     creditKrdict:
       'Koreanska ord förklarade på ditt eget språk. © National Institute of Korean Language, används under ' +
       'CC BY-SA 2.0 KR. Filer av Lyroxide.',
     creditCfdict: 'Kinesiska förklarad på franska. CFDICT © chine.in, hålls uppdaterad av CxDICT. CC BY-SA 4.0.',
     creditCanto: 'Kantonesisk ordbok och Jyutping-läsningar för CC-CEDICT. © Pleco Inc., används under CC BY-SA 3.0.',
     creditHandedict: 'Kinesiska förklarad på tyska. © HanDeDict och bidragsgivarna, används under CC BY-SA 3.0.',
+    creditWikdict: 'Några ordböcker på ditt eget språk, gjorda av Karl Bartel från översättningarna i Wiktionary via DBnary. CC BY-SA 4.0.',
     creditUnihan: 'Vilken läsning av ett kinesiskt tecken som visas först. © Unicode, Inc., används under Unicode License.',
     creditTatoeba:
       'Vilket verb ett japanskt verb skrivet med kana är, inlärt från de här exempelmeningarna. © Tatoebas bidragsgivare, används under CC BY 2.0 FR.',
     creditJotoba: 'Används för uppslag medan ordboken laddas ned. Båda använder JMdict.',
     creditLucide: 'Ikoner. ISC-licens.',
-    creditCommons: 'Inspelningar av spanska, kinesiska och koreanska ord, inlästa av frivilliga. Varje inspelning har sin egen licens, oftast CC BY-SA 4.0, som visas med talarens namn vid uppspelning och på kortet.',
+    creditCommons: 'Inspelningar av ord, inlästa av frivilliga. Varje inspelning har sin egen licens, oftast CC BY-SA 4.0, som visas med talarens namn vid uppspelning och på kortet.',
     creditAudioCmn: 'Inspelningar av kinesiska ord av Yue Tan, universitetet i Caen. CC BY-SA 3.0 US.',
     creditNaver: 'Inspelningar av koreanska ord från Naver Dictionary, som bara spelas på sökkortet. De har ingen licens för återanvändning och läggs därför aldrig på ett kort.',
     creditSpanishdict: 'Genererad röst för spanska ord från SpanishDict, som spelas med uttalsknappen när det saknas en inspelning. Ingen licens för återanvändning, så den läggs aldrig på ett kort.',

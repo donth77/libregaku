@@ -1457,6 +1457,7 @@ function credits(): HTMLElement {
   entry('한국어기초사전 · KRDict', 'https://krdict.korean.go.kr/', ui.settings.creditKrdict);
   entry('CFDICT · CxDICT', 'https://github.com/licryle/CxDICT', ui.settings.creditCfdict);
   entry('HanDeDict', 'https://handedict.zydeo.net/', ui.settings.creditHandedict);
+  entry('WikDict', 'https://www.wikdict.com/', ui.settings.creditWikdict);
   entry('CC-Canto', 'https://cantonese.org/', ui.settings.creditCanto);
   entry('Lindera · IPADIC · UniDic · mecab-ko-dic', 'https://github.com/lindera/lindera', ui.settings.creditLindera);
   entry('Unihan', 'https://www.unicode.org/reports/tr38/', ui.settings.creditUnihan);

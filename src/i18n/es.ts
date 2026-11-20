@@ -257,9 +257,7 @@ export const es: Translation = {
       'Divide el japonés, el coreano y el chino en palabras. Licencia MIT; IPADIC, UniDic, mecab-ko-dic y CC-CEDICT tienen ' +
       'sus propias condiciones.',
     creditCedict: 'Diccionario de chino © MDBG y sus colaboradores, con licencia CC BY-SA 4.0.',
-    creditWiktionary:
-      'Diccionarios de coreano y de español, y algunos en tu propio idioma, de Wiktionary a través de kaikki.org y ' +
-      'wiktionary-to-yomitan. CC BY-SA 4.0.',
+    creditWiktionary: 'Diccionarios de la mayoría de los idiomas, y algunos en tu propio idioma, de Wiktionary a través de kaikki.org y wiktionary-to-yomitan. CC BY-SA 4.0.',
     creditKrdict:
       'Palabras coreanas explicadas en tu propio idioma. © National Institute of Korean Language, con licencia ' +
       'CC BY-SA 2.0 KR. Archivos creados por Lyroxide.',
@@ -267,12 +265,13 @@ export const es: Translation = {
     creditCanto:
       'Diccionario de cantonés y lecturas en Jyutping para CC-CEDICT. © Pleco Inc., con licencia CC BY-SA 3.0.',
     creditHandedict: 'Chino explicado en alemán. © HanDeDict y sus colaboradores, con licencia CC BY-SA 3.0.',
+    creditWikdict: 'Algunos diccionarios en tu propio idioma, creados por Karl Bartel a partir de las traducciones de Wiktionary mediante DBnary. CC BY-SA 4.0.',
     creditUnihan: 'Qué lectura de un carácter chino se muestra primero. © Unicode, Inc., con la Unicode License.',
     creditTatoeba:
       'Qué verbo es un verbo japonés escrito en kana, aprendido de estas frases de ejemplo. © Colaboradores de Tatoeba, con CC BY 2.0 FR.',
     creditJotoba: 'Se usan para las búsquedas mientras se descarga el diccionario. Ambos usan JMdict.',
     creditLucide: 'Iconos. Licencia ISC.',
-    creditCommons: 'Grabaciones de palabras en español, chino y coreano, hechas por voluntarios. Cada una tiene su propia licencia, CC BY-SA 4.0 en la mayoría, que se indica junto al hablante al reproducirla y en la tarjeta.',
+    creditCommons: 'Grabaciones de palabras, hechas por voluntarios. Cada una tiene su propia licencia, CC BY-SA 4.0 en la mayoría, que se indica junto al hablante al reproducirla y en la tarjeta.',
     creditAudioCmn: 'Grabaciones de palabras en chino de Yue Tan, Universidad de Caen. CC BY-SA 3.0 US.',
     creditNaver: 'Grabaciones de palabras en coreano de Naver Dictionary, que solo suenan en la tarjeta de consulta. No tienen licencia para reutilizarse, así que nunca van en una tarjeta.',
     creditSpanishdict: 'Voz generada para palabras en español de SpanishDict, que suena con el botón de pronunciación cuando no hay grabación. No tiene licencia para reutilizarse, así que nunca va en una tarjeta.',

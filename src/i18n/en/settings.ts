@@ -339,7 +339,7 @@ export const settings = {
   creditCedict: 'Chinese dictionary © MDBG and its contributors, used under CC BY-SA 4.0.',
   /** Under Wiktionary. kaikki.org and wiktionary-to-yomitan are the projects that turn Wiktionary into data files. */
   creditWiktionary:
-    'Korean and Spanish dictionaries, and some in your own language, from Wiktionary through kaikki.org and ' +
+    'Dictionaries of most languages, and some in your own language, from Wiktionary through kaikki.org and ' +
     'wiktionary-to-yomitan. CC BY-SA 4.0.',
   /** Under 한국어기초사전 · KRDict, Korea's dictionary for learners. Lyroxide made the files Libregaku downloads. */
   creditKrdict:
@@ -351,6 +351,8 @@ export const settings = {
   creditCanto: 'Cantonese dictionary and Jyutping readings for CC-CEDICT. © Pleco Inc., used under CC BY-SA 3.0.',
   /** Under HanDeDict, a Chinese–German dictionary. */
   creditHandedict: 'Chinese explained in German. © HanDeDict and its contributors, used under CC BY-SA 3.0.',
+  /** Under WikDict: dictionaries for pairs of languages, made by Karl Bartel from Wiktionary's translations. DBnary is the project that reads them out of Wiktionary. */
+  creditWikdict: 'Some dictionaries in your own language, made by Karl Bartel from Wiktionary’s translations through DBnary. CC BY-SA 4.0.',
   /** Under Unihan, the Unicode database of Chinese characters. */
   creditUnihan: 'Which reading a Chinese character shows first. © Unicode, Inc., used under the Unicode License.',
   /** Under Tatoeba, a collection of example sentences and their translations. */
@@ -364,7 +366,7 @@ export const settings = {
    * by the lookup card's Pronounce button and put on new cards.
    */
   creditCommons:
-    'Recordings of Spanish, Chinese and Korean words, spoken by volunteers. Each has its own licence, ' +
+    'Recordings of words, spoken by volunteers. Each has its own licence, ' +
     'CC BY-SA 4.0 for most, named with its speaker where it plays and on the card.',
   /** Under audio-cmn · Shtooka. Yue Tan is the speaker's name; Caen is a city in France. */
   creditAudioCmn: 'Recordings of Chinese words by Yue Tan, University of Caen. CC BY-SA 3.0 US.',

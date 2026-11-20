@@ -262,9 +262,7 @@ export const pl: Translation = {
       'Dzieli japoński, koreański i chiński na słowa. Licencja MIT; IPADIC, UniDic, mecab-ko-dic i CC-CEDICT ' +
       'mają własne warunki.',
     creditCedict: 'Słownik chiński © MDBG i współtwórcy, na licencji CC BY-SA 4.0.',
-    creditWiktionary:
-      'Słowniki koreański i hiszpański oraz niektóre w twoim języku, z Wiktionary przez kaikki.org i ' +
-      'wiktionary-to-yomitan. CC BY-SA 4.0.',
+    creditWiktionary: 'Słowniki większości języków oraz niektóre w twoim języku, z Wiktionary przez kaikki.org i wiktionary-to-yomitan. CC BY-SA 4.0.',
     creditKrdict:
       'Koreańskie słowa objaśnione w twoim języku. © National Institute of Korean Language, na licencji CC BY-SA 2.0 KR. ' +
       'Pliki przygotowane przez Lyroxide.',
@@ -272,12 +270,13 @@ export const pl: Translation = {
       'Chiński objaśniony po francusku. CFDICT © chine.in, na bieżąco aktualizowany przez CxDICT. CC BY-SA 4.0.',
     creditCanto: 'Słownik kantoński i czytania Jyutping dla CC-CEDICT. © Pleco Inc., na licencji CC BY-SA 3.0.',
     creditHandedict: 'Chiński objaśniony po niemiecku. © HanDeDict i współtwórcy, na licencji CC BY-SA 3.0.',
+    creditWikdict: 'Niektóre słowniki w twoim języku. Utworzył je Karl Bartel z tłumaczeń w Wiktionary za pośrednictwem DBnary. CC BY-SA 4.0.',
     creditUnihan: 'Które czytanie chińskiego znaku jest pokazywane jako pierwsze. © Unicode, Inc., na licencji Unicode License.',
     creditTatoeba:
       'Którym czasownikiem jest japoński czasownik zapisany kaną, na podstawie tych przykładowych zdań. © Współtwórcy Tatoeba, na licencji CC BY 2.0 FR.',
     creditJotoba: 'Używane do sprawdzania słów, gdy słownik się pobiera. Oba korzystają z JMdict.',
     creditLucide: 'Ikony. Licencja ISC.',
-    creditCommons: 'Nagrania słów hiszpańskich, chińskich i koreańskich, czytanych przez wolontariuszy. Każde ma własną licencję, najczęściej CC BY-SA 4.0, podaną wraz z imieniem lektora przy odtwarzaniu i na karcie.',
+    creditCommons: 'Nagrania słów czytanych przez wolontariuszy. Każde ma własną licencję, najczęściej CC BY-SA 4.0, podaną wraz z imieniem lektora przy odtwarzaniu i na karcie.',
     creditAudioCmn: 'Nagrania chińskich słów: Yue Tan, Uniwersytet w Caen. CC BY-SA 3.0 US.',
     creditNaver: 'Nagrania koreańskich słów ze słownika Naver, odtwarzane tylko na karcie wyszukiwania. Nie mają licencji na ponowne użycie, więc nigdy nie trafiają na fiszkę.',
     creditSpanishdict: 'Generowany głos dla hiszpańskich słów z SpanishDict, odtwarzany przyciskiem wymowy, gdy brak nagrania. Nie ma licencji na ponowne użycie, więc nigdy nie trafia na fiszkę.',

@@ -240,9 +240,7 @@ export const id: Translation = {
       'Memisahkan bahasa Jepang, Korea, dan Tionghoa menjadi kata. Lisensi MIT; IPADIC, UniDic, mecab-ko-dic, dan CC-CEDICT ' +
       'punya ketentuan sendiri.',
     creditCedict: 'Kamus bahasa Tionghoa © MDBG dan para kontributornya, digunakan dengan lisensi CC BY-SA 4.0.',
-    creditWiktionary:
-      'Kamus bahasa Korea dan Spanyol, serta beberapa dalam bahasa Anda sendiri, dari Wiktionary melalui kaikki.org dan ' +
-      'wiktionary-to-yomitan. CC BY-SA 4.0.',
+    creditWiktionary: 'Kamus untuk sebagian besar bahasa, serta beberapa dalam bahasa Anda sendiri, dari Wiktionary melalui kaikki.org dan wiktionary-to-yomitan. CC BY-SA 4.0.',
     creditKrdict:
       'Kata bahasa Korea dijelaskan dalam bahasa Anda sendiri. © National Institute of Korean Language, digunakan dengan ' +
       'lisensi CC BY-SA 2.0 KR. File dibuat oleh Lyroxide.',
@@ -253,12 +251,13 @@ export const id: Translation = {
     creditHandedict:
       'Bahasa Tionghoa dijelaskan dalam bahasa Jerman. © HanDeDict dan para kontributornya, digunakan dengan lisensi ' +
       'CC BY-SA 3.0.',
+    creditWikdict: 'Beberapa kamus dalam bahasa Anda sendiri, dibuat oleh Karl Bartel dari terjemahan Wiktionary melalui DBnary. CC BY-SA 4.0.',
     creditUnihan: 'Cara baca karakter Tionghoa yang ditampilkan pertama. © Unicode, Inc., digunakan dengan Unicode License.',
     creditTatoeba:
       'Kata kerja apa yang dimaksud kata kerja Jepang yang ditulis dalam kana, dipelajari dari kalimat-kalimat contoh ini. © Kontributor Tatoeba, digunakan dengan CC BY 2.0 FR.',
     creditJotoba: 'Dipakai untuk pencarian selama kamus diunduh. Keduanya memakai JMdict.',
     creditLucide: 'Ikon. Lisensi ISC.',
-    creditCommons: 'Rekaman kata bahasa Spanyol, Tionghoa, dan Korea yang diucapkan para sukarelawan. Setiap rekaman punya lisensinya sendiri, kebanyakan CC BY-SA 4.0, yang ditampilkan bersama nama penuturnya saat diputar dan di kartu.',
+    creditCommons: 'Rekaman kata yang diucapkan para sukarelawan. Setiap rekaman punya lisensinya sendiri, kebanyakan CC BY-SA 4.0, yang ditampilkan bersama nama penuturnya saat diputar dan di kartu.',
     creditAudioCmn: 'Rekaman kata bahasa Tionghoa oleh Yue Tan, Universitas Caen. CC BY-SA 3.0 US.',
     creditNaver: 'Rekaman kata Korea dari Naver Dictionary, hanya diputar di kartu pencarian. Lisensinya tidak mengizinkan pemakaian ulang, jadi tidak pernah dipasang di kartu.',
     creditSpanishdict: 'Suara buatan untuk kata Spanyol dari SpanishDict, diputar lewat tombol pelafalan saat tidak ada rekaman. Lisensinya tidak mengizinkan pemakaian ulang, jadi tidak pernah dipasang di kartu.',

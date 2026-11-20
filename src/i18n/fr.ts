@@ -285,9 +285,7 @@ export const fr: Translation = {
       'Découpe le japonais, le coréen et le chinois en mots. Licence MIT ; IPADIC, UniDic, mecab-ko-dic et CC-CEDICT ont ' +
       'leurs propres conditions.',
     creditCedict: 'Dictionnaire chinois © MDBG et ses contributeurs, utilisé sous licence CC BY-SA 4.0.',
-    creditWiktionary:
-      'Dictionnaires coréen et espagnol, ainsi que certains dans votre propre langue, tirés de Wiktionary via kaikki.org et ' +
-      'wiktionary-to-yomitan. CC BY-SA 4.0.',
+    creditWiktionary: 'Dictionnaires de la plupart des langues, ainsi que certains dans votre propre langue, tirés de Wiktionary via kaikki.org et wiktionary-to-yomitan. CC BY-SA 4.0.',
     creditKrdict:
       'Mots coréens expliqués dans votre propre langue. © National Institute of Korean Language, utilisé sous licence ' +
       'CC BY-SA 2.0 KR. Fichiers créés par Lyroxide.',
@@ -295,12 +293,13 @@ export const fr: Translation = {
     creditCanto:
       'Dictionnaire cantonais et lectures en Jyutping pour CC-CEDICT. © Pleco Inc., utilisé sous licence CC BY-SA 3.0.',
     creditHandedict: 'Le chinois expliqué en allemand. © HanDeDict et ses contributeurs, utilisé sous licence CC BY-SA 3.0.',
+    creditWikdict: 'Certains dictionnaires dans votre propre langue, créés par Karl Bartel à partir des traductions de Wiktionary via DBnary. CC BY-SA 4.0.',
     creditUnihan: 'La lecture affichée en premier pour un caractère chinois. © Unicode, Inc., utilisé sous la Unicode License.',
     creditTatoeba:
       'Quel verbe est un verbe japonais écrit en kana, appris de ces phrases d’exemple. © Contributeurs de Tatoeba, utilisé sous CC BY 2.0 FR.',
     creditJotoba: 'Utilisés pour les recherches pendant le téléchargement du dictionnaire. Tous deux utilisent JMdict.',
     creditLucide: 'Icônes. Licence ISC.',
-    creditCommons: 'Enregistrements de mots espagnols, chinois et coréens, dits par des bénévoles. Chacun a sa propre licence, CC BY-SA 4.0 pour la plupart, indiquée avec le nom du locuteur à la lecture et sur la carte.',
+    creditCommons: 'Enregistrements de mots, dits par des bénévoles. Chacun a sa propre licence, CC BY-SA 4.0 pour la plupart, indiquée avec le nom du locuteur à la lecture et sur la carte.',
     creditAudioCmn: 'Enregistrements de mots chinois par Yue Tan, université de Caen. CC BY-SA 3.0 US.',
     creditNaver: 'Enregistrements de mots coréens du dictionnaire Naver, lus uniquement dans la fiche de recherche. Leur licence n’autorise pas la réutilisation : ils ne sont jamais mis sur une carte.',
     creditSpanishdict: 'Voix générée pour les mots espagnols de SpanishDict, lue avec le bouton de prononciation quand il n’y a pas d’enregistrement. Sa licence n’autorise pas la réutilisation : elle n’est jamais mise sur une carte.',

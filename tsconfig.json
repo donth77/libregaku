@@ -10,5 +10,5 @@
     "skipLibCheck": true,
     "types": ["chrome"]
   },
-  "include": ["src", "build.mjs"]
+  "include": ["src", "build.mjs", "scripts/language-pairs-page.ts"]
 }

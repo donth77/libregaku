@@ -27,6 +27,7 @@ node scripts/audit-cuts.mjs                             # words the analyser rea
 node scripts/compare-unidic.mjs                         # Japanese as IPADIC reads it, with and without UniDic's second opinion
 node scripts/build-zh-readings.mjs                      # which reading a Chinese character shows first
 node scripts/build-ko-fixture.mjs <ko-dic directory>    # what the analyser returns for the Korean tests' lines
+node scripts/language-pairs.mjs                         # LANGUAGE-PAIRS.md, from the code
 ```
 
 ### Tests
@@ -146,6 +147,13 @@ analyser really returns for the lines in `scripts/ko-fixture-lines.txt`, misread
 included, which the Korean merge tests stand on. Run it when a line is added to that
 list, and when lindera or ko-dic is bumped.
 
+`language-pairs` writes `LANGUAGE-PAIRS.md`, the page the store listing links to:
+what each language that can be learned gets, and which dictionaries explain its words
+for each language of the learner's own. It reads `settings.ts` and `src/dict/sites.ts`,
+and a test fails when the page and the code disagree, so run it whenever a language, a
+dictionary or a dictionary site is added. `SUPPORTED-SITES.md`, the other page the
+listing links to, is written by hand: a new site adds a row.
+
 `check-captions` lists a YouTube video's subtitle tracks and marks each human or
 auto-generated (`kind="asr"`). Use it before testing segmentation against a video —
 ASR output has no punctuation and invents words, so it tells you nothing about
@@ -216,9 +224,12 @@ src/icons/              extension icons, 16/32/48/128 PNG, exported from brand/
 src/logo.ts             the logo in the popup, options page and player bar, imported
                         from brand/ as markup (the build loads .svg as text)
 brand/                  logo masters (SVG), PNG exports, and how to use them
+LANGUAGE-PAIRS.md       every language pair and its dictionaries, written by scripts/language-pairs.mjs
+SUPPORTED-SITES.md      the sites it works on, by hand
 scripts/                check-captions.mjs, diagnose.js, compare-words.mjs, measure-word.mjs, audit-cuts.mjs, compare-unidic.mjs,
                         build-zh-readings.mjs,
-                        build-ko-fixture.mjs and the lines it reads (ko-fixture-lines.txt)
+                        build-ko-fixture.mjs and the lines it reads (ko-fixture-lines.txt),
+                        language-pairs.mjs and the page it writes (language-pairs-page.ts)
 tests/contract/         the canaries
 ```
 

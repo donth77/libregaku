@@ -264,9 +264,7 @@ export const nl: Translation = {
       'Splitst Japans, Koreaans en Chinees in woorden. MIT-licentie; IPADIC, UniDic, mecab-ko-dic en CC-CEDICT hebben ' +
       'hun eigen voorwaarden.',
     creditCedict: 'Chinees woordenboek © MDBG en bijdragers, gebruikt onder CC BY-SA 4.0.',
-    creditWiktionary:
-      'Woordenboeken voor Koreaans en Spaans, en enkele in je eigen taal, uit Wiktionary via kaikki.org en ' +
-      'wiktionary-to-yomitan. CC BY-SA 4.0.',
+    creditWiktionary: 'Woordenboeken voor de meeste talen, en enkele in je eigen taal, uit Wiktionary via kaikki.org en wiktionary-to-yomitan. CC BY-SA 4.0.',
     creditKrdict:
       'Koreaanse woorden uitgelegd in je eigen taal. © National Institute of Korean Language, gebruikt onder ' +
       'CC BY-SA 2.0 KR. Bestanden van Lyroxide.',
@@ -274,13 +272,14 @@ export const nl: Translation = {
     creditCanto:
       'Kantonees woordenboek en Jyutping-lezingen voor CC-CEDICT. © Pleco Inc., gebruikt onder CC BY-SA 3.0.',
     creditHandedict: 'Chinees uitgelegd in het Duits. © HanDeDict en bijdragers, gebruikt onder CC BY-SA 3.0.',
+    creditWikdict: 'Enkele woordenboeken in je eigen taal, door Karl Bartel via DBnary gemaakt uit de vertalingen in Wiktionary. CC BY-SA 4.0.',
     creditUnihan:
       'Welke lezing van een Chinees karakter eerst wordt getoond. © Unicode, Inc., gebruikt onder de Unicode License.',
     creditTatoeba:
       'Welk werkwoord een in kana geschreven Japans werkwoord is, geleerd uit deze voorbeeldzinnen. © Bijdragers aan Tatoeba, gebruikt onder CC BY 2.0 FR.',
     creditJotoba: 'Gebruikt voor opzoeken zolang het woordenboek downloadt. Beide gebruiken JMdict.',
     creditLucide: 'Iconen. ISC-licentie.',
-    creditCommons: 'Opnamen van Spaanse, Chinese en Koreaanse woorden, ingesproken door vrijwilligers. Elke opname heeft een eigen licentie, meestal CC BY-SA 4.0. Die staat met de naam van de spreker bij het afspelen en op de kaart.',
+    creditCommons: 'Opnamen van woorden, ingesproken door vrijwilligers. Elke opname heeft een eigen licentie, meestal CC BY-SA 4.0. Die staat met de naam van de spreker bij het afspelen en op de kaart.',
     creditAudioCmn: 'Opnamen van Chinese woorden door Yue Tan, Universiteit van Caen. CC BY-SA 3.0 US.',
     creditNaver: 'Opnamen van Koreaanse woorden uit Naver Dictionary, alleen te horen op de opzoekkaart. Ze hebben geen licentie voor hergebruik en komen daarom nooit op een kaart.',
     creditSpanishdict: 'Gegenereerde stem voor Spaanse woorden van SpanishDict, te horen met de uitspraakknop als er geen opname is. Geen licentie voor hergebruik, dus nooit op een kaart.',

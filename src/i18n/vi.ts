@@ -242,9 +242,7 @@ export const vi: Translation = {
       'Tách tiếng Nhật, tiếng Hàn và tiếng Trung thành từ. Giấy phép MIT; IPADIC, UniDic, mecab-ko-dic và CC-CEDICT ' +
       'có điều khoản riêng.',
     creditCedict: 'Từ điển tiếng Trung © MDBG và những người đóng góp, dùng theo giấy phép CC BY-SA 4.0.',
-    creditWiktionary:
-      'Từ điển tiếng Hàn và tiếng Tây Ban Nha, cùng một số từ điển bằng ngôn ngữ của bạn, lấy từ Wiktionary qua ' +
-      'kaikki.org và wiktionary-to-yomitan. CC BY-SA 4.0.',
+    creditWiktionary: 'Từ điển của hầu hết các ngôn ngữ, cùng một số từ điển bằng ngôn ngữ của bạn, lấy từ Wiktionary qua kaikki.org và wiktionary-to-yomitan. CC BY-SA 4.0.',
     creditKrdict:
       'Từ tiếng Hàn được giải thích bằng ngôn ngữ của bạn. © National Institute of Korean Language, dùng theo giấy phép ' +
       'CC BY-SA 2.0 KR. Các tệp do Lyroxide tạo.',
@@ -254,12 +252,13 @@ export const vi: Translation = {
       'Từ điển tiếng Quảng Đông và cách đọc Jyutping cho CC-CEDICT. © Pleco Inc., dùng theo giấy phép CC BY-SA 3.0.',
     creditHandedict:
       'Tiếng Trung được giải thích bằng tiếng Đức. © HanDeDict và những người đóng góp, dùng theo giấy phép CC BY-SA 3.0.',
+    creditWikdict: 'Một số từ điển bằng ngôn ngữ của bạn, do Karl Bartel tạo từ các bản dịch trên Wiktionary qua DBnary. CC BY-SA 4.0.',
     creditUnihan: 'Cách đọc nào của chữ Hán được hiện trước. © Unicode, Inc., dùng theo Unicode License.',
     creditTatoeba:
       'Động từ tiếng Nhật viết bằng kana là động từ nào, học từ các câu ví dụ này. © Những người đóng góp cho Tatoeba, dùng theo CC BY 2.0 FR.',
     creditJotoba: 'Dùng để tra từ trong lúc từ điển đang tải. Cả hai đều dùng JMdict.',
     creditLucide: 'Biểu tượng. Giấy phép ISC.',
-    creditCommons: 'Bản ghi âm các từ tiếng Tây Ban Nha, tiếng Trung và tiếng Hàn do tình nguyện viên đọc. Mỗi bản có giấy phép riêng, phần lớn là CC BY-SA 4.0, được ghi kèm tên người đọc khi phát và trên thẻ.',
+    creditCommons: 'Bản ghi âm các từ do tình nguyện viên đọc. Mỗi bản có giấy phép riêng, phần lớn là CC BY-SA 4.0, được ghi kèm tên người đọc khi phát và trên thẻ.',
     creditAudioCmn: 'Bản ghi âm từ tiếng Trung của Yue Tan, Đại học Caen. CC BY-SA 3.0 US.',
     creditNaver: 'Bản ghi âm từ tiếng Hàn của Naver Dictionary, chỉ phát trong thẻ tra cứu. Giấy phép không cho phép dùng lại, nên không bao giờ được đưa vào thẻ.',
     creditSpanishdict: 'Giọng đọc tạo sẵn cho từ tiếng Tây Ban Nha của SpanishDict, phát bằng nút phát âm khi không có bản ghi âm. Giấy phép không cho phép dùng lại, nên không bao giờ được đưa vào thẻ.',

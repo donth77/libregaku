@@ -240,21 +240,20 @@ export const th: Translation = {
       'แปลงเป็น JSON โดย jmdict-simplified',
     creditLindera: 'ตัดคำภาษาญี่ปุ่น เกาหลี และจีน สัญญาอนุญาต MIT ส่วน IPADIC, UniDic, mecab-ko-dic และ CC-CEDICT มีเงื่อนไขของตัวเอง',
     creditCedict: 'พจนานุกรมภาษาจีน © MDBG และผู้ร่วมพัฒนา ใช้ภายใต้ CC BY-SA 4.0',
-    creditWiktionary:
-      'พจนานุกรมภาษาเกาหลีและสเปน รวมถึงบางฉบับที่เป็นภาษาของคุณ จาก Wiktionary ผ่าน kaikki.org และ wiktionary-to-yomitan ' +
-      'CC BY-SA 4.0',
+    creditWiktionary: 'พจนานุกรมของภาษาส่วนใหญ่ รวมถึงบางฉบับที่เป็นภาษาของคุณ จาก Wiktionary ผ่าน kaikki.org และ wiktionary-to-yomitan CC BY-SA 4.0',
     creditKrdict:
       'คำภาษาเกาหลีพร้อมคำอธิบายเป็นภาษาของคุณ © National Institute of Korean Language ใช้ภายใต้ CC BY-SA 2.0 KR ' +
       'ไฟล์จัดทำโดย Lyroxide',
     creditCfdict: 'ภาษาจีนพร้อมคำอธิบายเป็นภาษาฝรั่งเศส CFDICT © chine.in อัปเดตต่อเนื่องโดย CxDICT CC BY-SA 4.0',
     creditCanto: 'พจนานุกรมภาษากวางตุ้งและคำอ่าน Jyutping สำหรับ CC-CEDICT © Pleco Inc. ใช้ภายใต้ CC BY-SA 3.0',
     creditHandedict: 'ภาษาจีนพร้อมคำอธิบายเป็นภาษาเยอรมัน © HanDeDict และผู้ร่วมพัฒนา ใช้ภายใต้ CC BY-SA 3.0',
+    creditWikdict: 'พจนานุกรมบางฉบับที่เป็นภาษาของคุณ สร้างโดย Karl Bartel จากคำแปลใน Wiktionary ผ่าน DBnary CC BY-SA 4.0',
     creditUnihan: 'คำอ่านที่แสดงก่อนของอักษรจีนแต่ละตัว © Unicode, Inc. ใช้ภายใต้ Unicode License',
     creditTatoeba:
       'คำกริยาภาษาญี่ปุ่นที่เขียนด้วยคานะคือคำกริยาใด เรียนรู้จากประโยคตัวอย่างเหล่านี้ © ผู้ร่วมสร้าง Tatoeba ใช้ภายใต้ CC BY 2.0 FR',
     creditJotoba: 'ใช้ดูความหมายระหว่างที่พจนานุกรมกำลังดาวน์โหลด ทั้งสองใช้ JMdict',
     creditLucide: 'ไอคอน สัญญาอนุญาต ISC',
-    creditCommons: 'เสียงบันทึกคำภาษาสเปน จีน และเกาหลี อ่านโดยอาสาสมัคร แต่ละเสียงมีสัญญาอนุญาตของตัวเอง ส่วนใหญ่เป็น CC BY-SA 4.0 ซึ่งแสดงพร้อมชื่อผู้อ่านขณะเล่นและบนการ์ด',
+    creditCommons: 'เสียงบันทึกคำ อ่านโดยอาสาสมัคร แต่ละเสียงมีสัญญาอนุญาตของตัวเอง ส่วนใหญ่เป็น CC BY-SA 4.0 ซึ่งแสดงพร้อมชื่อผู้อ่านขณะเล่นและบนการ์ด',
     creditAudioCmn: 'เสียงบันทึกคำภาษาจีนโดย Yue Tan มหาวิทยาลัยก็อง CC BY-SA 3.0 US',
     creditNaver: 'เสียงอ่านคำภาษาเกาหลีจาก Naver Dictionary เล่นได้เฉพาะในการ์ดค้นหาเท่านั้น ไม่ได้รับอนุญาตให้นำไปใช้ซ้ำ จึงไม่ถูกใส่ในการ์ดเลย',
     creditSpanishdict: 'เสียงสังเคราะห์สำหรับคำภาษาสเปนจาก SpanishDict เล่นด้วยปุ่มออกเสียงเมื่อไม่มีเสียงอัด ไม่ได้รับอนุญาตให้นำไปใช้ซ้ำ จึงไม่ถูกใส่ในการ์ดเลย',

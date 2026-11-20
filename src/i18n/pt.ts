@@ -252,9 +252,7 @@ export const pt: Translation = {
     creditLindera:
       'Divide japonês, coreano e chinês em palavras. Licença MIT; IPADIC, UniDic, mecab-ko-dic e CC-CEDICT têm termos próprios.',
     creditCedict: 'Dicionário de chinês © MDBG e colaboradores, usado sob a licença CC BY-SA 4.0.',
-    creditWiktionary:
-      'Dicionários de coreano e espanhol, e alguns no seu idioma, do Wiktionary via kaikki.org e ' +
-      'wiktionary-to-yomitan. CC BY-SA 4.0.',
+    creditWiktionary: 'Dicionários da maioria dos idiomas, e alguns no seu idioma, do Wiktionary via kaikki.org e wiktionary-to-yomitan. CC BY-SA 4.0.',
     creditKrdict:
       'Palavras coreanas explicadas no seu idioma. © National Institute of Korean Language, usado sob a licença ' +
       'CC BY-SA 2.0 KR. Arquivos criados por Lyroxide.',
@@ -262,12 +260,13 @@ export const pt: Translation = {
     creditCanto:
       'Dicionário de cantonês e leituras em Jyutping para o CC-CEDICT. © Pleco Inc., usado sob a licença CC BY-SA 3.0.',
     creditHandedict: 'Chinês explicado em alemão. © HanDeDict e colaboradores, usado sob a licença CC BY-SA 3.0.',
+    creditWikdict: 'Alguns dicionários no seu idioma, criados por Karl Bartel a partir das traduções do Wiktionary via DBnary. CC BY-SA 4.0.',
     creditUnihan: 'Qual leitura de um caractere chinês aparece primeiro. © Unicode, Inc., usado sob a Unicode License.',
     creditTatoeba:
       'Qual verbo é um verbo japonês escrito em kana, aprendido destas frases de exemplo. © Colaboradores do Tatoeba, usado sob CC BY 2.0 FR.',
     creditJotoba: 'Usados para consultas enquanto o dicionário é baixado. Ambos usam o JMdict.',
     creditLucide: 'Ícones. Licença ISC.',
-    creditCommons: 'Gravações de palavras em espanhol, chinês e coreano, feitas por voluntários. Cada uma tem sua própria licença, CC BY-SA 4.0 na maioria, indicada com o nome de quem fala ao reproduzir e no cartão.',
+    creditCommons: 'Gravações de palavras, feitas por voluntários. Cada uma tem sua própria licença, CC BY-SA 4.0 na maioria, indicada com o nome de quem fala ao reproduzir e no cartão.',
     creditAudioCmn: 'Gravações de palavras em chinês por Yue Tan, Universidade de Caen. CC BY-SA 3.0 US.',
     creditNaver: 'Gravações de palavras em coreano do Naver Dictionary, tocadas apenas no cartão de consulta. Não têm licença para reutilização, por isso nunca vão para um cartão.',
     creditSpanishdict: 'Voz gerada para palavras em espanhol do SpanishDict, tocada pelo botão de pronúncia quando não há gravação. Não tem licença para reutilização, por isso nunca vai para um cartão.',

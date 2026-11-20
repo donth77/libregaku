@@ -241,18 +241,17 @@ export const ko: Translation = {
     creditLindera:
       '일본어, 한국어, 중국어를 단어로 나눕니다. MIT 라이선스이며, IPADIC, UniDic, mecab-ko-dic, CC-CEDICT에는 각각 별도의 약관이 있습니다.',
     creditCedict: '중국어 사전 © MDBG 및 기여자. CC BY-SA 4.0에 따라 사용합니다.',
-    creditWiktionary:
-      '한국어·스페인어 사전과 내 언어로 된 일부 사전. Wiktionary에서 kaikki.org와 wiktionary-to-yomitan을 거쳐 가져왔습니다. ' +
-      'CC BY-SA 4.0.',
+    creditWiktionary: '대부분 언어의 사전과 내 언어로 된 일부 사전. Wiktionary에서 kaikki.org와 wiktionary-to-yomitan을 거쳐 가져왔습니다. CC BY-SA 4.0.',
     creditKrdict: '한국어 단어를 내 언어로 설명합니다. © 국립국어원. CC BY-SA 2.0 KR에 따라 사용합니다. 파일은 Lyroxide가 만들었습니다.',
     creditCfdict: '중국어를 프랑스어로 설명합니다. CFDICT © chine.in. CxDICT가 최신 상태로 유지합니다. CC BY-SA 4.0.',
     creditCanto: '광둥어 사전과 CC-CEDICT용 Jyutping 표기. © Pleco Inc., CC BY-SA 3.0에 따라 사용합니다.',
     creditHandedict: '중국어를 독일어로 설명합니다. © HanDeDict 및 기여자. CC BY-SA 3.0에 따라 사용합니다.',
+    creditWikdict: '내 언어로 된 일부 사전. Karl Bartel이 DBnary를 통해 Wiktionary의 번역에서 만들었습니다. CC BY-SA 4.0.',
     creditUnihan: '한자의 여러 읽는 법 중 먼저 보여 줄 것을 정합니다. © Unicode, Inc., Unicode License에 따라 사용합니다.',
     creditTatoeba: '가나로 쓴 일본어 동사가 어떤 동사인지 이 예문들에서 배웁니다. © Tatoeba 기여자, CC BY 2.0 FR에 따라 사용합니다.',
     creditJotoba: '사전을 다운로드하는 동안 단어 찾기에 사용합니다. 둘 다 JMdict를 씁니다.',
     creditLucide: '아이콘. ISC 라이선스.',
-    creditCommons: '자원봉사자들이 읽은 스페인어, 중국어, 한국어 단어 녹음입니다. 녹음마다 라이선스가 다르며(대부분 CC BY-SA 4.0), 재생할 때와 카드에 화자 이름과 함께 표시됩니다.',
+    creditCommons: '자원봉사자들이 읽은 단어 녹음입니다. 녹음마다 라이선스가 다르며(대부분 CC BY-SA 4.0), 재생할 때와 카드에 화자 이름과 함께 표시됩니다.',
     creditAudioCmn: 'Yue Tan(캉 대학교)이 읽은 중국어 단어 녹음입니다. CC BY-SA 3.0 US.',
     creditNaver: '네이버 사전의 한국어 단어 녹음으로, 단어 검색 카드에서만 재생됩니다. 재사용이 허락되지 않아 카드에는 절대 넣지 않습니다.',
     creditSpanishdict: 'SpanishDict의 스페인어 단어 합성 음성으로, 녹음이 없을 때 발음 버튼으로 재생됩니다. 재사용이 허락되지 않아 카드에는 절대 넣지 않습니다.',

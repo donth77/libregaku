@@ -283,9 +283,7 @@ export const it: Translation = {
       'Divide in parole il giapponese, il coreano e il cinese. Licenza MIT; IPADIC, UniDic, mecab-ko-dic e CC-CEDICT hanno ' +
       'i propri termini.',
     creditCedict: 'Dizionario di cinese © MDBG e i suoi collaboratori, usato con licenza CC BY-SA 4.0.',
-    creditWiktionary:
-      'Dizionari di coreano e spagnolo, e alcuni nella tua lingua, da Wiktionary tramite kaikki.org e ' +
-      'wiktionary-to-yomitan. CC BY-SA 4.0.',
+    creditWiktionary: 'Dizionari della maggior parte delle lingue, e alcuni nella tua lingua, da Wiktionary tramite kaikki.org e wiktionary-to-yomitan. CC BY-SA 4.0.',
     creditKrdict:
       'Parole coreane spiegate nella tua lingua. © National Institute of Korean Language, usato con licenza ' +
       'CC BY-SA 2.0 KR. File creati da Lyroxide.',
@@ -293,12 +291,13 @@ export const it: Translation = {
     creditCanto:
       'Dizionario di cantonese e letture in Jyutping per CC-CEDICT. © Pleco Inc., usato con licenza CC BY-SA 3.0.',
     creditHandedict: 'Il cinese spiegato in tedesco. © HanDeDict e i suoi collaboratori, usato con licenza CC BY-SA 3.0.',
+    creditWikdict: 'Alcuni dizionari nella tua lingua, creati da Karl Bartel dalle traduzioni di Wiktionary tramite DBnary. CC BY-SA 4.0.',
     creditUnihan: 'Quale lettura di un carattere cinese viene mostrata per prima. © Unicode, Inc., usato con la Unicode License.',
     creditTatoeba:
       'Quale verbo è un verbo giapponese scritto in kana, appreso da queste frasi di esempio. © Collaboratori di Tatoeba, usato con CC BY 2.0 FR.',
     creditJotoba: 'Usati per le ricerche mentre il dizionario si scarica. Entrambi usano JMdict.',
     creditLucide: 'Icone. Licenza ISC.',
-    creditCommons: 'Registrazioni di parole spagnole, cinesi e coreane, pronunciate da volontari. Ognuna ha la propria licenza, CC BY-SA 4.0 per la maggior parte, indicata con il nome di chi parla durante la riproduzione e sulla carta.',
+    creditCommons: 'Registrazioni di parole, pronunciate da volontari. Ognuna ha la propria licenza, CC BY-SA 4.0 per la maggior parte, indicata con il nome di chi parla durante la riproduzione e sulla carta.',
     creditAudioCmn: 'Registrazioni di parole cinesi di Yue Tan, Università di Caen. CC BY-SA 3.0 US.',
     creditNaver: 'Registrazioni di parole coreane del dizionario Naver, riprodotte solo nella scheda di consultazione. Non sono concesse in licenza per il riuso, quindi non vanno mai su una carta.',
     creditSpanishdict: 'Voce generata per le parole spagnole di SpanishDict, riprodotta dal pulsante di pronuncia quando non c’è una registrazione. Non è concessa in licenza per il riuso, quindi non va mai su una carta.',

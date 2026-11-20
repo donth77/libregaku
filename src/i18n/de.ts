@@ -266,9 +266,7 @@ export const de: Translation = {
       'Zerlegt Japanisch, Koreanisch und Chinesisch in Wörter. MIT-Lizenz; IPADIC, UniDic, mecab-ko-dic und CC-CEDICT ' +
       'haben eigene Bedingungen.',
     creditCedict: 'Chinesisches Wörterbuch © MDBG und Mitwirkende, verwendet unter CC BY-SA 4.0.',
-    creditWiktionary:
-      'Wörterbücher für Koreanisch und Spanisch sowie einige in deiner eigenen Sprache, aus Wiktionary über kaikki.org und ' +
-      'wiktionary-to-yomitan. CC BY-SA 4.0.',
+    creditWiktionary: 'Wörterbücher für die meisten Sprachen sowie einige in deiner eigenen Sprache, aus Wiktionary über kaikki.org und wiktionary-to-yomitan. CC BY-SA 4.0.',
     creditKrdict:
       'Koreanische Wörter, in deiner eigenen Sprache erklärt. © National Institute of Korean Language, verwendet unter ' +
       'CC BY-SA 2.0 KR. Dateien von Lyroxide.',
@@ -276,13 +274,14 @@ export const de: Translation = {
     creditCanto:
       'Kantonesisches Wörterbuch und Jyutping-Lesungen für CC-CEDICT. © Pleco Inc., verwendet unter CC BY-SA 3.0.',
     creditHandedict: 'Chinesisch, auf Deutsch erklärt. © HanDeDict und Mitwirkende, verwendet unter CC BY-SA 3.0.',
+    creditWikdict: 'Einige Wörterbücher in deiner eigenen Sprache, von Karl Bartel über DBnary aus den Übersetzungen in Wiktionary erstellt. CC BY-SA 4.0.',
     creditUnihan:
       'Welche Lesung eines chinesischen Schriftzeichens zuerst erscheint. © Unicode, Inc., verwendet unter der Unicode License.',
     creditTatoeba:
       'Welches Verb ein in Kana geschriebenes japanisches Verb ist, gelernt aus diesen Beispielsätzen. © Tatoeba-Mitwirkende, verwendet unter CC BY 2.0 FR.',
     creditJotoba: 'Zum Nachschlagen, solange das Wörterbuch lädt. Beide nutzen JMdict.',
     creditLucide: 'Symbole. ISC-Lizenz.',
-    creditCommons: 'Aufnahmen spanischer, chinesischer und koreanischer Wörter, gesprochen von Freiwilligen. Jede hat ihre eigene Lizenz, meist CC BY-SA 4.0; sie steht mit dem Namen der Sprecherin oder des Sprechers bei der Wiedergabe und auf der Karte.',
+    creditCommons: 'Aufnahmen von Wörtern, gesprochen von Freiwilligen. Jede hat ihre eigene Lizenz, meist CC BY-SA 4.0; sie steht mit dem Namen der Sprecherin oder des Sprechers bei der Wiedergabe und auf der Karte.',
     creditAudioCmn: 'Aufnahmen chinesischer Wörter von Yue Tan, Universität Caen. CC BY-SA 3.0 US.',
     creditNaver: 'Aufnahmen koreanischer Wörter aus Naver Dictionary, nur auf der Nachschlagekarte zu hören. Sie sind nicht zur Weiterverwendung lizenziert und kommen nie auf eine Karte.',
     creditSpanishdict: 'Erzeugte Stimme für spanische Wörter von SpanishDict, über die Aussprache-Taste zu hören, wenn es keine Aufnahme gibt. Nicht zur Weiterverwendung lizenziert, daher nie auf einer Karte.',

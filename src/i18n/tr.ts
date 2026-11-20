@@ -253,9 +253,7 @@ export const tr: Translation = {
       'Japoncayı, Koreceyi ve Çinceyi kelimelere ayırır. MIT lisansı; IPADIC, UniDic, mecab-ko-dic ve CC-CEDICT kendi ' +
       'koşullarına tabidir.',
     creditCedict: 'Çince sözlük © MDBG ve katkıda bulunanlar; CC BY-SA 4.0 kapsamında kullanılmaktadır.',
-    creditWiktionary:
-      "Korece ve İspanyolca sözlükler ile kendi dilinizdeki bazı sözlükler; Wiktionary'den kaikki.org ve " +
-      'wiktionary-to-yomitan aracılığıyla. CC BY-SA 4.0.',
+    creditWiktionary: "Çoğu dilin sözlükleri ile kendi dilinizdeki bazı sözlükler; Wiktionary'den kaikki.org ve wiktionary-to-yomitan aracılığıyla. CC BY-SA 4.0.",
     creditKrdict:
       'Korece kelimeler, kendi dilinizde açıklamalarla. © National Institute of Korean Language; CC BY-SA 2.0 KR ' +
       'kapsamında kullanılmaktadır. Dosyalar Lyroxide tarafından hazırlanmıştır.',
@@ -265,12 +263,13 @@ export const tr: Translation = {
       'Kantonca sözlük ve CC-CEDICT için Jyutping okunuşları. © Pleco Inc.; CC BY-SA 3.0 kapsamında kullanılmaktadır.',
     creditHandedict:
       'Çince, Almanca açıklamalarla. © HanDeDict ve katkıda bulunanlar; CC BY-SA 3.0 kapsamında kullanılmaktadır.',
+    creditWikdict: "Kendi dilinizdeki bazı sözlükler; Karl Bartel tarafından Wiktionary'deki çevirilerden DBnary aracılığıyla hazırlandı. CC BY-SA 4.0.",
     creditUnihan: 'Bir Çince karakterin önce hangi okunuşunun gösterileceği. © Unicode, Inc.; Unicode License kapsamında kullanılmaktadır.',
     creditTatoeba:
       'Kana ile yazılmış bir Japonca fiilin hangi fiil olduğu, bu örnek cümlelerden öğrenilir. © Tatoeba katkıcıları; CC BY 2.0 FR kapsamında kullanılmaktadır.',
     creditJotoba: 'Sözlük inerken aramalar için kullanılır. İkisi de JMdict kullanır.',
     creditLucide: 'Simgeler. ISC lisansı.',
-    creditCommons: 'Gönüllülerin seslendirdiği İspanyolca, Çince ve Korece sözcük kayıtları. Her kaydın kendi lisansı vardır, çoğunda CC BY-SA 4.0; çalınırken ve kartta konuşanın adıyla birlikte gösterilir.',
+    creditCommons: 'Gönüllülerin seslendirdiği sözcük kayıtları. Her kaydın kendi lisansı vardır, çoğunda CC BY-SA 4.0; çalınırken ve kartta konuşanın adıyla birlikte gösterilir.',
     creditAudioCmn: 'Çince sözcük kayıtları: Yue Tan, Caen Üniversitesi. CC BY-SA 3.0 US.',
     creditNaver: 'Naver Dictionary’den Korece sözcük kayıtları, yalnızca arama kartında çalınır. Yeniden kullanım lisansı olmadığından hiçbir zaman karta eklenmez.',
     creditSpanishdict: 'SpanishDict’ten İspanyolca sözcükler için üretilmiş ses, kayıt olmadığında telaffuz düğmesiyle çalınır. Yeniden kullanım lisansı olmadığından hiçbir zaman karta eklenmez.',
