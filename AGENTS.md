@@ -107,6 +107,15 @@ changing that rule, and read both lists. The index says which word a spelling
 is, not how it is said (何ですか is なに to it), so a rule about how a word is
 said, like 何 before です, cannot be measured with it.
 
+A new JMdict is measured whole: `CARDS=base FULL=1 node scripts/compare-unidic.mjs`
+with the old release in the cache saves every Tatoeba sentence as the extension reads
+it, each word with the entry its card opens, and `CARDS=1 FULL=1` with the new one
+writes out every line that changed. Read them all before bumping `RELEASE` in
+`src/dict/store.ts`, then write the parser fixtures again. A release adds entries and
+splits old ones, and `rank()` can then open the new one where the old was meant: in
+November 2026 ヤード the unit lost to a new ヤード, a yard to work in, in ten lines.
+The same run measures a new IPADIC or UniDic, or a change to `rank()`.
+
 A few words neither analyser can be asked about, because each reads them one
 way whatever the line says: 金 (money or gold), 風 (the wind, or a way of
 doing), 下 (under a table, or under a law), 今 before a noun (now, or "this").

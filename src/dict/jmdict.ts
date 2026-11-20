@@ -371,19 +371,45 @@ function scoring(key: string, hint: RankHint): (e: Entry) => number[] {
  *
  * For callers that need to know whether a spelling reads one way or several —
  * 一人 is only ひとり, 一日 is いちにち or ついたち — without choosing between
- * homographs they have no context for. Rare spellings do not count.
+ * homographs they have no context for. Rare spellings do not count, unless
+ * the form is never anything else and only writes more of the word in kana
+ * (spellsOut): 落ちつける, こみ合う and さし上げる are JMdict's search-only
+ * spellings of 落ち着ける, 混み合う and 差し上げる, and are still those words,
+ * where skipping them had the merge read 落ち着く able to be done, こむ and
+ * さす. 行ける is a search-only spelling too, of いける, "to be good", and is
+ * still 行く able to be done: いける has no kanji of its own to write out.
  */
 export function readingsOf(entries: Entry[], form: string): string[] {
-  const out: string[] = [];
   // A word written in katakana, ワンシーン, is its own reading: there is no other spelling to read.
   const katakana = /^[ァ-ヺー・]+$/.test(form);
-  for (const e of entries) {
-    const f = e.forms?.find((x) => x.text === form && (katakana || !x.kana));
-    if (e.forms && (!f || f.rare)) continue;
-    const r = katakana ? form : e.reading ?? (e.uk ? e.word : undefined);
-    if (r && !out.includes(r)) out.push(r);
-  }
-  return out;
+  const readings = (rareToo: boolean): string[] => {
+    const out: string[] = [];
+    for (const e of entries) {
+      const f = e.forms?.find((x) => x.text === form && (katakana || !x.kana));
+      if (e.forms && (!f || (f.rare && !(rareToo && spellsOut(e, form))))) continue;
+      const r = katakana ? form : e.reading ?? (e.uk ? e.word : undefined);
+      if (r && !out.includes(r)) out.push(r);
+    }
+    return out;
+  };
+  const usual = readings(false);
+  return usual.length ? usual : readings(true);
+}
+
+const KANJI = /[㐀-䶿一-鿿々]/u;
+const KANA = /[ぁ-ゖァ-ヺー・]/u;
+/** Numbers, which the merge reads as numbers and counters, as extra-words.ts leaves them to it. */
+const NUMERAL = /[〇一二三四五六七八九十百千万億兆0-9０-９]/u;
+
+/**
+ * A spelling that writes in kana some of what one of the entry's usual kanji
+ * spellings writes: every character of it that is not kana is in that one.
+ * Never a number: 四脚 is 四つ足's search-only spelling, and is four chairs, よんきゃく, in 椅子が4脚.
+ */
+function spellsOut(e: Entry, spelling: string): boolean {
+  if (NUMERAL.test(spelling)) return false;
+  const kept = [...spelling].filter((c) => !KANA.test(c));
+  return kept.some((c) => KANJI.test(c)) && Boolean(e.forms?.some((g) => !g.kana && !g.rare && kept.every((c) => g.text.includes(c))));
 }
 
 /** One dictionary word a written form stands for. */

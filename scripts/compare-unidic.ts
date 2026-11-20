@@ -21,6 +21,8 @@
  *   VERBS=1 node scripts/compare-unidic.mjs         # the same against that, every card put right and put wrong
  *   VERBS=write node scripts/compare-unidic.mjs     # learn which verb a verb in kana is, and write src/dict/kana-verbs.ts
  *   VERBS=write HALF=1 …, then VERBS=1 ODD=1 …      # learn from the even sentence ids, measure on the odd
+ *   CARDS=base node scripts/compare-unidic.mjs      # every line's words, and the entry each card opens, saved
+ *   CARDS=1 node scripts/compare-unidic.mjs         # the same against that: every line whose words or cards change
  *
  * VERBS=1 is the same index for verbs: つく written in kana is 付く, 着く,
  * 就く or 吐く, and the index says which. Each card is opened as the extension
@@ -50,6 +52,7 @@ import init, {
   TokenizerBuilder, loadDictionaryFromBytes, loadUserDictionaryFromBytes, type Tokenizer,
 } from 'lindera-wasm';
 import { keysFor, rank, toEntry, wordsFor, type Entry, type RawWord } from '../src/dict/jmdict';
+import { jmdictUrl } from '../src/dict/store';
 import { LINDERA_DICTS } from '../src/morphology/dictionaries';
 import {
   analyserRows, extraCollector, firstReadingCollector, firstReadingsBy, firstReadingsKept, misreads, type AnalysedPiece, type FirstReading,
@@ -206,7 +209,9 @@ if (process.env.WRITE) {
   }
   const main = `${FIXTURES_AT}/ipadic.ts`;
   const source = readFileSync(main, 'utf8');
-  const head = source.slice(0, source.indexOf('export const LINES'));
+  // The comment above the lines is kept, with the JMdict release they were read with put in it.
+  const release = /\/download\/([^/]+)\//.exec(jmdictUrl('eng'))?.[1] ?? '';
+  const head = source.slice(0, source.indexOf('export const LINES')).replace(/jmdict-simplified \S+/, `jmdict-simplified ${release}`);
   writeFileSync(main, `${head}export const LINES: Record<string, Analysed> = {
 ${whole.join('\n')}
 };
@@ -247,7 +252,8 @@ function wordIndex(): Map<string, string> {
     const from = 'https://downloads.tatoeba.org/exports/jpn_indices.tar.bz2';
     console.log(`downloading ${from}`);
     execFileSync('curl', ['-sSL', '-o', `${CACHE}/jpn_indices.tar.bz2`, from]);
-    execFileSync('tar', ['-xjf', `${CACHE}/jpn_indices.tar.bz2`, '-C', CACHE, 'jpn_indices.csv']);
+    // In the cache, with names: Git's tar on Windows reads a path like C:\… as a host called C.
+    execFileSync('tar', ['-xjf', 'jpn_indices.tar.bz2', 'jpn_indices.csv'], { cwd: CACHE });
     writeFileSync(`${CACHE}/jpn_indices.done`, '');
   }
   const index = new Map<string, string>();
@@ -476,30 +482,31 @@ ${rows.join('\n')}
 
 // VERBS=1: verbs written in kana against the verb in kanji Tatoeba's word index names, by the entry each card opens
 // first. VERBS=base saves the run as the one later runs are compared with; ODD=1 measures the sentences with odd ids.
+const named = new Map<string, string | undefined>();
+/** UniDic's name for a spelling, as nameOf() in offscreen.ts asks it. */
+const nameOf = (form: string): string | undefined => {
+  if (!named.has(form)) {
+    const found = both.unidic!(form);
+    const name = found.length === 1 ? found[0]!.details[7]?.replace(/-.*$/, '') : undefined;
+    named.set(form, name && name !== '*' ? name : undefined);
+  }
+  return named.get(form);
+};
+/** The entry a token's card opens first: its keys in turn, as lookupKeys() in src/dict/client.ts tries them. */
+const opens = (t: Token): Entry | undefined => {
+  for (const k of t.lookup ?? []) {
+    const found = byForm.get(k.key);
+    if (!found?.length) continue;
+    return rank(found, k.key, {
+      reading: k.reading, pos: k.pos, ...(k.conj ? { conj: k.conj } : {}), ...(k.follows !== undefined ? { follows: k.follows } : {}),
+      ...(k.spelling ? { spelling: k.spelling, names: nameOf } : {}),
+    })[0];
+  }
+  return undefined;
+};
+
 if (process.env.VERBS) {
   const index = wordIndex();
-  const named = new Map<string, string | undefined>();
-  /** UniDic's name for a spelling, as nameOf() in offscreen.ts asks it. */
-  const nameOf = (form: string): string | undefined => {
-    if (!named.has(form)) {
-      const found = both.unidic!(form);
-      const name = found.length === 1 ? found[0]!.details[7]?.replace(/-.*$/, '') : undefined;
-      named.set(form, name && name !== '*' ? name : undefined);
-    }
-    return named.get(form);
-  };
-  /** The entry a token's card opens first: its keys in turn, as lookupKeys() in src/dict/client.ts tries them. */
-  const opens = (t: Token): Entry | undefined => {
-    for (const k of t.lookup ?? []) {
-      const found = byForm.get(k.key);
-      if (!found?.length) continue;
-      return rank(found, k.key, {
-        reading: k.reading, pos: k.pos, ...(k.conj ? { conj: k.conj } : {}), ...(k.follows !== undefined ? { follows: k.follows } : {}),
-        ...(k.spelling ? { spelling: k.spelling, names: nameOf } : {}),
-      })[0];
-    }
-    return undefined;
-  };
   // Each verb: where it stands, whether its card opens the index's verb, the word, the entry opened, the index's verb, the line.
   const each: Array<[at: string, right: string, word: string, opened: string, indexed: string, line: string]> = [];
   const sentences = tatoebaRows.filter(([id]) => index.has(id));
@@ -583,6 +590,39 @@ const groups: Array<[string, string[]]> = [
   ['subtitles', subtitles],
   ['tatoeba', process.env.FULL ? tatoeba : tatoeba.filter((_, i) => i % step === 0).slice(0, SAMPLE)],
 ];
+
+/*
+ * CARDS=base, then CARDS=1: each line as the extension reads it once everything has loaded, every word with the
+ * entry its card opens, saved and then compared with what was saved. Run it before and after a new JMdict, a
+ * new IPADIC or UniDic, or a change to rank(): every line whose words, readings or cards change is written out.
+ */
+if (process.env.CARDS) {
+  const card = (t: Token): string => {
+    const entry = t.content ? opens(t) : undefined;
+    return `${show(t)}${entry ? `{${entry.kanji ?? entry.word}#${entry.id}}` : ''}`;
+  };
+  const seen: Array<[line: string, read: string]> = [];
+  for (const [name, lines] of groups) {
+    for (const text of lines) seen.push([`[${name}] ${text}`, (await segmentWith(text, via(readBoth))).tokens.map(card).join(' ')]);
+  }
+  const base = `${CACHE}/cards-base.tsv`;
+  if (process.env.CARDS === 'base') {
+    writeFileSync(base, seen.map((r) => r.join('\t')).join('\n'));
+    console.log(`${seen.length} lines and their cards saved to ${base}`);
+    process.exit(0);
+  }
+  if (!existsSync(base)) {
+    console.error('Nothing to compare with: run with CARDS=base first.');
+    process.exit(1);
+  }
+  const was = new Map(readFileSync(base, 'utf8').split('\n').filter(Boolean).map((l) => l.split('\t') as [string, string]));
+  const changed = seen.filter(([line, read]) => was.has(line) && was.get(line) !== read);
+  const out = `${CACHE}/cards-report.txt`;
+  writeFileSync(out, changed.map(([line, read]) => `${line}\n   before: ${was.get(line)}\n   after:  ${read}`).join('\n'));
+  console.log(`${seen.length} lines, ${seen.filter(([line]) => !was.has(line)).length} not in cards-base.tsv, ${changed.length} changed`);
+  console.log(`every changed line, before and after: ${out}`);
+  process.exit(0);
+}
 
 // REREAD=1: IPADIC as it comes against IPADIC read again. FIRST=1: the line without the list of words IPADIC
 // reads the rarer way, and with it. Otherwise IPADIC alone against IPADIC with UniDic.

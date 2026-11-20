@@ -153,8 +153,8 @@ describe('numbers and counters', () => {
 
   it('look Arabic figures up as JMdict writes them', () => {
     expect(tokens('2人で')[0]).toMatchObject({ surface: '2人', lemma: '二人', reading: 'フタリ' });
-    // １０分 is its own entry, "ten minutes" — not 十分, "enough".
-    expect(tokens('10分待って')[0]).toMatchObject({ surface: '10分', lemma: '１０分', reading: 'ジップン' });
+    // １０分 is its own entry, "ten minutes" — not 十分, "enough". JMdict reads it じゅっぷん first, and じっぷん after, since November 2026.
+    expect(tokens('10分待って')[0]).toMatchObject({ surface: '10分', lemma: '１０分', reading: 'ジュップン' });
   });
 
   it('show no reading rather than a guessed one', () => {

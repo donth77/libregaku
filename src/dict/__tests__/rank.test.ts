@@ -138,6 +138,24 @@ describe('readingsOf', () => {
     // 儂 (わし) lists 私 as rarely used; 私 is never read わし.
     expect(readingsOf(candidates('私'), '私')).not.toContain('わし');
   });
+
+  it('reads a rare spelling that only writes more of a word in kana as that word, where it is nothing else', () => {
+    const verb = (id: string, reading: string, forms: Array<[string, boolean, boolean?]>): Entry => ({
+      id, word: forms[0]![0], reading, common: true, senses: [{ pos: ['v1'], glosses: ['x'] }],
+      forms: forms.map(([text, kana, rare]) => ({ text, kana, common: !rare, ...(rare ? { rare } : {}) })),
+    }) as unknown as Entry;
+    // JMdict's search-only spellings: 落ちつける writes 落ち着ける's 着 in kana.
+    const ochitsukeru = verb('1634110', 'おちつける', [['落ち着ける', false], ['落ちつける', false, true], ['おちつける', true]]);
+    expect(readingsOf([ochitsukeru], '落ちつける')).toEqual(['おちつける']);
+    // 行ける is いける's, which has no kanji of its own: 行ける is still 行く able to be done.
+    const ikeru = verb('1631370', 'いける', [['行ける', false, true], ['いける', true]]);
+    expect(readingsOf([ikeru], '行ける')).toEqual([]);
+    // 四脚 is 四つ足's, but a number is left to the merge: 椅子が4脚 is four chairs, よんきゃく.
+    const yotsuashi = verb('1307070', 'よつあし', [['四つ足', false], ['四つ脚', false], ['四脚', false, true], ['よつあし', true]]);
+    expect(readingsOf([yotsuashi], '四脚')).toEqual([]);
+    // A usual spelling still keeps the rare ones out: 私 is never read わし.
+    expect(readingsOf(candidates('私'), '私')).not.toContain('わし');
+  });
 });
 
 describe('wordsFor — what the tokenizer is told of a spelling', () => {

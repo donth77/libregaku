@@ -41,7 +41,8 @@ function fetchOnce(url: string, file: string, unpack: (path: string) => void): v
 }
 mkdirSync(`${CACHE}/subs`, { recursive: true });
 fetchOnce(LINDERA_DICTS.ipadic!, 'ipadic.zip', (p) => execFileSync('unzip', ['-o', '-q', p, '-d', `${CACHE}/ipadic`]));
-fetchOnce(jmdictUrl('eng'), 'jmdict.tgz', (p) => execFileSync('tar', ['-xzf', p, '-C', CACHE]));
+// tar is run in the cache with names, not paths: Git's tar on Windows reads a path like C:\… as a host called C.
+fetchOnce(jmdictUrl('eng'), 'jmdict.tgz', () => execFileSync('tar', ['-xzf', 'jmdict.tgz'], { cwd: CACHE }));
 fetchOnce(TATOEBA, 'jpn.tsv.bz2', (p) => execFileSync('bzip2', ['-dkf', p]));
 
 await init({ module_or_path: readFileSync(`${ROOT}node_modules/lindera-wasm/lindera_wasm_bg.wasm`) });

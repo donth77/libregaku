@@ -92,8 +92,8 @@ async function charactersFrom(source: Source, chars: string[]): Promise<Characte
  * deliberate data update, and FORMAT below goes with it only if the reader
  * (wty.ts) had to change.
  */
-const WTY_TAG = '2026-10-04';
-const WTY_REVISION = '2026.10.04';
+const WTY_TAG = '2026-10-22';
+const WTY_REVISION = '2026.10.22';
 
 /** A Wiktionary dictionary: `target` words explained in `native`. */
 export function wtyUrl(target: string, native: string): string {

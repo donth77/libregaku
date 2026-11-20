@@ -25,7 +25,7 @@ const KANJI = 'kanji';
 /** What an inflected form is a form of. Added in version 4. */
 const INFLECTIONS = 'inflections';
 
-const RELEASE = '3.6.2+20260914172325';
+const RELEASE = '3.6.2+20261116213322';
 
 /**
  * The shape of what `build` writes. Bump it whenever `toEntry` or `keysFor`
