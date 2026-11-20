@@ -53,24 +53,40 @@ export const OWN_DICTIONARIES: Record<string, Record<string, string>> = {
   ko: Object.fromEntries(['ar', 'es', 'fr', 'id', 'ja', 'ru', 'th', 'vi', 'zh', 'zh-Hant'].map((l) => [l, 'krdict'])),
   // CFDICT (by way of CxDICT) and HanDeDict, as CC-CEDICT is written; Wiktionary in Japanese and Korean.
   zh: { fr: 'cxdict-fr', de: 'handedict', ja: 'wty-zh-ja', ko: 'wty-zh-ko' },
-  // Wiktionary in French, Chinese and Polish: each nine words in ten of the commonest Spanish.
-  // WikDict for German, Portuguese and Italian: Wiktionary's files in them hold a few thousand words, and WikDict's 10 to 12 thousand.
+  /*
+   * Spanish, French, German, Italian and Portuguese: a dictionary in the learner's language where it holds at
+   * least 55% of the language's thousand commonest words (as scripts/measure-forms.mjs counts them with COVER,
+   * over 20,000 Tatoeba sentences), the better of Wiktionary's edition and WikDict where both do. The rest of
+   * a lookup falls to the English dictionary, as it does for the words these lack.
+   */
+  // Wiktionary in French 94%, Chinese 91%, Polish 95%, Dutch 95%, Russian 88% and Korean 76%; WikDict in German 64%,
+  // Portuguese 56% and Italian 60%.
   es: {
-    fr: 'wty-es-fr', zh: 'wty-es-zh', 'zh-Hant': 'wty-es-zh', pl: 'wty-es-pl',
+    fr: 'wty-es-fr', zh: 'wty-es-zh', 'zh-Hant': 'wty-es-zh', pl: 'wty-es-pl', nl: 'wty-es-nl', ru: 'wty-es-ru', ko: 'wty-es-ko',
     de: 'wikdict-es-de', pt: 'wikdict-es-pt', it: 'wikdict-es-it',
   },
-  // French Wiktionary holds nearly all of German (98% of the English file's size); the rest each a quarter to a third of it.
+  // Wiktionary in French 95%, Polish 94%, Chinese 90%, Russian 90% and Korean 63%; WikDict in Spanish 91%, Swedish 90%,
+  // Italian 84%, Portuguese 80%, Dutch 69%, Turkish 61% and Japanese 60%.
   de: {
-    fr: 'wty-de-fr', ru: 'wty-de-ru', zh: 'wty-de-zh', 'zh-Hant': 'wty-de-zh',
-    // WikDict: 24,000 to 55,000 words each, of the 1% to 3% of the English file Wiktionary has in these.
-    es: 'wikdict-de-es', pt: 'wikdict-de-pt', it: 'wikdict-de-it',
+    fr: 'wty-de-fr', ru: 'wty-de-ru', zh: 'wty-de-zh', 'zh-Hant': 'wty-de-zh', pl: 'wty-de-pl', ko: 'wty-de-ko',
+    es: 'wikdict-de-es', pt: 'wikdict-de-pt', it: 'wikdict-de-it', sv: 'wikdict-de-sv', nl: 'wikdict-de-nl', tr: 'wikdict-de-tr',
+    ja: 'wikdict-de-ja',
   },
-  // Wiktionary in Chinese, Turkish, Vietnamese, Russian, Thai, Dutch and Polish: 13 to 30% of the English file's size.
+  // Wiktionary in Polish 97%, Dutch 91%, Russian 90%, Korean 85%, Vietnamese 84%, Japanese 78%, Chinese 74%, Turkish 73%
+  // and Thai 61%; WikDict in German 93%, Spanish 93%, Portuguese 91%, Italian 91%, Swedish 86% and Indonesian 63%.
   fr: {
     zh: 'wty-fr-zh', 'zh-Hant': 'wty-fr-zh', tr: 'wty-fr-tr', vi: 'wty-fr-vi', ru: 'wty-fr-ru', th: 'wty-fr-th',
-    nl: 'wty-fr-nl', pl: 'wty-fr-pl',
-    // WikDict: 29,000 to 69,000 words each, of the 3% to 5% of the English file Wiktionary has in these.
-    es: 'wikdict-fr-es', pt: 'wikdict-fr-pt', it: 'wikdict-fr-it',
+    nl: 'wty-fr-nl', pl: 'wty-fr-pl', ko: 'wty-fr-ko', ja: 'wty-fr-ja',
+    es: 'wikdict-fr-es', pt: 'wikdict-fr-pt', it: 'wikdict-fr-it', de: 'wikdict-fr-de', sv: 'wikdict-fr-sv', id: 'wikdict-fr-id',
+  },
+  // Wiktionary in Polish 94%, French 90%, German 82%, Russian 72%, Korean 71%, Chinese 63%, Japanese 59% and Spanish 55%.
+  it: {
+    pl: 'wty-it-pl', fr: 'wty-it-fr', de: 'wty-it-de', ru: 'wty-it-ru', ko: 'wty-it-ko', zh: 'wty-it-zh', 'zh-Hant': 'wty-it-zh',
+    ja: 'wty-it-ja', es: 'wty-it-es',
+  },
+  // Wiktionary in French 93%, Polish 86% and Russian 66%; WikDict in Spanish 59% and German 57%.
+  pt: {
+    fr: 'wty-pt-fr', pl: 'wty-pt-pl', ru: 'wty-pt-ru', es: 'wikdict-pt-es', de: 'wikdict-pt-de',
   },
 };
 

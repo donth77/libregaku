@@ -21,7 +21,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { DICTIONARIES } from '../src/settings';
-import { SOURCES } from '../src/dict/sources';
+import { SOURCES, wikdict, wty } from '../src/dict/sources';
 import type { Entry } from '../src/dict/jmdict';
 import type { FormInfo, Inflection } from '../src/dict/store';
 import { analyserFor } from '../src/morphology/index';
@@ -155,6 +155,41 @@ const report = [
   ...[...ambiguous].sort((a, b) => b[1].n - a[1].n).slice(0, 150)
     .map(([w, a]) => `${a.n}\t${w}\t${[...a.chose].map(([l, n]) => `${l} ${n}`).join(', ')}\tcould be ${a.could}`),
 ];
+
+/*
+ * COVER=wty-it-fr,wikdict-it-fr: how much of the language's commonest words each dictionary has, as a dictionary
+ * in the learner's own language for the pair (OWN_DICTIONARIES in settings.ts) is asked first. The words are the
+ * thousand commonest dictionary forms the line was read as; the share is of those words and of their uses.
+ */
+if (process.env.COVER) {
+  const counts = new Map<string, number>();
+  for (const line of saved) {
+    for (const w of (line.split('\t')[0] ?? '').split(' ')) {
+      const [surface = '', lemma] = w.split('>');
+      const key = lemma ?? lower(surface);
+      if (/\p{L}/u.test(key) && entries.has(key)) counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+  }
+  const common = [...counts].sort((a, b) => b[1] - a[1]).slice(0, 1000);
+  const uses = common.reduce((n, [, c]) => n + c, 0);
+  report.push('', 'THE THOUSAND COMMONEST WORDS, IN DICTIONARIES OF ANOTHER LANGUAGE: words had, and the share of their uses');
+  for (const id of process.env.COVER.split(',')) {
+    const [kind, target = '', native = ''] = id.split('-');
+    const other = kind === 'wty' ? wty(target, native) : kind === 'wikdict' ? wikdict(target, native) : SOURCES[id];
+    if (!other) { report.push(`${id}\tno such dictionary`); continue; }
+    const has = new Set<string>();
+    try {
+      for await (const batch of await other.read(native)) for (const { keys } of batch.entries) for (const k of keys) has.add(k);
+    } catch (e) {
+      report.push(`${id}\t${String(e).slice(0, 80)}`);
+      continue;
+    }
+    const words = common.filter(([w]) => has.has(w));
+    const used = words.reduce((n, [, c]) => n + c, 0);
+    report.push(`${id}\t${has.size} keys\t${words.length / 10}% of the words\t${((100 * used) / uses).toFixed(1)}% of their uses`);
+    console.log(report.at(-1));
+  }
+}
 
 if (process.env.SAVE) writeFileSync(`${CACHE}/${LANG}-${process.env.SAVE}.tsv`, saved.join('\n'));
 if (process.env.AGAINST) {

@@ -149,11 +149,11 @@ Where a dictionary in your own language exists for a pair, a word is looked up t
 | German | German, then English | WikDict, then Wiktionary | PONS |
 | Portuguese | Portuguese, then English | WikDict, then Wiktionary | WordReference |
 | Italian | Italian, then English | WikDict, then Wiktionary | WordReference |
-| Russian | English | Wiktionary | Academic |
+| Russian | Russian, then English | Wiktionary | Academic |
 | Japanese | English | Wiktionary | Kotobank |
 | Chinese (Simplified) | Chinese (Simplified), then English | Wiktionary | Eudic |
 | Chinese (Traditional) | Chinese (Traditional), then English | Wiktionary | Eudic |
-| Korean | English | Wiktionary | Naver |
+| Korean | Korean, then English | Wiktionary | Naver |
 | Arabic | English | Wiktionary | WordReference |
 | Hindi | English | Wiktionary | Lingea |
 | Indonesian | English | Wiktionary | Lingea |
@@ -162,7 +162,7 @@ Where a dictionary in your own language exists for a pair, a word is looked up t
 | Turkish | English | Wiktionary | Lingea |
 | Polish | Polish, then English | Wiktionary | PONS |
 | Ukrainian | English | Wiktionary | Lingea |
-| Dutch | English | Wiktionary | Lingea |
+| Dutch | Dutch, then English | Wiktionary | Lingea |
 | Swedish | English | Wiktionary | Lingea |
 
 ### Learning French
@@ -172,24 +172,24 @@ Where a dictionary in your own language exists for a pair, a word is looked up t
 | English | English | Wiktionary | Wiktionary |
 | Spanish | Spanish, then English | WikDict, then Wiktionary | Wiktionary |
 | French | English | Wiktionary | Wiktionary |
-| German | English | Wiktionary | Wiktionary |
+| German | German, then English | WikDict, then Wiktionary | Wiktionary |
 | Portuguese | Portuguese, then English | WikDict, then Wiktionary | Wiktionary |
 | Italian | Italian, then English | WikDict, then Wiktionary | Wiktionary |
 | Russian | Russian, then English | Wiktionary | Wiktionary |
-| Japanese | English | Wiktionary | Wiktionary |
+| Japanese | Japanese, then English | Wiktionary | Wiktionary |
 | Chinese (Simplified) | Chinese (Simplified), then English | Wiktionary | Wiktionary |
 | Chinese (Traditional) | Chinese (Traditional), then English | Wiktionary | Wiktionary |
-| Korean | English | Wiktionary | Wiktionary |
+| Korean | Korean, then English | Wiktionary | Wiktionary |
 | Arabic | English | Wiktionary | Wiktionary |
 | Hindi | English | Wiktionary | Wiktionary |
-| Indonesian | English | Wiktionary | Wiktionary |
+| Indonesian | Indonesian, then English | WikDict, then Wiktionary | Wiktionary |
 | Vietnamese | Vietnamese, then English | Wiktionary | Wiktionary |
 | Thai | Thai, then English | Wiktionary | Wiktionary |
 | Turkish | Turkish, then English | Wiktionary | Wiktionary |
 | Polish | Polish, then English | Wiktionary | Wiktionary |
 | Ukrainian | English | Wiktionary | Wiktionary |
 | Dutch | Dutch, then English | Wiktionary | Wiktionary |
-| Swedish | English | Wiktionary | Wiktionary |
+| Swedish | Swedish, then English | WikDict, then Wiktionary | Wiktionary |
 
 ### Learning German
 
@@ -202,43 +202,43 @@ Where a dictionary in your own language exists for a pair, a word is looked up t
 | Portuguese | Portuguese, then English | WikDict, then Wiktionary | Wiktionary |
 | Italian | Italian, then English | WikDict, then Wiktionary | Wiktionary |
 | Russian | Russian, then English | Wiktionary | Wiktionary |
-| Japanese | English | Wiktionary | Wiktionary |
+| Japanese | Japanese, then English | WikDict, then Wiktionary | Wiktionary |
 | Chinese (Simplified) | Chinese (Simplified), then English | Wiktionary | Wiktionary |
 | Chinese (Traditional) | Chinese (Traditional), then English | Wiktionary | Wiktionary |
-| Korean | English | Wiktionary | Wiktionary |
+| Korean | Korean, then English | Wiktionary | Wiktionary |
 | Arabic | English | Wiktionary | Wiktionary |
 | Hindi | English | Wiktionary | Wiktionary |
 | Indonesian | English | Wiktionary | Wiktionary |
 | Vietnamese | English | Wiktionary | Wiktionary |
 | Thai | English | Wiktionary | Wiktionary |
-| Turkish | English | Wiktionary | Wiktionary |
-| Polish | English | Wiktionary | Wiktionary |
+| Turkish | Turkish, then English | WikDict, then Wiktionary | Wiktionary |
+| Polish | Polish, then English | Wiktionary | Wiktionary |
 | Ukrainian | English | Wiktionary | Wiktionary |
-| Dutch | English | Wiktionary | Wiktionary |
-| Swedish | English | Wiktionary | Wiktionary |
+| Dutch | Dutch, then English | WikDict, then Wiktionary | Wiktionary |
+| Swedish | Swedish, then English | WikDict, then Wiktionary | Wiktionary |
 
 ### Learning Italian
 
 | Your language | Definitions in | Dictionaries, in the order asked | Dictionary button |
 |---|---|---|---|
 | English | English | Wiktionary | Wiktionary |
-| Spanish | English | Wiktionary | Wiktionary |
-| French | English | Wiktionary | Wiktionary |
-| German | English | Wiktionary | Wiktionary |
+| Spanish | Spanish, then English | Wiktionary | Wiktionary |
+| French | French, then English | Wiktionary | Wiktionary |
+| German | German, then English | Wiktionary | Wiktionary |
 | Portuguese | English | Wiktionary | Wiktionary |
 | Italian | English | Wiktionary | Wiktionary |
-| Russian | English | Wiktionary | Wiktionary |
-| Japanese | English | Wiktionary | Wiktionary |
-| Chinese (Simplified) | English | Wiktionary | Wiktionary |
-| Chinese (Traditional) | English | Wiktionary | Wiktionary |
-| Korean | English | Wiktionary | Wiktionary |
+| Russian | Russian, then English | Wiktionary | Wiktionary |
+| Japanese | Japanese, then English | Wiktionary | Wiktionary |
+| Chinese (Simplified) | Chinese (Simplified), then English | Wiktionary | Wiktionary |
+| Chinese (Traditional) | Chinese (Traditional), then English | Wiktionary | Wiktionary |
+| Korean | Korean, then English | Wiktionary | Wiktionary |
 | Arabic | English | Wiktionary | Wiktionary |
 | Hindi | English | Wiktionary | Wiktionary |
 | Indonesian | English | Wiktionary | Wiktionary |
 | Vietnamese | English | Wiktionary | Wiktionary |
 | Thai | English | Wiktionary | Wiktionary |
 | Turkish | English | Wiktionary | Wiktionary |
-| Polish | English | Wiktionary | Wiktionary |
+| Polish | Polish, then English | Wiktionary | Wiktionary |
 | Ukrainian | English | Wiktionary | Wiktionary |
 | Dutch | English | Wiktionary | Wiktionary |
 | Swedish | English | Wiktionary | Wiktionary |
@@ -248,12 +248,12 @@ Where a dictionary in your own language exists for a pair, a word is looked up t
 | Your language | Definitions in | Dictionaries, in the order asked | Dictionary button |
 |---|---|---|---|
 | English | English | Wiktionary | Wiktionary |
-| Spanish | English | Wiktionary | Wiktionary |
-| French | English | Wiktionary | Wiktionary |
-| German | English | Wiktionary | Wiktionary |
+| Spanish | Spanish, then English | WikDict, then Wiktionary | Wiktionary |
+| French | French, then English | Wiktionary | Wiktionary |
+| German | German, then English | WikDict, then Wiktionary | Wiktionary |
 | Portuguese | English | Wiktionary | Wiktionary |
 | Italian | English | Wiktionary | Wiktionary |
-| Russian | English | Wiktionary | Wiktionary |
+| Russian | Russian, then English | Wiktionary | Wiktionary |
 | Japanese | English | Wiktionary | Wiktionary |
 | Chinese (Simplified) | English | Wiktionary | Wiktionary |
 | Chinese (Traditional) | English | Wiktionary | Wiktionary |
@@ -264,12 +264,12 @@ Where a dictionary in your own language exists for a pair, a word is looked up t
 | Vietnamese | English | Wiktionary | Wiktionary |
 | Thai | English | Wiktionary | Wiktionary |
 | Turkish | English | Wiktionary | Wiktionary |
-| Polish | English | Wiktionary | Wiktionary |
+| Polish | Polish, then English | Wiktionary | Wiktionary |
 | Ukrainian | English | Wiktionary | Wiktionary |
 | Dutch | English | Wiktionary | Wiktionary |
 | Swedish | English | Wiktionary | Wiktionary |
 
-Definitions are in your own language in 48 of the 189 pairs, and in English in the rest.
+Definitions are in your own language in 76 of the 189 pairs, and in English in the rest.
 
 ## Recordings of a word
 

@@ -353,7 +353,7 @@ const POINTER = /^[\p{Script=Han}々〆ヶ\p{Script=Hiragana}\p{Script=Katakana}
  * form with the word it is a form of; the forms are what find hablar from
  * hablábamos (store.ts, formsOf).
  */
-function wty(target: string, native: string): Source {
+export function wty(target: string, native: string): Source {
   const id = `wty-${target}-${native}`;
   /*
    * Japanese Wiktionary in Chinese gives a third of its words only as the
@@ -755,7 +755,7 @@ export const CANTO: Source = {
  */
 const WIKDICT_RELEASE = '2026-10';
 
-function wikdict(target: string, native: string): Source {
+export function wikdict(target: string, native: string): Source {
   const id = `wikdict-${target}-${native}`;
   return {
     id,
@@ -816,6 +816,34 @@ export const SOURCES: Record<string, Source> = {
   'wty-zh-ko': wty('zh', 'ko'),
   'cxdict-fr': cedictIn('cxdict-fr', CXDICT_URL, 'latest-fr'),
   handedict: cedictIn('handedict', HANDEDICT_URL, 'master'),
+  // Measured with scripts/measure-forms.mjs (COVER), November 2026: see OWN_DICTIONARIES in settings.ts.
+  'wty-es-nl': wty('es', 'nl'),
+  'wty-es-ru': wty('es', 'ru'),
+  'wty-es-ko': wty('es', 'ko'),
+  'wty-de-pl': wty('de', 'pl'),
+  'wty-de-ko': wty('de', 'ko'),
+  'wikdict-de-sv': wikdict('de', 'sv'),
+  'wikdict-de-nl': wikdict('de', 'nl'),
+  'wikdict-de-tr': wikdict('de', 'tr'),
+  'wikdict-de-ja': wikdict('de', 'ja'),
+  'wty-fr-ko': wty('fr', 'ko'),
+  'wty-fr-ja': wty('fr', 'ja'),
+  'wikdict-fr-de': wikdict('fr', 'de'),
+  'wikdict-fr-sv': wikdict('fr', 'sv'),
+  'wikdict-fr-id': wikdict('fr', 'id'),
+  'wty-it-pl': wty('it', 'pl'),
+  'wty-it-fr': wty('it', 'fr'),
+  'wty-it-de': wty('it', 'de'),
+  'wty-it-ru': wty('it', 'ru'),
+  'wty-it-ko': wty('it', 'ko'),
+  'wty-it-zh': wty('it', 'zh'),
+  'wty-it-ja': wty('it', 'ja'),
+  'wty-it-es': wty('it', 'es'),
+  'wty-pt-fr': wty('pt', 'fr'),
+  'wty-pt-pl': wty('pt', 'pl'),
+  'wty-pt-ru': wty('pt', 'ru'),
+  'wikdict-pt-es': wikdict('pt', 'es'),
+  'wikdict-pt-de': wikdict('pt', 'de'),
   [KRDICT.id]: KRDICT,
   [CANTO.id]: CANTO,
 };
