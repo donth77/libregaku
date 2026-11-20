@@ -28,6 +28,7 @@ node scripts/compare-unidic.mjs                         # Japanese as IPADIC rea
 node scripts/build-zh-readings.mjs                      # which reading a Chinese character shows first
 node scripts/build-ko-fixture.mjs <ko-dic directory>    # what the analyser returns for the Korean tests' lines
 node scripts/language-pairs.mjs                         # LANGUAGE-PAIRS.md, from the code
+node scripts/store-images.mjs                           # the Chrome Web Store's tile, marquee and screenshots, into docs/store/
 ```
 
 ### Tests
@@ -235,10 +236,13 @@ src/logo.ts             the logo in the popup, options page and player bar, impo
 brand/                  logo masters (SVG), PNG exports, and how to use them
 LANGUAGE-PAIRS.md       every language pair and its dictionaries, written by scripts/language-pairs.mjs
 SUPPORTED-SITES.md      the sites it works on, by hand
+PRIVACY.md, TERMS.md    the privacy policy and terms the store listing links: change PRIVACY.md with
+                        any change to what leaves the learner's computer
 scripts/                check-captions.mjs, diagnose.js, compare-words.mjs, measure-word.mjs, audit-cuts.mjs, compare-unidic.mjs,
                         build-zh-readings.mjs,
                         build-ko-fixture.mjs and the lines it reads (ko-fixture-lines.txt),
-                        language-pairs.mjs and the page it writes (language-pairs-page.ts)
+                        language-pairs.mjs and the page it writes (language-pairs-page.ts),
+                        store-images.mjs (the store's images, from brand/ and the built extension)
 tests/contract/         the canaries
 ```
 

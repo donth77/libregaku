@@ -95,6 +95,12 @@ and German, and 470 MB for Spanish. A dictionary in your own language, where the
 one, is a second download of up to 18 MB. Japanese also downloads a second dictionary,
 used to split lines into words: 46 MB, and 190 MB on disk.
 
+## Privacy
+
+No account, no server, and nothing collected. [`PRIVACY.md`](PRIVACY.md) lists the few
+times a word or a download request leaves your computer, and to whom.
+[`TERMS.md`](TERMS.md) has the terms of use.
+
 ## Licence
 
 The code is MIT. See [`LICENSE`](LICENSE).

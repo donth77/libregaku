@@ -483,9 +483,12 @@ function synthesise(word: string, lang: string): void {
   const voices = speechSynthesis.getVoices();
   const tagOf = (v: SpeechSynthesisVoice): string => v.lang.replace('_', '-');
   // Cantonese voices are filed as zh-HK, or yue-HK; Mandarin's would read the characters wrongly.
-  const voice = lang === 'yue'
-    ? voices.find((v) => /^(zh-HK|yue)\b/i.test(tagOf(v)))
-    : voices.find((v) => tagOf(v) === locale) ?? voices.find((v) => v.lang.startsWith(lang));
+  const fits = lang === 'yue'
+    ? voices.filter((v) => /^(zh-HK|yue)\b/i.test(tagOf(v)))
+    : [...voices.filter((v) => tagOf(v) === locale), ...voices.filter((v) => tagOf(v) !== locale && v.lang.startsWith(lang))];
+  // A voice on this device before one made on a server: Chrome's "Google …" voices send the word to Google,
+  // and the privacy policy promises a word leaves the device only where there is no other way to say it.
+  const voice = fits.find((v) => v.localService) ?? fits[0];
   if (voice) u.voice = voice;
   stop();
   speechSynthesis.speak(u);

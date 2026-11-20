@@ -153,16 +153,17 @@ describe('findRecording', () => {
 });
 
 describe('the voice a word is said in', () => {
+  type Voice = { lang: string; name?: string; localService?: boolean };
   /** A browser with these voices, and no recording of anything. */
-  function voices(...langs: string[]) {
-    const said: Array<{ text: string; lang: string; voice?: { lang: string } }> = [];
+  function voices(...langs: Array<string | Voice>) {
+    const said: Array<{ text: string; lang: string; voice?: Voice }> = [];
     vi.stubGlobal('chrome', {
       runtime: { sendMessage: vi.fn(async () => ({ ok: false, status: 404 })) },
       storage: { sync: { get: async () => ({}) } },
     });
-    vi.stubGlobal('SpeechSynthesisUtterance', class { lang = ''; rate = 1; voice?: { lang: string }; constructor(public text: string) {} });
+    vi.stubGlobal('SpeechSynthesisUtterance', class { lang = ''; rate = 1; voice?: Voice; constructor(public text: string) {} });
     vi.stubGlobal('speechSynthesis', {
-      getVoices: () => langs.map((lang) => ({ lang })),
+      getVoices: () => langs.map((v) => (typeof v === 'string' ? { lang: v } : v)),
       cancel: () => undefined,
       speak: (u: { text: string; lang: string; voice?: { lang: string } }) => said.push(u),
     });
@@ -184,6 +185,21 @@ describe('the voice a word is said in', () => {
     const said = voices('en-US', 'es-MX');
     await pronounce('comer', undefined, 'es');
     expect(said[0]).toMatchObject({ lang: 'es-ES', voice: { lang: 'es-MX' } });
+  });
+
+  it('takes a voice on this device before one made on Google’s servers, which would be sent the word', async () => {
+    const said = voices(
+      { lang: 'ja-JP', name: 'Google 日本語', localService: false },
+      { lang: 'ja-JP', name: 'Microsoft Haruka', localService: true },
+    );
+    await pronounce('鳥', 'とり', 'ja');
+    expect(said[0]?.voice?.name).toBe('Microsoft Haruka');
+  });
+
+  it('uses an online voice only where the device has none for the language', async () => {
+    const said = voices({ lang: 'en-US', localService: true }, { lang: 'ko-KR', name: 'Google 한국의', localService: false });
+    await pronounce('먹다', undefined, 'ko');
+    expect(said[0]?.voice?.name).toBe('Google 한국의');
   });
 
   it('still asks for the language when the browser has no voice for it', async () => {
