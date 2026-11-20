@@ -323,7 +323,7 @@ export const tr: HelpTranslation = {
           title: 'Tanımlar neden yalnızca bazı dillerde?',
           body: [
             "Japonca için tanımlar, dokuz dilde tanım içeren JMdict'ten gelir. Diliniz bunlardan biri değilse {Ayarlar → Diller} bölümünde ikinci bir satır, “Tanım dili”, yerine kullanılacak dili seçmenizi sağlar.",
-            'Çince (Mandarin), Korece, İspanyolca, Fransızca ve Almanca sözlükler İngilizce yazılmıştır. Çift için kendi dilinizde bir sözlük varsa önce o kullanılır.',
+            'Çince (Mandarin), Korece, İspanyolca, Fransızca, Almanca, İtalyanca ve Portekizce sözlükler İngilizce yazılmıştır. Çift için kendi dilinizde bir sözlük varsa önce o kullanılır.',
           ],
           keywords: ['tanımlar', 'diller', 'türkçe', 'ingilizce', 'macarca', 'jmdict', 'cc-cedict', 'wiktionary'],
         },
@@ -331,7 +331,7 @@ export const tr: HelpTranslation = {
           id: 'q-languages',
           title: 'Hangi dilleri öğrenebilirim?',
           body: [
-            'Japonca, Çince (Mandarin), Kantonca, Korece, İspanyolca, Fransızca ve Almanca için sözlük vardır ve bir kelime, hangi biçimde söylenirse söylensin kartıyla eşleşir: 갔어요, 가다 kartını; hablábamos da hablar kartını bulur. Japonca kelimelerin üstünde furigana, Çince (Mandarin) pinyin, Kantonca ise Jyutping gösterir.',
+            'Japonca, Çince (Mandarin), Kantonca, Korece, İspanyolca, Fransızca, Almanca, İtalyanca ve Portekizce için sözlük vardır ve bir kelime, hangi biçimde söylenirse söylensin kartıyla eşleşir: 갔어요, 가다 kartını; hablábamos da hablar kartını bulur. Japonca kelimelerin üstünde furigana, Çince (Mandarin) pinyin, Kantonca ise Jyutping gösterir.',
             '{Ayarlar → Diller → Öğrendiğim dil} altındaki diğer diller “sınırlı” olarak işaretlidir. Kelimeleri ayrılır ama henüz sözlükleri yoktur.',
             'Bir dilin sözlüğü, o dili ilk seçtiğinizde indirilir. İndirme boyutu 11 ile 27 MB arasındadır; diskte Çince (Mandarin) için 100 MB, Fransızca için 140 MB, Korece ve Almanca için 200 MB, İspanyolca için 470 MB yer kaplar. Kendi dilinizde bir sözlük varsa, 18 MB’a kadar ikinci bir indirmedir. Japonca ayrıca satırları sözcüklere ayırmak için ikinci bir sözlük indirir: 46 MB, diskte 190 MB.',
           ],

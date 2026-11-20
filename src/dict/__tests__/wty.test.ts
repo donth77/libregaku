@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Entry } from '../jmdict';
-import { kindOf, mergeByWord, readRow, type Inflection } from '../wty';
+import { formIn, kindOf, mergeByWord, onlyForm, readRow, type Inflection } from '../wty';
 
 /*
  * Rows as wiktionary-to-yomitan publishes them — wty-es-en, wty-ko-en and
@@ -819,5 +819,38 @@ describe('mergeByWord', () => {
       ['piě (pie³)', 'left-falling stroke, usually read as 撇'],
       ['yì (yi⁴)', 'to arrive'],
     ]);
+  });
+});
+
+describe('formIn: a verb row that is a form of another verb', () => {
+  const li = (text: string) => ({ tag: 'li', content: [{ tag: 'div', content: [text] }] });
+  const entryOf = (row: unknown): Entry => {
+    const read = readRow(row, '1');
+    if (!read || !('entry' in read)) throw new Error('not an entry');
+    return read.entry;
+  };
+
+  it('files Italian sono and ha, rows of their own, as forms of essere and avere', () => {
+    // it term_bank: sono is a row of its own, v sg, and is not among essere's forms.
+    const sono = entryOf(meanings('sono', 'v sg', 'v', [li("first-person singular present indicative of essere: (I) am, I'm")]));
+    expect(formIn(sono)).toEqual({ form: 'sono', of: [{ lemma: 'essere', tags: ['first-person singular present indicative'] }], pos: 'v' });
+    const ha = entryOf(meanings('ha', 'v sg', 'v', [li('third-person singular present indicative of avere and (obsolete) havere')]));
+    expect(formIn(ha)?.of).toEqual([{ lemma: 'avere', tags: ['third-person singular present indicative'] }]);
+  });
+
+  it('files a Portuguese verb with its pronoun written on as a form of the verb', () => {
+    const ajudalo = entryOf(meanings('ajudá-lo', 'v abbv contr', 'v', [li('contraction of ajudar + o')]));
+    expect(formIn(ajudalo)).toEqual({ form: 'ajudá-lo', of: [{ lemma: 'ajudar', tags: [] }], pos: 'v' });
+  });
+
+  it('keeps a row only as the form where it says nothing more, so the card opens the verb', () => {
+    expect(onlyForm(entryOf(meanings('sono', 'v sg', 'v', [li("first-person singular present indicative of essere: (I) am, I'm")])))).toBe(true);
+    // A meaning of its own beside the form: kept as a word as well.
+    expect(onlyForm(entryOf(meanings('vale', 'v', 'v', [li('third-person singular present indicative of valere'), li('okay, all right')])))).toBe(false);
+  });
+
+  it('leaves a verb with a meaning of its own, and any row that is no verb', () => {
+    expect(formIn(entryOf(meanings('parlare', 'v', 'v', [li('to speak, to talk')])))).toBeNull();
+    expect(formIn(entryOf(meanings('ha', 'intj', '', [li('ah! (usually ironic or sarcastic)')])))).toBeNull();
   });
 });

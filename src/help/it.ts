@@ -323,7 +323,7 @@ export const it: HelpTranslation = {
           title: 'Perché le definizioni sono solo in alcune lingue?',
           body: [
             'Per il giapponese vengono da JMdict, che ha definizioni in nove lingue. Se la tua non è tra queste, {Impostazioni → Lingue} mostra una seconda riga, Definizioni in, per scegliere la lingua da usare al suo posto.',
-            'I dizionari di cinese (mandarino), coreano, spagnolo, francese e tedesco sono scritti in inglese. Dove ne esiste uno nella tua lingua per la coppia, viene usato per primo.',
+            'I dizionari di cinese (mandarino), coreano, spagnolo, francese, tedesco, italiano e portoghese sono scritti in inglese. Dove ne esiste uno nella tua lingua per la coppia, viene usato per primo.',
           ],
           keywords: ['dizionario', 'significati', 'italiano', 'ungherese', 'sloveno', 'cc-cedict', 'wiktionary', 'wikizionario'],
         },
@@ -331,7 +331,7 @@ export const it: HelpTranslation = {
           id: 'q-languages',
           title: 'Quali lingue posso imparare?',
           body: [
-            'Giapponese, cinese (mandarino), cantonese, coreano, spagnolo, francese e tedesco hanno un dizionario, e una parola viene collegata alla sua carta in qualunque forma sia detta: 갔어요 trova una carta di 가다, e hablábamos una di hablar. Il giapponese mostra il furigana sopra le parole, il cinese (mandarino) il pinyin e il cantonese il Jyutping.',
+            'Giapponese, cinese (mandarino), cantonese, coreano, spagnolo, francese, tedesco, italiano e portoghese hanno un dizionario, e una parola viene collegata alla sua carta in qualunque forma sia detta: 갔어요 trova una carta di 가다, e hablábamos una di hablar. Il giapponese mostra il furigana sopra le parole, il cinese (mandarino) il pinyin e il cantonese il Jyutping.',
             'Le altre lingue in {Impostazioni → Lingue → Sto imparando} sono indicate come limitate. Le loro parole vengono separate, ma non hanno ancora un dizionario.',
             'Il dizionario di una lingua viene scaricato la prima volta che la scegli. Il download pesa da 11 a 27 MB; sul disco occupa 100 MB per il cinese (mandarino), 140 MB per il francese, 200 MB per il coreano e il tedesco e 470 MB per lo spagnolo. Un dizionario nella tua lingua, dove esiste, è un secondo download fino a 18 MB. Il giapponese scarica anche un secondo dizionario, che serve a separare le righe in parole: 46 MB, e 190 MB sul disco.',
           ],

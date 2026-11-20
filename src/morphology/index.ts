@@ -2,6 +2,8 @@ import { ensureAnalyser, improveAnalyser } from './analyser';
 import { ChineseSegmenter } from './chinese';
 import { APART, FRENCH, splitElisions, straighten } from './french';
 import { GERMAN, GERMAN_COMPOUNDS, splitClitics } from './german';
+import { ITALIAN, splitItalian } from './italian';
+import { APART_PT, PORTUGUESE } from './portuguese';
 import { KoreanSegmenter } from './korean';
 import { LemmaSegmenter } from './lemma';
 import { LinderaSegmenter } from './lindera';
@@ -48,6 +50,8 @@ const BY_FORMS: Record<string, () => Segmenter> = {
   de: () => new LemmaSegmenter('de', GERMAN, {
     prepare: splitClitics, fold: straighten, grammarCounts, compounds: GERMAN_COMPOUNDS, joinHyphens: { apart: /^$/ },
   }),
+  it: () => new LemmaSegmenter('it', ITALIAN, { prepare: splitItalian, fold: straighten, grammarCounts, joinHyphens: { apart: /^$/ } }),
+  pt: () => new LemmaSegmenter('pt', PORTUGUESE, { fold: straighten, grammarCounts, joinHyphens: { apart: APART_PT } }),
 };
 
 /** What turns a language's lines into words with dictionary forms. */

@@ -304,6 +304,43 @@ function readEntry(id: string, word: string, reading: unknown, tags: string, def
   };
 }
 
+/** A verb's meaning that only says which form of another verb it is: "third-person singular present indicative of essere; is". */
+const FORM_GLOSS =
+  /^((?:(?:first|second|third)-person|singular|plural|present|past|imperfect|preterite|pluperfect|future|conditional|indicative|subjunctive|imperative|participle|gerund|infinitive|and|or|[/ ])+?) of (\p{L}[\p{L}'’-]*)/u;
+/** A verb with a pronoun written onto it: "contraction of ajudar + o". */
+const CLITIC_GLOSS = /^contraction of (\p{L}[\p{L}'’-]*) \+ /u;
+
+/**
+ * A verb's row that is a form of another verb, put as a meaning. Italian has
+ * sono, è and ha as rows of their own, "first-person singular present
+ * indicative of essere: (I) am", where most languages list such a form among
+ * the forms; Portuguese has ajudá-lo, "contraction of ajudar + o". The row is
+ * kept for its meaning and filed as a form of that verb too, so a line reads
+ * essere and ajudar, and a card for either matches.
+ */
+export function formIn(entry: Entry): Inflection | null {
+  if (!(entry.kind ?? []).includes('v')) return null;
+  const of: Inflection['of'] = [];
+  for (const gloss of entry.senses.flatMap((s) => s.glosses)) {
+    const form = FORM_GLOSS.exec(gloss);
+    const clitic = form ? null : CLITIC_GLOSS.exec(gloss);
+    const lemma = form?.[2] ?? clitic?.[1];
+    if (!lemma || lemma === entry.word || of.some((o) => o.lemma === lemma)) continue;
+    of.push({ lemma, tags: form ? [(form[1] ?? '').trim()] : [] });
+  }
+  return of.length ? { form: entry.word, of, pos: 'v' } : null;
+}
+
+/**
+ * A verb's row with nothing to say of itself: every meaning only names the
+ * form of another verb it is (formIn). It is kept as that form and not as a
+ * word, so a card opens the verb, essere and ajudar, with its meanings.
+ */
+export function onlyForm(entry: Entry): boolean {
+  const glosses = entry.senses.flatMap((s) => s.glosses);
+  return formIn(entry) !== null && glosses.every((g) => FORM_GLOSS.test(g) || CLITIC_GLOSS.test(g));
+}
+
 /* ── A form of a word ───────────────────────────────────────────── */
 
 /**

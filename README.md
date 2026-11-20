@@ -76,8 +76,8 @@ pnpm typecheck
 | Japanese | Full, with furigana |
 | Chinese (Mandarin) | Full, with pinyin |
 | Cantonese | Full, with Jyutping |
-| Korean, Spanish, French, German | Full |
-| Italian, Portuguese, Thai, English, Hindi, Arabic, Turkish | Words only, for now |
+| Korean, Spanish, French, German, Italian, Portuguese | Full |
+| Thai, English, Hindi, Arabic, Turkish | Words only, for now |
 
 "Full" means a word is looked up, and matched to its card, in whatever form it is said:
 `갔어요` finds `가다`, and `hablábamos` finds `hablar`.

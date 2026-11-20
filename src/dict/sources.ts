@@ -4,7 +4,7 @@ import type { Entry, RankHint } from './jmdict';
 import type { CharacterInfo } from './kanji';
 import { JMDICT, lookup, type Batch, type Source } from './store';
 import { wikdictEntries, wikdictUrl } from './wikdict';
-import { mergeByWord, readRow } from './wty';
+import { formIn, mergeByWord, onlyForm, readRow } from './wty';
 import { zipFiles } from './zip';
 
 /**
@@ -104,7 +104,7 @@ export function wtyUrl(target: string, native: string): string {
 }
 
 /** The shape of what is stored, where a language's has moved on from the rest (see `format` in wty()). */
-const WTY_FORMAT: Record<string, number> = { de: 4, ko: 5 };
+const WTY_FORMAT: Record<string, number> = { de: 5, ko: 6 };
 
 /**
  * The kinds of word (wty's codes) each of an analyser's tags stands for, by language: what a row has to be
@@ -131,7 +131,7 @@ function byRole(rows: Entry[], target: string, hint?: RankHint): Entry[] {
 }
 
 /** A word, or a word's main meaning, that the published file leaves out. */
-interface Gap {
+export interface Gap {
   word: string;
   /** What kind of word it is, in the file's codes. */
   kind: string[];
@@ -155,7 +155,7 @@ interface Gap {
  * words, ahead of whatever the file has for the same word, and the list
  * stays this short: a word joins it by that count, not by a guess.
  */
-const GAPS: Record<string, Gap[]> = {
+export const GAPS: Record<string, Gap[]> = {
   es: [
     { word: 'muy', kind: ['adv'], glosses: ['very'] },
     { word: 'mi', kind: ['det'], glosses: ['my'], forms: [{ form: 'mis', tags: ['plural'] }] },
@@ -211,6 +211,28 @@ const GAPS: Record<string, Gap[]> = {
     { word: 'übers', kind: ['contr'], glosses: ['over the, about the (über and das, written as one word)'] },
     // The file has -heit and not its twin, which words made with it are found by (Wendigkeit: wendig and -keit).
     { word: '-keit', kind: ['suf'], glosses: ['makes a noun of an adjective: -ness, -ity (as -heit does, after -ig, -lich, -bar and -sam)'] },
+  ],
+  /*
+   * Italian puts a d on a before a vowel (ad andare), and the file has ad only
+   * as "a for euphony", a word it has no entry for: one word in 820 of
+   * Tatoeba's Italian. i, the article, one word in 140, is in the file only as
+   * a form of every article at once, and was read as the plural of la.
+   */
+  it: [
+    { word: 'i', kind: ['artic'], glosses: ['the (masculine plural, before most consonants: i libri)'] },
+    { word: 'ad', kind: ['prep'], glosses: ['to, at, in (a before a vowel: ad andare)'] },
+  ],
+  /*
+   * Portuguese writes o, a, os and as as lo, la, los and las after a verb that
+   * drops its last r, s or z for them (encontrá-la, fazê-lo, di-lo), and the
+   * file has them only as other spellings of o and a, which are not what they
+   * are. Together they are one word in 740 of Tatoeba's Portuguese.
+   */
+  pt: [
+    { word: 'lo', kind: ['pron'], glosses: ['him, it (o after a verb that drops its r, s or z: fazê-lo, "to do it")'] },
+    { word: 'la', kind: ['pron'], glosses: ['her, it (a after a verb that drops its r, s or z: encontrá-la, "to find her")'] },
+    { word: 'los', kind: ['pron'], glosses: ['them (os after a verb that drops its r, s or z: vê-los, "to see them")'] },
+    { word: 'las', kind: ['pron'], glosses: ['them, feminine (as after a verb that drops its r, s or z: chamá-las, "to call them")'] },
   ],
   // Spoken Korean's two commonest short forms: the file has 뭐 only as a form
   // of 무엇, and 거 only as the reading of a Chinese character.
@@ -350,7 +372,7 @@ function wty(target: string, native: string): Source {
     release: WTY_REVISION,
     // Bumped when the reader (wty.ts) or the words added here (GAPS) change what is stored. By the language
     // whose words changed, so that a new word for German is not a new download of Spanish.
-    format: WTY_FORMAT[target] ?? 3,
+    format: WTY_FORMAT[target] ?? 4,
     rank: (entries: Entry[], key: string, hint?: RankHint) => {
       // One row for each part of speech a word has; the card shows one entry.
       // The row that is the role the analyser found for it first: 우리 "we", not 우리 "cage".
@@ -398,7 +420,10 @@ function wty(target: string, native: string): Source {
               const row = readRow(raw, idOf(n++));
               if (!row) continue;
               if ('entry' in row) {
-                if (!pointerOnly(row.entry)) batch.entries.push({ entry: row.entry, keys: [row.entry.word] });
+                // sono, a row of its own, is a form of essere (formIn), and only that where it says nothing more (onlyForm).
+                if (!pointerOnly(row.entry) && !onlyForm(row.entry)) batch.entries.push({ entry: row.entry, keys: [row.entry.word] });
+                const form = formIn(row.entry);
+                if (form) batch.inflections.push(form);
               }
               else batch.inflections.push(row.inflection);
             }
@@ -759,6 +784,8 @@ export const SOURCES: Record<string, Source> = {
   'wty-es-en': wty('es', 'en'),
   'wty-fr-en': wty('fr', 'en'),
   'wty-de-en': wty('de', 'en'),
+  'wty-it-en': wty('it', 'en'),
+  'wty-pt-en': wty('pt', 'en'),
   // In the learner's own language (settings.ts, OWN_DICTIONARIES).
   'wty-ja-zh': wty('ja', 'zh'),
   'wty-ja-ko': wty('ja', 'ko'),

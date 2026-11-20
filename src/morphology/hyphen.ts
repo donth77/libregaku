@@ -78,7 +78,11 @@ export function joinHyphenated(
     while (at < run.to) {
       const found = stretches(tokens, { from: at, to: run.to }).find((s) => {
         const key = fold(s.text);
-        return forms[key]?.word || forms[key.toLocaleLowerCase(locale)]?.word;
+        // A word the dictionary has, or a form of one (grands-mères, ajudá-lo) where no piece of it stands apart:
+        // savez-vous is listed as a form too, and a question's verb and pronoun stay two words.
+        const asForm = !apart || !s.text.split(/[-‐‑]/).some((piece) => apart.test(piece.toLowerCase()));
+        const known = (info: Forms[string] | undefined): boolean => Boolean(info?.word || (asForm && info?.of.length));
+        return known(forms[key]) || known(forms[key.toLocaleLowerCase(locale)]);
       });
       if (found) {
         joins.set(found.from, { to: found.to, text: found.text });

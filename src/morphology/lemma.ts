@@ -46,6 +46,8 @@ interface FormsAnswer {
 const SPELLING = new Set([
   'alt-of', 'alternative', 'archaic', 'obsolete', 'dated', 'misspelling', 'nonstandard', 'rare',
   'pronunciation-spelling', 'eye-dialect', 'informal', 'superseded', 'uncommon', 'dialectal',
+  // Italian i, the article, is filed as the lower case of I, the letter, as well as a form of il.
+  'lowercase',
 ]);
 
 const isSpelling = (tags: readonly string[]): boolean => tags.length > 0 && tags.every((t) => SPELLING.has(t));

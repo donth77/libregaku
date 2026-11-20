@@ -161,7 +161,7 @@ export const settings = {
   colorKnownHint: 'Words with a mature card, or marked known.',
   markKnown: 'Underline known words',
   markKnownHint: 'Off by default, so the screen gets quieter as you learn.',
-  /** Shown for Spanish, French and German. Articles: the, a. Pronouns: I, you, he. */
+  /** Shown for Spanish, French, German, Italian and Portuguese. Articles: the, a. Pronouns: I, you, he. */
   underlineGrammar: 'Underline articles and pronouns',
   underlineGrammarHint: 'Off by default: words like “the”, “I” and “he” can still be looked up, but are not counted as words to learn.',
   /** A row with one button, which puts every underline colour back to its default. */

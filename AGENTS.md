@@ -27,6 +27,7 @@ node scripts/audit-cuts.mjs                             # words the analyser rea
 node scripts/compare-unidic.mjs                         # Japanese as IPADIC reads it, with and without UniDic's second opinion
 node scripts/build-zh-readings.mjs                      # which reading a Chinese character shows first
 node scripts/build-ko-fixture.mjs <ko-dic directory>    # what the analyser returns for the Korean tests' lines
+node scripts/measure-forms.mjs <lang>                   # a language read by its dictionary's forms, on Tatoeba
 node scripts/language-pairs.mjs                         # LANGUAGE-PAIRS.md, from the code
 node scripts/store-images.mjs                           # the Chrome Web Store's tile, marquee and screenshots, into docs/store/
 ```
@@ -157,6 +158,16 @@ analyser really returns for the lines in `scripts/ko-fixture-lines.txt`, misread
 included, which the Korean merge tests stand on. Run it when a line is added to that
 list, and when lindera or ko-dic is bumped.
 
+`measure-forms` is for the languages read by their dictionary's table of forms (Spanish,
+French, German, Italian, Portuguese: `BY_FORMS` in `src/morphology/index.ts`). It reads
+20,000 Tatoeba sentences through the language's own segmenter, with the dictionary read by
+its own source, and writes how many words find an entry, the commonest that find none, and
+the commonest forms that could be more than one word with what each was read as. The hints
+(`italian.ts`, `spanish.ts`…) and the `GAPS` in `src/dict/sources.ts` take a word only on
+what it counts: `SAVE=base`, change, then `AGAINST=base`, and read every word read
+otherwise, in every one of those languages when the change is to the reader (`wty.ts`)
+or to `lemma.ts` or `hyphen.ts`.
+
 `language-pairs` writes `LANGUAGE-PAIRS.md`, the page the store listing links to:
 what each language that can be learned gets, and which dictionaries explain its words
 for each language of the learner's own. It reads `settings.ts` and `src/dict/sites.ts`,
@@ -186,7 +197,8 @@ src/adapters/           one module per subtitle source (youtube, netflix, disney
                         offset Apple TV's player keeps from its subtitle files (apple-clock)
 src/morphology/         Segmenter implementations and which language gets which (index.ts),
                         merge rules for Japanese and Korean, furigana and pinyin alignment,
-                        Spanish dictionary forms, the words from JMdict that IPADIC
+                        what Spanish, French, German, Italian and Portuguese forms need said
+                        of them (spanish.ts, french.ts, german.ts, italian.ts, portuguese.ts), the words from JMdict that IPADIC
                         misreads, added to the analyser, and UniDic's second opinion on
                         IPADIC's reading of a line (japanese.ts, repair.ts)
 src/dict/               one dictionary per language (sources.ts): download, storage and
@@ -242,7 +254,8 @@ scripts/                check-captions.mjs, diagnose.js, compare-words.mjs, meas
                         build-zh-readings.mjs,
                         build-ko-fixture.mjs and the lines it reads (ko-fixture-lines.txt),
                         language-pairs.mjs and the page it writes (language-pairs-page.ts),
-                        store-images.mjs (the store's images, from brand/ and the built extension)
+                        store-images.mjs (the store's images, from brand/ and the built extension),
+                        measure-forms.mjs and what it runs (measure-forms.ts)
 tests/contract/         the canaries
 ```
 

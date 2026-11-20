@@ -23,6 +23,8 @@ export const DICTIONARIES: Record<string, string> = {
   es: 'wty-es-en',
   fr: 'wty-fr-en',
   de: 'wty-de-en',
+  it: 'wty-it-en',
+  pt: 'wty-pt-en',
 };
 
 /**
@@ -120,8 +122,8 @@ export const TARGET_LANGUAGES: Array<{ code: string; label: string; tier: 0 | 1 
   { code: 'es', label: 'Spanish', tier: 1, flag: '🇪🇸' },
   { code: 'fr', label: 'French', tier: 1, flag: '🇫🇷' },
   { code: 'de', label: 'German', tier: 1, flag: '🇩🇪' },
-  { code: 'it', label: 'Italian', tier: 0, flag: '🇮🇹' },
-  { code: 'pt', label: 'Portuguese', tier: 0, flag: '🇧🇷' },
+  { code: 'it', label: 'Italian', tier: 1, flag: '🇮🇹' },
+  { code: 'pt', label: 'Portuguese', tier: 1, flag: '🇧🇷' },
   { code: 'th', label: 'Thai', tier: 0, flag: '🇹🇭' },
   { code: 'en', label: 'English', tier: 0, flag: '🇺🇸' },
   { code: 'hi', label: 'Hindi', tier: 0, flag: '🇮🇳' },
@@ -205,6 +207,20 @@ const LANGUAGE_FEATURES: Record<string, LanguageFeatures> = {
     definitions: false,
     articles: true,
     dictionary: { name: 'Wiktionary', url: (w) => `https://en.wiktionary.org/wiki/${encodeURIComponent(w)}#German` },
+  },
+  it: {
+    readings: false,
+    characters: false,
+    definitions: false,
+    articles: true,
+    dictionary: { name: 'Wiktionary', url: (w) => `https://en.wiktionary.org/wiki/${encodeURIComponent(w)}#Italian` },
+  },
+  pt: {
+    readings: false,
+    characters: false,
+    definitions: false,
+    articles: true,
+    dictionary: { name: 'Wiktionary', url: (w) => `https://en.wiktionary.org/wiki/${encodeURIComponent(w)}#Portuguese` },
   },
 };
 
