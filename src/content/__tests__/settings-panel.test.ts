@@ -239,8 +239,9 @@ describe('settings panel selects', () => {
     expect(tierNote('es')).toBe('Full support. Definitions are in English.');
     expect(tierNote('it')).toBe('Full support. Definitions are in English.');
     expect(tierNote('th')).toBe('Full support. Definitions are in English.');
-    expect(tierNote('hi')).toBe('Basic support: words are split, but there is no dictionary or readings yet.');
-    expect(tierNote('xx')).toBe(tierNote('hi'));
+    expect(tierNote('hi')).toBe('Full support. Definitions are in English.');
+    expect(tierNote('ar')).toBe('Basic support: words are split, but there is no dictionary or readings yet.');
+    expect(tierNote('xx')).toBe(tierNote('ar'));
   });
 
   it('credits every source a language draws on', () => {

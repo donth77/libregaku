@@ -323,7 +323,7 @@ export const vi: HelpTranslation = {
           title: 'Sao nghĩa chỉ có ở một số ngôn ngữ?',
           body: [
             'Với tiếng Nhật, nghĩa lấy từ JMdict, vốn có nghĩa bằng chín ngôn ngữ. Nếu ngôn ngữ của bạn không nằm trong số đó, {Cài đặt → Ngôn ngữ} sẽ có thêm một hàng thứ hai, “Hiện nghĩa bằng”, để chọn ngôn ngữ dùng thay thế.',
-            'Từ điển tiếng Trung (Quan thoại), tiếng Hàn, tiếng Tây Ban Nha, tiếng Pháp, tiếng Đức, tiếng Ý, tiếng Bồ Đào Nha và tiếng Thái được viết bằng tiếng Anh. Nếu có từ điển bằng ngôn ngữ của bạn cho cặp ngôn ngữ đó, nó được dùng trước.',
+            'Từ điển tiếng Trung (Quan thoại), tiếng Hàn, tiếng Tây Ban Nha, tiếng Pháp, tiếng Đức, tiếng Ý, tiếng Bồ Đào Nha, tiếng Thái và tiếng Hindi được viết bằng tiếng Anh. Nếu có từ điển bằng ngôn ngữ của bạn cho cặp ngôn ngữ đó, nó được dùng trước.',
           ],
           keywords: ['nghĩa', 'định nghĩa', 'ngôn ngữ', 'jmdict', 'tiếng hungary', 'tiếng slovenia', 'tiếng anh', 'cc-cedict', 'wiktionary'],
         },
@@ -331,7 +331,7 @@ export const vi: HelpTranslation = {
           id: 'q-languages',
           title: 'Tôi có thể học những ngôn ngữ nào?',
           body: [
-            'Tiếng Nhật, tiếng Trung (Quan thoại), tiếng Quảng Đông, tiếng Hàn, tiếng Tây Ban Nha, tiếng Pháp, tiếng Đức, tiếng Ý, tiếng Bồ Đào Nha và tiếng Thái có từ điển, và một từ được khớp với thẻ của nó dù được nói ở dạng nào: 갔어요 tìm thấy thẻ của 가다, còn hablábamos tìm thấy thẻ của hablar. Tiếng Nhật hiện furigana phía trên từ, tiếng Trung (Quan thoại) hiện pinyin, còn tiếng Quảng Đông hiện Jyutping.',
+            'Tiếng Nhật, tiếng Trung (Quan thoại), tiếng Quảng Đông, tiếng Hàn, tiếng Tây Ban Nha, tiếng Pháp, tiếng Đức, tiếng Ý, tiếng Bồ Đào Nha, tiếng Thái và tiếng Hindi có từ điển, và một từ được khớp với thẻ của nó dù được nói ở dạng nào: 갔어요 tìm thấy thẻ của 가다, còn hablábamos tìm thấy thẻ của hablar. Tiếng Nhật hiện furigana phía trên từ, tiếng Trung (Quan thoại) hiện pinyin, còn tiếng Quảng Đông hiện Jyutping.',
             'Các ngôn ngữ khác trong {Cài đặt → Ngôn ngữ → Ngôn ngữ đang học} được ghi là “hạn chế”. Từ của các ngôn ngữ này được tách ra, nhưng chưa có từ điển.',
             'Từ điển của một ngôn ngữ được tải về vào lần đầu bạn chọn ngôn ngữ đó. Dung lượng tải về từ 11 đến 27 MB; trên ổ đĩa, từ điển chiếm 100 MB cho tiếng Trung (Quan thoại), 140 MB cho tiếng Pháp, 200 MB cho tiếng Hàn và tiếng Đức, và 470 MB cho tiếng Tây Ban Nha. Từ điển bằng ngôn ngữ của bạn, nếu có, là lần tải thứ hai, tối đa 18 MB. Tiếng Nhật còn tải thêm một từ điển thứ hai, dùng để tách dòng thành từ: 46 MB, và 190 MB trên ổ đĩa.',
           ],

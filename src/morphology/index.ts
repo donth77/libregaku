@@ -5,6 +5,7 @@ import { GERMAN, GERMAN_COMPOUNDS, splitClitics } from './german';
 import { ITALIAN, splitItalian } from './italian';
 import { APART_PT, PORTUGUESE } from './portuguese';
 import { THAI, joinRepeats, unrepeat } from './thai';
+import { HINDI, foldHindi, hindiEndings } from './hindi';
 import { KoreanSegmenter } from './korean';
 import { LemmaSegmenter } from './lemma';
 import { LinderaSegmenter } from './lindera';
@@ -55,6 +56,8 @@ const BY_FORMS: Record<string, () => Segmenter> = {
   pt: () => new LemmaSegmenter('pt', PORTUGUESE, { fold: straighten, grammarCounts, joinHyphens: { apart: APART_PT } }),
   // Thai has no spaces; the browser finds its words, and the dictionary has them as they are.
   th: () => new LemmaSegmenter('th', THAI, { prepare: joinRepeats, fold: unrepeat, grammarCounts }),
+  // One word, several spellings: looked up as written, and by the key they share where that finds nothing (foldHindi).
+  hi: () => new LemmaSegmenter('hi', HINDI, { fold: (s) => s.normalize('NFC'), respell: foldHindi, grammarCounts, endings: hindiEndings }),
 };
 
 /** What turns a language's lines into words with dictionary forms. */

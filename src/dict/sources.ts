@@ -5,6 +5,7 @@ import type { CharacterInfo } from './kanji';
 import { JMDICT, lookup, type Batch, type Source } from './store';
 import { wikdictEntries, wikdictUrl } from './wikdict';
 import { formIn, mergeByWord, onlyForm, readRow } from './wty';
+import { foldHindi } from '../morphology/hindi';
 import { zipFiles } from './zip';
 
 /**
@@ -102,6 +103,13 @@ export function wtyUrl(target: string, native: string): string {
     `latest/dict/${target}/${native}/wty-${target}-${native}.zip`
   );
 }
+
+/**
+ * The key a language's words are looked up by where one word has several spellings (foldHindi). Each word and
+ * each form is kept under it as well, as another way of writing the word, so the line's spelling leads to the
+ * dictionary's and a card is made for the dictionary's.
+ */
+const RESPELL: Record<string, (word: string) => string> = { hi: foldHindi };
 
 /** The shape of what is stored, where a language's has moved on from the rest (see `format` in wty()). */
 const WTY_FORMAT: Record<string, number> = { de: 5, ko: 6 };
@@ -249,6 +257,10 @@ export const GAPS: Record<string, Gap[]> = {
     { word: 'ซะ', kind: ['ptcl'], glosses: ['go on and; right away (after a verb, urges it done; เสีย, as it is said: กินซะ, "eat it up")'] },
     { word: 'รึ', kind: ['conj', 'ptcl'], glosses: ['or; ... is it? (หรือ, as it is said)'] },
   ],
+  // सभी, "all, everyone" (सब and ही), is not in the file: one word in 1,100 of Tatoeba's Hindi.
+  hi: [
+    { word: 'सभी', kind: ['pron', 'det'], glosses: ['all, everyone; all of (सब, all, with ही, which stresses it)'] },
+  ],
   // Spoken Korean's two commonest short forms: the file has 뭐 only as a form
   // of 무엇, and 거 only as the reading of a Chinese character.
   ko: [
@@ -379,6 +391,7 @@ export function wty(target: string, native: string): Source {
   const pointerOnly = (e: Entry): boolean =>
     native !== 'en' && e.senses.length > 0 && e.senses.every((s) => s.glosses.every((g) => POINTER.test(g)));
   const particle = PARTICLE[target];
+  const respell = RESPELL[target];
   /** The token is one the analyser calls a particle. */
   const isParticle = (hint?: RankHint): boolean => Boolean(particle && hint?.pos && particle.test(hint.pos));
   return {
@@ -439,8 +452,13 @@ export function wty(target: string, native: string): Source {
                 if (!pointerOnly(row.entry) && !onlyForm(row.entry)) batch.entries.push({ entry: row.entry, keys: [row.entry.word] });
                 const form = formIn(row.entry);
                 if (form) batch.inflections.push(form);
+                const key = respell?.(row.entry.word);
+                if (key && key !== row.entry.word) batch.inflections.push({ form: key, of: [{ lemma: row.entry.word, tags: ['alternative'] }] });
+              } else {
+                batch.inflections.push(row.inflection);
+                const key = respell?.(row.inflection.form);
+                if (key && key !== row.inflection.form) batch.inflections.push({ ...row.inflection, form: key });
               }
-              else batch.inflections.push(row.inflection);
             }
             const within = Math.min(1, (i + ROWS) / rows.length);
             yield { ...batch, percent: Math.round(((at + within) / banks.length) * 100) };
@@ -802,6 +820,7 @@ export const SOURCES: Record<string, Source> = {
   'wty-it-en': wty('it', 'en'),
   'wty-pt-en': wty('pt', 'en'),
   'wty-th-en': wty('th', 'en'),
+  'wty-hi-en': wty('hi', 'en'),
   // In the learner's own language (settings.ts, OWN_DICTIONARIES).
   'wty-ja-zh': wty('ja', 'zh'),
   'wty-ja-ko': wty('ja', 'ko'),

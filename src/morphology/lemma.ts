@@ -188,6 +188,12 @@ export interface LemmaHints {
 
 const NO_HINTS: LemmaHints = { first: [], common: [], auxiliaries: [] };
 
+/** A word an unknown one may be by its ending, and what the ending makes of it, in the dictionary's words for forms. */
+export interface Ending {
+  key: string;
+  label?: string;
+}
+
 /**
  * Kinds of word a language has a fixed stock of: como, para, entre, una, nada.
  * A form that is one of these is that word nearly every time it is said,
@@ -497,6 +503,8 @@ export class LemmaSegmenter implements Segmenter {
   readonly #grammarCounts: () => boolean;
   readonly #compounds: CompoundRules | undefined;
   readonly #joinHyphens: boolean | { apart: RegExp };
+  readonly #endings: ((word: string) => Ending[]) | undefined;
+  readonly #respell: ((word: string) => string) | undefined;
   /** What the lines kept were analysed with: a change of the setting starts them over. */
   #counted = false;
   readonly #words: IntlSegmenter;
@@ -521,6 +529,16 @@ export class LemmaSegmenter implements Segmenter {
        * it has, except where a part matches this (hyphen.ts). `true` joins only the first kind.
        */
       joinHyphens?: boolean | { apart: RegExp };
+      /**
+       * For a word the dictionary has nothing for, the words it may be by its ending, each tried in turn: Hindi
+       * आइए is आना, "come, please". The first the dictionary has is the word.
+       */
+      endings?: (word: string) => Ending[];
+      /**
+       * Another key to find a word by, where the dictionary has nothing under it as it is written: Hindi writes
+       * one word several ways (foldHindi), and the dictionary keeps each word under the key as well.
+       */
+      respell?: (word: string) => string;
     } = {},
   ) {
     this.#locale = locale;
@@ -530,6 +548,8 @@ export class LemmaSegmenter implements Segmenter {
     this.#grammarCounts = opts.grammarCounts ?? (() => false);
     this.#compounds = opts.compounds;
     this.#joinHyphens = opts.joinHyphens ?? false;
+    this.#endings = opts.endings;
+    this.#respell = opts.respell;
     this.#words = new IntlSegmenter(locale);
   }
 
@@ -549,6 +569,7 @@ export class LemmaSegmenter implements Segmenter {
       const key = this.#fold(t.surface);
       asked.add(key);
       asked.add(key.toLocaleLowerCase(this.#locale));
+      if (this.#respell) asked.add(this.#respell(key));
     }
     if (!asked.size) return tokens;
 
@@ -563,11 +584,74 @@ export class LemmaSegmenter implements Segmenter {
     if (this.#joinHyphens) {
       tokens = joinHyphenated(tokens, res.forms, this.#fold, this.#locale, this.#joinHyphens === true ? undefined : this.#joinHyphens.apart);
     }
-    let out = lemmaTokens(tokens, res.forms, this.#locale, this.#hints, this.#fold, counts);
-    if (this.#compounds) out = await this.#cutCompounds(out, res.forms, this.#compounds);
+    const { forms, look } = this.#respell ? await this.#respelt(tokens, res.forms, this.#respell) : { forms: res.forms, look: this.#fold };
+    let out = lemmaTokens(tokens, forms, this.#locale, this.#hints, look, counts);
+    if (this.#compounds) out = await this.#cutCompounds(out, forms, this.#compounds);
     if (this.#compounds?.verbPrefixes) out = await this.#joinSeparated(out, this.#compounds);
+    if (this.#endings) out = await this.#byEnding(out, forms, this.#endings, look);
     this.#cache.set(text, out);
     return out;
+  }
+
+  /**
+   * Where the dictionary has nothing for a word as it is written, the word its other key (`respell`) leads to.
+   * A key the dictionary keeps as another spelling of one word is read as that word, which is asked about in
+   * turn: बिलकुल is बिल्कुल. A key that is only forms' is read as those forms. A word the dictionary has as
+   * written is read as written, whatever else shares its key: पत्नी is "wife", though its key is also a form's.
+   */
+  async #respelt(tokens: Token[], forms: Forms, respell: (word: string) => string): Promise<{ forms: Forms; look: (surface: string) => string }> {
+    const known = (key: string): boolean => Boolean(forms[key] || forms[key.toLocaleLowerCase(this.#locale)]);
+    const spelling = (key: string): string => {
+      if (known(key)) return key;
+      const other = respell(key);
+      const info = forms[other];
+      // Nothing under the key either: the word as written, not the key, which is no spelling of anything.
+      if (!info) return key;
+      return info.of.find((o) => o.tags.length === 1 && o.tags[0] === 'alternative' && (o.senses ?? 0) > 0)?.lemma ?? other;
+    };
+    const wanted = new Set<string>();
+    for (const t of tokens) {
+      if (t.punct) continue;
+      const word = spelling(this.#fold(t.surface));
+      if (!forms[word]) wanted.add(word);
+    }
+    let all = forms;
+    if (wanted.size) {
+      const res = (await chrome.runtime.sendMessage({ target: 'offscreen', type: 'dict-forms', forms: [...wanted].slice(0, 400) })) as
+        | FormsAnswer | undefined;
+      if (res?.ok && res.forms) all = { ...forms, ...res.forms };
+    }
+    return { forms: all, look: (surface) => spelling(this.#fold(surface)) };
+  }
+
+  /** Words the dictionary has nothing for, read as the word their ending says they are a form of, where it has that one. */
+  async #byEnding(tokens: Token[], forms: Forms, endings: (word: string) => Ending[], look: (surface: string) => string): Promise<Token[]> {
+    const lower = (s: string): string => look(s).toLocaleLowerCase(this.#locale);
+    const tries = new Map<Token, Ending[]>();
+    for (const t of tokens) {
+      if (t.punct || forms[look(t.surface)] || forms[lower(t.surface)]) continue;
+      const list = endings(this.#fold(t.surface));
+      // As written, and by the other key: मुसकुराइए is मुस्कुराना.
+      if (list.length) tries.set(t, this.#respell ? list.flatMap((e) => [e, { ...e, key: this.#respell!(e.key) }]) : list);
+    }
+    if (!tries.size) return tokens;
+    const keys = [...new Set([...tries.values()].flatMap((list) => list.map((e) => e.key)))];
+    const res = (await chrome.runtime.sendMessage({ target: 'offscreen', type: 'dict-forms', forms: keys.slice(0, 400) })) as
+      | FormsAnswer | undefined;
+    const known = res?.ok ? res.forms : undefined;
+    if (!known) return tokens;
+    // The word under a key: itself, or the word it is a form or another spelling of (a Hindi key, foldHindi).
+    const wordAt = (key: string): string | undefined => {
+      const info = known[key];
+      return info?.word ? key : info?.of.find((o) => (o.senses ?? 0) > 0)?.lemma;
+    };
+    return tokens.map((t) => {
+      for (const e of tries.get(t) ?? []) {
+        const lemma = wordAt(e.key);
+        if (lemma) return { ...t, lemma, lookup: [{ key: lemma }], ...(e.label ? { inflections: [e.label] } : {}) };
+      }
+      return t;
+    });
   }
 
   /** A verb and its prefix at the other end of the clause, read as the one verb the dictionary has: gehe ... weg. */

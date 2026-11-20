@@ -323,7 +323,7 @@ export const nl: HelpTranslation = {
           title: 'Waarom zijn definities maar in sommige talen?',
           body: [
             'Voor Japans komen ze uit JMdict, dat definities in negen talen heeft. Staat jouw taal daar niet bij, dan toont {Instellingen → Talen} een tweede rij, “Definities in”, voor de taal die in plaats daarvan wordt gebruikt.',
-            'De woordenboeken voor Chinees (Mandarijn), Koreaans, Spaans, Frans, Duits, Italiaans, Portugees en Thai zijn in het Engels geschreven. Waar er voor het paar een in je eigen taal bestaat, wordt dat eerst gebruikt.',
+            'De woordenboeken voor Chinees (Mandarijn), Koreaans, Spaans, Frans, Duits, Italiaans, Portugees, Thai en Hindi zijn in het Engels geschreven. Waar er voor het paar een in je eigen taal bestaat, wordt dat eerst gebruikt.',
           ],
           keywords: ['definities', 'betekenissen', 'talen', 'jmdict', 'hongaars', 'sloveens', 'engels', 'cc-cedict', 'wiktionary'],
         },
@@ -331,7 +331,7 @@ export const nl: HelpTranslation = {
           id: 'q-languages',
           title: 'Welke talen kan ik leren?',
           body: [
-            'Japans, Chinees (Mandarijn), Kantonees, Koreaans, Spaans, Frans, Duits, Italiaans, Portugees en Thai hebben een woordenboek, en een woord wordt aan de kaart gekoppeld in elke vorm waarin het gezegd wordt: 갔어요 vindt een kaart voor 가다, en hablábamos een voor hablar. Japans toont furigana boven woorden, Chinees (Mandarijn) pinyin en Kantonees Jyutping.',
+            'Japans, Chinees (Mandarijn), Kantonees, Koreaans, Spaans, Frans, Duits, Italiaans, Portugees, Thai en Hindi hebben een woordenboek, en een woord wordt aan de kaart gekoppeld in elke vorm waarin het gezegd wordt: 갔어요 vindt een kaart voor 가다, en hablábamos een voor hablar. Japans toont furigana boven woorden, Chinees (Mandarijn) pinyin en Kantonees Jyutping.',
             'De andere talen onder {Instellingen → Talen → Ik leer} zijn gemarkeerd als beperkt. Hun woorden worden gesplitst, maar er is nog geen woordenboek.',
             'Het woordenboek van een taal wordt gedownload als je die taal voor het eerst kiest. De download is 11 tot 27 MB; op schijf neemt het 100 MB in voor Chinees (Mandarijn), 140 MB voor Frans, 200 MB voor Koreaans en Duits en 470 MB voor Spaans. Een woordenboek in je eigen taal is, waar er een is, een tweede download van maximaal 18 MB. Japans downloadt daarnaast een tweede woordenboek, waarmee regels in woorden worden gesplitst: 46 MB, en 190 MB op schijf.',
           ],

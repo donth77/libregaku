@@ -395,6 +395,7 @@ const RECORDED: Record<string, readonly Finder[]> = {
   it: [linguaLibre(LINGUA_LIBRE.it ?? 'ita')],
   pt: [linguaLibre(LINGUA_LIBRE.pt ?? 'por')],
   th: [linguaLibre(LINGUA_LIBRE.th ?? 'tha')],
+  hi: [linguaLibre(LINGUA_LIBRE.hi ?? 'hin')],
   zh: [tryAudioCmn, linguaLibre(LINGUA_LIBRE.zh ?? 'cmn')],
   yue: [linguaLibre(LINGUA_LIBRE.yue ?? 'yue')],
   ko: [named(NAMED.ko ?? 'Ko'), linguaLibre(LINGUA_LIBRE.ko ?? 'kor'), tryNaver],

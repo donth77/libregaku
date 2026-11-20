@@ -19,7 +19,7 @@ This page is written from the extension’s code by `node scripts/language-pairs
 | Portuguese | Full | Wiktionary | — |
 | Thai | Full | Wiktionary | — |
 | English | Words only | — | — |
-| Hindi | Words only | — | — |
+| Hindi | Full | Wiktionary | — |
 | Arabic | Words only | — | — |
 | Turkish | Words only | — | — |
 
@@ -295,7 +295,33 @@ Where a dictionary in your own language exists for a pair, a word is looked up t
 | Dutch | English | Wiktionary | Wiktionary |
 | Swedish | English | Wiktionary | Wiktionary |
 
-Definitions are in your own language in 76 of the 210 pairs, and in English in the rest.
+### Learning Hindi
+
+| Your language | Definitions in | Dictionaries, in the order asked | Dictionary button |
+|---|---|---|---|
+| English | English | Wiktionary | Wiktionary |
+| Spanish | English | Wiktionary | Wiktionary |
+| French | English | Wiktionary | Wiktionary |
+| German | English | Wiktionary | Wiktionary |
+| Portuguese | English | Wiktionary | Wiktionary |
+| Italian | English | Wiktionary | Wiktionary |
+| Russian | English | Wiktionary | Wiktionary |
+| Japanese | English | Wiktionary | Wiktionary |
+| Chinese (Simplified) | English | Wiktionary | Wiktionary |
+| Chinese (Traditional) | English | Wiktionary | Wiktionary |
+| Korean | English | Wiktionary | Wiktionary |
+| Arabic | English | Wiktionary | Wiktionary |
+| Hindi | English | Wiktionary | Wiktionary |
+| Indonesian | English | Wiktionary | Wiktionary |
+| Vietnamese | English | Wiktionary | Wiktionary |
+| Thai | English | Wiktionary | Wiktionary |
+| Turkish | English | Wiktionary | Wiktionary |
+| Polish | English | Wiktionary | Wiktionary |
+| Ukrainian | English | Wiktionary | Wiktionary |
+| Dutch | English | Wiktionary | Wiktionary |
+| Swedish | English | Wiktionary | Wiktionary |
+
+Definitions are in your own language in 76 of the 231 pairs, and in English in the rest.
 
 ## Recordings of a word
 
