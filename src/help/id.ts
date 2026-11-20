@@ -323,7 +323,7 @@ export const id: HelpTranslation = {
           title: 'Mengapa definisi hanya tersedia dalam beberapa bahasa?',
           body: [
             'Untuk bahasa Jepang, definisi berasal dari JMdict, yang punya definisi dalam sembilan bahasa. Jika bahasa Anda tidak termasuk, {Setelan → Bahasa} menampilkan setelan kedua, Definisi dalam, untuk memilih bahasa penggantinya.',
-            'Kamus bahasa Tionghoa (Mandarin), Korea, Spanyol, Prancis, Jerman, Italia, dan Portugis ditulis dalam bahasa Inggris. Jika ada kamus dalam bahasa Anda untuk pasangan itu, kamus itu dipakai lebih dulu.',
+            'Kamus bahasa Tionghoa (Mandarin), Korea, Spanyol, Prancis, Jerman, Italia, Portugis, dan Thai ditulis dalam bahasa Inggris. Jika ada kamus dalam bahasa Anda untuk pasangan itu, kamus itu dipakai lebih dulu.',
           ],
           keywords: ['arti', 'bahasa indonesia', 'hungaria', 'slovenia', 'cc-cedict', 'wiktionary'],
         },
@@ -331,7 +331,7 @@ export const id: HelpTranslation = {
           id: 'q-languages',
           title: 'Bahasa apa saja yang bisa saya pelajari?',
           body: [
-            'Bahasa Jepang, Tionghoa (Mandarin), Kanton, Korea, Spanyol, Prancis, Jerman, Italia, dan Portugis punya kamus, dan sebuah kata dicocokkan dengan kartunya dalam bentuk apa pun saat diucapkan: 갔어요 menemukan kartu untuk 가다, dan hablábamos kartu untuk hablar. Bahasa Jepang menampilkan furigana di atas kata, bahasa Tionghoa (Mandarin) menampilkan pinyin, dan bahasa Kanton menampilkan Jyutping.',
+            'Bahasa Jepang, Tionghoa (Mandarin), Kanton, Korea, Spanyol, Prancis, Jerman, Italia, Portugis, dan Thai punya kamus, dan sebuah kata dicocokkan dengan kartunya dalam bentuk apa pun saat diucapkan: 갔어요 menemukan kartu untuk 가다, dan hablábamos kartu untuk hablar. Bahasa Jepang menampilkan furigana di atas kata, bahasa Tionghoa (Mandarin) menampilkan pinyin, dan bahasa Kanton menampilkan Jyutping.',
             'Bahasa lain di {Setelan → Bahasa → Saya belajar} ditandai terbatas. Kata-katanya dipisahkan, dan belum ada kamus.',
             'Kamus sebuah bahasa diunduh saat pertama kali Anda memilihnya. Unduhannya berukuran 11 hingga 27 MB; di disk, kamus itu memakan 100 MB untuk bahasa Tionghoa (Mandarin), 140 MB untuk bahasa Prancis, 200 MB untuk bahasa Korea dan Jerman, dan 470 MB untuk bahasa Spanyol. Kamus dalam bahasa Anda sendiri, jika ada, adalah unduhan kedua hingga 18 MB. Bahasa Jepang juga mengunduh kamus kedua, yang dipakai untuk memisahkan baris menjadi kata: 46 MB, dan 190 MB di disk.',
           ],

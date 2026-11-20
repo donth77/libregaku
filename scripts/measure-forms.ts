@@ -102,6 +102,17 @@ function formsOf(asked: string[]): Record<string, FormInfo> {
   runtime: { sendMessage: async (msg: { type?: string; forms?: string[] }) => (msg.type === 'dict-forms' ? { ok: true, forms: formsOf(msg.forms ?? []) } : {}) },
 };
 
+// SHOW='มั้ย|เด็กๆ': what the dictionary answers for each line's words, and what each is read as.
+if (process.env.SHOW) {
+  const segmenter = analyser.make();
+  for (const text of process.env.SHOW.split('|')) {
+    for (const t of (await segmenter.segment(text)).filter((x) => !x.punct)) {
+      console.log(`${t.surface} → ${t.lemma ?? '-'} ${JSON.stringify(formsOf([t.surface]))}`);
+    }
+  }
+  process.exit(0);
+}
+
 // A spread of Tatoeba's sentences.
 const iso = ISO3[LANG]!;
 const tsv = `${CACHE}/${iso}_sentences.tsv`;

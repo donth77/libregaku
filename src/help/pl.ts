@@ -323,7 +323,7 @@ export const pl: HelpTranslation = {
           title: 'Dlaczego definicje są tylko w niektórych językach?',
           body: [
             'Dla japońskiego pochodzą z JMdict, który ma definicje w dziewięciu językach. Jeśli twojego wśród nich nie ma, {Ustawienia → Języki} pokazuje drugi wiersz, Język definicji, w którym wybierasz język zastępczy.',
-            'Słowniki chiński (mandaryński), koreański, hiszpański, francuski, niemiecki, włoski i portugalski są napisane po angielsku. Jeśli dla danej pary istnieje słownik w Twoim języku, jest używany jako pierwszy.',
+            'Słowniki chiński (mandaryński), koreański, hiszpański, francuski, niemiecki, włoski, portugalski i tajski są napisane po angielsku. Jeśli dla danej pary istnieje słownik w Twoim języku, jest używany jako pierwszy.',
           ],
           keywords: ['słownik', 'znaczenia', 'polski', 'węgierski', 'słoweński', 'angielski', 'jmdict', 'cc-cedict', 'wiktionary'],
         },
@@ -331,7 +331,7 @@ export const pl: HelpTranslation = {
           id: 'q-languages',
           title: 'Jakich języków mogę się uczyć?',
           body: [
-            'Japoński, chiński (mandaryński), kantoński, koreański, hiszpański, francuski, niemiecki, włoski i portugalski mają słownik, a słowo jest dopasowywane do swojej karty w każdej formie, w jakiej padnie: 갔어요 znajdzie kartę dla 가다, a hablábamos — dla hablar. Japoński pokazuje furiganę nad słowami, chiński (mandaryński) — pinyin, a kantoński — Jyutping.',
+            'Japoński, chiński (mandaryński), kantoński, koreański, hiszpański, francuski, niemiecki, włoski, portugalski i tajski mają słownik, a słowo jest dopasowywane do swojej karty w każdej formie, w jakiej padnie: 갔어요 znajdzie kartę dla 가다, a hablábamos — dla hablar. Japoński pokazuje furiganę nad słowami, chiński (mandaryński) — pinyin, a kantoński — Jyutping.',
             'Pozostałe języki na liście {Ustawienia → Języki → Uczę się} są oznaczone jako ograniczona obsługa. Ich słowa są rozdzielane, ale nie ma jeszcze słownika.',
             'Słownik danego języka pobiera się przy pierwszym wyborze tego języka. Pobieranie ma od 11 do 27 MB; na dysku zajmuje 100 MB dla chińskiego (mandaryńskiego), 140 MB dla francuskiego, 200 MB dla koreańskiego i niemieckiego oraz 470 MB dla hiszpańskiego. Słownik w Twoim języku, jeśli istnieje, to drugie pobieranie, do 18 MB. Japoński pobiera też drugi słownik, który służy do dzielenia linijek na słowa: 46 MB, a na dysku 190 MB.',
           ],

@@ -102,8 +102,8 @@ describe('a language written two ways', () => {
 describe('what each language gets', () => {
   const tier = (code: string) => TARGET_LANGUAGES.find((l) => l.code === code)?.tier;
 
-  it('gives Japanese, Korean and Chinese an analyser, and Spanish, French, German, Italian and Portuguese their dictionary forms', () => {
-    expect(['ja', 'ko', 'zh', 'es', 'fr', 'de', 'it', 'pt', 'th'].map(tier)).toEqual([2, 2, 2, 1, 1, 1, 1, 1, 0]);
+  it('gives Japanese, Korean and Chinese an analyser, and Spanish, French, German, Italian, Portuguese and Thai their dictionary forms', () => {
+    expect(['ja', 'ko', 'zh', 'es', 'fr', 'de', 'it', 'pt', 'th', 'hi'].map(tier)).toEqual([2, 2, 2, 1, 1, 1, 1, 1, 1, 0]);
   });
 
   it('has a dictionary for every language above boundaries alone, and for no other', () => {
@@ -122,7 +122,8 @@ describe('what each language gets', () => {
     expect(dictionaryOf('de', { native: 'ja', definitions: 'en' })).toEqual({ source: 'wty-de-en', edition: 'en' });
     expect(dictionaryOf('it', { native: 'ja', definitions: 'en' })).toEqual({ source: 'wty-it-en', edition: 'en' });
     expect(dictionaryOf('pt', { native: 'en', definitions: 'en' })).toEqual({ source: 'wty-pt-en', edition: 'en' });
-    expect(dictionaryOf('th', { native: 'en', definitions: 'en' })).toBeNull();
+    expect(dictionaryOf('th', { native: 'en', definitions: 'en' })).toEqual({ source: 'wty-th-en', edition: 'en' });
+    expect(dictionaryOf('hi', { native: 'en', definitions: 'en' })).toBeNull();
   });
 
   it('has a second dictionary behind Korean’s, unless the learner’s own already is it', () => {
@@ -150,7 +151,8 @@ describe('what each language gets', () => {
     expect(site('de', 'Haus')).toBe('https://en.wiktionary.org/wiki/Haus#German');
     expect(site('it', 'andare')).toBe('https://en.wiktionary.org/wiki/andare#Italian');
     expect(site('pt', 'falar')).toBe('https://en.wiktionary.org/wiki/falar#Portuguese');
-    expect(featuresOf('th').dictionary).toBeUndefined();
+    expect(site('th', 'กิน')).toBe('https://en.wiktionary.org/wiki/%E0%B8%81%E0%B8%B4%E0%B8%99#Thai');
+    expect(featuresOf('hi').dictionary).toBeUndefined();
   });
 });
 

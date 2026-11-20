@@ -234,6 +234,21 @@ export const GAPS: Record<string, Gap[]> = {
     { word: 'los', kind: ['pron'], glosses: ['them (os after a verb that drops its r, s or z: vê-los, "to see them")'] },
     { word: 'las', kind: ['pron'], glosses: ['them, feminine (as after a verb that drops its r, s or z: chamá-las, "to call them")'] },
   ],
+  /*
+   * Spoken Thai's particles, which the file has only as other spellings of the written ones (มั้ย of ไหม, เถอะ of
+   * เถิด). Its rows for them name the written word, the right way round, and the reader turns every such row
+   * round, as Spanish and Korean need (readForm in wty.ts), so nothing led from them to a meaning. And ไหร่, the
+   * second half of เท่าไหร่ and เมื่อไหร่, which the browser cuts in two. Together they are one word in 280 of
+   * Tatoeba's Thai.
+   */
+  th: [
+    { word: 'ไหร่', kind: ['pron'], glosses: ['how much, when: the second half of เท่าไหร่, "how much", and เมื่อไหร่, "when" (ไร, as it is said)'] },
+    { word: 'มั้ย', kind: ['ptcl'], glosses: ['... or not? (asks a yes-or-no question; ไหม, as it is said: เข้าใจมั้ย, "do you understand?")'] },
+    { word: 'เถอะ', kind: ['ptcl'], glosses: ["let's; do (softens a suggestion or a request; เถิด, as it is said: ไปเถอะ, \"let's go\")"] },
+    { word: 'ล่ะ', kind: ['ptcl'], glosses: ['then, so; and what about (asks on, or stresses; เล่า, as it is said: แล้วคุณล่ะ, "and you?")'] },
+    { word: 'ซะ', kind: ['ptcl'], glosses: ['go on and; right away (after a verb, urges it done; เสีย, as it is said: กินซะ, "eat it up")'] },
+    { word: 'รึ', kind: ['conj', 'ptcl'], glosses: ['or; ... is it? (หรือ, as it is said)'] },
+  ],
   // Spoken Korean's two commonest short forms: the file has 뭐 only as a form
   // of 무엇, and 거 only as the reading of a Chinese character.
   ko: [
@@ -786,6 +801,7 @@ export const SOURCES: Record<string, Source> = {
   'wty-de-en': wty('de', 'en'),
   'wty-it-en': wty('it', 'en'),
   'wty-pt-en': wty('pt', 'en'),
+  'wty-th-en': wty('th', 'en'),
   // In the learner's own language (settings.ts, OWN_DICTIONARIES).
   'wty-ja-zh': wty('ja', 'zh'),
   'wty-ja-ko': wty('ja', 'ko'),

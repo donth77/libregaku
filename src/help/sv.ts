@@ -323,7 +323,7 @@ export const sv: HelpTranslation = {
           title: 'Varför finns definitionerna bara på vissa språk?',
           body: [
             'För japanska kommer de från JMdict, som har definitioner på nio språk. Om ditt inte är ett av dem visar {Inställningar → Språk} en andra rad, Definitioner på, för språket som ska användas i stället.',
-            'Ordböckerna för kinesiska (mandarin), koreanska, spanska, franska, tyska, italienska och portugisiska är skrivna på engelska. Där det finns en på ditt eget språk för paret används den först.',
+            'Ordböckerna för kinesiska (mandarin), koreanska, spanska, franska, tyska, italienska, portugisiska och thailändska är skrivna på engelska. Där det finns en på ditt eget språk för paret används den först.',
           ],
           keywords: ['ordbok', 'betydelser', 'svenska', 'ungerska', 'slovenska', 'engelska', 'jmdict', 'cc-cedict', 'wiktionary'],
         },
@@ -331,7 +331,7 @@ export const sv: HelpTranslation = {
           id: 'q-languages',
           title: 'Vilka språk kan jag lära mig?',
           body: [
-            'Japanska, kinesiska (mandarin), kantonesiska, koreanska, spanska, franska, tyska, italienska och portugisiska har en ordbok, och ett ord matchas mot sitt kort i vilken form det än sägs: 갔어요 hittar ett kort för 가다, och hablábamos ett för hablar. Japanska visar furigana ovanför orden, kinesiska (mandarin) visar pinyin och kantonesiska visar Jyutping.',
+            'Japanska, kinesiska (mandarin), kantonesiska, koreanska, spanska, franska, tyska, italienska, portugisiska och thailändska har en ordbok, och ett ord matchas mot sitt kort i vilken form det än sägs: 갔어요 hittar ett kort för 가다, och hablábamos ett för hablar. Japanska visar furigana ovanför orden, kinesiska (mandarin) visar pinyin och kantonesiska visar Jyutping.',
             'De andra språken under {Inställningar → Språk → Jag lär mig} är markerade med begränsat stöd. Deras ord delas upp, och det finns ingen ordbok än.',
             'Ett språks ordbok laddas ned första gången du väljer språket. Nedladdningen är 11 till 27 MB; på disken tar den 100 MB för kinesiska (mandarin), 140 MB för franska, 200 MB för koreanska och tyska och 470 MB för spanska. En ordbok på ditt eget språk, där det finns en, är en andra nedladdning på upp till 18 MB. Japanska laddar också ned en andra ordbok, som används för att dela upp rader i ord: 46 MB, och 190 MB på disken.',
           ],

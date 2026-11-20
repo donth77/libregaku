@@ -25,6 +25,7 @@ export const DICTIONARIES: Record<string, string> = {
   de: 'wty-de-en',
   it: 'wty-it-en',
   pt: 'wty-pt-en',
+  th: 'wty-th-en',
 };
 
 /**
@@ -140,7 +141,7 @@ export const TARGET_LANGUAGES: Array<{ code: string; label: string; tier: 0 | 1 
   { code: 'de', label: 'German', tier: 1, flag: '🇩🇪' },
   { code: 'it', label: 'Italian', tier: 1, flag: '🇮🇹' },
   { code: 'pt', label: 'Portuguese', tier: 1, flag: '🇧🇷' },
-  { code: 'th', label: 'Thai', tier: 0, flag: '🇹🇭' },
+  { code: 'th', label: 'Thai', tier: 1, flag: '🇹🇭' },
   { code: 'en', label: 'English', tier: 0, flag: '🇺🇸' },
   { code: 'hi', label: 'Hindi', tier: 0, flag: '🇮🇳' },
   { code: 'ar', label: 'Arabic', tier: 0, flagSvg: arabLeagueFlag },
@@ -237,6 +238,12 @@ const LANGUAGE_FEATURES: Record<string, LanguageFeatures> = {
     definitions: false,
     articles: true,
     dictionary: { name: 'Wiktionary', url: (w) => `https://en.wiktionary.org/wiki/${encodeURIComponent(w)}#Portuguese` },
+  },
+  th: {
+    readings: false,
+    characters: false,
+    definitions: false,
+    dictionary: { name: 'Wiktionary', url: (w) => `https://en.wiktionary.org/wiki/${encodeURIComponent(w)}#Thai` },
   },
 };
 
