@@ -169,6 +169,10 @@ describe('a dictionary in your own language', () => {
     expect(ownDictionaryOf('ja', { native: 'zh' })).toEqual({ source: 'wty-ja-zh', edition: 'zh' });
     expect(ownDictionaryOf('ja', { native: 'zh-Hant' })).toEqual({ source: 'wty-ja-zh', edition: 'zh-Hant' });
     expect(ownDictionaryOf('ja', { native: 'ko' })).toEqual({ source: 'wty-ja-ko', edition: 'ko' });
+    expect(ownDictionaryOf('ja', { native: 'pt' })).toEqual({ source: 'wty-ja-pt', edition: 'pt' });
+    expect(ownDictionaryOf('zh', { native: 'pl' })).toEqual({ source: 'wty-zh-pl', edition: 'pl' });
+    // Polish Wiktionary has 53% of Japanese's commonest words, under the bar: Polish learners get JMdict's English.
+    expect(ownDictionaryOf('ja', { native: 'pl' })).toBeNull();
     expect(ownDictionaryOf('es', { native: 'fr' })).toEqual({ source: 'wty-es-fr', edition: 'fr' });
     // JMdict is already in Spanish; English is what the others are in.
     expect(ownDictionaryOf('ja', { native: 'es' })).toBeNull();

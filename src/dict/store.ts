@@ -331,7 +331,7 @@ export async function lookup(key: string, hint?: RankHint, source: Source = JMDI
 }
 
 /** How many of the words a form belongs to a lookup follows. */
-const FORMS_FOLLOWED = 3;
+export const FORMS_FOLLOWED = 3;
 
 /** What the dictionary knows about a written form: whether it is a word, and what it is a form of. */
 export interface FormInfo {

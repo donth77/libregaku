@@ -23,6 +23,7 @@
  *   VERBS=write HALF=1 …, then VERBS=1 ODD=1 …      # learn from the even sentence ids, measure on the odd
  *   CARDS=base node scripts/compare-unidic.mjs      # every line's words, and the entry each card opens, saved
  *   CARDS=1 node scripts/compare-unidic.mjs         # the same against that: every line whose words or cards change
+ *   COVER=wty-ja-pl,wikdict-ja-pt node scripts/compare-unidic.mjs   # how many of the commonest words each dictionary has
  *
  * VERBS=1 is the same index for verbs: つく written in kana is 付く, 着く,
  * 就く or 吐く, and the index says which. Each card is opened as the extension
@@ -64,6 +65,7 @@ import { repair, type Reading } from '../src/morphology/repair';
 import type { Token } from '../src/morphology/types';
 import { fromUnidic, type UnidicMorpheme } from '../src/morphology/unidic';
 import { LINES as FIXTURES } from '../src/morphology/__tests__/fixtures/ipadic';
+import { cover, keepDownloads } from './cover';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const CACHE = `${ROOT}node_modules/.cache/libregaku-words`;
@@ -621,6 +623,30 @@ if (process.env.CARDS) {
   writeFileSync(out, changed.map(([line, read]) => `${line}\n   before: ${was.get(line)}\n   after:  ${read}`).join('\n'));
   console.log(`${seen.length} lines, ${seen.filter(([line]) => !was.has(line)).length} not in cards-base.tsv, ${changed.length} changed`);
   console.log(`every changed line, before and after: ${out}`);
+  process.exit(0);
+}
+
+/*
+ * COVER=wty-ja-pl,wikdict-ja-pt: how much of Japanese's commonest words each dictionary has (scripts/cover.ts), as
+ * one in the learner's own language is asked before JMdict. The words are the thousand commonest a card opens an
+ * entry for among Tatoeba's sentences, each by the key the card opens it under: 勉強して is 勉強, and わたし is わたし.
+ */
+if (process.env.COVER) {
+  keepDownloads(CACHE);
+  const lines = groups.find(([name]) => name === 'tatoeba')?.[1] ?? [];
+  const counts = new Map<string, number>();
+  for (const text of lines) {
+    for (const t of (await segmentWith(text, via(readBoth))).tokens) {
+      if (!t.content || t.punct) continue;
+      const keys = t.lookup?.length ? t.lookup.map((k) => k.key) : [t.lemma, t.surface];
+      const key = keys.find((k) => k && byForm.get(k)?.length);
+      if (key) counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+  }
+  const common = [...counts].sort((a, b) => b[1] - a[1]).slice(0, 1000);
+  const out = `${CACHE}/cover-report.txt`;
+  writeFileSync(out, [`ja: ${lines.length} sentences`, ...(await cover(common, process.env.COVER.split(',')))].join('\n'));
+  console.log(`the commonest words each lacks: ${out}`);
   process.exit(0);
 }
 

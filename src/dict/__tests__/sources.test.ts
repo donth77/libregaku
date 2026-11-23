@@ -110,6 +110,12 @@ describe('the registry', () => {
     const { wtyUrl } = await sources();
     expect(wtyUrl('es', 'en')).toMatch(/^https:\/\/huggingface\.co\/datasets\/daxida\/wty-release\/resolve\/\d{4}-\d{2}-\d{2}\/latest\/dict\/es\/en\/wty-es-en\.zip$/);
   });
+
+  it('finds Mandarin where an edition files it as cmn', async () => {
+    const { wtyUrl } = await sources();
+    expect(wtyUrl('zh', 'ru')).toMatch(/\/latest\/dict\/cmn\/ru\/wty-cmn-ru\.zip$/);
+    expect(wtyUrl('zh', 'pl')).toMatch(/\/latest\/dict\/zh\/pl\/wty-zh-pl\.zip$/);
+  });
 });
 
 describe('a Wiktionary dictionary', () => {
@@ -414,6 +420,26 @@ describe('a dictionary in the learner’s own language', () => {
     }));
     const words = (await all(await SOURCES['wty-ja-zh']!.read('zh'))).flatMap((b) => b.entries.map((e) => e.entry.word));
     expect(words).toEqual(['食べる']);
+  });
+
+  it('leaves out the entries that give a word only its other spellings, where the learner’s language is not written in them', async () => {
+    const { SOURCES, fetchBytes } = await sources();
+    fetchBytes.mockResolvedValue(zip({
+      'term_bank_1.json': JSON.stringify([
+        lemma('わかる', 'v', '分かる', '解かる', '判る'), lemma('分かる', 'v', 'entender, compreender'),
+        lemma('先生', 'n', 'professor', 'a palavra 先生 com a pronúncia de Fukuoka'),
+      ]),
+    }));
+    const portuguese = (await all(await SOURCES['wty-ja-pt']!.read('pt'))).flatMap((b) => b.entries.map((e) => e.entry.word));
+    // わかる is left to JMdict, which knows which of its spellings is meant; a meaning beside one in Portuguese stays.
+    expect(portuguese).toEqual(['分かる', '先生']);
+
+    fetchBytes.mockResolvedValue(zip({
+      'term_bank_1.json': JSON.stringify([lemma('感觉', 'v', '感覺.'), lemma('感覺', 'v', '느끼다'), lemma('好', 'adj', '.')]),
+    }));
+    const korean = (await all(await SOURCES['wty-zh-ko']!.read('ko'))).flatMap((b) => b.entries.map((e) => e.entry.word));
+    // A meaning with no character at all is not a spelling, and is no business of this rule.
+    expect(korean).toEqual(['感覺', '好']);
   });
 
   it('gives a French or Chinese Wiktionary no English meanings of its own', async () => {

@@ -168,6 +168,14 @@ each is read as): `SAVE=base`, change, then `AGAINST=base`, and read every word 
 otherwise, in every one of those languages when the change is to the reader (`wty.ts`)
 or to `lemma.ts` or `hyphen.ts`.
 
+A dictionary in the learner's own language (`OWN_DICTIONARIES` in `settings.ts`) is added
+for a pair only where it has 55% of the language's thousand commonest words, the words a
+card opens as the extension reads Tatoeba. `COVER=wty-it-fr,wikdict-it-fr` counts that
+(`scripts/cover.ts`), following another spelling to its word as a lookup does: with
+`measure-forms` for those languages and for Chinese, which it reads with the analyser
+(`measure-forms.mjs zh`), and with `compare-unidic` for Japanese. Measure every candidate,
+write the shares in the comment above the pairs, and add only those over the bar.
+
 Arabic and Turkish are read past their table of forms as well. Arabic writes the little
 words of a sentence onto the word they go with (و, ب, ال in front; the pronouns behind), and
 `arabic.ts` lists the ways a word may be read without them and chooses one once the
@@ -271,7 +279,8 @@ scripts/                check-captions.mjs, diagnose.js, compare-words.mjs, meas
                         build-zh-readings.mjs,
                         build-ko-fixture.mjs and the lines it reads (ko-fixture-lines.txt),
                         language-pairs.mjs and the page it writes (language-pairs-page.ts),
-                        measure-forms.mjs and what it runs (measure-forms.ts)
+                        measure-forms.mjs and what it runs (measure-forms.ts),
+                        cover.ts (COVER for measure-forms and compare-unidic)
 tests/contract/         the canaries
 ```
 

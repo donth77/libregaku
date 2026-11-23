@@ -12,50 +12,77 @@
  *   AGAINST=base node scripts/measure-forms.mjs it    # every word read otherwise than in that run, by kind
  *   SAMPLE=40000 node scripts/measure-forms.mjs pt    # more sentences (20,000 by default)
  *
+ *   COVER=wty-zh-pl,wikdict-zh-es node scripts/measure-forms.mjs zh   # how many of the commonest words each has
+ *
  * Run it before adding a language or changing what its hints (italian.ts, spanish.ts…), its GAPS, the reader
  * (src/dict/wty.ts) or the hyphen joining say, and read what changes: the hints and GAPS take a word only on
  * what this counts. Data is downloaded into node_modules/.cache/libregaku-forms.
+ *
+ * Chinese is read too, for COVER (scripts/cover.ts): its words are found by the analyser, which is run here on
+ * the dictionary the offscreen document reads it with (ANALYSED), and looked up as they are written.
  */
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import init, { TokenizerBuilder, loadDictionaryFromBytes, type Tokenizer } from 'lindera-wasm';
 import { DICTIONARIES } from '../src/settings';
-import { SOURCES, wikdict, wty } from '../src/dict/sources';
+import { SOURCES } from '../src/dict/sources';
 import type { Entry } from '../src/dict/jmdict';
 import type { FormInfo, Inflection } from '../src/dict/store';
 import { onlySpelling } from '../src/dict/wty';
+import { LINDERA_DICTS } from '../src/morphology/dictionaries';
 import { analyserFor } from '../src/morphology/index';
+import { cover, keepDownloads } from './cover';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const CACHE = `${ROOT}node_modules/.cache/libregaku-forms`;
 const LANG = process.argv[2] ?? '';
 const SAMPLE = Number(process.env.SAMPLE ?? 20000);
 /** Tatoeba's names for the languages. */
-const ISO3: Record<string, string> = { es: 'spa', fr: 'fra', de: 'deu', it: 'ita', pt: 'por', en: 'eng', tr: 'tur', th: 'tha', hi: 'hin', ar: 'ara' };
+const ISO3: Record<string, string> = {
+  es: 'spa', fr: 'fra', de: 'deu', it: 'ita', pt: 'por', en: 'eng', tr: 'tur', th: 'tha', hi: 'hin', ar: 'ara', zh: 'cmn',
+};
+/**
+ * The languages read by the analyser, with the Lindera dictionary the offscreen document reads each with: Chinese
+ * is cc-cedict's words and nothing more of them (its reader in src/offscreen.ts), the readings coming from CC-CEDICT.
+ */
+const ANALYSED: Record<string, string> = { zh: 'cc-cedict' };
 
 const source = SOURCES[DICTIONARIES[LANG] ?? ''];
 const analyser = analyserFor(LANG);
 if (!source || !analyser || !ISO3[LANG]) {
-  console.error(`No dictionary forms for "${LANG}": give a language read by its dictionary's forms, such as es or it.`);
+  console.error(`No dictionary forms for "${LANG}": give a language read by its dictionary's forms, such as es or it, or zh.`);
   process.exit(1);
 }
 mkdirSync(CACHE, { recursive: true });
 
 // The source downloads with fetch; each file is fetched once and kept.
-const realFetch = globalThis.fetch;
-globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
-  const url = String(input instanceof Request ? input.url : input);
-  const path = `${CACHE}/${createHash('sha1').update(url).digest('hex')}`;
-  if (!existsSync(path)) {
-    console.log(`downloading ${url}`);
-    const res = await realFetch(input, init);
-    if (!res.ok) return res;
-    writeFileSync(path, new Uint8Array(await res.arrayBuffer()));
+keepDownloads(CACHE);
+
+/** The analyser on one of Lindera's dictionaries, downloaded into the cache the first time. */
+async function tokenizerFor(dict: string): Promise<Tokenizer> {
+  const dir = `${CACHE}/${dict}`;
+  if (!existsSync(`${dir}.zip.done`)) {
+    console.log(`downloading ${LINDERA_DICTS[dict]}`);
+    execFileSync('curl', ['-sSL', '-o', `${dict}.zip`, LINDERA_DICTS[dict]!], { cwd: CACHE });
+    execFileSync('unzip', ['-o', '-q', `${dict}.zip`, '-d', dict], { cwd: CACHE });
+    writeFileSync(`${dir}.zip.done`, '');
   }
-  const body = readFileSync(path);
-  return new Response(body, { headers: { 'content-length': String(body.length) } });
-}) as typeof fetch;
+  await init({ module_or_path: readFileSync(`${ROOT}node_modules/lindera-wasm/lindera_wasm_bg.wasm`) });
+  const at = `${dir}/${readdirSync(dir)[0]}`;
+  const file = (n: string): Uint8Array => new Uint8Array(readFileSync(`${at}/${n}`));
+  const dictionary = loadDictionaryFromBytes(
+    file('metadata.json'), file('dict.trie'), file('dict.valsidx'), file('dict.vals'),
+    file('dict.wordsidx'), file('dict.words'), file('matrix.mtx'), file('char_def.bin'), file('unk.bin'),
+  );
+  return new TokenizerBuilder().setDictionaryInstance(dictionary).setMode('normal').build();
+}
+const analysedWith = ANALYSED[LANG];
+const tokenizer = analysedWith ? await tokenizerFor(analysedWith) : undefined;
+/** A line as the offscreen document answers a 'tokenize' for it (analyse() there). */
+const tokenize = (text: string): { ok: boolean; tokens: Array<{ surface: string }>; complete: boolean } => ({
+  ok: true, tokens: (tokenizer?.tokenize(text) as Array<{ surface: string }> | undefined ?? []).map((t) => ({ surface: t.surface })), complete: true,
+});
 
 // The dictionary as the store keeps it: entries under their keys, and the forms.
 const entries = new Map<string, Entry[]>();
@@ -105,7 +132,12 @@ function formsOf(asked: string[]): Record<string, FormInfo> {
   return out;
 }
 (globalThis as unknown as { chrome: unknown }).chrome = {
-  runtime: { sendMessage: async (msg: { type?: string; forms?: string[] }) => (msg.type === 'dict-forms' ? { ok: true, forms: formsOf(msg.forms ?? []) } : {}) },
+  runtime: {
+    sendMessage: async (msg: { type?: string; forms?: string[]; text?: string }) => (
+      msg.type === 'dict-forms' ? { ok: true, forms: formsOf(msg.forms ?? []) }
+        : msg.type === 'tokenize' && tokenizer ? tokenize(msg.text ?? '')
+          : {}),
+  },
 };
 
 // SHOW='มั้ย|เด็กๆ': what the dictionary answers for each line's words, and what each is read as.
@@ -174,9 +206,8 @@ const report = [
 ];
 
 /*
- * COVER=wty-it-fr,wikdict-it-fr: how much of the language's commonest words each dictionary has, as a dictionary
- * in the learner's own language for the pair (OWN_DICTIONARIES in settings.ts) is asked first. The words are the
- * thousand commonest dictionary forms the line was read as; the share is of those words and of their uses.
+ * COVER=wty-it-fr,wikdict-it-fr: how much of the language's commonest words each dictionary has (scripts/cover.ts).
+ * The words are the thousand commonest dictionary forms the lines were read as.
  */
 if (process.env.COVER) {
   const counts = new Map<string, number>();
@@ -188,24 +219,7 @@ if (process.env.COVER) {
     }
   }
   const common = [...counts].sort((a, b) => b[1] - a[1]).slice(0, 1000);
-  const uses = common.reduce((n, [, c]) => n + c, 0);
-  report.push('', 'THE THOUSAND COMMONEST WORDS, IN DICTIONARIES OF ANOTHER LANGUAGE: words had, and the share of their uses');
-  for (const id of process.env.COVER.split(',')) {
-    const [kind, target = '', native = ''] = id.split('-');
-    const other = kind === 'wty' ? wty(target, native) : kind === 'wikdict' ? wikdict(target, native) : SOURCES[id];
-    if (!other) { report.push(`${id}\tno such dictionary`); continue; }
-    const has = new Set<string>();
-    try {
-      for await (const batch of await other.read(native)) for (const { keys } of batch.entries) for (const k of keys) has.add(k);
-    } catch (e) {
-      report.push(`${id}\t${String(e).slice(0, 80)}`);
-      continue;
-    }
-    const words = common.filter(([w]) => has.has(w));
-    const used = words.reduce((n, [, c]) => n + c, 0);
-    report.push(`${id}\t${has.size} keys\t${words.length / 10}% of the words\t${((100 * used) / uses).toFixed(1)}% of their uses`);
-    console.log(report.at(-1));
-  }
+  report.push('', ...(await cover(common, process.env.COVER.split(','))));
 }
 
 if (process.env.SAVE) writeFileSync(`${CACHE}/${LANG}-${process.env.SAVE}.tsv`, saved.join('\n'));

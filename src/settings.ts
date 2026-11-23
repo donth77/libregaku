@@ -52,12 +52,22 @@ export function dictionaryOf(
  * other than the English hold a few hundred words of these languages.
  */
 export const OWN_DICTIONARIES: Record<string, Record<string, string>> = {
-  // Wiktionary in Chinese and in Korean, which JMdict has no edition in.
-  ja: { zh: 'wty-ja-zh', 'zh-Hant': 'wty-ja-zh', ko: 'wty-ja-ko' },
+  /*
+   * Japanese and Chinese: the same bar as for the languages below, the words counted as the analyser reads them
+   * (COVER in scripts/compare-unidic.mjs, and in scripts/measure-forms.mjs zh). Japanese, which JMdict has no
+   * edition in: Wiktionary in Korean 82%, Chinese 79% and Portuguese 73%. Polish has 53%, Thai 39%, Italian 29%,
+   * Turkish 17%, Vietnamese 9% and Indonesian 6%; WikDict 16 to 22% in each; Arabic, Ukrainian and Hindi neither.
+   */
+  ja: { zh: 'wty-ja-zh', 'zh-Hant': 'wty-ja-zh', ko: 'wty-ja-ko', pt: 'wty-ja-pt' },
   // Korea's dictionary for learners, in each language it explains words in (Chinese: simplified).
   ko: Object.fromEntries(['ar', 'es', 'fr', 'id', 'ja', 'ru', 'th', 'vi', 'zh', 'zh-Hant'].map((l) => [l, 'krdict'])),
-  // CFDICT (by way of CxDICT) and HanDeDict, as CC-CEDICT is written; Wiktionary in Japanese and Korean.
-  zh: { fr: 'cxdict-fr', de: 'handedict', ja: 'wty-zh-ja', ko: 'wty-zh-ko' },
+  /*
+   * CFDICT (by way of CxDICT) 98% and HanDeDict 98%, as CC-CEDICT is written; Wiktionary in Japanese 90%, Korean 74%
+   * and Polish 68%. Wiktionary has Thai 31%, Russian 24%, Dutch 20%, Italian 18%, Portuguese 17%, Turkish 12%,
+   * Spanish 9%, Indonesian 6% and Vietnamese 6%; WikDict, from Chinese Wiktionary's translations and in traditional
+   * characters, 7 to 15% in each of its nine.
+   */
+  zh: { fr: 'cxdict-fr', de: 'handedict', ja: 'wty-zh-ja', ko: 'wty-zh-ko', pl: 'wty-zh-pl' },
   /*
    * Spanish, French, German, Italian and Portuguese: a dictionary in the learner's language where it holds at
    * least 55% of the language's thousand commonest words (as scripts/measure-forms.mjs counts them with COVER,

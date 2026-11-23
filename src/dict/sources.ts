@@ -98,11 +98,18 @@ async function charactersFrom(source: Source, chars: string[]): Promise<Characte
 const WTY_TAG = '2026-10-22';
 const WTY_REVISION = '2026.10.22';
 
+/**
+ * Where an edition files a language under another code than ours, by the language and then the edition:
+ * Russian and Spanish Wiktionary write Mandarin as cmn, so Chinese words explained in Russian are wty-cmn-ru.
+ */
+const FILED_AS: Record<string, Record<string, string>> = { zh: { ru: 'cmn', es: 'cmn' } };
+
 /** A Wiktionary dictionary: `target` words explained in `native`. */
 export function wtyUrl(target: string, native: string): string {
+  const filed = FILED_AS[target]?.[native] ?? target;
   return (
     `https://huggingface.co/datasets/daxida/wty-release/resolve/${WTY_TAG}/` +
-    `latest/dict/${target}/${native}/wty-${target}-${native}.zip`
+    `latest/dict/${filed}/${native}/wty-${filed}-${native}.zip`
   );
 }
 
@@ -184,7 +191,8 @@ function oneRowEach(rows: Inflection[], unwritten: ReadonlySet<string>): Inflect
 
 /** The shape of what is stored, where a language's has moved on from the rest (see `format` in wty()). */
 // 22 November 2026: every language one up, as rows naming another spelling are read the way wty's 22 October release writes them (wty.ts).
-const WTY_FORMAT: Record<string, number> = { de: 6, ko: 7 };
+// 23 November 2026: Japanese and Chinese, whose entries giving only another spelling are left out (pointerOnly in wty()).
+const WTY_FORMAT: Record<string, number> = { de: 6, ko: 7, ja: 6, zh: 6 };
 
 /**
  * The kinds of word (wty's codes) each of an analyser's tags stands for, by language: what a row has to be
@@ -446,6 +454,10 @@ const ofParticle = (row: Entry): boolean => row.kind?.[0] === 'ptcl';
 
 /** A word written out with its reading and nothing else: 大臣【だいじん】. */
 const POINTER = /^[\p{Script=Han}々〆ヶ\p{Script=Hiragana}\p{Script=Katakana}ー]+【[\p{Script=Hiragana}\p{Script=Katakana}ー]+】$/u;
+/** A meaning written in Chinese characters and kana alone: in Portuguese, わかる is "分かる | 解かる | 判る", its spellings. */
+const SPELLINGS = /^(?=.*[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}])[\p{Script=Han}々〆ヶ\p{Script=Hiragana}\p{Script=Katakana}ー\p{P}\s]+$/u;
+/** The learners' languages written in Chinese characters, whose own meanings SPELLINGS would take for spellings. */
+const WRITTEN_IN_HAN = new Set(['zh', 'zh-Hant', 'ja']);
 
 /**
  * One Wiktionary dictionary as a source.
@@ -462,10 +474,15 @@ export function wty(target: string, native: string): Source {
    * Japanese Wiktionary in Chinese gives a third of its words only as the
    * word and its reading, 大臣【だいじん】: no meaning, and asked first, it
    * would stand in for one. Such an entry is left out, and the language's
-   * own dictionary answers for the word instead.
+   * own dictionary answers for the word instead. So is an entry that gives
+   * a word only its other spellings, where the learner's language is not
+   * written in Chinese characters: 36 of Portuguese's 6,068 for Japanese
+   * (わかる, みる), and in Korean 15 of 17,357 for Chinese (感觉, "感覺.") and
+   * 3 for Japanese.
    */
+  const spellings = (g: string): boolean => !WRITTEN_IN_HAN.has(native) && SPELLINGS.test(g);
   const pointerOnly = (e: Entry): boolean =>
-    native !== 'en' && e.senses.length > 0 && e.senses.every((s) => s.glosses.every((g) => POINTER.test(g)));
+    native !== 'en' && e.senses.length > 0 && e.senses.every((s) => s.glosses.every((g) => POINTER.test(g) || spellings(g)));
   const particle = PARTICLE[target];
   const respell = RESPELL[target];
   const lemmaKey = LEMMA_KEY[target];
@@ -1001,6 +1018,9 @@ export const SOURCES: Record<string, Source> = {
   'wikdict-en-sv': wikdict('en', 'sv'),
   'wikdict-en-tr': wikdict('en', 'tr'),
   'wikdict-en-id': wikdict('en', 'id'),
+  // Japanese and Chinese, measured with COVER in scripts/compare-unidic.mjs and scripts/measure-forms.mjs zh.
+  'wty-ja-pt': wty('ja', 'pt'),
+  'wty-zh-pl': wty('zh', 'pl'),
   [KRDICT.id]: KRDICT,
   [CANTO.id]: CANTO,
 };

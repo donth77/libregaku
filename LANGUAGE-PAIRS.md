@@ -42,7 +42,7 @@ Where a dictionary in your own language exists for a pair, a word is looked up t
 | Spanish | Spanish | JMdict | Jotoba |
 | French | French | JMdict | Dictionnaire japonais |
 | German | German | JMdict | Wadoku |
-| Portuguese | English | JMdict | Kotobank |
+| Portuguese | Portuguese, then English | Wiktionary, then JMdict | Kotobank |
 | Italian | English | JMdict | Kotobank |
 | Russian | Russian | JMdict | Warodai |
 | Japanese | English | JMdict | Jisho |
@@ -107,7 +107,7 @@ Where a dictionary in your own language exists for a pair, a word is looked up t
 | Vietnamese | English | CC-CEDICT | Hanzii |
 | Thai | English | CC-CEDICT | Hanzii |
 | Turkish | English | CC-CEDICT | Lingea |
-| Polish | English | CC-CEDICT | Lingea |
+| Polish | Polish, then English | Wiktionary, then CC-CEDICT | Lingea |
 | Ukrainian | English | CC-CEDICT | Lingea |
 | Dutch | English | CC-CEDICT | Lingea |
 | Swedish | English | CC-CEDICT | Lingea |
@@ -398,7 +398,7 @@ Where a dictionary in your own language exists for a pair, a word is looked up t
 | Dutch | English | Wiktionary | Wiktionary |
 | Swedish | English | Wiktionary | Wiktionary |
 
-Definitions are in your own language in 100 of the 294 pairs, and in English in the rest.
+Definitions are in your own language in 102 of the 294 pairs, and in English in the rest.
 
 ## Recordings of a word
 
