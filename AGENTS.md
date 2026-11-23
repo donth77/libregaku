@@ -29,7 +29,6 @@ node scripts/build-zh-readings.mjs                      # which reading a Chines
 node scripts/build-ko-fixture.mjs <ko-dic directory>    # what the analyser returns for the Korean tests' lines
 node scripts/measure-forms.mjs <lang>                   # a language read by its dictionary's forms, on Tatoeba
 node scripts/language-pairs.mjs                         # LANGUAGE-PAIRS.md, from the code
-node scripts/store-images.mjs                           # the Chrome Web Store's tile, marquee and screenshots, into docs/store/
 ```
 
 ### Tests
@@ -270,7 +269,6 @@ scripts/                check-captions.mjs, diagnose.js, compare-words.mjs, meas
                         build-zh-readings.mjs,
                         build-ko-fixture.mjs and the lines it reads (ko-fixture-lines.txt),
                         language-pairs.mjs and the page it writes (language-pairs-page.ts),
-                        store-images.mjs (the store's images, from brand/ and the built extension),
                         measure-forms.mjs and what it runs (measure-forms.ts)
 tests/contract/         the canaries
 ```
