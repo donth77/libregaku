@@ -1,6 +1,6 @@
 {
   "name": "libregaku",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "private": true,
   "description": "A free, Migaku-style Japanese immersion layer for the browser. Anki is the backend.",
   "license": "MIT",
