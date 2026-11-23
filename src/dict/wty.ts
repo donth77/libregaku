@@ -450,6 +450,8 @@ export function readRow(row: unknown, id: string): { entry: Entry } | { inflecti
 
 /** How Wiktionary words the row for a letter's name: de, "The name of the Latin script letter D/d." */
 const LETTER_NAME = /^The name of the Latin[- ]script letter\b/;
+/** And for an Arabic letter as a number: ل, "The twelfth numeral symbol of the Arabic alphabet". */
+const LETTER_NUMBER = /^The (?:\S+ numeral symbol of the \S+ alphabet|abjad numeral representing)\b/;
 
 /**
  * A row about a character rather than a word: a itself, or the name of a
@@ -458,7 +460,7 @@ const LETTER_NAME = /^The name of the Latin[- ]script letter\b/;
  */
 function namesALetter(row: Entry): boolean {
   if (row.kind?.includes('char')) return true;
-  return row.senses.length > 0 && row.senses.every((s) => LETTER_NAME.test(s.glosses[0] ?? ''));
+  return row.senses.length > 0 && row.senses.every((s) => LETTER_NAME.test(s.glosses[0] ?? '') || LETTER_NUMBER.test(s.glosses[0] ?? ''));
 }
 
 /**
@@ -518,18 +520,21 @@ export function mergeByWord(entries: Entry[]): Entry[] {
     else groups.set(key, [entry]);
   }
   const merged: Entry[] = [];
+  // An entry that only names a letter goes after the others: ل is "to, for" before it is a letter or a number.
+  const letters: Entry[] = [];
   for (const group of groups.values()) {
     const rows = [...group.filter((r) => !namesALetter(r)), ...group.filter(namesALetter)];
     const [first, ...more] = rows;
     if (!first) continue;
+    const into = rows.every(namesALetter) ? letters : merged;
     if (!more.length) {
-      merged.push(first);
+      into.push(first);
       continue;
     }
     const senses: Sense[] = [];
     for (const row of rows) for (const sense of row.senses) addSense(senses, sense);
     const kind = gathered(rows);
-    merged.push({ ...first, common: rows.some((r) => r.common), senses, kind: kind.length ? kind : undefined });
+    into.push({ ...first, common: rows.some((r) => r.common), senses, kind: kind.length ? kind : undefined });
   }
-  return merged;
+  return [...merged, ...letters];
 }

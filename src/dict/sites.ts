@@ -114,6 +114,7 @@ export const DICTIONARY_SITES: Record<string, Record<string, DictionarySite>> = 
   pt: inWiktionary(),
   th: inWiktionary(),
   hi: inWiktionary(),
+  ar: inWiktionary(),
   es: {
     fr: wordReference('esfr'),
     pt: wordReference('espt'),

@@ -725,6 +725,15 @@ describe('mergeByWord', () => {
     expect(tout?.kind).toEqual(['det', 'pron', 'adv', '+2']);
   });
 
+  it('puts an entry that only names a letter, or a letter as a number, after the others', () => {
+    const sense = (g: string) => ({ pos: [], glosses: [g] });
+    // ل, read three ways: a letter, an abjad numeral, and the preposition.
+    const letter = { ...entry(SER_NOUN, '1'), word: 'ل', reading: '', kind: ['char'], senses: [sense('The twenty-third letter of the Arabic alphabet')] };
+    const number = { ...entry(SER_NOUN, '2'), word: 'ل', reading: '', kind: undefined, senses: [sense('The twelfth numeral symbol of the Arabic alphabet (abjad order)')] };
+    const to = { ...entry(SER_NOUN, '3'), word: 'ل', reading: 'لِـ', kind: ['prep'], senses: [sense('to, for, belonging to')] };
+    expect(mergeByWord([letter, number, to]).map((e) => e.id)).toEqual(['3', '1']);
+  });
+
   it('says a gender beside the noun it is the gender of, and not for an adjective', () => {
     const sense = (g: string) => ({ pos: [], glosses: [g] });
     const row = (id: string, kind: string[]) => ({ ...entry(SER_NOUN, id), word: 'x', kind, senses: [sense(id)] });

@@ -323,7 +323,7 @@ export const fr: HelpTranslation = {
           title: 'Pourquoi les définitions ne sont-elles disponibles que dans certaines langues ?',
           body: [
             'Pour le japonais, elles viennent de JMdict, qui propose des définitions dans neuf langues. Si la vôtre n’en fait pas partie, {Paramètres → Langues} affiche une deuxième ligne, Définitions en, pour choisir la langue à utiliser à la place.',
-            'Les dictionnaires de chinois (mandarin), de coréen, d’espagnol, de français, d’allemand, d’italien, de portugais, de thaï et d’hindi sont rédigés en anglais. Quand il en existe un dans votre langue pour la paire, il est utilisé en premier.',
+            'Les dictionnaires de chinois (mandarin), de coréen, d’espagnol, de français, d’allemand, d’italien, de portugais, de thaï, d’hindi et d’arabe sont rédigés en anglais. Quand il en existe un dans votre langue pour la paire, il est utilisé en premier.',
           ],
           keywords: ['dictionnaire', 'sens', 'hongrois', 'slovène', 'anglais', 'cc-cedict', 'wiktionary', 'wiktionnaire'],
         },
@@ -331,7 +331,7 @@ export const fr: HelpTranslation = {
           id: 'q-languages',
           title: 'Quelles langues puis-je apprendre ?',
           body: [
-            'Le japonais, le chinois (mandarin), le cantonais, le coréen, l’espagnol, le français, l’allemand, l’italien, le portugais, le thaï et l’hindi ont un dictionnaire, et un mot est relié à sa carte quelle que soit la forme sous laquelle il est dit : 갔어요 trouve une carte de 가다, et hablábamos une carte de hablar. Le japonais affiche le furigana au-dessus des mots, le chinois (mandarin) le pinyin et le cantonais le Jyutping.',
+            'Le japonais, le chinois (mandarin), le cantonais, le coréen, l’espagnol, le français, l’allemand, l’italien, le portugais, le thaï, l’hindi et l’arabe ont un dictionnaire, et un mot est relié à sa carte quelle que soit la forme sous laquelle il est dit : 갔어요 trouve une carte de 가다, et hablábamos une carte de hablar. Le japonais affiche le furigana au-dessus des mots, le chinois (mandarin) le pinyin et le cantonais le Jyutping.',
             'Les autres langues de {Paramètres → Langues → J’apprends} sont marquées comme limitées. Leurs mots sont séparés, mais elles n’ont pas encore de dictionnaire.',
             'Le dictionnaire d’une langue est téléchargé la première fois que vous la choisissez. Le téléchargement pèse de 11 à 27 Mo ; sur le disque, il occupe 100 Mo pour le chinois (mandarin), 140 Mo pour le français, 200 Mo pour le coréen et l’allemand, et 470 Mo pour l’espagnol. Un dictionnaire dans votre propre langue, quand il y en a un, est un second téléchargement pouvant atteindre 18 Mo. Le japonais télécharge aussi un second dictionnaire, qui sert à séparer les lignes en mots : 46 Mo, et 190 Mo sur le disque.',
           ],

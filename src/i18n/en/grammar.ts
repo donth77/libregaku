@@ -326,4 +326,51 @@ export const grammar = {
   'without-article': 'without article',
   /** A verb done to oneself: French se laver, German sich waschen. */
   reflexive: 'reflexive',
+
+  // Forms of an Arabic word, in the same words (FORM_LABELS).
+  /** The Arabic tense for now and later, the "imperfect": يكتب, "he writes, he will write". */
+  'non-past': 'non-past',
+  /** Two of something, between singular and plural: Arabic كتابان, "two books". */
+  dual: 'dual',
+  /** The Arabic short mood, after لم and in commands: لم يكتب, "he did not write". */
+  jussive: 'jussive',
+  /** A noun with another after it that owns it, "the X of": Arabic كتاب الطالب, "the student's book". */
+  construct: 'construct',
+
+  // What the little words written onto an Arabic word add (src/morphology/arabic.ts). Each is said in the
+  // learner's own words: what it means, short.
+  /** و written onto a word: وكتاب, "and a book". */
+  'attached-and': 'and',
+  /** ف written onto a word: فذهب, "so he went". */
+  'attached-so': 'so, then',
+  /** ب written onto a word: بالقلم, "with the pen". */
+  'attached-with': 'with, in, by',
+  /** ل written onto a word: للبيت, "to the house". */
+  'attached-for': 'for, to',
+  /** ك written onto a word: كالأسد, "like a lion". */
+  'attached-like': 'like, as',
+  /** "My" on the end of a noun: Arabic كتابي, "my book". */
+  'attached-my': 'my',
+  /** "Your", to one or more: Arabic كتابك, كتابكم. */
+  'attached-your': 'your',
+  /** Arabic ـه on a noun: كتابه, "his book", or "its". */
+  'attached-his': 'his, its',
+  /** Arabic ـها on a noun: كتابها, "her book", or "its". */
+  'attached-her': 'her, its',
+  /** Arabic كتابنا, "our book". */
+  'attached-our': 'our',
+  /** Arabic كتابهم, "their book". */
+  'attached-their': 'their',
+  /** "Me" on the end of a verb or a preposition: Arabic يحبني, "he loves me"; لي, "for me". */
+  'attached-me': 'me',
+  /** Arabic يحبك, "he loves you"; لك, "for you". */
+  'attached-you': 'you',
+  /** Arabic يحبه, "he loves him"; له, "for him", or "it". */
+  'attached-him': 'him, it',
+  /** Arabic يحبها, "he loves her"; لها, "for her", or "it". Not the "her" of "her book" above. */
+  'attached-her-object': 'her, it',
+  /** Arabic يحبنا, "he loves us"; لنا, "for us". */
+  'attached-us': 'us',
+  /** Arabic يحبهم, "he loves them"; لهم, "for them". */
+  'attached-them': 'them',
 };

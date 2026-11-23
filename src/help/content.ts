@@ -330,11 +330,11 @@ const en: HelpContent = {
           id: 'q-languages',
           title: 'Which languages can I learn?',
           body: [
-            'Japanese, Chinese (Mandarin), Cantonese, Korean, Spanish, French, German, Italian, Portuguese, Thai and Hindi have a dictionary, and a word is matched to its card in whatever form it is said: 갔어요 finds a card for 가다, and hablábamos one for hablar. Japanese shows furigana above words, Chinese (Mandarin) shows pinyin, and Cantonese shows Jyutping.',
+            'Japanese, Chinese (Mandarin), Cantonese, Korean, Spanish, French, German, Italian, Portuguese, Thai, Hindi and Arabic have a dictionary, and a word is matched to its card in whatever form it is said: 갔어요 finds a card for 가다, and hablábamos one for hablar. Japanese shows furigana above words, Chinese (Mandarin) shows pinyin, and Cantonese shows Jyutping.',
             'The other languages under {Settings → Languages → I\'m learning} are marked limited. Their words are split, and there is no dictionary yet.',
             'A language’s dictionary is downloaded the first time you choose it. The download is 11 to 27 MB; on disk it takes 100 MB for Chinese (Mandarin), 140 MB for French, 200 MB for Korean and German, and 470 MB for Spanish. A dictionary in your own language, where there is one, is a second download of up to 18 MB. Japanese also downloads a second dictionary, used to split lines into words: 46 MB, and 190 MB on disk.',
           ],
-          keywords: ['language', 'korean', 'chinese', 'mandarin', 'cantonese', 'jyutping', 'spanish', 'french', 'german', 'italian', 'portuguese', 'thai', 'hindi', 'japanese', 'pinyin', 'limited', 'supported'],
+          keywords: ['language', 'korean', 'chinese', 'mandarin', 'cantonese', 'jyutping', 'spanish', 'french', 'german', 'italian', 'portuguese', 'thai', 'hindi', 'arabic', 'japanese', 'pinyin', 'limited', 'supported'],
         },
         {
           id: 'q-ankiweb',
@@ -390,7 +390,7 @@ const en: HelpContent = {
           title: 'Why can definitions only be in some languages?',
           body: [
             'For Japanese they come from JMdict, which has definitions in nine languages. If yours is not one of them, {Settings → Languages} shows a second row, Definitions in, for the language to use instead.',
-            'The Chinese (Mandarin), Korean, Spanish, French, German, Italian, Portuguese, Thai and Hindi dictionaries are written in English. Where a dictionary in your own language exists for the pair, it is used first.',
+            'The Chinese (Mandarin), Korean, Spanish, French, German, Italian, Portuguese, Thai, Hindi and Arabic dictionaries are written in English. Where a dictionary in your own language exists for the pair, it is used first.',
           ],
           keywords: ['definitions', 'languages', 'jmdict', 'hungarian', 'slovenian', 'english', 'cc-cedict', 'wiktionary'],
         },

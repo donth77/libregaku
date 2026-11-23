@@ -69,6 +69,8 @@ export const FORM_LABELS: readonly string[] = [
   // French and German: the cases are renamed by the hints (LemmaHints.renamed), since accusative and dative above are Spanish pronouns.
   'nominative', 'genitive', 'accusative-case', 'dative-case', 'neuter', 'definite', 'indefinite', 'comparative',
   'strong', 'weak', 'mixed', 'without-article', 'reflexive',
+  // Arabic.
+  'non-past', 'dual', 'jussive', 'construct',
 ];
 
 /**
@@ -184,6 +186,11 @@ export interface LemmaHints {
   subjects?: Readonly<Record<string, string>>;
   /** Little words that may come between the pronoun and its verb: je ne connaissais, je le connaissais. */
   between?: readonly string[];
+  /**
+   * A pronoun leads to no verb: a language that says "he a student", with no verb at all (Arabic هو طالب), where
+   * reading the word after a pronoun as a verb makes كل, "all", a form of أكل, "to eat".
+   */
+  noVerbAfterPronoun?: boolean;
 }
 
 const NO_HINTS: LemmaHints = { first: [], common: [], auxiliaries: [] };
@@ -192,6 +199,36 @@ const NO_HINTS: LemmaHints = { first: [], common: [], auxiliaries: [] };
 export interface Ending {
   key: string;
   label?: string;
+}
+
+/**
+ * A word with little words written onto it, read as the word in the middle: Arabic وبكتابه is و, ب, كتاب and ه
+ * (arabic.ts). The labels are the interface's names for what each piece adds (src/i18n/en/grammar.ts).
+ */
+export interface Attached {
+  /** The dictionary key of the word in the middle. */
+  key: string;
+  /** The word in pieces, as the dictionary's keys write them. */
+  parts: string[];
+  /** What the pieces other than the word add, in order: "attached-and", "definite"; "locative". */
+  adds: string[];
+  /** What the piece behind adds, if there is one: on a noun (whose it is), and on any other word (who it is done to). */
+  after?: readonly [string, string];
+  /** A word the one in the middle must be read as a form of, by the dictionary's words for it: after Arabic س, "non-past". */
+  formOf?: string;
+}
+
+/** How a language that writes little words onto others is read (Attached). */
+export interface AttachedRules {
+  /** The ways a word may be read without them, each a key to ask the dictionary for. */
+  split(word: string): Attached[];
+  /**
+   * Which way to read it, once the dictionary has answered for the word and those keys: null for the word as
+   * written. `opening`: it opens a sentence, so a capital says nothing of it.
+   */
+  choose(word: string, forms: Forms, opening: boolean): Attached | null;
+  /** The pieces as the line writes them, vowels and all. */
+  written(surface: string, parts: readonly string[]): string[];
 }
 
 /**
@@ -430,7 +467,7 @@ function leads(lemma: string, info: FormInfo | undefined, hints: LemmaHints): Ex
   const kind = info?.kind ?? [];
   if (kind.includes('artic') && !kind.includes('pron')) return 'article';
   if (kind.some((k) => BEFORE_NOUN.has(k))) return 'noun';
-  if (kind.includes('pron')) return 'verb';
+  if (kind.includes('pron') && !hints.noVerbAfterPronoun) return 'verb';
   return undefined;
 }
 
@@ -505,6 +542,7 @@ export class LemmaSegmenter implements Segmenter {
   readonly #joinHyphens: boolean | { apart: RegExp };
   readonly #endings: ((word: string) => Ending[]) | undefined;
   readonly #respell: ((word: string) => string) | undefined;
+  readonly #attached: AttachedRules | undefined;
   /** What the lines kept were analysed with: a change of the setting starts them over. */
   #counted = false;
   readonly #words: IntlSegmenter;
@@ -539,6 +577,8 @@ export class LemmaSegmenter implements Segmenter {
        * one word several ways (foldHindi), and the dictionary keeps each word under the key as well.
        */
       respell?: (word: string) => string;
+      /** Little words written onto a word, read off it: Arabic و, ب and ال in front, its pronouns behind (Attached). */
+      attached?: AttachedRules;
     } = {},
   ) {
     this.#locale = locale;
@@ -550,6 +590,7 @@ export class LemmaSegmenter implements Segmenter {
     this.#joinHyphens = opts.joinHyphens ?? false;
     this.#endings = opts.endings;
     this.#respell = opts.respell;
+    this.#attached = opts.attached;
     this.#words = new IntlSegmenter(locale);
   }
 
@@ -589,6 +630,7 @@ export class LemmaSegmenter implements Segmenter {
     if (this.#compounds) out = await this.#cutCompounds(out, forms, this.#compounds);
     if (this.#compounds?.verbPrefixes) out = await this.#joinSeparated(out, this.#compounds);
     if (this.#endings) out = await this.#byEnding(out, forms, this.#endings, look);
+    if (this.#attached) out = await this.#unattached(out, forms, this.#attached, counts);
     this.#cache.set(text, out);
     return out;
   }
@@ -654,6 +696,51 @@ export class LemmaSegmenter implements Segmenter {
     });
   }
 
+  /**
+   * Each word read without the little words written onto it, where the language's rules (AttachedRules) say to:
+   * the word in the middle is the lemma, looked up and matched to cards, and the card names what the rest add.
+   */
+  async #unattached(tokens: Token[], forms: Forms, rules: AttachedRules, counts: boolean): Promise<Token[]> {
+    const keys = new Set<string>();
+    for (const t of tokens) if (!t.punct) for (const c of rules.split(t.surface)) if (!forms[c.key]) keys.add(c.key);
+    const known: Forms = { ...forms };
+    const asked = [...keys];
+    for (let i = 0; i < asked.length; i += ASKED_AT_ONCE) {
+      const res = (await chrome.runtime.sendMessage({ target: 'offscreen', type: 'dict-forms', forms: asked.slice(i, i + ASKED_AT_ONCE) })) as
+        | FormsAnswer | undefined;
+      if (!res?.ok || !res.forms) return tokens;
+      Object.assign(known, res.forms);
+    }
+    let opening = true;
+    return tokens.map((t) => {
+      if (t.punct) {
+        if (BREAK.test(t.surface)) opening = true;
+        return t;
+      }
+      const first = opening;
+      opening = false;
+      const c = rules.choose(t.surface, known, first);
+      if (!c) return t;
+      // Only its forms of that kind, where it has some: سأذهب is a form of ذهب, though أذهب is a word too.
+      const as = c.formOf ? known[c.key]?.of.filter((o) => o.tags.some((t) => t.split(' ').includes(c.formOf!))) ?? [] : [];
+      const read = as.length ? { ...known, [c.key]: { ...known[c.key]!, word: false, of: as } } : known;
+      const found = lemmaOf(c.key, read, { locale: this.#locale, hints: this.#hints });
+      const info = known[c.key];
+      // What the word is, for what the pronoun behind it says: a noun's owner, or whoever a verb or preposition is about.
+      const kind = found.lemma === c.key ? info?.kind?.[0] : info?.of.find((o) => o.lemma === found.lemma)?.pos;
+      const after = c.after ? [NOMINAL.has(kind ?? '') ? c.after[0] : c.after[1]] : [];
+      const lemmaKind = known[found.lemma]?.kind ?? (found.lemma === c.key ? info?.kind : undefined) ?? [];
+      return {
+        ...t,
+        content: counts || !grammatical(lemmaKind, [found.lemma], this.#hints),
+        lemma: found.lemma,
+        lookup: found.lookup.map((key) => ({ key })),
+        parts: rules.written(t.surface, c.parts),
+        inflections: [...c.adds, ...after, ...found.inflections],
+      };
+    });
+  }
+
   /** A verb and its prefix at the other end of the clause, read as the one verb the dictionary has: gehe ... weg. */
   async #joinSeparated(tokens: Token[], rules: CompoundRules): Promise<Token[]> {
     const keys = separableKeys(tokens, rules);
@@ -715,6 +802,9 @@ export class LemmaSegmenter implements Segmenter {
     return [{ text: surface }];
   }
 }
+
+/** How many keys one message to the dictionary asks about. */
+const ASKED_AT_ONCE = 400;
 
 /** How many words of one line are tried for a compound: a line of names is not a line of compounds. */
 const COMPOUNDS_PER_LINE = 4;

@@ -27,6 +27,7 @@ export const DICTIONARIES: Record<string, string> = {
   pt: 'wty-pt-en',
   th: 'wty-th-en',
   hi: 'wty-hi-en',
+  ar: 'wty-ar-en',
 };
 
 /**
@@ -90,6 +91,8 @@ export const OWN_DICTIONARIES: Record<string, Record<string, string>> = {
   pt: {
     fr: 'wty-pt-fr', pl: 'wty-pt-pl', ru: 'wty-pt-ru', es: 'wikdict-pt-es', de: 'wikdict-pt-de',
   },
+  // Wiktionary in Polish 86%, Russian 80% and French 62% (keyed without vowels, as the English edition is).
+  ar: { pl: 'wty-ar-pl', ru: 'wty-ar-ru', fr: 'wty-ar-fr' },
 };
 
 /**
@@ -145,7 +148,7 @@ export const TARGET_LANGUAGES: Array<{ code: string; label: string; tier: 0 | 1 
   { code: 'th', label: 'Thai', tier: 1, flag: '🇹🇭' },
   { code: 'en', label: 'English', tier: 0, flag: '🇺🇸' },
   { code: 'hi', label: 'Hindi', tier: 1, flag: '🇮🇳' },
-  { code: 'ar', label: 'Arabic', tier: 0, flagSvg: arabLeagueFlag },
+  { code: 'ar', label: 'Arabic', tier: 1, flagSvg: arabLeagueFlag },
   { code: 'tr', label: 'Turkish', tier: 0, flag: '🇹🇷' },
 ];
 
@@ -251,6 +254,12 @@ const LANGUAGE_FEATURES: Record<string, LanguageFeatures> = {
     characters: false,
     definitions: false,
     dictionary: { name: 'Wiktionary', url: (w) => `https://en.wiktionary.org/wiki/${encodeURIComponent(w)}#Hindi` },
+  },
+  ar: {
+    readings: false,
+    characters: false,
+    definitions: false,
+    dictionary: { name: 'Wiktionary', url: (w) => `https://en.wiktionary.org/wiki/${encodeURIComponent(w)}#Arabic` },
   },
 };
 

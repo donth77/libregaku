@@ -20,7 +20,7 @@ This page is written from the extension’s code by `node scripts/language-pairs
 | Thai | Full | Wiktionary | — |
 | English | Words only | — | — |
 | Hindi | Full | Wiktionary | — |
-| Arabic | Words only | — | — |
+| Arabic | Full | Wiktionary | — |
 | Turkish | Words only | — | — |
 
 - **Full**: a word is looked up, and matched to your Anki cards, in whatever form it is said: hablábamos finds hablar. The form is found in the dictionary’s list of each word’s forms.
@@ -321,7 +321,33 @@ Where a dictionary in your own language exists for a pair, a word is looked up t
 | Dutch | English | Wiktionary | Wiktionary |
 | Swedish | English | Wiktionary | Wiktionary |
 
-Definitions are in your own language in 76 of the 231 pairs, and in English in the rest.
+### Learning Arabic
+
+| Your language | Definitions in | Dictionaries, in the order asked | Dictionary button |
+|---|---|---|---|
+| English | English | Wiktionary | Wiktionary |
+| Spanish | English | Wiktionary | Wiktionary |
+| French | French, then English | Wiktionary | Wiktionary |
+| German | English | Wiktionary | Wiktionary |
+| Portuguese | English | Wiktionary | Wiktionary |
+| Italian | English | Wiktionary | Wiktionary |
+| Russian | Russian, then English | Wiktionary | Wiktionary |
+| Japanese | English | Wiktionary | Wiktionary |
+| Chinese (Simplified) | English | Wiktionary | Wiktionary |
+| Chinese (Traditional) | English | Wiktionary | Wiktionary |
+| Korean | English | Wiktionary | Wiktionary |
+| Arabic | English | Wiktionary | Wiktionary |
+| Hindi | English | Wiktionary | Wiktionary |
+| Indonesian | English | Wiktionary | Wiktionary |
+| Vietnamese | English | Wiktionary | Wiktionary |
+| Thai | English | Wiktionary | Wiktionary |
+| Turkish | English | Wiktionary | Wiktionary |
+| Polish | Polish, then English | Wiktionary | Wiktionary |
+| Ukrainian | English | Wiktionary | Wiktionary |
+| Dutch | English | Wiktionary | Wiktionary |
+| Swedish | English | Wiktionary | Wiktionary |
+
+Definitions are in your own language in 79 of the 252 pairs, and in English in the rest.
 
 ## Recordings of a word
 

@@ -4,7 +4,8 @@ import type { Entry, RankHint } from './jmdict';
 import type { CharacterInfo } from './kanji';
 import { JMDICT, lookup, type Batch, type Source } from './store';
 import { wikdictEntries, wikdictUrl } from './wikdict';
-import { formIn, mergeByWord, onlyForm, readRow } from './wty';
+import { formIn, mergeByWord, onlyForm, readRow, type Inflection } from './wty';
+import { foldArabic } from '../morphology/arabic';
 import { foldHindi } from '../morphology/hindi';
 import { zipFiles } from './zip';
 
@@ -110,6 +111,49 @@ export function wtyUrl(target: string, native: string): string {
  * dictionary's and a card is made for the dictionary's.
  */
 const RESPELL: Record<string, (word: string) => string> = { hi: foldHindi };
+
+/**
+ * How a language's forms name the word they are a form of, where the file writes that otherwise than the
+ * word's key: an Arabic form names its word with the vowels (كَتَبَ), and the word is under كتب.
+ */
+const LEMMA_KEY: Record<string, (word: string) => string> = { ar: foldArabic };
+
+/**
+ * What a language's forms are described with that the written form cannot show, by language, left out of what
+ * is stored. An Arabic noun's case is its last vowel, which is not written, so الكتابُ, الكتابَ and الكتابِ are one
+ * form to a reader and the file's three rows for them one row here; Arabic's are a third as many that way. Its
+ * active voice and indicative mood go unsaid as the plain ones, as Spanish's do, and its classes of ending
+ * (triptote, ar-infl-a) are the grammarian's, not the reader's.
+ */
+const UNWRITTEN: Record<string, ReadonlySet<string>> = {
+  ar: new Set([
+    'nominative', 'accusative', 'genitive', 'informal', 'triptote', 'diptote', 'invariable', 'sound-form', 'broken-form',
+    'active', 'indicative', 'perfective', 'imperfective', 'ar-infl-a', 'ar-infl-in', 'ar-infl-ah', 'ar-infl-an-maksura',
+    'ar-infl-an-alef', 'ar-infl-awna',
+  ]),
+};
+
+/** A description with what UNWRITTEN leaves out of it left out: "nominative/accusative singular definite" is "singular definite". */
+const written = (tags: readonly string[], unwritten: ReadonlySet<string>): string[] => [...new Set(tags
+  .map((t) => t.split(' ').map((w) => w.split('/').filter((x) => !unwritten.has(x)).join('/')).filter(Boolean).join(' '))
+  .filter(Boolean))];
+
+/**
+ * A batch's forms with those of one spelling as one row, each way of being a form of a word said once: what
+ * the rows of a language whose descriptions UNWRITTEN shortens come to.
+ */
+function oneRowEach(rows: Inflection[], unwritten: ReadonlySet<string>): Inflection[] {
+  const byForm = new Map<string, Inflection>();
+  for (const row of rows) {
+    const into = byForm.get(row.form) ?? { form: row.form, of: [], ...(row.pos ? { pos: row.pos } : {}) };
+    for (const way of row.of) {
+      const tags = written(way.tags, unwritten);
+      if (!into.of.some((o) => o.lemma === way.lemma && o.tags.join('\n') === tags.join('\n'))) into.of.push({ lemma: way.lemma, tags });
+    }
+    byForm.set(row.form, into);
+  }
+  return [...byForm.values()];
+}
 
 /** The shape of what is stored, where a language's has moved on from the rest (see `format` in wty()). */
 const WTY_FORMAT: Record<string, number> = { de: 5, ko: 6 };
@@ -392,6 +436,8 @@ export function wty(target: string, native: string): Source {
     native !== 'en' && e.senses.length > 0 && e.senses.every((s) => s.glosses.every((g) => POINTER.test(g)));
   const particle = PARTICLE[target];
   const respell = RESPELL[target];
+  const lemmaKey = LEMMA_KEY[target];
+  const unwritten = UNWRITTEN[target];
   /** The token is one the analyser calls a particle. */
   const isParticle = (hint?: RankHint): boolean => Boolean(particle && hint?.pos && particle.test(hint.pos));
   return {
@@ -447,19 +493,29 @@ export function wty(target: string, native: string): Source {
             for (const raw of rows.slice(i, i + ROWS) as unknown[]) {
               const row = readRow(raw, idOf(n++));
               if (!row) continue;
+              // Arabic in some editions keyed with its vowels (كِتَاب): under كتاب, its vowels kept as the reading.
+              if (lemmaKey && 'entry' in row && lemmaKey(row.entry.word) !== row.entry.word) {
+                row.entry = { ...row.entry, word: lemmaKey(row.entry.word), reading: row.entry.reading ?? row.entry.word };
+              }
+              if (lemmaKey && 'inflection' in row) row.inflection = { ...row.inflection, form: lemmaKey(row.inflection.form) };
               if ('entry' in row) {
                 // sono, a row of its own, is a form of essere (formIn), and only that where it says nothing more (onlyForm).
                 if (!pointerOnly(row.entry) && !onlyForm(row.entry)) batch.entries.push({ entry: row.entry, keys: [row.entry.word] });
                 const form = formIn(row.entry);
-                if (form) batch.inflections.push(form);
+                if (form) batch.inflections.push(lemmaKey ? { ...form, of: form.of.map((o) => ({ ...o, lemma: lemmaKey(o.lemma) })) } : form);
                 const key = respell?.(row.entry.word);
                 if (key && key !== row.entry.word) batch.inflections.push({ form: key, of: [{ lemma: row.entry.word, tags: ['alternative'] }] });
               } else {
-                batch.inflections.push(row.inflection);
-                const key = respell?.(row.inflection.form);
-                if (key && key !== row.inflection.form) batch.inflections.push({ ...row.inflection, form: key });
+                const inflection = lemmaKey
+                  ? { ...row.inflection, of: row.inflection.of.map((o) => ({ ...o, lemma: lemmaKey(o.lemma) })).filter((o) => o.lemma !== row.inflection.form) }
+                  : row.inflection;
+                if (!inflection.of.length) continue;
+                batch.inflections.push(inflection);
+                const key = respell?.(inflection.form);
+                if (key && key !== inflection.form) batch.inflections.push({ ...inflection, form: key });
               }
             }
+            if (unwritten) batch.inflections = oneRowEach(batch.inflections, unwritten);
             const within = Math.min(1, (i + ROWS) / rows.length);
             yield { ...batch, percent: Math.round(((at + within) / banks.length) * 100) };
           }
@@ -821,6 +877,7 @@ export const SOURCES: Record<string, Source> = {
   'wty-pt-en': wty('pt', 'en'),
   'wty-th-en': wty('th', 'en'),
   'wty-hi-en': wty('hi', 'en'),
+  'wty-ar-en': wty('ar', 'en'),
   // In the learner's own language (settings.ts, OWN_DICTIONARIES).
   'wty-ja-zh': wty('ja', 'zh'),
   'wty-ja-ko': wty('ja', 'ko'),
@@ -879,6 +936,9 @@ export const SOURCES: Record<string, Source> = {
   'wty-pt-ru': wty('pt', 'ru'),
   'wikdict-pt-es': wikdict('pt', 'es'),
   'wikdict-pt-de': wikdict('pt', 'de'),
+  'wty-ar-pl': wty('ar', 'pl'),
+  'wty-ar-ru': wty('ar', 'ru'),
+  'wty-ar-fr': wty('ar', 'fr'),
   [KRDICT.id]: KRDICT,
   [CANTO.id]: CANTO,
 };

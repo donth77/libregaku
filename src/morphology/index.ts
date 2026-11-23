@@ -6,6 +6,7 @@ import { ITALIAN, splitItalian } from './italian';
 import { APART_PT, PORTUGUESE } from './portuguese';
 import { THAI, joinRepeats, unrepeat } from './thai';
 import { HINDI, foldHindi, hindiEndings } from './hindi';
+import { ARABIC, ARABIC_ATTACHED, foldArabic } from './arabic';
 import { KoreanSegmenter } from './korean';
 import { LemmaSegmenter } from './lemma';
 import { LinderaSegmenter } from './lindera';
@@ -58,6 +59,8 @@ const BY_FORMS: Record<string, () => Segmenter> = {
   th: () => new LemmaSegmenter('th', THAI, { prepare: joinRepeats, fold: unrepeat, grammarCounts }),
   // One word, several spellings: looked up as written, and by the key they share where that finds nothing (foldHindi).
   hi: () => new LemmaSegmenter('hi', HINDI, { fold: (s) => s.normalize('NFC'), respell: foldHindi, grammarCounts, endings: hindiEndings }),
+  // Written without vowels, and with the little words of a sentence written onto the word they go with (arabic.ts).
+  ar: () => new LemmaSegmenter('ar', ARABIC, { fold: foldArabic, grammarCounts, attached: ARABIC_ATTACHED }),
 };
 
 /** What turns a language's lines into words with dictionary forms. */

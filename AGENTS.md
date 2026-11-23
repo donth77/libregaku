@@ -159,7 +159,7 @@ included, which the Korean merge tests stand on. Run it when a line is added to 
 list, and when lindera or ko-dic is bumped.
 
 `measure-forms` is for the languages read by their dictionary's table of forms (Spanish,
-French, German, Italian, Portuguese, Hindi, and Thai, which does not inflect: `BY_FORMS` in `src/morphology/index.ts`). It reads
+French, German, Italian, Portuguese, Hindi, Arabic, and Thai, which does not inflect: `BY_FORMS` in `src/morphology/index.ts`). It reads
 20,000 Tatoeba sentences through the language's own segmenter, with the dictionary read by
 its own source, and writes how many words find an entry, the commonest that find none, and
 the commonest forms that could be more than one word with what each was read as. The hints
@@ -168,6 +168,13 @@ what it counts (`SHOW='…|…'` prints what the dictionary answers for a line's
 each is read as): `SAVE=base`, change, then `AGAINST=base`, and read every word read
 otherwise, in every one of those languages when the change is to the reader (`wty.ts`)
 or to `lemma.ts` or `hyphen.ts`.
+
+Arabic is read past its table of forms as well. It writes the little words of a sentence
+onto the word they go with (و, ب, ال in front; the pronouns behind), and `arabic.ts` lists
+the ways a word may be read without them and chooses one once the dictionary has answered
+for each. The choice rests on short measured lists (the commonest verbs, the little words
+that take no pronoun): change one with `SAVE` and `AGAINST` as above, and read every word
+read otherwise.
 
 `language-pairs` writes `LANGUAGE-PAIRS.md`, the page the store listing links to:
 what each language that can be learned gets, and which dictionaries explain its words
@@ -201,7 +208,8 @@ src/morphology/         Segmenter implementations and which language gets which 
                         what Spanish, French, German, Italian and Portuguese forms need said
                         of them (spanish.ts, french.ts, german.ts, italian.ts, portuguese.ts), Thai's
                         repeated words (thai.ts), the spellings and endings of Hindi words
-                        (hindi.ts), the words from JMdict that IPADIC
+                        (hindi.ts), the little words written onto an Arabic word (arabic.ts),
+                        the words from JMdict that IPADIC
                         misreads, added to the analyser, and UniDic's second opinion on
                         IPADIC's reading of a line (japanese.ts, repair.ts)
 src/dict/               one dictionary per language (sources.ts): download, storage and

@@ -76,11 +76,12 @@ pnpm typecheck
 | Japanese | Full, with furigana |
 | Chinese (Mandarin) | Full, with pinyin |
 | Cantonese | Full, with Jyutping |
-| Korean, Spanish, French, German, Italian, Portuguese, Thai, Hindi | Full |
-| English, Arabic, Turkish | Words only, for now |
+| Korean, Spanish, French, German, Italian, Portuguese, Thai, Hindi, Arabic | Full |
+| English, Turkish | Words only, for now |
 
 "Full" means a word is looked up, and matched to its card, in whatever form it is said:
-`갔어요` finds `가다`, and `hablábamos` finds `hablar`.
+`갔어요` finds `가다`, and `hablábamos` finds `hablar`. An Arabic word is read without the
+little words written onto it (`وبكتابه` finds `كتاب`), and the card names what each adds.
 
 "Words only" means the line is split into words, but there are no lookups yet, and a word
 matches a card only as it is written. Libregaku says so when you choose one.
