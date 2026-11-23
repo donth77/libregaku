@@ -102,8 +102,8 @@ describe('a language written two ways', () => {
 describe('what each language gets', () => {
   const tier = (code: string) => TARGET_LANGUAGES.find((l) => l.code === code)?.tier;
 
-  it('gives Japanese, Korean and Chinese an analyser, and Spanish, French, German, Italian, Portuguese, Thai, Hindi, Arabic and Turkish their dictionary forms', () => {
-    expect(['ja', 'ko', 'zh', 'es', 'fr', 'de', 'it', 'pt', 'th', 'hi', 'ar', 'tr', 'en'].map(tier)).toEqual([2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0]);
+  it('gives Japanese, Korean and Chinese an analyser, and Spanish, French, German, Italian, Portuguese, Thai, Hindi, Arabic, Turkish and English their dictionary forms', () => {
+    expect(['ja', 'ko', 'zh', 'es', 'fr', 'de', 'it', 'pt', 'th', 'hi', 'ar', 'tr', 'en'].map(tier)).toEqual([2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
   });
 
   it('has a dictionary for every language above boundaries alone, and for no other', () => {
@@ -126,7 +126,8 @@ describe('what each language gets', () => {
     expect(dictionaryOf('hi', { native: 'en', definitions: 'en' })).toEqual({ source: 'wty-hi-en', edition: 'en' });
     expect(dictionaryOf('ar', { native: 'en', definitions: 'en' })).toEqual({ source: 'wty-ar-en', edition: 'en' });
     expect(dictionaryOf('tr', { native: 'en', definitions: 'en' })).toEqual({ source: 'wty-tr-en', edition: 'en' });
-    expect(dictionaryOf('en', { native: 'ja', definitions: 'en' })).toBeNull();
+    expect(dictionaryOf('en', { native: 'ja', definitions: 'en' })).toEqual({ source: 'wty-en-en', edition: 'en' });
+    expect(dictionaryOf('xx', { native: 'ja', definitions: 'en' })).toBeNull();
   });
 
   it('has a second dictionary behind Korean’s, unless the learner’s own already is it', () => {
@@ -158,7 +159,8 @@ describe('what each language gets', () => {
     expect(featuresOf('hi').dictionary?.name).toBe('Wiktionary');
     expect(featuresOf('ar').dictionary?.name).toBe('Wiktionary');
     expect(featuresOf('tr').dictionary?.name).toBe('Wiktionary');
-    expect(featuresOf('en').dictionary).toBeUndefined();
+    expect(site('en', 'say')).toBe('https://en.wiktionary.org/wiki/say#English');
+    expect(featuresOf('xx').dictionary).toBeUndefined();
   });
 });
 

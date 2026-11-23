@@ -242,8 +242,8 @@ describe('settings panel selects', () => {
     expect(tierNote('hi')).toBe('Full support. Definitions are in English.');
     expect(tierNote('ar')).toBe('Full support. Definitions are in English.');
     expect(tierNote('tr')).toBe('Full support. Definitions are in English.');
-    expect(tierNote('en')).toBe('Basic support: words are split, but there is no dictionary or readings yet.');
-    expect(tierNote('xx')).toBe(tierNote('en'));
+    expect(tierNote('en')).toBe('Full support. Definitions are in English.');
+    expect(tierNote('xx')).toBe('Basic support: words are split, but there is no dictionary or readings yet.');
   });
 
   it('credits every source a language draws on', () => {

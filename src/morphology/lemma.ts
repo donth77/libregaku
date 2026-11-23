@@ -198,6 +198,31 @@ export interface LemmaHints {
    * reading the word after a pronoun as a verb makes كل, "all", a form of أكل, "to eat".
    */
   noVerbAfterPronoun?: boolean;
+  /** Words whose capital says what they are wherever they stand, first in a sentence too: English I, which in lower case is the letter. */
+  capitals?: readonly string[];
+  /**
+   * A participle of one of the `first` verbs is that verb wherever it stands: English going, been and done are go,
+   * be and do far more often than "the going", "been" or "done!", though the dictionary has each as a word. And a
+   * `first` verb that is its own participle stays itself after an auxiliary: has come is come, not a form of cum.
+   * (A Spanish or French participle is as often an adjective or a noun, and is left out.)
+   */
+  firstParticiples?: boolean;
+  /**
+   * Words that stay themselves after an auxiliary, though the dictionary has them as participles too: English I'm
+   * tired, it's interesting, he wasn't able to. Only on counted evidence.
+   */
+  adjectives?: readonly string[];
+  /**
+   * Words a noun follows without doubt, whatever else the dictionary has them as: English a, which it also has as
+   * a pronoun and a verb, so that a bee is the insect and his means what he has, not forms of be and mean.
+   */
+  determiners?: readonly string[];
+  /**
+   * A capital that opens a sentence is a name where the same video has written the word with a capital inside a
+   * sentence and never in lower case: Tom, not tom, "a male cat". Kept by the segmenter, line to line. (German
+   * writes every noun with a capital, so a capital says nothing of a name there.)
+   */
+  names?: boolean;
 }
 
 const NO_HINTS: LemmaHints = { first: [], common: [], auxiliaries: [] };
@@ -361,12 +386,17 @@ function best(of: Candidate[], ...measures: Array<(c: Candidate) => number>): Ca
 export function lemmaOf(
   surface: string,
   forms: Forms,
-  opts: { first?: boolean; locale?: string; expecting?: Expecting; hints?: LemmaHints; person?: string } = {},
+  opts: {
+    first?: boolean; locale?: string; expecting?: Expecting; hints?: LemmaHints; person?: string;
+    /** The word is known to be a name, so its capital counts first in a sentence too (LemmaHints.names). */
+    name?: boolean;
+  } = {},
 ): Lemma {
   const hints = opts.hints ?? NO_HINTS;
   const lower = surface.toLocaleLowerCase(opts.locale);
   const shouted = surface.length > 1 && surface === surface.toLocaleUpperCase(opts.locale);
-  let spellings = lower === surface ? [surface] : opts.first || shouted ? [lower, surface] : [surface, lower];
+  const capital = Boolean(opts.name) || (hints.capitals?.includes(surface) ?? false);
+  let spellings = lower === surface ? [surface] : (opts.first && !capital) || shouted ? [lower, surface] : [surface, lower];
   // A capital that opens a sentence is still the word where the lower case is only another spelling of something:
   // Mary, though mary is an old spelling of marry.
   const spellingOnly = (s: string): boolean => {
@@ -429,28 +459,37 @@ export function lemmaOf(
     (c.said.length || !c.spelt.length ? 0 : -Math.min(...c.spelt.map((s) => s.split(' ').length)));
   const closest = (of: Candidate[]): Candidate | undefined =>
     best(of, (c) => Number(c.said.length > 0), plainest, direct, plainSpelling, rank(hints.common), (c) => c.weight);
-  /** The forms of a verb that are it at work: conjugated, or a gerund — not a participle, which is as often a noun. */
-  const working = (c: Candidate): string[] => c.said.filter((s) => (PERSON.test(s) || NONFINITE.test(s)) && !PARTICIPLE.test(s));
+  /**
+   * The forms of a verb that are it at work: conjugated, or a gerund — not a participle, which is as often a noun,
+   * unless the language says its participles are its verbs' (`firstParticiples`).
+   */
+  const working = (c: Candidate, participles = false): string[] =>
+    c.said.filter((s) => (PERSON.test(s) || NONFINITE.test(s)) && (participles || !PARTICIPLE.test(s)));
   /** The commonest verbs the form is a working form of, best first — plainly so when `plainly`. */
-  const commonest = (list: readonly string[], plainly: boolean): Candidate | undefined =>
+  const commonest = (list: readonly string[], plainly: boolean, participles = false): Candidate | undefined =>
     best(
-      others.filter((c) => list.includes(c.lemma) && working(c).some((s) => !plainly || ordinary(s) > 1)),
-      (c) => Math.max(0, ...working(c).map(ordinary)), rank(list),
+      others.filter((c) => list.includes(c.lemma) && working(c, participles).some((s) => !plainly || ordinary(s) > 1)),
+      (c) => Math.max(0, ...working(c, participles).map(ordinary)), rank(list),
     );
+  const participleOf = (c: Candidate): boolean => c.said.some((s) => PARTICIPLE.test(s));
   /** A candidate the kind expected may choose: a form, or a spelling where the form is nothing else. */
   const expectable = (c: Candidate): boolean => c.said.length > 0 || !pool.some((o) => o !== c && (o.self || o.said.length > 0));
+  /** After an auxiliary: the participles, or the word itself where the language says (`adjectives`, `firstParticiples`). */
+  const afterAuxiliary = (): Candidate | undefined => {
+    if (self && hints.adjectives?.includes(form.toLocaleLowerCase(opts.locale))) return self;
+    const own = hints.firstParticiples && self?.verbal && hints.first.includes(form) ? [self] : [];
+    return best([...own, ...others.filter(participleOf)], rank(hints.first), rank(hints.common), (c) => c.weight);
+  };
   const closed = self && (info.kind ?? []).some((k) => CLOSED.has(k)) ? self : undefined;
 
   const chosen =
     // ha visto, he hecho: after haber, the participle — visto is ver's, before it is "I dress".
-    (opts.expecting === 'participle'
-      ? best(others.filter((c) => c.said.some((s) => PARTICIPLE.test(s))), rank(hints.first), rank(hints.common), (c) => c.weight)
-      : undefined) ??
+    (opts.expecting === 'participle' ? afterAuxiliary() : undefined) ??
     // 1. el vino, una era.
     (opts.expecting === 'article' && self?.nominal ? self : undefined) ??
     // 2. es, era, son: a form of ser, haber, ir — unless it is only a wish or a command and a word like "outside" besides.
     (hints.keep?.includes(form) ? self : undefined) ??
-    commonest(hints.first, Boolean(closed)) ??
+    commonest(hints.first, Boolean(closed), hints.firstParticiples) ??
     // 3. como, para, entre.
     closed ??
     // 4. se casa, ha pasado; los estados.
@@ -491,6 +530,7 @@ export function lemmaOf(
 /** What a word leads the next one to be: a noun after an article, a verb after a pronoun, a participle after an auxiliary. */
 function leads(lemma: string, info: FormInfo | undefined, hints: LemmaHints): Expecting {
   if (hints.auxiliaries.includes(lemma)) return 'participle';
+  if (hints.determiners?.includes(lemma.toLocaleLowerCase())) return 'article';
   const kind = info?.kind ?? [];
   if (kind.includes('artic') && !kind.includes('pron')) return 'article';
   if (kind.some((k) => BEFORE_NOUN.has(k))) return 'noun';
@@ -510,6 +550,8 @@ export function lemmaTokens(
   tokens: Token[], forms: Forms, locale?: string, hints?: LemmaHints, fold: (surface: string) => string = (s) => s,
   /** Count articles and pronouns as words to learn (the Underline articles and pronouns setting). */
   grammarCounts = false,
+  /** Words known to be names where they open a sentence (LemmaHints.names). */
+  names?: (word: string) => boolean,
 ): Token[] {
   let first = true;
   let expecting: Expecting;
@@ -539,7 +581,9 @@ export function lemmaTokens(
     }
     // The dictionary writes l' one way; a line may write it another.
     const key = fold(t.surface);
-    const found = lemmaOf(key, forms, { first: opening, locale, expecting, hints, ...(person && !says ? { person } : {}) });
+    const found = lemmaOf(key, forms, {
+      first: opening, locale, expecting, hints, ...(person && !says ? { person } : {}), ...(opening && names?.(key) ? { name: true } : {}),
+    });
     const info = forms[found.lemma];
     expecting = leads(found.lemma, info, hints ?? NO_HINTS);
     return {
@@ -574,6 +618,9 @@ export class LemmaSegmenter implements Segmenter {
   #counted = false;
   readonly #words: IntlSegmenter;
   #cache = new LineCache();
+  /** Words this segmenter's lines have written with a capital inside a sentence, and in lower case (LemmaHints.names). */
+  readonly #capitalised = new Set<string>();
+  readonly #lowered = new Set<string>();
 
   /**
    * `prepare` reshapes the browser's words before the dictionary is asked, for
@@ -653,13 +700,33 @@ export class LemmaSegmenter implements Segmenter {
       tokens = joinHyphenated(tokens, res.forms, this.#fold, this.#locale, this.#joinHyphens === true ? undefined : this.#joinHyphens.apart);
     }
     const { forms, look } = this.#respell ? await this.#respelt(tokens, res.forms, this.#respell) : { forms: res.forms, look: this.#fold };
-    let out = lemmaTokens(tokens, forms, this.#locale, this.#hints, look, counts);
+    let out = lemmaTokens(tokens, forms, this.#locale, this.#hints, look, counts, this.#hints?.names ? this.#namesIn(tokens) : undefined);
     if (this.#compounds) out = await this.#cutCompounds(out, forms, this.#compounds);
     if (this.#compounds?.verbPrefixes) out = await this.#joinSeparated(out, this.#compounds);
     if (this.#endings) out = await this.#byEnding(out, forms, this.#endings, look);
     if (this.#attached) out = await this.#unattached(out, forms, this.#attached, counts);
     this.#cache.set(text, out);
     return out;
+  }
+
+  /**
+   * What the line says of names, kept with what the lines before it said: a word written with a capital inside a
+   * sentence, and never in lower case, is a name, and so is its capital where it opens one.
+   */
+  #namesIn(tokens: Token[]): (word: string) => boolean {
+    let opening = true;
+    for (const t of tokens) {
+      if (t.punct) {
+        if (BREAK.test(t.surface)) opening = true;
+        continue;
+      }
+      const word = this.#fold(t.surface);
+      const lower = word.toLocaleLowerCase(this.#locale);
+      if (word === lower) this.#lowered.add(word);
+      else if (!opening && word !== word.toLocaleUpperCase(this.#locale)) this.#capitalised.add(word);
+      opening = false;
+    }
+    return (word) => this.#capitalised.has(word) && !this.#lowered.has(word.toLocaleLowerCase(this.#locale));
   }
 
   /**

@@ -323,7 +323,7 @@ export const es: HelpTranslation = {
           title: '¿Por qué las definiciones solo están en algunos idiomas?',
           body: [
             'Para el japonés vienen de JMdict, que tiene definiciones en nueve idiomas. Si el tuyo no es uno de ellos, {Configuración → Idiomas} muestra una segunda fila, Definiciones en, para elegir el idioma que se usará en su lugar.',
-            'Los diccionarios de chino (mandarín), coreano, español, francés, alemán, italiano, portugués, tailandés, hindi, árabe y turco están escritos en inglés. Donde existe uno en tu idioma para el par, se usa primero.',
+            'Los diccionarios de chino (mandarín), coreano, español, francés, alemán, italiano, portugués, tailandés, hindi, árabe, turco e inglés están escritos en inglés. Donde existe uno en tu idioma para el par, se usa primero.',
           ],
           keywords: ['diccionario', 'significados', 'húngaro', 'esloveno', 'cc-cedict', 'wiktionary', 'wikcionario'],
         },
@@ -331,11 +331,10 @@ export const es: HelpTranslation = {
           id: 'q-languages',
           title: '¿Qué idiomas puedo aprender?',
           body: [
-            'El japonés, el chino (mandarín), el cantonés, el coreano, el español, el francés, el alemán, el italiano, el portugués, el tailandés, el hindi, el árabe y el turco tienen diccionario, y una palabra coincide con su tarjeta en cualquier forma en que se diga: 갔어요 encuentra una tarjeta de 가다, y hablábamos, una de hablar. El japonés muestra furigana sobre las palabras, el chino (mandarín) muestra pinyin y el cantonés muestra Jyutping.',
-            'Los demás idiomas de {Configuración → Idiomas → Estoy aprendiendo} aparecen como limitados. Sus palabras se separan, pero aún no tienen diccionario.',
-            'El diccionario de un idioma se descarga la primera vez que lo eliges. La descarga es de 11 a 27 MB; en el disco ocupa 100 MB para el chino (mandarín), 140 MB para el francés, 200 MB para el coreano y el alemán, y 470 MB para el español. Un diccionario en tu propio idioma, cuando lo hay, es una segunda descarga de hasta 18 MB. El japonés descarga además un segundo diccionario, que sirve para separar las líneas en palabras: 46 MB, y 190 MB en el disco.',
+            'El japonés, el chino (mandarín), el cantonés, el coreano, el español, el francés, el alemán, el italiano, el portugués, el tailandés, el hindi, el árabe, el turco y el inglés tienen diccionario, y una palabra coincide con su tarjeta en cualquier forma en que se diga: 갔어요 encuentra una tarjeta de 가다, y hablábamos, una de hablar. El japonés muestra furigana sobre las palabras, el chino (mandarín) muestra pinyin y el cantonés muestra Jyutping.',
+            'El diccionario de un idioma se descarga la primera vez que lo eliges. La descarga es de 11 a 27 MB, y de 110 MB para el inglés; en el disco ocupa 100 MB para el chino (mandarín), 140 MB para el francés, 200 MB para el coreano y el alemán, 380 MB para el inglés y 470 MB para el español. Un diccionario en tu propio idioma, cuando lo hay, es una segunda descarga de hasta 21 MB. El japonés descarga además un segundo diccionario, que sirve para separar las líneas en palabras: 46 MB, y 190 MB en el disco.',
           ],
-          keywords: ['mandarín', 'cantonés', 'jyutping', 'compatibles', 'disponibles', 'soporte', 'tamaño', 'japones'],
+          keywords: ['mandarín', 'cantonés', 'jyutping', 'compatibles', 'disponibles', 'soporte', 'tamaño', 'japones', 'inglés'],
         },
         {
           id: 'q-data',

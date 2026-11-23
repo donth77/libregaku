@@ -398,6 +398,8 @@ const RECORDED: Record<string, readonly Finder[]> = {
   hi: [linguaLibre(LINGUA_LIBRE.hi ?? 'hin')],
   ar: [linguaLibre(LINGUA_LIBRE.ar ?? 'ara')],
   tr: [linguaLibre(LINGUA_LIBRE.tr ?? 'tur')],
+  // Wiktionary's own American recordings (En-us-word.ogg) have more of the common words than Lingua Libre.
+  en: [named(NAMED.en ?? 'En-us'), linguaLibre(LINGUA_LIBRE.en ?? 'eng')],
   zh: [tryAudioCmn, linguaLibre(LINGUA_LIBRE.zh ?? 'cmn')],
   yue: [linguaLibre(LINGUA_LIBRE.yue ?? 'yue')],
   ko: [named(NAMED.ko ?? 'Ko'), linguaLibre(LINGUA_LIBRE.ko ?? 'kor'), tryNaver],

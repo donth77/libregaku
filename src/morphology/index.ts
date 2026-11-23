@@ -8,6 +8,7 @@ import { THAI, joinRepeats, unrepeat } from './thai';
 import { HINDI, foldHindi, hindiEndings } from './hindi';
 import { ARABIC, ARABIC_ATTACHED, foldArabic } from './arabic';
 import { TURKISH, TURKISH_SUFFIXES, foldTurkish } from './turkish';
+import { ENGLISH, englishEndings } from './english';
 import { KoreanSegmenter } from './korean';
 import { LemmaSegmenter } from './lemma';
 import { LinderaSegmenter } from './lindera';
@@ -64,6 +65,8 @@ const BY_FORMS: Record<string, () => Segmenter> = {
   ar: () => new LemmaSegmenter('ar', ARABIC, { fold: foldArabic, grammarCounts, attached: ARABIC_ATTACHED }),
   // A stem and a chain of suffixes, read from the end (turkish.ts).
   tr: () => new LemmaSegmenter('tr', TURKISH, { respell: foldTurkish, grammarCounts, attached: TURKISH_SUFFIXES }),
+  // A possessive ('s) is not in the table of forms, and is read by its ending (english.ts).
+  en: () => new LemmaSegmenter('en', ENGLISH, { fold: straighten, grammarCounts, joinHyphens: true, endings: englishEndings }),
 };
 
 /** What turns a language's lines into words with dictionary forms. */

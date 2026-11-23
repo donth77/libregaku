@@ -90,7 +90,7 @@ describe('dictionary contract', () => {
 
   it('dict.wty-release — the pinned Wiktionary dictionaries are still downloadable, and read as the reader reads them', async () => {
     const why = describeFailure('dict.wty-release');
-    for (const language of ['es', 'ko', 'fr', 'de', 'it', 'pt', 'th', 'hi'] as const) {
+    for (const language of ['es', 'ko', 'fr', 'de', 'it', 'pt', 'th', 'hi', 'en'] as const) {
       const res = await fetchCheckingHops(wtyUrl(language, 'en'), { method: 'HEAD' }, why);
       expect(res.ok, `${wtyUrl(language, 'en')} returned HTTP ${res.status}.\n${why}`).toBe(true);
     }

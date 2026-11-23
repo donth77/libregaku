@@ -329,6 +329,10 @@ export const GAPS: Record<string, Gap[]> = {
     { word: 'ซะ', kind: ['ptcl'], glosses: ['go on and; right away (after a verb, urges it done; เสีย, as it is said: กินซะ, "eat it up")'] },
     { word: 'รึ', kind: ['conj', 'ptcl'], glosses: ['or; ... is it? (หรือ, as it is said)'] },
   ],
+  // anymore, which the file has only as another spelling of "any more": one word in 2,000 of Tatoeba's English.
+  en: [
+    { word: 'anymore', kind: ['adv'], glosses: ['any longer; no longer, with a negative (I don’t live there anymore)', 'nowadays (US, in some dialects)'] },
+  ],
   // सभी, "all, everyone" (सब and ही), is not in the file: one word in 1,100 of Tatoeba's Hindi.
   hi: [
     { word: 'सभी', kind: ['pron', 'det'], glosses: ['all, everyone; all of (सब, all, with ही, which stresses it)'] },
@@ -915,6 +919,7 @@ export const SOURCES: Record<string, Source> = {
   'wty-hi-en': wty('hi', 'en'),
   'wty-ar-en': wty('ar', 'en'),
   'wty-tr-en': wty('tr', 'en'),
+  'wty-en-en': wty('en', 'en'),
   // In the learner's own language (settings.ts, OWN_DICTIONARIES).
   'wty-ja-zh': wty('ja', 'zh'),
   'wty-ja-ko': wty('ja', 'ko'),
@@ -981,6 +986,21 @@ export const SOURCES: Record<string, Source> = {
   'wty-tr-zh': wty('tr', 'zh'),
   'wikdict-tr-de': wikdict('tr', 'de'),
   'wikdict-tr-fr': wikdict('tr', 'fr'),
+  'wty-en-ja': wty('en', 'ja'),
+  'wty-en-ko': wty('en', 'ko'),
+  'wty-en-es': wty('en', 'es'),
+  'wty-en-fr': wty('en', 'fr'),
+  'wty-en-pl': wty('en', 'pl'),
+  'wty-en-nl': wty('en', 'nl'),
+  'wty-en-vi': wty('en', 'vi'),
+  'wty-en-th': wty('en', 'th'),
+  'wikdict-en-de': wikdict('en', 'de'),
+  'wikdict-en-pt': wikdict('en', 'pt'),
+  'wikdict-en-it': wikdict('en', 'it'),
+  'wikdict-en-ru': wikdict('en', 'ru'),
+  'wikdict-en-sv': wikdict('en', 'sv'),
+  'wikdict-en-tr': wikdict('en', 'tr'),
+  'wikdict-en-id': wikdict('en', 'id'),
   [KRDICT.id]: KRDICT,
   [CANTO.id]: CANTO,
 };

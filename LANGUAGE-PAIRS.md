@@ -18,14 +18,13 @@ This page is written from the extension’s code by `node scripts/language-pairs
 | Italian | Full | Wiktionary | — |
 | Portuguese | Full | Wiktionary | — |
 | Thai | Full | Wiktionary | — |
-| English | Words only | — | — |
+| English | Full | Wiktionary | — |
 | Hindi | Full | Wiktionary | — |
 | Arabic | Full | Wiktionary | — |
 | Turkish | Full | Wiktionary | — |
 
 - **Full**: a word is looked up, and matched to your Anki cards, in whatever form it is said: hablábamos finds hablar. The form is found in the dictionary’s list of each word’s forms.
 - **Full, with an analyser**: the same, with the line split into words by an analyser that reads its grammar, as these languages need: 갔어요 finds 가다, and 食べて finds 食べる.
-- **Words only**: the line is split into words, but there are no lookups yet, and a word matches a card only as it is written.
 
 ## Your own language
 
@@ -295,6 +294,32 @@ Where a dictionary in your own language exists for a pair, a word is looked up t
 | Dutch | English | Wiktionary | Wiktionary |
 | Swedish | English | Wiktionary | Wiktionary |
 
+### Learning English
+
+| Your language | Definitions in | Dictionaries, in the order asked | Dictionary button |
+|---|---|---|---|
+| English | English | Wiktionary | Wiktionary |
+| Spanish | Spanish, then English | Wiktionary | Wiktionary |
+| French | French, then English | Wiktionary | Wiktionary |
+| German | German, then English | WikDict, then Wiktionary | Wiktionary |
+| Portuguese | Portuguese, then English | WikDict, then Wiktionary | Wiktionary |
+| Italian | Italian, then English | WikDict, then Wiktionary | Wiktionary |
+| Russian | Russian, then English | WikDict, then Wiktionary | Wiktionary |
+| Japanese | Japanese, then English | Wiktionary | Wiktionary |
+| Chinese (Simplified) | English | Wiktionary | Wiktionary |
+| Chinese (Traditional) | English | Wiktionary | Wiktionary |
+| Korean | Korean, then English | Wiktionary | Wiktionary |
+| Arabic | English | Wiktionary | Wiktionary |
+| Hindi | English | Wiktionary | Wiktionary |
+| Indonesian | Indonesian, then English | WikDict, then Wiktionary | Wiktionary |
+| Vietnamese | Vietnamese, then English | Wiktionary | Wiktionary |
+| Thai | Thai, then English | Wiktionary | Wiktionary |
+| Turkish | Turkish, then English | WikDict, then Wiktionary | Wiktionary |
+| Polish | Polish, then English | Wiktionary | Wiktionary |
+| Ukrainian | English | Wiktionary | Wiktionary |
+| Dutch | Dutch, then English | Wiktionary | Wiktionary |
+| Swedish | Swedish, then English | WikDict, then Wiktionary | Wiktionary |
+
 ### Learning Hindi
 
 | Your language | Definitions in | Dictionaries, in the order asked | Dictionary button |
@@ -373,7 +398,7 @@ Where a dictionary in your own language exists for a pair, a word is looked up t
 | Dutch | English | Wiktionary | Wiktionary |
 | Swedish | English | Wiktionary | Wiktionary |
 
-Definitions are in your own language in 85 of the 273 pairs, and in English in the rest.
+Definitions are in your own language in 100 of the 294 pairs, and in English in the rest.
 
 ## Recordings of a word
 

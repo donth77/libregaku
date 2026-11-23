@@ -76,26 +76,24 @@ pnpm typecheck
 | Japanese | Full, with furigana |
 | Chinese (Mandarin) | Full, with pinyin |
 | Cantonese | Full, with Jyutping |
-| Korean, Spanish, French, German, Italian, Portuguese, Thai, Hindi, Arabic, Turkish | Full |
-| English | Words only, for now |
+| Korean, Spanish, French, German, Italian, Portuguese, Thai, Hindi, Arabic, Turkish, English | Full |
 
 "Full" means a word is looked up, and matched to its card, in whatever form it is said:
 `갔어요` finds `가다`, and `hablábamos` finds `hablar`. An Arabic word is read without the
 little words written onto it (`وبكتابه` finds `كتاب`), and a Turkish one by its suffixes
-(`evlerimizden` finds `ev`), and the card names what each adds.
-
-"Words only" means the line is split into words, but there are no lookups yet, and a word
-matches a card only as it is written. Libregaku says so when you choose one.
+(`evlerimizden` finds `ev`), and the card names what each adds. An English past or participle
+is its verb (`went` finds `go`, `been` finds `be`).
 
 Definitions are in your own language where a dictionary in it exists for the pair, such
 as Korean explained in Spanish or Chinese in French, and in English otherwise.
 [`LANGUAGE-PAIRS.md`](LANGUAGE-PAIRS.md) lists every pair and the dictionaries it uses.
 
 Each language's dictionary is downloaded the first time you choose it. The download is
-11 to 27 MB; on disk it takes 100 MB for Chinese, 140 MB for French, 200 MB for Korean
-and German, and 470 MB for Spanish. A dictionary in your own language, where there is
-one, is a second download of up to 18 MB. Japanese also downloads a second dictionary,
-used to split lines into words: 46 MB, and 190 MB on disk.
+11 to 27 MB, and 110 MB for English; on disk it takes 100 MB for Chinese, 140 MB for
+French, 200 MB for Korean and German, 380 MB for English and 470 MB for Spanish. A
+dictionary in your own language, where there is one, is a second download of up to
+21 MB. Japanese also downloads a second dictionary, used to split lines into words:
+46 MB, and 190 MB on disk.
 
 ## Privacy
 

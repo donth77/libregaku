@@ -159,7 +159,7 @@ included, which the Korean merge tests stand on. Run it when a line is added to 
 list, and when lindera or ko-dic is bumped.
 
 `measure-forms` is for the languages read by their dictionary's table of forms (Spanish,
-French, German, Italian, Portuguese, Hindi, Arabic, Turkish, and Thai, which does not inflect: `BY_FORMS` in `src/morphology/index.ts`). It reads
+French, German, Italian, Portuguese, Hindi, Arabic, Turkish, English, and Thai, which does not inflect: `BY_FORMS` in `src/morphology/index.ts`). It reads
 20,000 Tatoeba sentences through the language's own segmenter, with the dictionary read by
 its own source, and writes how many words find an entry, the commonest that find none, and
 the commonest forms that could be more than one word with what each was read as. The hints
@@ -213,7 +213,8 @@ src/morphology/         Segmenter implementations and which language gets which 
                         of them (spanish.ts, french.ts, german.ts, italian.ts, portuguese.ts), Thai's
                         repeated words (thai.ts), the spellings and endings of Hindi words
                         (hindi.ts), the little words written onto an Arabic word (arabic.ts),
-                        the suffixes of a Turkish one (turkish.ts), the words from JMdict that IPADIC
+                        the suffixes of a Turkish one (turkish.ts), which verb an English past or
+                        participle is (english.ts), the words from JMdict that IPADIC
                         misreads, added to the analyser, and UniDic's second opinion on
                         IPADIC's reading of a line (japanese.ts, repair.ts)
 src/dict/               one dictionary per language (sources.ts): download, storage and

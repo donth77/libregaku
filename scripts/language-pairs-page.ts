@@ -110,7 +110,10 @@ export function languagePairsPage(): string {
   p();
   p('- **Full**: a word is looked up, and matched to your Anki cards, in whatever form it is said: hablábamos finds hablar. The form is found in the dictionary’s list of each word’s forms.');
   p('- **Full, with an analyser**: the same, with the line split into words by an analyser that reads its grammar, as these languages need: 갔어요 finds 가다, and 食べて finds 食べる.');
-  p('- **Words only**: the line is split into words, but there are no lookups yet, and a word matches a card only as it is written.');
+  // Said only while some language is still only split into words.
+  if (TARGET_LANGUAGES.some((t) => t.tier === 0)) {
+    p('- **Words only**: the line is split into words, but there are no lookups yet, and a word matches a card only as it is written.');
+  }
   p();
   p('## Your own language');
   p();

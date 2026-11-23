@@ -29,6 +29,7 @@ export const DICTIONARIES: Record<string, string> = {
   hi: 'wty-hi-en',
   ar: 'wty-ar-en',
   tr: 'wty-tr-en',
+  en: 'wty-en-en',
 };
 
 /**
@@ -98,6 +99,14 @@ export const OWN_DICTIONARIES: Record<string, Record<string, string>> = {
   tr: {
     ru: 'wty-tr-ru', pl: 'wty-tr-pl', zh: 'wty-tr-zh', 'zh-Hant': 'wty-tr-zh', de: 'wikdict-tr-de', fr: 'wikdict-tr-fr',
   },
+  // Wiktionary in Japanese 98%, Spanish 95%, Polish 91%, Vietnamese 91%, Korean 91%, French 91%, Dutch 89% and Thai 86%;
+  // WikDict in German 90%, Russian 90%, Portuguese 90%, Swedish 89%, Italian 89%, Turkish 83% and Indonesian 73%. Chinese
+  // has 49% in Wiktionary and 44% in WikDict, and Ukrainian, Arabic and Hindi neither.
+  en: {
+    ja: 'wty-en-ja', es: 'wty-en-es', pl: 'wty-en-pl', vi: 'wty-en-vi', ko: 'wty-en-ko', fr: 'wty-en-fr', nl: 'wty-en-nl',
+    th: 'wty-en-th', de: 'wikdict-en-de', ru: 'wikdict-en-ru', pt: 'wikdict-en-pt', sv: 'wikdict-en-sv', it: 'wikdict-en-it',
+    tr: 'wikdict-en-tr', id: 'wikdict-en-id',
+  },
 };
 
 /**
@@ -151,7 +160,7 @@ export const TARGET_LANGUAGES: Array<{ code: string; label: string; tier: 0 | 1 
   { code: 'it', label: 'Italian', tier: 1, flag: '🇮🇹' },
   { code: 'pt', label: 'Portuguese', tier: 1, flag: '🇧🇷' },
   { code: 'th', label: 'Thai', tier: 1, flag: '🇹🇭' },
-  { code: 'en', label: 'English', tier: 0, flag: '🇺🇸' },
+  { code: 'en', label: 'English', tier: 1, flag: '🇺🇸' },
   { code: 'hi', label: 'Hindi', tier: 1, flag: '🇮🇳' },
   { code: 'ar', label: 'Arabic', tier: 1, flagSvg: arabLeagueFlag },
   { code: 'tr', label: 'Turkish', tier: 1, flag: '🇹🇷' },
@@ -271,6 +280,13 @@ const LANGUAGE_FEATURES: Record<string, LanguageFeatures> = {
     characters: false,
     definitions: false,
     dictionary: { name: 'Wiktionary', url: (w) => `https://en.wiktionary.org/wiki/${encodeURIComponent(w)}#Turkish` },
+  },
+  en: {
+    readings: false,
+    characters: false,
+    definitions: false,
+    articles: true,
+    dictionary: { name: 'Wiktionary', url: (w) => `https://en.wiktionary.org/wiki/${encodeURIComponent(w)}#English` },
   },
 };
 

@@ -323,7 +323,7 @@ export const pt: HelpTranslation = {
           title: 'Por que as definições só existem em alguns idiomas?',
           body: [
             'Para o japonês, elas vêm do JMdict, que tem definições em nove idiomas. Se o seu não é um deles, {Configurações → Idiomas} mostra uma segunda opção, Definições em, para escolher o idioma a usar no lugar.',
-            'Os dicionários de chinês (mandarim), coreano, espanhol, francês, alemão, italiano, português, tailandês, hindi, árabe e turco são escritos em inglês. Quando existe um no seu idioma para o par, ele é usado primeiro.',
+            'Os dicionários de chinês (mandarim), coreano, espanhol, francês, alemão, italiano, português, tailandês, hindi, árabe, turco e inglês são escritos em inglês. Quando existe um no seu idioma para o par, ele é usado primeiro.',
           ],
           keywords: ['dicionário', 'significados', 'português', 'húngaro', 'esloveno', 'cc-cedict', 'wiktionary'],
         },
@@ -331,11 +331,10 @@ export const pt: HelpTranslation = {
           id: 'q-languages',
           title: 'Quais idiomas posso aprender?',
           body: [
-            'Japonês, chinês (mandarim), cantonês, coreano, espanhol, francês, alemão, italiano, português, tailandês, hindi, árabe e turco têm dicionário, e uma palavra é associada ao cartão dela em qualquer forma em que for dita: 갔어요 encontra um cartão de 가다, e hablábamos, um de hablar. O japonês mostra furigana acima das palavras, o chinês (mandarim) mostra pinyin e o cantonês mostra Jyutping.',
-            'Os outros idiomas em {Configurações → Idiomas → Estou aprendendo} aparecem como limitados. As palavras deles são separadas, e ainda não há dicionário.',
-            'O dicionário de um idioma é baixado na primeira vez que você o escolhe. O download tem de 11 a 27 MB; no disco, ele ocupa 100 MB para o chinês (mandarim), 140 MB para o francês, 200 MB para o coreano e o alemão e 470 MB para o espanhol. Um dicionário no seu próprio idioma, quando existe, é um segundo download de até 18 MB. O japonês também baixa um segundo dicionário, usado para separar as linhas em palavras: 46 MB, e 190 MB no disco.',
+            'Japonês, chinês (mandarim), cantonês, coreano, espanhol, francês, alemão, italiano, português, tailandês, hindi, árabe, turco e inglês têm dicionário, e uma palavra é associada ao cartão dela em qualquer forma em que for dita: 갔어요 encontra um cartão de 가다, e hablábamos, um de hablar. O japonês mostra furigana acima das palavras, o chinês (mandarim) mostra pinyin e o cantonês mostra Jyutping.',
+            'O dicionário de um idioma é baixado na primeira vez que você o escolhe. O download tem de 11 a 27 MB, e 110 MB para o inglês; no disco, ele ocupa 100 MB para o chinês (mandarim), 140 MB para o francês, 200 MB para o coreano e o alemão, 380 MB para o inglês e 470 MB para o espanhol. Um dicionário no seu próprio idioma, quando existe, é um segundo download de até 21 MB. O japonês também baixa um segundo dicionário, usado para separar as linhas em palavras: 46 MB, e 190 MB no disco.',
           ],
-          keywords: ['mandarim', 'cantonês', 'jyutping', 'compatíveis', 'suportados', 'suporte', 'tamanho', 'espaço', 'japones', 'chines'],
+          keywords: ['mandarim', 'cantonês', 'jyutping', 'compatíveis', 'suportados', 'suporte', 'tamanho', 'espaço', 'japones', 'chines', 'inglês'],
         },
         {
           id: 'q-data',
