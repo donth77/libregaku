@@ -24,6 +24,7 @@ import { DICTIONARIES } from '../src/settings';
 import { SOURCES, wikdict, wty } from '../src/dict/sources';
 import type { Entry } from '../src/dict/jmdict';
 import type { FormInfo, Inflection } from '../src/dict/store';
+import { onlySpelling } from '../src/dict/wty';
 import { analyserFor } from '../src/morphology/index';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
@@ -91,7 +92,12 @@ function formsOf(asked: string[]): Record<string, FormInfo> {
           of.push({ ...way, ...pos, senses: target.senses, ...(target.spellingOf.length ? { spellingOf: target.spellingOf } : {}) });
           continue;
         }
-        for (const hop of further) if (hop.lemma !== form) of.push({ lemma: hop.lemma, tags: way.tags, ...pos, senses: headword(hop.lemma).senses });
+        // As formsOf() does: a form of another spelling of a word is marked so, with no meanings to weigh.
+        for (const hop of further) {
+          if (hop.lemma === form) continue;
+          if (onlySpelling(hop.tags)) of.push({ lemma: hop.lemma, tags: way.tags, ...pos, senses: 0, through: way.lemma });
+          else of.push({ lemma: hop.lemma, tags: way.tags, ...pos, senses: headword(hop.lemma).senses });
+        }
       }
     }
     out[form] = { word: self.senses > 0, senses: self.senses, kind: self.kind, of };

@@ -403,15 +403,17 @@ const HABLAMOS: unknown = ['hablamos', '', 'non-lemma', 'v', 0, [
 const PIES: unknown = ['pies', '', 'non-lemma', 'np', 0, [['pie', ['plural']]], 0, ''];
 /** es term_bank_12#4244 */
 const EL: unknown = ['el', '', 'non-lemma', '', 0, [['la', ['masculine']]], 0, ''];
-/** es term_bank_34#15982 */
-const ESTA: unknown = ['está', '', 'non-lemma', 'v', 0, [
-  ['stá', ['alt-of']], ['stá', ['alternative']], ['stá', ['informal']],
+/** es term_bank_12, 2026-10-22 */
+const STA: unknown = ['stá', '', 'non-lemma', 'v', 0, [['está', ['alt-of']], ['está', ['informal alternative']]], 0, ''];
+/** es term_bank_25, 2026-10-22 */
+const FUE: unknown = ['fué', '', 'non-lemma', 'v', 0, [['fue', ['alt-of']], ['fue', ['alternative']], ['fue', ['archaic']]], 0, ''];
+/** es term_bank_12, 2026-10-22 */
+const VIDEO: unknown = ['vídeo', '', 'non-lemma', 'n', 0, [
+  ['video', ['alt-of']], ['video', ['alternative']], ['video', ['masculine']],
 ], 0, ''];
-/** es term_bank_37#16699 */
-const FUE: unknown = ['fue', '', 'non-lemma', 'v', 0, [['fué', ['alt-of']], ['fué', ['archaic']]], 0, ''];
-/** es term_bank_27#23559 */
-const VIDEO: unknown = ['video', '', 'non-lemma', 'n', 0, [
-  ['vídeo', ['alt-of']], ['vídeo', ['alternative Latin-America']], ['vídeo', ['masculine']],
+/** en term_bank_37, 2026-10-22 */
+const FAVORITE: unknown = ['favorite', '', 'non-lemma', 'adj', 0, [
+  ['favourite', ['alt-of']], ['favourite', ['alternative US']], ['favourite', ['standard']],
 ], 0, ''];
 /** es term_bank_12#3613 */
 const LAS: unknown = ['las', '', 'non-lemma', '', 0, [['ustedes', ['accusative  ; you all']]], 0, ''];
@@ -419,9 +421,9 @@ const LAS: unknown = ['las', '', 'non-lemma', '', 0, [['ustedes', ['accusative  
 const DECIRSELO: unknown = ['decírselo', '', 'non-lemma', 'v', 0, [
   ['decir combined with indirect object le/les and direct object lo', ['infinitive']],
 ], 0, ''];
-/** ko term_bank_3#24308 */
-const GEOT: unknown = ['것', '', 'non-lemma', '', 0, [
-  ['거', ['alt-of']], ['거', ['alternative']], ['거', ['dependent']],
+/** ko term_bank_3, 2026-10-22 */
+const GEO: unknown = ['거', '', 'non-lemma', '', 0, [
+  ['것', ['alt-of']], ['것', ['alternative']], ['것', ['dependent']],
 ], 0, ''];
 /** ko term_bank_3#66 */
 const YEOJA: unknown = ['女子', '', 'non-lemma', '', 0, [['여자', ['hanja form   woman; girl”)']]], 0, ''];
@@ -431,9 +433,9 @@ const NEGE: unknown = ['네게', '', 'non-lemma', '', 0, [['너', ['dative form 
 const HWA: unknown = ['火', '', 'non-lemma', '', 0, [['화', ['hanja form   Mars”)']], ['화', ['hanja form   ”)']]], 0, ''];
 /** ko term_bank_11#21847 */
 const MONYANG: unknown = ['모냥', '', 'non-lemma', '', 0, [['모양(模樣)', ['dialectal form']]], 0, ''];
-/** ko term_bank_4#2382 */
-const DANGYEON: unknown = ['당연(當然)', '', 'non-lemma', '', 0, [
-  ['당근', ['alt-of']], ['당근', ['alternative']], ['당근', ['humorous']], ['당근', ['slang']],
+/** ko term_bank_4, 2026-10-22 */
+const DANGGEUN: unknown = ['당근', '', 'non-lemma', '', 0, [
+  ['당연(當然)', ['alt-of']], ['당연(當然)', ['alternative']], ['당연(當然)', ['humorous']], ['당연(當然)', ['slang']],
 ], 0, ''];
 
 function entry(row: unknown, id = '0'): Entry {
@@ -581,14 +583,15 @@ describe('readRow, on a form', () => {
     expect('pos' in form(EL)).toBe(false);
   });
 
-  it('turns round a row that files an odd spelling under the usual word', () => {
-    expect(form(ESTA)).toEqual({ form: 'stá', of: [{ lemma: 'está', tags: ['alternative', 'informal'] }], pos: 'v' });
+  it('reads a row filed under an odd spelling as a spelling of the word it names', () => {
+    expect(form(STA)).toEqual({ form: 'stá', of: [{ lemma: 'está', tags: ['alternative', 'informal'] }], pos: 'v' });
     expect(form(FUE)).toEqual({ form: 'fué', of: [{ lemma: 'fue', tags: ['alternative', 'archaic'] }], pos: 'v' });
-    expect(form(GEOT)).toEqual({ form: '거', of: [{ lemma: '것', tags: ['alternative', 'dependent'] }] });
+    expect(form(GEO)).toEqual({ form: '거', of: [{ lemma: '것', tags: ['alternative'] }] });
   });
 
-  it('drops, from such a row, what it says the other way: video as the Latin American vídeo', () => {
-    expect(form(VIDEO)).toEqual({ form: 'vídeo', of: [{ lemma: 'video', tags: ['alternative', 'masculine'] }], pos: 'n' });
+  it('keeps of such a row only what says how the spelling stands: not where, nor what is said of the word', () => {
+    expect(form(FAVORITE)).toEqual({ form: 'favorite', of: [{ lemma: 'favourite', tags: ['alternative'] }], pos: 'adj' });
+    expect(form(VIDEO)).toEqual({ form: 'vídeo', of: [{ lemma: 'video', tags: ['alternative'] }], pos: 'n' });
   });
 
   it('ends a description at the gap where the word was cut out of it', () => {
@@ -609,7 +612,7 @@ describe('readRow, on a form', () => {
 
   it('looks for a Korean word without the Chinese characters written after it', () => {
     expect(form(MONYANG)).toEqual({ form: '모냥', of: [{ lemma: '모양', tags: ['dialectal form'] }] });
-    expect(form(DANGYEON)).toEqual({ form: '당근', of: [{ lemma: '당연', tags: ['alternative', 'humorous', 'slang'] }] });
+    expect(form(DANGGEUN)).toEqual({ form: '당근', of: [{ lemma: '당연', tags: ['alternative', 'humorous', 'slang'] }] });
   });
 
   it('takes a form with no description as a form all the same', () => {

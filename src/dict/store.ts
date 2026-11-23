@@ -1,6 +1,7 @@
 import { fetchJsonTgz } from './archive';
 import { keysFor, rank, toEntry, wordsFor, type Entry, type FormReading, type RankHint, type RawWord } from './jmdict';
 import { toKanji, type CharacterInfo, type StoredKanji } from './kanji';
+import { onlySpelling } from './wty';
 
 /**
  * The dictionary store.
@@ -343,8 +344,12 @@ export interface FormInfo {
   senses: number;
   /** What kinds of word it is, in the dictionary's own codes: n, v, prep. */
   kind: string[];
-  /** What it is a form of, where it is one, each with how many meanings that word has. */
-  of: Array<{ lemma: string; tags: string[]; pos?: string; senses: number; spellingOf?: string[] }>;
+  /**
+   * What it is a form of, where it is one, each with how many meanings that word has. `through`: the other
+   * spelling of the word this form was reached through, where the word it is a form of is only a spelling of
+   * another (ei, of aver, an old haver); the reader takes it as a spelling of that word.
+   */
+  of: Array<{ lemma: string; tags: string[]; pos?: string; senses: number; spellingOf?: string[]; through?: string }>;
 }
 
 /**
@@ -411,7 +416,12 @@ export async function formsOf(forms: string[], source: Source): Promise<Record<s
             continue;
           }
           for (const hop of further) {
-            if (hop.lemma !== form) of.push({ lemma: hop.lemma, tags: way.tags, ...pos, senses: (await headword(hop.lemma)).senses });
+            if (hop.lemma === form) continue;
+            // A form of another spelling of a word (mares, of mare, colloquial for madre; fe, of far, old for hacer)
+            // is that word only where nothing else is: marked as reached through the spelling, with no meanings to
+            // weigh (lemmaOf, src/morphology/lemma.ts).
+            if (onlySpelling(hop.tags)) of.push({ lemma: hop.lemma, tags: way.tags, ...pos, senses: 0, through: way.lemma });
+            else of.push({ lemma: hop.lemma, tags: way.tags, ...pos, senses: (await headword(hop.lemma)).senses });
           }
         }
       }

@@ -375,20 +375,38 @@ function partOf(rules: unknown): string | undefined {
 }
 
 /**
+ * The labels of another spelling worth keeping: the ones a card reads as a spelling (SPELLING in
+ * src/morphology/lemma.ts), and the ones that say who would write it so (당근 for 당연 is humorous slang).
+ * Not what is said of the word itself (masculine, uncountable), nor where (US, Latin-America): its entry says those.
+ */
+export const SPELLING_LABELS: ReadonlySet<string> = new Set([
+  'alternative', 'archaic', 'obsolete', 'dated', 'misspelling', 'nonstandard', 'rare', 'pronunciation-spelling', 'eye-dialect',
+  'informal', 'superseded', 'uncommon', 'dialectal', 'lowercase',
+  'humorous', 'slang', 'vulgar', 'colloquial', 'childish', 'offensive', 'derogatory', 'euphemistic',
+]);
+
+/** A way of being a form that is only another spelling: every word of its description is one of SPELLING_LABELS. */
+export const onlySpelling = (tags: readonly string[]): boolean =>
+  tags.length > 0 && tags.every((t) => t.split(' ').every((w) => SPELLING_LABELS.has(w)));
+
+/**
  * A row that says what `term` is a form of. Each definition is
  * [word, [description]], and a form of two words, or of one word in two
  * ways, has a definition for each.
  *
- * Except that wty writes "X is another spelling of Y" the wrong way round.
- * The row is filed under Y, the usual word, and names X as what Y is a form
- * of, with each label of the spelling a definition of its own and one of
- * them `alt-of`: under está, [stá, alt-of] [stá, alternative] [stá,
- * informal]. Read as written, fue is a form of fué and 뭐 of 머, and nothing
- * leads from the odd spelling to the word. So such a row is turned round —
- * stá is a form of está: alternative, informal. `alt-of` is kaikki's name for
- * the relation; "alternative", said first, is how wty words it where it gets
- * the direction right. Where the row also says how Y inflects from X, in a
- * description of several words, that half is dropped: one row gives one form.
+ * "X is another spelling of Y" is a row filed under X, the odd spelling,
+ * with each label of the spelling a definition of its own and one of them
+ * `alt-of`: under stá, [está, alt-of] [está, informal alternative]; under
+ * favorite, [favourite, alt-of] [favourite, alternative US] [favourite,
+ * standard]. It is read as one way of being a form: stá is está,
+ * alternative. Only the labels that say how a spelling stands are kept,
+ * one word each: "alternative US" and "standard" say nothing a card needs.
+ *
+ * wty filed these rows the other way round until its release of 22 October
+ * 2026, under the usual word, and this reader turned them round; read that
+ * way, the release after it made favorite, stá and fué lead nowhere. Of
+ * 126,550 such rows in its English file, 114,342 name a word the file has
+ * as a headword, and 411 are filed under one; Spanish's are 4,468 and 21.
  */
 function readForm(term: string, rules: unknown, definitions: unknown[]): Inflection | null {
   const of: Inflection['of'] = [];
@@ -413,15 +431,14 @@ function readForm(term: string, rules: unknown, definitions: unknown[]): Inflect
     if (!same) of.push({ lemma, tags });
   }
 
-  let form = term;
+  const form = term;
   let said = of.map((o) => ({ ...o, lemma: bare(o.lemma) }));
   if (respelt !== undefined) {
     const labels = of
       .filter((o) => o.lemma === respelt)
-      .flatMap((o) => o.tags)
-      .filter((t) => !t.includes(' ') && t !== 'alt-of');
-    form = respelt;
-    said = [{ lemma: bare(term), tags: [...new Set(['alternative', ...labels])] }];
+      .flatMap((o) => o.tags.flatMap((t) => t.split(' ')))
+      .filter((t) => SPELLING_LABELS.has(t));
+    said = [{ lemma: bare(respelt), tags: [...new Set(['alternative', ...labels])] }];
   }
   // A word is not a form of itself, whatever a row says.
   said = said.filter((o) => o.lemma !== form);

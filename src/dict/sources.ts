@@ -183,7 +183,8 @@ function oneRowEach(rows: Inflection[], unwritten: ReadonlySet<string>): Inflect
 }
 
 /** The shape of what is stored, where a language's has moved on from the rest (see `format` in wty()). */
-const WTY_FORMAT: Record<string, number> = { de: 5, ko: 6 };
+// 22 November 2026: every language one up, as rows naming another spelling are read the way wty's 22 October release writes them (wty.ts).
+const WTY_FORMAT: Record<string, number> = { de: 6, ko: 7 };
 
 /**
  * The kinds of word (wty's codes) each of an analyser's tags stands for, by language: what a row has to be
@@ -315,10 +316,10 @@ export const GAPS: Record<string, Gap[]> = {
   ],
   /*
    * Spoken Thai's particles, which the file has only as other spellings of the written ones (มั้ย of ไหม, เถอะ of
-   * เถิด). Its rows for them name the written word, the right way round, and the reader turns every such row
-   * round, as Spanish and Korean need (readForm in wty.ts), so nothing led from them to a meaning. And ไหร่, the
-   * second half of เท่าไหร่ and เมื่อไหร่, which the browser cuts in two. Together they are one word in 280 of
-   * Tatoeba's Thai.
+   * เถิด). Until 22 November 2026 the reader turned every such row round (readForm in wty.ts), so nothing led from
+   * them to a meaning; they now lead to the written word, and these entries say how each is used in speech. And
+   * ไหร่, the second half of เท่าไหร่ and เมื่อไหร่, which the browser cuts in two. Together they are one word in
+   * 280 of Tatoeba's Thai.
    */
   th: [
     { word: 'ไหร่', kind: ['pron'], glosses: ['how much, when: the second half of เท่าไหร่, "how much", and เมื่อไหร่, "when" (ไร, as it is said)'] },
@@ -475,7 +476,7 @@ export function wty(target: string, native: string): Source {
     release: WTY_REVISION,
     // Bumped when the reader (wty.ts) or the words added here (GAPS) change what is stored. By the language
     // whose words changed, so that a new word for German is not a new download of Spanish.
-    format: WTY_FORMAT[target] ?? 4,
+    format: WTY_FORMAT[target] ?? 5,
     rank: (entries: Entry[], key: string, hint?: RankHint) => {
       // One row for each part of speech a word has; the card shows one entry.
       // The row that is the role the analyser found for it first: 우리 "we", not 우리 "cage".

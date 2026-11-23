@@ -242,9 +242,11 @@ describe('the table of inflected forms', () => {
     const store = await fresh();
     const es = source();
     await store.build('en', undefined, es);
+    // her is only an old spelling of haber, so ha leads there through it, with no meanings to weigh: haber where
+    // nothing else is, and never before a word the dictionary has (mares is mar, though mare is colloquial for madre).
     expect((await store.formsOf(['ha'], es)).ha).toEqual({
       word: false, senses: 0, kind: [],
-      of: [{ lemma: 'haber', tags: ['third-person singular present subjunctive'], pos: 'v', senses: 3 }],
+      of: [{ lemma: 'haber', tags: ['third-person singular present subjunctive'], pos: 'v', senses: 0, through: 'her' }],
     });
   });
 

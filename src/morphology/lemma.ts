@@ -27,7 +27,11 @@ export interface FormInfo {
   /** What kinds of word it is, in the dictionary's codes: n, v, prep. */
   kind?: string[];
   /** What it is a form of, where it is one, each with how many meanings that word has. */
-  of: Array<{ lemma: string; tags: string[]; pos?: string; senses?: number; spellingOf?: string[] }>;
+  of: Array<{
+    lemma: string; tags: string[]; pos?: string; senses?: number; spellingOf?: string[];
+    /** The other spelling of the word this form was reached through: ei, of aver, an old haver. */
+    through?: string;
+  }>;
 }
 
 export type Forms = Record<string, FormInfo>;
@@ -48,9 +52,12 @@ const SPELLING = new Set([
   'pronunciation-spelling', 'eye-dialect', 'informal', 'superseded', 'uncommon', 'dialectal',
   // Italian i, the article, is filed as the lower case of I, the letter, as well as a form of il.
   'lowercase',
+  // Who would write it so (SPELLING_LABELS in src/dict/wty.ts): pu is Quebec's colloquial plus, not a plain form of it.
+  'humorous', 'slang', 'vulgar', 'colloquial', 'childish', 'offensive', 'derogatory', 'euphemistic',
 ]);
 
-const isSpelling = (tags: readonly string[]): boolean => tags.length > 0 && tags.every((t) => SPELLING.has(t));
+/** A way of being a form that only says how a spelling stands to another word. */
+export const isSpelling = (tags: readonly string[]): boolean => tags.length > 0 && tags.every((t) => SPELLING.has(t));
 
 /**
  * The words Wiktionary describes a form with, that the interface has names
@@ -359,7 +366,14 @@ export function lemmaOf(
   const hints = opts.hints ?? NO_HINTS;
   const lower = surface.toLocaleLowerCase(opts.locale);
   const shouted = surface.length > 1 && surface === surface.toLocaleUpperCase(opts.locale);
-  const spellings = lower === surface ? [surface] : opts.first || shouted ? [lower, surface] : [surface, lower];
+  let spellings = lower === surface ? [surface] : opts.first || shouted ? [lower, surface] : [surface, lower];
+  // A capital that opens a sentence is still the word where the lower case is only another spelling of something:
+  // Mary, though mary is an old spelling of marry.
+  const spellingOnly = (s: string): boolean => {
+    const at = forms[s];
+    return Boolean(at && !at.word && at.of.length && at.of.every((o) => isSpelling(o.tags)));
+  };
+  if (spellings[0] === lower && forms[surface]?.word && spellingOnly(lower)) spellings = [surface, lower];
   const form = spellings.find((s) => forms[s]);
   const info = form ? forms[form] : undefined;
   if (!form || !info) return { lemma: surface, inflections: [], lookup: [surface] };
@@ -385,10 +399,14 @@ export function lemmaOf(
       };
       candidates.push(c);
     }
+    // A word reached more than one way weighs what the dictionary says of it, not of the way: genossen is genießen
+    // through another spelling (no meanings to weigh) and directly.
+    c.weight = Math.max(c.weight, way.senses ?? 1);
     c.nominal ||= NOMINAL.has(way.pos ?? '');
     c.verbal ||= way.pos === 'v';
     const label = labelOf(way.tags, hints.renamed, hints.omit);
-    const into = isSpelling(way.tags) ? c.spelt : c.said;
+    // A form of another spelling of the word is, to a reader, a spelling of it: ei, of aver, is no plain form of haber.
+    const into = isSpelling(way.tags) || way.through ? c.spelt : c.said;
     if (label && !into.includes(label)) into.push(label);
   }
   // A "word" the dictionary has no entry for — her, an old form of haber — is no candidate beside one it has.
@@ -404,8 +422,13 @@ export function lemmaOf(
     const i = list.indexOf(c.lemma);
     return i < 0 ? -1 : list.length - i;
   };
+  // Of other spellings, the plainest: daß is dass, "alternative", before das, "alternative obsolete".
+  // A word reached with no spelling said at all is plainer still (fikri is fikir before fikrî, "alternative"), and so
+  // is one reached as a form as well (Hause is Haus's dative, though also through Hauß).
+  const plainSpelling = (c: Candidate): number =>
+    (c.said.length || !c.spelt.length ? 0 : -Math.min(...c.spelt.map((s) => s.split(' ').length)));
   const closest = (of: Candidate[]): Candidate | undefined =>
-    best(of, (c) => Number(c.said.length > 0), plainest, direct, rank(hints.common), (c) => c.weight);
+    best(of, (c) => Number(c.said.length > 0), plainest, direct, plainSpelling, rank(hints.common), (c) => c.weight);
   /** The forms of a verb that are it at work: conjugated, or a gerund — not a participle, which is as often a noun. */
   const working = (c: Candidate): string[] => c.said.filter((s) => (PERSON.test(s) || NONFINITE.test(s)) && !PARTICIPLE.test(s));
   /** The commonest verbs the form is a working form of, best first — plainly so when `plainly`. */
@@ -414,6 +437,8 @@ export function lemmaOf(
       others.filter((c) => list.includes(c.lemma) && working(c).some((s) => !plainly || ordinary(s) > 1)),
       (c) => Math.max(0, ...working(c).map(ordinary)), rank(list),
     );
+  /** A candidate the kind expected may choose: a form, or a spelling where the form is nothing else. */
+  const expectable = (c: Candidate): boolean => c.said.length > 0 || !pool.some((o) => o !== c && (o.self || o.said.length > 0));
   const closed = self && (info.kind ?? []).some((k) => CLOSED.has(k)) ? self : undefined;
 
   const chosen =
@@ -429,10 +454,12 @@ export function lemmaOf(
     // 3. como, para, entre.
     closed ??
     // 4. se casa, ha pasado; los estados.
-    // (A word that is itself a verb stays so: German wir tun is tun, not a form of tunen.)
-    (opts.expecting === 'verb' ? (self?.verbal ? self : closest(pool.filter((c) => c.verbal && !c.self))) : undefined) ??
+    // (A word that is itself a verb stays so: German wir tun is tun, not a form of tunen. And what a word is only
+    // another spelling of is never chosen for the kind expected over the word itself, or a form it is: de cacher is
+    // "to hide", not casher; all blew is blow, though blew is an old spelling of blue.)
+    (opts.expecting === 'verb' ? (self?.verbal ? self : closest(pool.filter((c) => c.verbal && !c.self && expectable(c)))) : undefined) ??
     (opts.expecting === 'article' || opts.expecting === 'noun'
-      ? (self?.nominal ? self : closest(others.filter((c) => c.nominal)))
+      ? (self?.nominal ? self : closest(others.filter((c) => c.nominal && expectable(c))))
       : undefined) ??
     // 5. mira, espera, llama.
     (self ? commonest(hints.common, false) : undefined) ??
