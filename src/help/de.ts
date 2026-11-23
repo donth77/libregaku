@@ -323,7 +323,7 @@ export const de: HelpTranslation = {
           title: 'Warum gibt es Definitionen nur in manchen Sprachen?',
           body: [
             'Für Japanisch kommen sie aus JMdict, das Definitionen in neun Sprachen hat. Ist deine nicht dabei, zeigt {Einstellungen → Sprachen} eine zweite Zeile, „Definitionen auf“, für die Sprache, die stattdessen verwendet wird.',
-            'Die Wörterbücher für Chinesisch (Mandarin), Koreanisch, Spanisch, Französisch, Deutsch, Italienisch, Portugiesisch, Thai, Hindi und Arabisch sind auf Englisch geschrieben. Wo es für das Sprachpaar eines in deiner Sprache gibt, wird es zuerst verwendet.',
+            'Die Wörterbücher für Chinesisch (Mandarin), Koreanisch, Spanisch, Französisch, Deutsch, Italienisch, Portugiesisch, Thai, Hindi, Arabisch und Türkisch sind auf Englisch geschrieben. Wo es für das Sprachpaar eines in deiner Sprache gibt, wird es zuerst verwendet.',
           ],
           keywords: ['definitionen', 'bedeutungen', 'sprachen', 'jmdict', 'ungarisch', 'slowenisch', 'englisch', 'cc-cedict', 'wiktionary'],
         },
@@ -331,7 +331,7 @@ export const de: HelpTranslation = {
           id: 'q-languages',
           title: 'Welche Sprachen kann ich lernen?',
           body: [
-            'Japanisch, Chinesisch (Mandarin), Kantonesisch, Koreanisch, Spanisch, Französisch, Deutsch, Italienisch, Portugiesisch, Thai, Hindi und Arabisch haben ein Wörterbuch, und ein Wort wird in jeder Form, in der es gesagt wird, seiner Karte zugeordnet: 갔어요 findet eine Karte für 가다 und hablábamos eine für hablar. Japanisch zeigt Furigana über den Wörtern, Chinesisch (Mandarin) Pinyin und Kantonesisch Jyutping.',
+            'Japanisch, Chinesisch (Mandarin), Kantonesisch, Koreanisch, Spanisch, Französisch, Deutsch, Italienisch, Portugiesisch, Thai, Hindi, Arabisch und Türkisch haben ein Wörterbuch, und ein Wort wird in jeder Form, in der es gesagt wird, seiner Karte zugeordnet: 갔어요 findet eine Karte für 가다 und hablábamos eine für hablar. Japanisch zeigt Furigana über den Wörtern, Chinesisch (Mandarin) Pinyin und Kantonesisch Jyutping.',
             'Die anderen Sprachen unter {Einstellungen → Sprachen → Ich lerne} sind als eingeschränkt markiert. Ihre Wörter werden getrennt, ein Wörterbuch gibt es noch nicht.',
             'Das Wörterbuch einer Sprache wird heruntergeladen, wenn du sie zum ersten Mal wählst. Der Download ist 11 bis 27 MB groß; auf dem Datenträger belegt es 100 MB für Chinesisch (Mandarin), 140 MB für Französisch, 200 MB für Koreanisch und Deutsch und 470 MB für Spanisch. Ein Wörterbuch in deiner eigenen Sprache ist, wo es eines gibt, ein zweiter Download von bis zu 18 MB. Japanisch lädt außerdem ein zweites Wörterbuch herunter, mit dem Zeilen in Wörter getrennt werden: 46 MB, auf dem Datenträger 190 MB.',
           ],

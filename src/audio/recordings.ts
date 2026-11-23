@@ -47,7 +47,7 @@ export const COMMONS_FILES = 'https://upload.wikimedia.org/wikipedia/commons/';
 const COMMONS_PAGES = 'https://commons.wikimedia.org/wiki/File:';
 
 /** Lingua Libre's name for a language, in its file names and categories: ISO 639-3. */
-export const LINGUA_LIBRE: Readonly<Record<string, string>> = { es: 'spa', zh: 'cmn', yue: 'yue', ko: 'kor', fr: 'fra', de: 'deu', ja: 'jpn', it: 'ita', pt: 'por', th: 'tha', hi: 'hin', ar: 'ara' };
+export const LINGUA_LIBRE: Readonly<Record<string, string>> = { es: 'spa', zh: 'cmn', yue: 'yue', ko: 'kor', fr: 'fra', de: 'deu', ja: 'jpn', it: 'ita', pt: 'por', th: 'tha', hi: 'hin', ar: 'ara', tr: 'tur' };
 
 /** The start of the name of Wiktionary's own recordings of a language, where they are named for the word alone. */
 export const NAMED: Readonly<Record<string, string>> = { ko: 'Ko' };

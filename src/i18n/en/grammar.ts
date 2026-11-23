@@ -337,8 +337,8 @@ export const grammar = {
   /** A noun with another after it that owns it, "the X of": Arabic كتاب الطالب, "the student's book". */
   construct: 'construct',
 
-  // What the little words written onto an Arabic word add (src/morphology/arabic.ts). Each is said in the
-  // learner's own words: what it means, short.
+  // What the little words written onto an Arabic word add (src/morphology/arabic.ts), and what the endings of a
+  // Turkish one do (src/morphology/turkish.ts). Each is said in the learner's own words: what it means, short.
   /** و written onto a word: وكتاب, "and a book". */
   'attached-and': 'and',
   /** ف written onto a word: فذهب, "so he went". */
@@ -349,17 +349,19 @@ export const grammar = {
   'attached-for': 'for, to',
   /** ك written onto a word: كالأسد, "like a lion". */
   'attached-like': 'like, as',
-  /** "My" on the end of a noun: Arabic كتابي, "my book". */
+  /** "My" on the end of a noun: Arabic كتابي, "my book"; Turkish evim, "my house". */
   'attached-my': 'my',
-  /** "Your", to one or more: Arabic كتابك, كتابكم. */
+  /** "Your", to one or more: Arabic كتابك, Turkish evin, eviniz. */
   'attached-your': 'your',
   /** Arabic ـه on a noun: كتابه, "his book", or "its". */
   'attached-his': 'his, its',
   /** Arabic ـها on a noun: كتابها, "her book", or "its". */
   'attached-her': 'her, its',
-  /** Arabic كتابنا, "our book". */
+  /** Turkish -(s)I, which says nothing of whether a he or a she: evi, "his, her or its house". */
+  'attached-its': 'his, her, its',
+  /** Arabic كتابنا, "our book"; Turkish evimiz, "our house". */
   'attached-our': 'our',
-  /** Arabic كتابهم, "their book". */
+  /** Arabic كتابهم, "their book"; Turkish evleri, "their house". */
   'attached-their': 'their',
   /** "Me" on the end of a verb or a preposition: Arabic يحبني, "he loves me"; لي, "for me". */
   'attached-me': 'me',
@@ -373,4 +375,18 @@ export const grammar = {
   'attached-us': 'us',
   /** Arabic يحبهم, "he loves them"; لهم, "for them". */
   'attached-them': 'them',
+  /** The Turkish case of where: evde, "in the house". */
+  locative: 'locative',
+  /** The Turkish case of where from: evden, "from the house". */
+  ablative: 'ablative',
+  /** Turkish -(y)lA, "with" or "by": arabayla, "by car"; onunla, "with him". */
+  instrumental: 'instrumental',
+  /** Turkish -ki, "the one that is": dünyadaki, "(the one) in the world"; sonraki, "the next". */
+  'that-is': 'that is',
+  /** Turkish -DIr, which states a thing as fact or as a general truth: vardır, "there is". */
+  assertive: 'stated as fact',
+  /** The Turkish aorist, for what happens as a rule, or is offered: gelir, "comes, will come". */
+  habitual: 'habitual',
+  /** Turkish -lI, "with" or "from": şekerli, "with sugar"; nereli, "from where". */
+  having: 'having, from',
 };

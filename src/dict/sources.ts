@@ -7,6 +7,7 @@ import { wikdictEntries, wikdictUrl } from './wikdict';
 import { formIn, mergeByWord, onlyForm, readRow, type Inflection } from './wty';
 import { foldArabic } from '../morphology/arabic';
 import { foldHindi } from '../morphology/hindi';
+import { foldTurkish } from '../morphology/turkish';
 import { zipFiles } from './zip';
 
 /**
@@ -110,7 +111,7 @@ export function wtyUrl(target: string, native: string): string {
  * each form is kept under it as well, as another way of writing the word, so the line's spelling leads to the
  * dictionary's and a card is made for the dictionary's.
  */
-const RESPELL: Record<string, (word: string) => string> = { hi: foldHindi };
+const RESPELL: Record<string, (word: string) => string> = { hi: foldHindi, tr: foldTurkish };
 
 /**
  * How a language's forms name the word they are a form of, where the file writes that otherwise than the
@@ -132,6 +133,32 @@ const UNWRITTEN: Record<string, ReadonlySet<string>> = {
     'ar-infl-an-alef', 'ar-infl-awna',
   ]),
 };
+
+/**
+ * Languages whose table of forms names rightly the word each form is of and describes the form wrongly: its
+ * Turkish verbs' descriptions are often the next row's (geliyorum, "I am coming", is third-person). Their forms
+ * are stored with only what says how a spelling stands to another, and the analyser names the suffixes
+ * (src/morphology/turkish.ts).
+ */
+const UNDESCRIBED: ReadonlySet<string> = new Set(['tr']);
+
+/** How many letters after the stem a stored Turkish form has at most (READ_BY_SUFFIXES). */
+const LONG_CHAIN = 6;
+/**
+ * Forms a language's analyser reads by itself, left out of what is stored: a Turkish form with more than
+ * LONG_CHAIN letters after its word's stem (evlerimizden, of ev; gelmeyeceğim, of gelmek) is read by the
+ * suffixes (src/morphology/turkish.ts). The shorter ones are kept, and those whose stem is written otherwise
+ * (kitabı, of kitap; gidiyor, of gitmek): 945,000 of Wiktionary's 2.7 million. Keeping only the second kind
+ * found 2.4 points fewer of Tatoeba's words.
+ */
+const READ_BY_SUFFIXES: Record<string, (form: string, lemma: string) => boolean> = {
+  tr: (form, lemma) => {
+    const stem = /m[ae]k$/.test(lemma) ? lemma.slice(0, -3) : lemma;
+    return form.startsWith(stem) && form.length - stem.length > LONG_CHAIN;
+  },
+};
+/** What is kept of an UNDESCRIBED language's descriptions. */
+const SPELLING_TAGS = new Set(['alternative', 'alt-of', 'misspelling', 'nonstandard', 'obsolete', 'archaic', 'dated', 'informal', 'rare']);
 
 /** A description with what UNWRITTEN leaves out of it left out: "nominative/accusative singular definite" is "singular definite". */
 const written = (tags: readonly string[], unwritten: ReadonlySet<string>): string[] => [...new Set(tags
@@ -438,6 +465,8 @@ export function wty(target: string, native: string): Source {
   const respell = RESPELL[target];
   const lemmaKey = LEMMA_KEY[target];
   const unwritten = UNWRITTEN[target];
+  const undescribed = UNDESCRIBED.has(target);
+  const bySuffixes = READ_BY_SUFFIXES[target];
   /** The token is one the analyser calls a particle. */
   const isParticle = (hint?: RankHint): boolean => Boolean(particle && hint?.pos && particle.test(hint.pos));
   return {
@@ -506,9 +535,15 @@ export function wty(target: string, native: string): Source {
                 const key = respell?.(row.entry.word);
                 if (key && key !== row.entry.word) batch.inflections.push({ form: key, of: [{ lemma: row.entry.word, tags: ['alternative'] }] });
               } else {
-                const inflection = lemmaKey
+                let inflection = lemmaKey
                   ? { ...row.inflection, of: row.inflection.of.map((o) => ({ ...o, lemma: lemmaKey(o.lemma) })).filter((o) => o.lemma !== row.inflection.form) }
                   : row.inflection;
+                // Read by the analyser where every word it is a form of is its stem and suffixes.
+                if (bySuffixes && inflection.of.every((o) => bySuffixes(inflection.form, o.lemma))) continue;
+                if (undescribed) {
+                  const of = inflection.of.map((o) => ({ ...o, tags: o.tags.filter((t) => SPELLING_TAGS.has(t)) }));
+                  inflection = { ...inflection, of: of.filter((o, i) => of.findIndex((x) => x.lemma === o.lemma && x.tags.join() === o.tags.join()) === i) };
+                }
                 if (!inflection.of.length) continue;
                 batch.inflections.push(inflection);
                 const key = respell?.(inflection.form);
@@ -878,6 +913,7 @@ export const SOURCES: Record<string, Source> = {
   'wty-th-en': wty('th', 'en'),
   'wty-hi-en': wty('hi', 'en'),
   'wty-ar-en': wty('ar', 'en'),
+  'wty-tr-en': wty('tr', 'en'),
   // In the learner's own language (settings.ts, OWN_DICTIONARIES).
   'wty-ja-zh': wty('ja', 'zh'),
   'wty-ja-ko': wty('ja', 'ko'),
@@ -939,6 +975,11 @@ export const SOURCES: Record<string, Source> = {
   'wty-ar-pl': wty('ar', 'pl'),
   'wty-ar-ru': wty('ar', 'ru'),
   'wty-ar-fr': wty('ar', 'fr'),
+  'wty-tr-ru': wty('tr', 'ru'),
+  'wty-tr-pl': wty('tr', 'pl'),
+  'wty-tr-zh': wty('tr', 'zh'),
+  'wikdict-tr-de': wikdict('tr', 'de'),
+  'wikdict-tr-fr': wikdict('tr', 'fr'),
   [KRDICT.id]: KRDICT,
   [CANTO.id]: CANTO,
 };
