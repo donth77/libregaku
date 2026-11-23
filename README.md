@@ -13,9 +13,9 @@
   <img alt="Manifest V3" src="https://img.shields.io/badge/Manifest-V3-informational">
 </p>
 
-Clickable subtitles for YouTube, Netflix, Disney+, Prime Video, HBO Max, Apple TV and Viki, with a dictionary
-and a transcript. Make
-Anki cards from any word or sentence. Free and open source.
+Clickable subtitles for YouTube, Netflix, Disney+, Prime Video, HBO Max, Apple TV and Viki,
+with a dictionary and a transcript. Make Anki cards from any word or sentence. Free and open
+source.
 
 ---
 
@@ -78,23 +78,6 @@ pnpm typecheck
 | Cantonese | Full, with Jyutping |
 | Korean, Spanish, French, German, Italian, Portuguese, Thai, Hindi, Arabic, Turkish, English | Full |
 
-"Full" means a word is looked up, and matched to its card, in whatever form it is said:
-`갔어요` finds `가다`, and `hablábamos` finds `hablar`. An Arabic word is read without the
-little words written onto it (`وبكتابه` finds `كتاب`), and a Turkish one by its suffixes
-(`evlerimizden` finds `ev`), and the card names what each adds. An English past or participle
-is its verb (`went` finds `go`, `been` finds `be`).
-
-Definitions are in your own language where a dictionary in it exists for the pair, such
-as Korean explained in Spanish or Chinese in French, and in English otherwise.
-[`LANGUAGE-PAIRS.md`](LANGUAGE-PAIRS.md) lists every pair and the dictionaries it uses.
-
-Each language's dictionary is downloaded the first time you choose it. The download is
-11 to 27 MB, and 110 MB for English; on disk it takes 100 MB for Chinese, 140 MB for
-French, 200 MB for Korean and German, 380 MB for English and 470 MB for Spanish. A
-dictionary in your own language, where there is one, is a second download of up to
-21 MB. Japanese also downloads a second dictionary, used to split lines into words:
-46 MB, and 190 MB on disk.
-
 ## Privacy
 
 No account, no server, and nothing collected. [`PRIVACY.md`](PRIVACY.md) lists the few
@@ -103,38 +86,5 @@ times a word or a download request leaves your computer, and to whom.
 
 ## Licence
 
-The code is MIT. See [`LICENSE`](LICENSE).
-
-Dictionary data has its own licences. It's downloaded when you use it, not shipped with
-the extension. There are three exceptions, and each keeps its source's licence:
-
-- Small samples used in tests: JMdict (`src/dict/__tests__/fixtures/jmdict-frequent.ts`),
-  and a few lines of the other dictionaries inside their tests.
-- `src/dict/zh-readings.ts`, a 9 KB table of which reading a Chinese character shows
-  first. It is built from Unihan and CC-CEDICT by `scripts/build-zh-readings.mjs`.
-- `src/dict/kana-verbs.ts`, a 42 KB table of which verb a Japanese verb written in kana
-  is. It is learned from Tatoeba's sentences by `scripts/compare-unidic.mjs`.
-
-The sources:
-
-- [JMdict / KANJIDIC2](https://www.edrdg.org/): Electronic Dictionary Research and
-  Development Group, CC BY-SA 4.0
-- [CC-CEDICT](https://www.mdbg.net/chinese/dictionary?page=cc-cedict): MDBG, CC BY-SA 4.0
-- [CC-Canto](https://cantonese.org/): Pleco, CC BY-SA 3.0
-- [kaikki.org](https://kaikki.org/): Wiktionary via Wiktextract, CC BY-SA, as packaged
-  by [wiktionary-to-yomitan](https://github.com/yomidevs/wiktionary-to-yomitan)
-- [WikDict](https://www.wikdict.com/): Wiktionary via DBnary, by Karl Bartel, CC BY-SA 4.0
-- [KRDict](https://krdict.korean.go.kr/) (한국어기초사전): National Institute of Korean
-  Language, CC BY-SA 2.0 KR, as packaged by
-  [yomitan-ko-dic](https://github.com/Lyroxide/yomitan-ko-dic)
-- [CFDICT](https://github.com/licryle/CxDICT): chine.in, kept up to date by CxDICT,
-  CC BY-SA 4.0
-- [HanDeDict](https://handedict.zydeo.net/): HanDeDict and its contributors, CC BY-SA 3.0
-- [Lingua Libre](https://commons.wikimedia.org/wiki/Commons:Lingua_Libre) recordings on
-  Wikimedia Commons: each under its own licence, CC BY-SA 4.0 for most, named with its
-  speaker where it plays and on the card
-- [audio-cmn](https://github.com/hugolpz/audio-cmn): Yue Tan, University of Caen,
-  CC BY-SA 3.0 US
-- [Unihan](https://www.unicode.org/reports/tr38/): Unicode, Inc., Unicode License
-- [Tatoeba](https://tatoeba.org/): Tatoeba contributors, CC BY 2.0 FR
-- [Lindera](https://github.com/lindera/lindera) dictionaries: each has its own terms
+The code is MIT ([`LICENSE`](LICENSE)). The dictionaries, recordings and other data it uses
+keep their own licences: [`SOURCES.md`](SOURCES.md) lists each, with what it gives.

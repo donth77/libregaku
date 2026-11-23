@@ -263,6 +263,8 @@ src/logo.ts             the logo in the popup, options page and player bar, impo
 brand/                  logo masters (SVG), PNG exports, and how to use them
 LANGUAGE-PAIRS.md       every language pair and its dictionaries, written by scripts/language-pairs.mjs
 SUPPORTED-SITES.md      the sites it works on, by hand
+SOURCES.md              every dictionary, recording and data source and its licence, by hand: a new
+                        source adds a row here and a credit in the settings panel (settings-panel.ts)
 PRIVACY.md, TERMS.md    the privacy policy and terms the store listing links: change PRIVACY.md with
                         any change to what leaves the learner's computer
 scripts/                check-captions.mjs, diagnose.js, compare-words.mjs, measure-word.mjs, audit-cuts.mjs, compare-unidic.mjs,
