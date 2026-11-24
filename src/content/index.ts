@@ -2030,6 +2030,22 @@ for (const a of ADAPTERS) {
   });
 }
 
+// A title's page can sit for minutes before Play: Prime Video's lists the title's tracks, then
+// opens its player over the same page when Play is pressed, the address and the list as they were,
+// so nothing above fires. Waiting gave up long before. A video starting to play anywhere on the
+// page is the cue to look again. Media events do not bubble, so this listens as they go down.
+document.addEventListener(
+  'playing',
+  () => {
+    if (rendering || starting || retries <= MAX_RETRIES) return;
+    retries = 0;
+    stalledOn = null;
+    clearNotice();
+    void start();
+  },
+  true,
+);
+
 /**
  * A track list that arrives once the page has settled on an earlier one.
  *

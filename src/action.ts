@@ -2,9 +2,9 @@ import { queuedCards } from './anki/card-queue';
 import { probe, type AnkiState } from './anki/client';
 import { ANKI_PORT } from './anki/endpoint';
 import type { CaptureFailure } from './audio/tab-capture';
-import { loadUiLanguage, localize, setTranslationLoader, setUiLanguage, ui, uiLocale } from './i18n';
+import { learningLabel, loadUiLanguage, localize, setTranslationLoader, setUiLanguage, ui, uiLocale } from './i18n';
 import { logo } from './logo';
-import { loadSettings, onSettingsChange, settings } from './settings';
+import { loadSettings, onSettingsChange, setSetting, settings, TARGET_LANGUAGES } from './settings';
 import type { TrackInfo } from './adapters/types';
 import { studyTracks, translationTracks } from './content/track-choice';
 import { markSites, siteInfo } from './site-info';
@@ -65,11 +65,14 @@ function siteName(site: string | null): string {
 /** The site a tab is on, by its address, where it is one the extension works on. */
 export function siteOfUrl(url: string | undefined): string | null {
   let host = '';
+  let path = '';
   try {
-    host = new URL(url ?? '').hostname;
+    ({ hostname: host, pathname: path } = new URL(url ?? ''));
   } catch {
     return null;
   }
+  // Prime Video on amazon.com is its /gp/video/ pages; the rest of amazon.com is a shop.
+  if (host === 'www.amazon.com' && path.startsWith('/gp/video/')) return 'prime';
   const on = (domain: string): boolean => host === domain || host.endsWith(`.${domain}`);
   if (on('youtube.com')) return 'youtube';
   if (on('netflix.com')) return 'netflix';
@@ -158,6 +161,24 @@ async function main(): Promise<void> {
   await loadUiLanguage(settings().native);
   localize(document);
   onSettingsChange((s) => setUiLanguage(s.native));
+
+  // The language being learned, here as well as in settings: a video without subtitles in it is
+  // where a learner finds out, and the subtitles' picker can only offer that language's tracks.
+  const target = $<HTMLSelectElement>('target');
+  const fillTarget = (): void => {
+    target.replaceChildren(...TARGET_LANGUAGES.map((l) => {
+      const o = document.createElement('option');
+      o.value = l.code;
+      o.textContent = l.tier > 0 ? learningLabel(l.code) : ui.settings.targetLimited(learningLabel(l.code));
+      return o;
+    }));
+    target.value = settings().target;
+  };
+  fillTarget();
+  target.addEventListener('change', () => void setSetting('target', target.value));
+  onSettingsChange((s) => {
+    if (target.value !== s.target) target.value = s.target;
+  });
 
   const state = tab?.id ? await askPage(tab.id, { type: 'lg-state' }) : null;
 

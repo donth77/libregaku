@@ -9,7 +9,7 @@ nothing to show, and Libregaku says so. It does not machine-translate missing su
 | YouTube | www.youtube.com | From the video | Yes |
 | Netflix | www.netflix.com | Recorded from the tab | No |
 | Disney+ | www.disneyplus.com | Recorded from the tab | No |
-| Prime Video | www.primevideo.com | Recorded from the tab | No |
+| Prime Video | www.primevideo.com, www.amazon.com/gp/video | Recorded from the tab | No |
 | HBO Max | play.hbomax.com, www.hbomax.com | Recorded from the tab | No |
 | Apple TV | tv.apple.com | Recorded from the tab | No |
 | Viki | www.viki.com | Recorded from the tab | No |

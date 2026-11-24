@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { trackLanguageMatch } from '../../settings';
-import { asTracks, languageOf, nativeTracksFor, titleFrom, titleIdOf } from '../apple';
+import { AppleAdapter, asTracks, assetOf, languageOf, nativeTracksFor, playingTitle, titleFrom, titleIdOf } from '../apple';
 import { subtitleRenditions } from '../hls';
 
 // As a title's master playlist lists them: each language once per CDN, Mandarin as cmn.
@@ -123,5 +123,96 @@ describe('titleFrom', () => {
   it('has nothing to say on a page with only the site for a title', () => {
     expect(titleFrom('‎Apple TV')).toBeNull();
     expect(titleFrom('')).toBeNull();
+  });
+});
+
+describe('assetOf', () => {
+  it('reads the asset a master playlist plays', () => {
+    expect(assetOf(`${BASE}?cc=US&svcId=tvs.vds.4105&a=1896604731&isExternal=true&id=1530330119&l=en-US`)).toBe('1896604731');
+  });
+
+  it('is null for a playlist that names none, or names it oddly', () => {
+    expect(assetOf(BASE)).toBeNull();
+    expect(assetOf(`${BASE}?a=abc`)).toBeNull();
+    expect(assetOf('not a url')).toBeNull();
+  });
+});
+
+/** The player as tv.apple.com draws it: a dialog over the page, its <video>, and the names under the picture. */
+function openPlayer(show: string, episode: string | null, label: string): HTMLDialogElement {
+  const dialog = document.createElement('dialog');
+  dialog.setAttribute('data-testid', 'playback-view');
+  dialog.className = 'playback-view is-playback-active';
+  dialog.setAttribute('aria-label', label);
+  dialog.setAttribute('open', '');
+  dialog.innerHTML =
+    '<div data-testid="video-player" class="video-player"><div data-testid="video-container"><video></video></div>' +
+    `<div class="video-metadata">${episode === null ? '' : `<div data-testid="player-metadata-subtitle" class="subtitle"> ${episode} </div>`}` +
+    `<div data-testid="player-metadata-title" class="title">${show}</div></div></div>`;
+  document.body.appendChild(dialog);
+  return dialog;
+}
+
+describe('the player over any page', () => {
+  afterEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it('names the show and the episode as the player does', () => {
+    expect(playingTitle(openPlayer('Silo', 'S3, E10 · Troy', 'Troy'))).toBe('Silo · S3, E10 · Troy');
+  });
+
+  it('names a film once', () => {
+    expect(playingTitle(openPlayer('Arrival', null, 'Arrival'))).toBe('Arrival');
+  });
+
+  it('takes the dialog\'s own name where the player shows no episode line', () => {
+    expect(playingTitle(openPlayer('Silo', null, 'Troy'))).toBe('Silo · Troy');
+  });
+
+  it('starts on any Apple TV page once the player is open, and on a title\'s page before', () => {
+    const apple = new AppleAdapter();
+    // Every page has the dialog, open and empty, before anything plays.
+    const idle = document.createElement('dialog');
+    idle.setAttribute('data-testid', 'playback-view');
+    idle.className = 'playback-view is-initial-load';
+    idle.setAttribute('open', '');
+    document.body.appendChild(idle);
+    expect(apple.matches('https://tv.apple.com/')).toBe(false);
+    idle.remove();
+    expect(apple.matches('https://tv.apple.com/us/search?term=silo')).toBe(false);
+    expect(apple.matches('https://tv.apple.com/us/show/pachinko/umc.cmc.17vf6g68dy89kk1l1nnb6min4')).toBe(true);
+    expect(apple.matches('https://tv.apple.com/show/pachinko/umc.cmc.17vf6g68dy89kk1l1nnb6min4')).toBe(true);
+    const dialog = openPlayer('Silo', 'S3, E10 · Troy', 'Troy');
+    expect(apple.matches('https://tv.apple.com/')).toBe(true);
+    expect(apple.matches('https://tv.apple.com/us/search?term=silo')).toBe(true);
+    expect(apple.matches('https://www.youtube.com/watch?v=x')).toBe(false);
+    expect(apple.video()).toBe(dialog.querySelector('video'));
+    expect(apple.title()).toBe('Silo · S3, E10 · Troy');
+    dialog.removeAttribute('open');
+    expect(apple.matches('https://tv.apple.com/')).toBe(false);
+  });
+
+  it('takes another asset in the player for another title, and keeps its tracks', async () => {
+    const apple = new AppleAdapter();
+    const navigated = vi.fn();
+    apple.onNavigate(navigated);
+    const master = (a: string): void => {
+      window.dispatchEvent(new MessageEvent('message', {
+        source: window,
+        data: { source: 'libregaku', kind: 'apple-master', url: `${BASE}?cc=US&a=${a}`, text: `${MASTER}\n#EXT-X-STREAM-INF:BANDWIDTH=1\nv.m3u8` },
+      }));
+    };
+    master('1896604731');
+    expect(apple.videoId()).toBe('1896604731');
+    expect(navigated).not.toHaveBeenCalled();
+    // The same playlist again, as the player fetches it twice: nothing new.
+    master('1896604731');
+    expect(navigated).not.toHaveBeenCalled();
+    // The next episode, in the same player under the same address.
+    master('1896604732');
+    expect(navigated).toHaveBeenCalledTimes(1);
+    expect(apple.videoId()).toBe('1896604732');
+    expect((await apple.listTracks()).length).toBeGreaterThan(0);
   });
 });

@@ -34,6 +34,17 @@ describe('subtitleRenditions', () => {
     expect([th?.cc, th?.forced]).toEqual([false, false]);
     expect(en?.forced).toBe(true);
   });
+
+  it('leaves out a track of no language, the only one a clip played inside a title has', () => {
+    const clip = [
+      '#EXTM3U',
+      '#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="sub-main",NAME="No linguistic content",LANGUAGE="zxx",AUTOSELECT=YES,FORCED=NO,URI="r/e2a4/ef1e-MAIN/06/SUBTITLE_1_WEBVTT/subtitles_1.m3u8"',
+      '#EXT-X-STREAM-INF:BANDWIDTH=1800000,SUBTITLES="sub-main"',
+      'r/1800k.m3u8',
+    ].join('\n');
+    expect(subtitleRenditions(clip, BASE)).toEqual([]);
+    expect(subtitleRenditions(master, BASE)).toHaveLength(3);
+  });
 });
 
 describe('segmentUrls', () => {

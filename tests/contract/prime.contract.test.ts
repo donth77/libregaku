@@ -27,7 +27,10 @@ const UA =
   '(KHTML, like Gecko) Chrome/126.0 Safari/537.36';
 const HEADERS = { 'user-agent': UA, 'accept-language': 'en-US,en;q=0.9' };
 
-const CLIENT = /https:\/\/m\.media-amazon\.com\/images\/S\/sash\/[^"'\s<>\\]+DVWebClient_[a-z]+\.[0-9a-f]+\.js/g;
+// A bundle's name may have a hyphen: since November 2026 the one that names the player is
+// …/sash/<hash>.js?DVWebClient_page-detail.<hash>.js, which [a-z]+ never matched, so the check
+// read every bundle but that one and reported the player's id gone.
+const CLIENT = /https:\/\/m\.media-amazon\.com\/images\/S\/sash\/[^"'\s<>\\]+DVWebClient_[a-z-]+\.[0-9a-f]+\.js/g;
 
 /**
  * Why this runner was not shown the storefront, where it was not. Amazon

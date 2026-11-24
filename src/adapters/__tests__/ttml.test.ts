@@ -287,4 +287,14 @@ describe('parseVtt', () => {
   it('skips a cue that is nothing but tags', () => {
     expect(parseVtt('WEBVTT\n\n00:00:01.000 --> 00:00:02.000\n<c.japanese></c.japanese>\n')).toEqual([]);
   });
+
+  it('skips a cue of nothing that shows, as Apple TV\'s Japanese files have, and keeps the marks inside a line', () => {
+    // A lone zero-width space, as a cue of Silo's Japanese track holds it.
+    expect(parseVtt('WEBVTT\n\n00:02:32.000 --> 00:02:33.000\n​\n')).toEqual([]);
+    expect(parseVtt('WEBVTT\n\n00:00:01.000 --> 00:00:02.000\n﻿ ​\n‍\n')).toEqual([]);
+    const cues = parseVtt('WEBVTT\n\n00:00:01.000 --> 00:00:02.000\n​\nトロイ\n');
+    expect(cues[0]?.text).toBe('トロイ');
+    // A joiner that belongs to a word is left alone.
+    expect(parseVtt('WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nक्‍ष\n')[0]?.text).toBe('क्‍ष');
+  });
 });

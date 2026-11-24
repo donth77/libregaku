@@ -99,6 +99,11 @@ export class DisneyAdapter implements SubtitleSource {
     join: '\n',
   };
   readonly playerRoot = [
+    // Since November 2026 the player is two fixed layers side by side: <dwp-player-everywhere>
+    // with the <video>, then the controls' layer, which paints over it and takes the pointer.
+    // Mounted under the first, the words could not be hovered (dp.player-layers). The controls'
+    // layer has only hashed class names, so it is found by what it holds.
+    'div:has(> disney-web-player-ui)',
     '[data-testid="disney-web-player-wrapper"]',
     '[data-testid="disney-web-player-container"]',
     '[data-testid="playback-view"]',

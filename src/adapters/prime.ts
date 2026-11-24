@@ -134,9 +134,13 @@ export class PrimeAdapter implements SubtitleSource {
     window.postMessage({ source: TAG, kind: 'pv-request-tracks' }, '*');
   }
 
-  /** A title's page: the player opens over it, and the address does not change when it does. */
+  /**
+   * A title's page: the player opens over it, and the address does not change when it does.
+   * In the United States Prime Video is as often watched on amazon.com, under /gp/video/, with the
+   * same web client (pv.amazon).
+   */
   matches(url: string): boolean {
-    return /^https:\/\/(www\.)?primevideo\.com\/.*\/?detail\//.test(url);
+    return /^https:\/\/(www\.)?primevideo\.com\/.*\/?detail\//.test(url) || /^https:\/\/www\.amazon\.com\/gp\/video\/(?:.*\/)?detail\//.test(url);
   }
 
   /**
@@ -164,10 +168,12 @@ export class PrimeAdapter implements SubtitleSource {
     return named || null;
   }
 
-  /** The title's own Play link, which carries the second to start at. */
+  /** The title's own Play link, which carries the second to start at, on the site it was watched on. */
   deepLink(seconds: number): string | null {
     const id = detailIdOf(location.pathname);
-    return id ? `https://www.primevideo.com/detail/${id}?autoplay=1&t=${Math.max(0, Math.floor(seconds))}` : null;
+    if (!id) return null;
+    const page = location.hostname === 'www.amazon.com' ? 'https://www.amazon.com/gp/video/detail' : 'https://www.primevideo.com/detail';
+    return `${page}/${id}?autoplay=1&t=${Math.max(0, Math.floor(seconds))}`;
   }
 
   async listTracks(): Promise<TrackInfo[]> {

@@ -39,7 +39,12 @@ function resolve(uri: string, base: string): string | null {
   }
 }
 
-/** The subtitle renditions a master playlist lists, in its order. */
+/**
+ * The subtitle renditions a master playlist lists, in its order. A rendition of no language
+ * (`zxx`, "No linguistic content") is left out: it is never a track to study or to read beside
+ * one. Disney+ plays a short clip inside a title from a playlist of its own whose only subtitles
+ * are one of those (dp.interstitial), and it would otherwise stand in for the title's own list.
+ */
 export function subtitleRenditions(master: string, base: string): HlsRendition[] {
   const out: HlsRendition[] = [];
   for (const raw of master.split(/\r?\n/)) {
@@ -47,6 +52,7 @@ export function subtitleRenditions(master: string, base: string): HlsRendition[]
     if (!/^#EXT-X-MEDIA:/i.test(line)) continue;
     const a = attributesOf(line.slice(line.indexOf(':') + 1));
     if ((a.TYPE ?? '').toUpperCase() !== 'SUBTITLES' || !a.URI) continue;
+    if (/^zxx$/i.test(a.LANGUAGE ?? '')) continue;
     const uri = resolve(a.URI, base);
     if (!uri) continue;
     const name = a.NAME ?? '';

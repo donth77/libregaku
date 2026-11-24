@@ -411,11 +411,39 @@ export const ASSUMPTIONS: Assumption[] = [
     fallback: 'The <video>\'s own clock, which is right only for a session that began at the start and never seeked',
   },
   {
+    id: 'dp.player-layers',
+    site: 'disney',
+    claim: 'The player is two fixed layers under one parent: <dwp-player-everywhere>, holding <disney-web-player> and its <video>, and after it a div holding <disney-web-player-ui>, the controls and Disney\'s own subtitles, which paints over the first and takes the pointer',
+    breaks: 'The lines show, but their words cannot be hovered or clicked: Disney\'s controls take the pointer. The bar and the panel the same',
+    fallback: 'The player wrappers Disney+ had before, then <disney-web-player>, where everything shows but the pointer goes to the controls',
+  },
+  {
+    id: 'dp.interstitial',
+    site: 'disney',
+    claim: 'A short clip played inside a title comes from a master playlist of its own (an unencrypted one, under /int/), fetched after the title\'s, whose only subtitle rendition has LANGUAGE="zxx", No linguistic content',
+    breaks: 'If the clip\'s playlist lists a real language, it takes the title\'s place: the notice says the video has no subtitles in the language being learned while Disney+ shows them',
+    fallback: null,
+  },
+  {
     id: 'dp.caption-dom',
     site: 'disney',
     claim: 'The player draws its subtitles in .hive-subtitle-renderer-wrapper inside the open shadow root of <timed-text-override-region>',
     breaks: 'Disney+\'s own subtitles are not hidden, so two sets show',
     fallback: null,
+  },
+  {
+    id: 'apple.playback-view',
+    site: 'apple',
+    claim: 'A title plays in <dialog data-testid="playback-view"> over whatever page it was started from (the home page\'s Continue Watching, a search, the title\'s own page), with the address unchanged. Every page keeps the dialog open and empty; while something plays it holds the player\'s <video>, and names the show and episode in [data-testid="player-metadata-title"] and [data-testid="player-metadata-subtitle"]',
+    breaks: 'Playing from any page but the title\'s own shows nothing: no bar, no subtitles, no panel. A card names the page, not the episode',
+    fallback: 'On a title\'s own page, its address',
+  },
+  {
+    id: 'apple.asset',
+    site: 'apple',
+    claim: 'The master playlist\'s URL names the asset it plays (the episode, film or trailer) by a number in its `a` parameter',
+    breaks: 'The next episode in an open player keeps the last one\'s clock, so its lines are out of time; lines are saved under the page rather than the episode',
+    fallback: 'The title\'s page address',
   },
   {
     id: 'apple.master',
@@ -451,6 +479,13 @@ export const ASSUMPTIONS: Assumption[] = [
     claim: 'The player draws its captions with the browser\'s text track, which a page rule on video::cue can hide',
     breaks: 'Apple TV\'s own captions show alongside ours',
     fallback: null,
+  },
+  {
+    id: 'pv.amazon',
+    site: 'prime',
+    claim: 'Prime Video watched on amazon.com, under www.amazon.com/gp/video/, is the same web client as on primevideo.com: a title\'s /detail/<id> page, the same playback resources, the player in #dv-web-player, and subtitle files on pv-cdn.net that answer that page',
+    breaks: 'Prime Video watched on amazon.com shows nothing, or shows "Not active on this page"',
+    fallback: 'The same title on www.primevideo.com',
   },
   {
     id: 'pv.resources',

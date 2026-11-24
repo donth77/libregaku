@@ -47,9 +47,49 @@ interface AppleTrack extends HlsRendition {
 
 const wait = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * The player. Apple TV plays a title in this dialog over whatever page it was started from: the
+ * title's own page, and as often the home page's Continue Watching or a search, whose address
+ * names no title and does not change while it plays.
+ */
+const PLAYBACK = 'dialog[data-testid="playback-view"][open]';
+const SHOW = '[data-testid="player-metadata-title"]';
+const EPISODE = '[data-testid="player-metadata-subtitle"]';
+
+/** The open player. Every page keeps the dialog open and empty; it holds a <video> only while something plays. */
+const playback = (): HTMLElement | null => {
+  const view = document.querySelector<HTMLElement>(PLAYBACK);
+  return view?.querySelector('video') ? view : null;
+};
+
+/** A title's page: /show/, /episode/ or /movie/, after the storefront where there is one. */
+const TITLE_PAGE = /^https:\/\/tv\.apple\.com\/(?:[a-z]{2}(?:-[a-z0-9]+)?\/)?(?:show|episode|movie)\//i;
+
 /** The title's id in its /episode/, /show/ or /movie/ path, or null anywhere else. */
 export function titleIdOf(pathname: string): string | null {
   return /\/(?:episode|show|movie)\/[^/]+\/([^/?#]+)/.exec(pathname)?.[1] ?? null;
+}
+
+/**
+ * The asset a master playlist plays: its `a`, which names the episode, film or trailer, where the
+ * page's address may name a show or nothing at all. Null for a playlist without one.
+ */
+export function assetOf(masterUrl: string): string | null {
+  try {
+    const a = new URL(masterUrl).searchParams.get('a');
+    return a && /^\d+$/.test(a) ? a : null;
+  } catch {
+    return null;
+  }
+}
+
+/** What the open player names: the show, then the season, episode and its name ("Silo · S3, E10 · Troy"); a film by its name. */
+export function playingTitle(view: ParentNode & { getAttribute?(name: string): string | null }): string | null {
+  const text = (sel: string): string => view.querySelector(sel)?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+  const named = view.getAttribute?.('aria-label')?.trim() ?? '';
+  const show = text(SHOW);
+  const episode = text(EPISODE) || (named !== show ? named : '');
+  return [show, episode].filter(Boolean).join(' · ') || null;
 }
 
 /**
@@ -149,6 +189,10 @@ export class AppleAdapter implements SubtitleSource {
   #native: TextTrack | null = null;
   #file: Timed[] = [];
   #titleId: string | null = titleIdOf(location.pathname);
+  /** Whether the player was open when last looked. */
+  #playing = false;
+  /** The asset of the last master playlist, which is what the player is playing. */
+  #asset: string | null = null;
   #navCbs: Array<() => void> = [];
   #trackCbs: Array<() => void> = [];
 
@@ -160,23 +204,29 @@ export class AppleAdapter implements SubtitleSource {
     window.postMessage({ source: TAG, kind: 'apple-request-master' }, '*');
   }
 
-  /** A title's page, or its player. Apple TV also has pages of other kinds that play nothing. */
+  /**
+   * A title's page, or any page while the player is open over it. Apple TV's other pages (the
+   * home page, a search, a channel) play nothing until the player opens.
+   */
   matches(url: string): boolean {
-    return /^https:\/\/tv\.apple\.com\/[a-z]{2}(?:-[a-z0-9]+)?\/(?:show|episode|movie)\//i.test(url);
+    if (!/^https:\/\/tv\.apple\.com\//i.test(url)) return false;
+    return TITLE_PAGE.test(url) || playback() !== null;
   }
 
-  /** The player's <video>. The page has one. */
+  /** The player's <video>, in the open player. A title's page may play its trailer in the background, in a shadow root. */
   video(): HTMLVideoElement | null {
-    return document.querySelector<HTMLVideoElement>('video');
+    return playback()?.querySelector<HTMLVideoElement>('video') ?? document.querySelector<HTMLVideoElement>('video');
   }
 
+  /** The episode or film playing; the title's page before anything has. */
   videoId(): string | null {
-    return titleIdOf(location.pathname);
+    return this.#asset ?? titleIdOf(location.pathname);
   }
 
-  /** The show, and the episode where the page names one. */
+  /** The show, and the episode, as the open player names them; else as the page's title does. */
   title(): string | null {
-    return titleFrom(document.title);
+    const view = playback();
+    return (view && playingTitle(view)) || titleFrom(document.title);
   }
 
   /** Apple TV has no link that opens a title at a moment, so the card has none. */
@@ -310,18 +360,33 @@ export class AppleAdapter implements SubtitleSource {
     this.#trackCbs.push(cb);
   }
 
+  /** The page, or the player over it, changed. Every adapter is made on every site, so it looks only on Apple TV. */
   #syncUrl(): void {
+    if (location.hostname !== 'tv.apple.com') return;
     const id = titleIdOf(location.pathname);
-    if (id === this.#titleId) return;
+    const playing = playback() !== null;
+    if (id === this.#titleId && playing === this.#playing) return;
+    const moved = id !== this.#titleId;
     this.#titleId = id;
-    // The clock belongs to the title it was learned on.
-    this.#tracks = [];
+    this.#playing = playing;
+    // Another title's page: its tracks and clock are its own. The player opening or closing over
+    // a page keeps them, since the playlist it fetched may already be here; another asset in the
+    // player is another title (#onMessage).
+    if (moved) {
+      this.#tracks = [];
+      this.#asset = null;
+      this.#forget();
+    }
+    this.#navCbs.forEach((cb) => cb());
+  }
+
+  /** The clock belongs to the title it was learned on. */
+  #forget(): void {
     this.#cues.clear();
     this.#pairs.clear();
     this.#offset = null;
     this.#native = null;
     this.#file = [];
-    this.#navCbs.forEach((cb) => cb());
   }
 
   #onMessage(e: MessageEvent): void {
@@ -336,6 +401,18 @@ export class AppleAdapter implements SubtitleSource {
 
     const tracks = asTracks(subtitleRenditions(m.text, m.url));
     if (!tracks.length) return;
+    const asset = assetOf(m.url);
+    // Another asset under the same address: the next episode in the open player, or the title
+    // played after its page's trailer. Its tracks and clock are its own.
+    if (asset && this.#asset && asset !== this.#asset) {
+      this.#asset = asset;
+      this.#tracks = tracks;
+      this.#forget();
+      this.#navCbs.forEach((cb) => cb());
+      this.#trackCbs.forEach((cb) => cb());
+      return;
+    }
+    if (asset) this.#asset = asset;
     const same = tracks.length === this.#tracks.length && tracks.every((t, i) => t.uri === this.#tracks[i]?.uri);
     if (same) return;
     this.#tracks = tracks;

@@ -563,9 +563,14 @@ function vttText(raw: string): string {
     .replace(BIDI, '')
     .split('\n')
     .map((line) => line.replace(/[ \t]+/g, ' ').trim())
-    .filter(Boolean)
+    // A line of nothing that shows. Apple TV's Japanese files hold cues of a lone zero-width
+    // space, which trim() keeps and the analyser reads as a word of its own.
+    .filter((line) => VISIBLE.test(line))
     .join('\n');
 }
+
+/** Something that shows: not a space, and not a format character (zero-width space, joiners, a byte-order mark). */
+const VISIBLE = /[^\s\p{Cf}]/u;
 
 export function parseVtt(vtt: string): Cue[] {
   const clock = (v: string): number => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { languageOf } from '../../src/adapters/apple';
+import { assetOf, languageOf } from '../../src/adapters/apple';
 import { isAppleMediaUrl } from '../../src/adapters/apple-hosts';
 import { cuesFromSegments, segmentUrls, subtitleRenditions, timestampOffset, type HlsRendition } from '../../src/adapters/hls';
 import { describeFailure } from '../../src/assumptions';
@@ -20,6 +20,8 @@ import { fetchCheckingHops } from './hosts';
  * the adapter reads them, a rendition or segment moving to a host the adapter
  * drops or the manifest does not permit, and segments that are no longer
  * WebVTT with the timestamp map the adapter expects.
+ * It also reads, by name, the player a title plays in: the dialog every page
+ * holds, which is what the adapter waits on away from a title's own page.
  * What it does not, and cannot without playing something:
  *   - apple.clock. The offset between the files and the player's clock is
  *     learned from the player's own text track, which only a playing video
@@ -96,6 +98,35 @@ function pick(renditions: HlsRendition[]): HlsRendition | undefined {
 }
 
 describe('apple tv contract', () => {
+  /**
+   * Weak in the way the Netflix name checks are: that the page holds the dialog and the client
+   * names the fields says the player is still built that way, not that a title playing in it
+   * fills them. Only a signed-in episode shows that (AGENTS.md: run it before a release).
+   */
+  it('apple.playback-view — every page holds the player dialog, and the client names the show and episode the adapter reads', async () => {
+    const page = TITLES[0] ?? '';
+    const res = await fetch(page, { headers: HEADERS, redirect: 'follow' });
+    expect(res.ok, `${page} returned HTTP ${res.status}`).toBe(true);
+    const html = await res.text();
+    expect(
+      /<dialog\b[^>]*\bdata-testid="playback-view"/.test(html),
+      `${page} holds no <dialog data-testid="playback-view">.\n${describeFailure('apple.playback-view')}`,
+    ).toBe(true);
+    const scripts = [...new Set([...html.matchAll(/<script\b[^>]*\bsrc="([^"]+\.js)"/g)].map((m) => new URL(m[1] ?? '', page).href))];
+    const bodies = await Promise.all(scripts.map(async (u) => (await fetch(u, { headers: HEADERS })).text().catch(() => '')));
+    for (const field of ['player-metadata-title', 'player-metadata-subtitle']) {
+      expect(
+        bodies.some((b) => b.includes(field)),
+        `None of the ${scripts.length} scripts on ${page} names "${field}".\n${describeFailure('apple.playback-view')}`,
+      ).toBe(true);
+    }
+  }, 90_000);
+
+  it('apple.asset — a master playlist names the asset it plays', async () => {
+    const { page, url } = await trailer();
+    expect(assetOf(url), `The playlist on ${page} names no asset in its \`a\` (${url.split('?')[0]}).\n${describeFailure('apple.asset')}`).not.toBeNull();
+  }, 90_000);
+
   it('apple.master — a title page names an HLS master playlist that lists subtitle renditions', async () => {
     const { page, url, master, renditions } = await trailer();
     expect(isAppleMediaUrl(url), `The playlist is served from ${new URL(url).host}, which the adapter does not take as Apple's.\n${describeFailure('apple.master')}`).toBe(true);

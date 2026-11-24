@@ -16,6 +16,7 @@ let local: Record<string, unknown>;
 const PAGE = `
   <button id="openSettings"></button>
   <p id="status"></p>
+  <section id="learning"><select id="target"></select></section>
   <section id="tracks" hidden><select id="track"></select><select id="second"></select></section>
   <section id="capture" hidden><p id="captureText"></p><button id="captureGo" hidden></button></section>
   <section id="quick" hidden><button id="toggleSidebar"></button></section>
@@ -143,6 +144,8 @@ describe('the status line off a video', () => {
     const { siteOfUrl } = await import('../action');
     expect(siteOfUrl('https://www.youtube.com/watch?v=1')).toBe('youtube');
     expect(siteOfUrl('https://www.primevideo.com/detail/x')).toBe('prime');
+    expect(siteOfUrl('https://www.amazon.com/gp/video/detail/0FSCXHAJ5EZREGJUSLIHVB8VRP')).toBe('prime');
+    expect(siteOfUrl('https://www.amazon.com/dp/B0EXAMPLE')).toBeNull();
     expect(siteOfUrl('https://tv.apple.com/us/show/pachinko/umc.cmc.1')).toBe('apple');
     // The rest of apple.com is not the service.
     expect(siteOfUrl('https://www.apple.com/apple-tv-plus/')).toBeNull();
@@ -219,6 +222,8 @@ describe('the track pickers and the page', () => {
   /** True while the page has nothing of ours on it to answer: still loading, or not a site we read. */
   let absent = false;
   let sent: Array<Record<string, unknown>>;
+  /** The language being learned, each time the popup saved it. */
+  let synced: string[] = [];
 
   const shown = (id: string): Array<string | null> =>
     Array.from(document.querySelectorAll(`#${id} option`)).map((o) => o.textContent);
@@ -226,6 +231,7 @@ describe('the track pickers and the page', () => {
 
   async function open(onPick?: (msg: Record<string, unknown>) => void, target = 'ja'): Promise<void> {
     sent = [];
+    synced = [];
     document.body.innerHTML = PAGE;
     vi.stubGlobal('chrome', {
       tabs: {
@@ -241,7 +247,13 @@ describe('the track pickers and the page', () => {
         },
       },
       runtime: { openOptionsPage: () => {}, sendMessage: async () => ({ ok: false, kind: 'offline', offline: true }) },
-      storage: { local: { get: async () => ({}) }, sync: { get: async () => ({ 'libregaku.settings': { target } }) } },
+      storage: {
+        local: { get: async () => ({}) },
+        sync: {
+          get: async () => ({ 'libregaku.settings': { target } }),
+          set: async (o: Record<string, { target?: string }>) => { synced.push(o['libregaku.settings']?.target ?? ''); },
+        },
+      },
     });
     vi.resetModules();
     await import('../action');
@@ -255,6 +267,15 @@ describe('the track pickers and the page', () => {
     sel.value = to;
     sel.dispatchEvent(new Event('change'));
   };
+
+  it('change the language being learned from the popup, where a video without it is found out', async () => {
+    page = { rendering: false, track: null, second: null, tracks: [{ id: 'en', lang: 'en', label: 'English' }] };
+    await open(undefined, 'es');
+    expect(value('target')).toBe('es');
+    expect(shown('target')).toContain('Japanese');
+    pick('target', 'ja');
+    await vi.waitFor(() => expect(synced).toEqual(['ja']));
+  });
 
   it('show nothing chosen, not an empty box, when the video has none in the language learned', async () => {
     // Learning Japanese on a video with Chinese and English only: nothing is loaded, and Subtitles offers nothing.
