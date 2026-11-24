@@ -1,4 +1,8 @@
 {
+  "extName": {
+    "message": "Libregaku: 看字幕學外語",
+    "description": "The extension's name, on the extensions page and as the store listing's title (at most 75 characters)"
+  },
   "extDescription": {
     "message": "用你正在看的節目學語言。可點擊的字幕、字典，以及在你自己的 Anki 中製作的卡片。",
     "description": "What the extension is, on the extensions page and in the store"

@@ -1,4 +1,8 @@
 {
+  "extName": {
+    "message": "Libregaku: Học ngoại ngữ qua phụ đề",
+    "description": "The extension's name, on the extensions page and as the store listing's title (at most 75 characters)"
+  },
   "extDescription": {
     "message": "Học ngoại ngữ từ chính những chương trình bạn xem. Phụ đề bấm được, từ điển và thẻ tạo trong Anki của riêng bạn.",
     "description": "What the extension is, on the extensions page and in the store"

@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Libregaku: Learn Languages with Subtitles",
+  "name": "__MSG_extName__",
   "version": "1.0.0",
   "description": "__MSG_extDescription__",
   "minimum_chrome_version": "116",

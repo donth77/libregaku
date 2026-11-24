@@ -17,4 +17,15 @@ describe('the description Chrome shows, in src/_locales', () => {
       expect([...description].length, `${locale}: ${description}`).toBeLessThanOrEqual(132);
     }
   });
+
+  it('names it in every locale, as the store listing\'s title: Libregaku first, within the 75 characters allowed', async () => {
+    const { readdirSync, readFileSync } = await vi.importActual<Files>('node:fs');
+    expect(JSON.parse(readFileSync('src/manifest.json', 'utf8')).name).toBe('__MSG_extName__');
+    for (const locale of readdirSync('src/_locales')) {
+      const messages = JSON.parse(readFileSync(`src/_locales/${locale}/messages.json`, 'utf8')) as Record<string, { message: string }>;
+      const name = messages.extName?.message ?? '';
+      expect(name, locale).toMatch(/^Libregaku: \S/);
+      expect([...name].length, `${locale}: ${name}`).toBeLessThanOrEqual(75);
+    }
+  });
 });

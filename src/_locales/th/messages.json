@@ -1,4 +1,8 @@
 {
+  "extName": {
+    "message": "Libregaku: เรียนภาษาด้วยคำบรรยาย",
+    "description": "The extension's name, on the extensions page and as the store listing's title (at most 75 characters)"
+  },
   "extDescription": {
     "message": "เรียนภาษาจากรายการที่คุณดู คำบรรยายที่คลิกได้ พจนานุกรม และการ์ดที่สร้างใน Anki ของคุณเอง",
     "description": "What the extension is, on the extensions page and in the store"

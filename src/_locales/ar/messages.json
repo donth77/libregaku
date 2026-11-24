@@ -1,4 +1,8 @@
 {
+  "extName": {
+    "message": "Libregaku: تعلّم اللغات مع الترجمة",
+    "description": "The extension's name, on the extensions page and as the store listing's title (at most 75 characters)"
+  },
   "extDescription": {
     "message": "تعلّم لغة من البرامج التي تشاهدها. ترجمات قابلة للنقر، وقواميس، وبطاقات تُصنع في Anki الخاص بك.",
     "description": "What the extension is, on the extensions page and in the store"

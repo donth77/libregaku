@@ -1,4 +1,8 @@
 {
+  "extName": {
+    "message": "Libregaku: Aprenda idiomas com legendas",
+    "description": "The extension's name, on the extensions page and as the store listing's title (at most 75 characters)"
+  },
   "extDescription": {
     "message": "Aprenda um idioma com as séries que você assiste. Legendas clicáveis, dicionários e cartões criados no seu próprio Anki.",
     "description": "What the extension is, on the extensions page and in the store"

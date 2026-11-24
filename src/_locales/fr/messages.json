@@ -1,4 +1,8 @@
 {
+  "extName": {
+    "message": "Libregaku: Apprendre les langues avec les sous-titres",
+    "description": "The extension's name, on the extensions page and as the store listing's title (at most 75 characters)"
+  },
   "extDescription": {
     "message": "Apprenez une langue avec les séries que vous regardez. Sous-titres cliquables, dictionnaires et cartes dans votre propre Anki.",
     "description": "What the extension is, on the extensions page and in the store"

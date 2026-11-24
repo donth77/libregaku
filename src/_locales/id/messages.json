@@ -1,4 +1,8 @@
 {
+  "extName": {
+    "message": "Libregaku: Belajar Bahasa dengan Subtitel",
+    "description": "The extension's name, on the extensions page and as the store listing's title (at most 75 characters)"
+  },
   "extDescription": {
     "message": "Belajar bahasa dari tontonan Anda. Subtitel yang bisa diklik, kamus, dan kartu yang dibuat di Anki Anda sendiri.",
     "description": "What the extension is, on the extensions page and in the store"

@@ -1,4 +1,8 @@
 {
+  "extName": {
+    "message": "Libregaku: Impara le lingue con i sottotitoli",
+    "description": "The extension's name, on the extensions page and as the store listing's title (at most 75 characters)"
+  },
   "extDescription": {
     "message": "Impara una lingua con le serie che guardi. Sottotitoli cliccabili, dizionari e carte create nel tuo Anki.",
     "description": "What the extension is, on the extensions page and in the store"

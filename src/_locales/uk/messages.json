@@ -1,4 +1,8 @@
 {
+  "extName": {
+    "message": "Libregaku: вивчення мов за субтитрами",
+    "description": "The extension's name, on the extensions page and as the store listing's title (at most 75 characters)"
+  },
   "extDescription": {
     "message": "Вивчайте мову з серіалів, які дивитеся. Субтитри, на які можна клікнути, словники й картки у вашому власному Anki.",
     "description": "What the extension is, on the extensions page and in the store"

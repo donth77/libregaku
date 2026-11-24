@@ -1,4 +1,8 @@
 {
+  "extName": {
+    "message": "Libregaku: Altyazılarla Dil Öğrenin",
+    "description": "The extension's name, on the extensions page and as the store listing's title (at most 75 characters)"
+  },
   "extDescription": {
     "message": "İzlediğiniz dizilerle dil öğrenin. Tıklanabilir altyazılar, sözlükler ve kendi Anki'nizde oluşturulan kartlar.",
     "description": "What the extension is, on the extensions page and in the store"

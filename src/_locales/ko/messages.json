@@ -1,4 +1,8 @@
 {
+  "extName": {
+    "message": "Libregaku: 자막으로 배우는 외국어",
+    "description": "The extension's name, on the extensions page and as the store listing's title (at most 75 characters)"
+  },
   "extDescription": {
     "message": "보는 영상으로 언어를 배우세요. 클릭할 수 있는 자막, 사전, 그리고 내 Anki에 만드는 카드.",
     "description": "What the extension is, on the extensions page and in the store"

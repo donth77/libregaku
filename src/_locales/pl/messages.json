@@ -1,4 +1,8 @@
 {
+  "extName": {
+    "message": "Libregaku: nauka języków z napisami",
+    "description": "The extension's name, on the extensions page and as the store listing's title (at most 75 characters)"
+  },
   "extDescription": {
     "message": "Ucz się języka z seriali, które oglądasz. Klikalne napisy, słowniki i fiszki tworzone w twoim własnym Anki.",
     "description": "What the extension is, on the extensions page and in the store"
