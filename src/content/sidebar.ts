@@ -294,7 +294,9 @@ const STYLE = `
   /*
    * Right to left (Arabic): the panel on the player's left, where the
    * interface starts, with its tab, edge and resize grip, and what floats
-   * inside it mirrored.
+   * inside it mirrored. That edge can be the window's own, where a site may
+   * keep something above the whole player: YouTube's closed guide drawer
+   * does, and subs.css lets clicks through it.
    */
   :host([dir=rtl]) { right: auto !important; left: 0 !important; }
   :host([dir=rtl]) .tab { right: auto; left: 0; border-left: 0; border-right: 1px solid #2A3348; border-radius: 0 8px 8px 0; }

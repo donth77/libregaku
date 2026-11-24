@@ -21,6 +21,22 @@
   pointer-events: none !important;
 }
 
+/*
+ * YouTube's guide drawer, closed, keeps a strip 20px wide down the window's
+ * left edge to be swiped open from: its #contentContainer::after. The drawer
+ * is fixed over the whole page at z-index 2030, and #movie_player is a
+ * stacking context of its own at 0, so nothing of ours inside the player can
+ * rise above the strip. In full screen and theatre mode the player's left edge
+ * is the window's, and right to left the transcript's tab and the open panel's
+ * edge are there: a click on the tab went to the strip, and the panel never
+ * opened. While we are on the page the strip lets clicks through.
+ * (Assumption yt.guide-drawer.)
+ */
+.libregaku-active tp-yt-app-drawer > #contentContainer::after,
+.libregaku-reading tp-yt-app-drawer > #contentContainer::after {
+  pointer-events: none !important;
+}
+
 /* Netflix renders into .player-timedtext. Same two modes as YouTube. */
 .libregaku-active .player-timedtext { display: none !important; }
 /* HBO Max. Its class names are generated; the component's name before "__" is what holds. */

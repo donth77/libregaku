@@ -82,6 +82,13 @@ export const ASSUMPTIONS: Assumption[] = [
     fallback: 'The panel runs full height; closing it with S uncovers them',
   },
   {
+    id: 'yt.guide-drawer',
+    site: 'youtube',
+    claim: "YouTube's guide drawer is a tp-yt-app-drawer fixed over the page at z-index 2030, above #movie_player (a stacking context at 0); closed, all of it on screen is the ::after of its child #contentContainer, a 20px swipe-open strip down the window's left edge, outside any shadow root, so subs.css can set it to pointer-events: none",
+    breaks: 'Right to left, in full screen and theatre mode: a click on the transcript tab goes to the strip and the panel does not open, and the open panel\'s left edge, where its list\'s scrollbar is, cannot be clicked',
+    fallback: 'S, or the transcript button on the bar over the player, opens the panel',
+  },
+  {
     id: 'yt.keys',
     site: 'youtube',
     claim: "YouTube's keyboard shortcuts listen below the document's capture phase — on the document's bubble phase or the player — so a key the extension takes there never reaches them, focused player or not",
