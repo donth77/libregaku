@@ -161,19 +161,68 @@ export function lookupWord(lemma: string | undefined, surface: string, hint?: Lo
 }
 
 /**
+ * A way of being a form that only a verb's form has, in the words the dictionary's table of forms describes them
+ * with (src/morphology/lemma.ts): a tense, a mood, an aspect or a voice, or a participle, gerund or infinitive. A noun
+ * or an adjective is described by its number, gender, case or degree, none of which is here. Nor is a person alone:
+ * Arabic writes "from us" as the preposition with a person on it (منا, of من), and Turkish's suffixes name a person
+ * after a noun too (öğretmenim, "I am a teacher"). The table runs two readings together with a slash, so a slash
+ * ends a word as a space does.
+ */
+const VERB_FORM = new RegExp(
+  `(?:^|[ /])(?:participle|gerund|infinitive|imperative|subjunctive|indicative|jussive|conditional(?:-mood)?|` +
+  `preterite|imperfect|pluperfect|future|past|present|non-past|ongoing|habitual|passive|potential)(?:[ /]|$)`,
+);
+/**
+ * A reading that says nothing of which word it is, whatever else it names: a dual. Arabic writes a verb's past dual
+ * as it writes a noun's indefinite accusative, with an alif — خبزا is "bread" far more often than "the two of them
+ * baked" — and the table of forms lists the verb's alone. Over 20,000 of Tatoeba's Arabic sentences, 90 words were
+ * read only as a past dual, most of them nouns (عملا, نوعا, رجلا) and a few verbs (كانا, قتلا), whose cards open as
+ * the file orders the word's rows.
+ */
+const EITHER = /(?:^|[ /])dual(?:[ /]|$)/;
+
+/** The dictionaries' code for a verb, which a Wiktionary or WikDict source puts first when asked (byRole, sources.ts). */
+const VERB = 'v';
+
+/**
+ * The keys a token is looked up by, as the analyser planned them, and what its trace says of the word where the
+ * analyser has no tag for it.
+ *
+ * A word traced to its dictionary form — seen → see, "past participle" — is that word in a verb's form, and its card
+ * should open on the verb. Wiktionary has a row for each part of speech, and its order is the page's: see the noun,
+ * a bishop's seat, comes before see the verb in several editions. So the dictionary form is asked for as a verb,
+ * in the dictionaries' own code, and each source puts its verb rows first, the rest after them. Only where the
+ * analyser said nothing of its own: a Japanese or Korean token carries its tag already, and that decides.
+ *
+ * Only where every way the trace reads the form is a verb's ("or ser" names another word, and is no reading). friends
+ * is "plural · third-person singular present" of friend, the noun and the verb, and the line does not say which:
+ * asked for as a verb, its card opened on "to befriend" (CARDS in scripts/measure-forms.ts, November 2026).
+ */
+export function keysOf(
+  token: Pick<Token, 'surface' | 'lemma' | 'pos' | 'lookup' | 'inflections'>,
+): Array<{ key: string; reading?: string; pos?: string; spelling?: string; conj?: string; follows?: string }> {
+  const keys = (token.lookup ?? []).filter((k) => k.key);
+  const readings = (token.inflections ?? []).filter((label) => !label.startsWith('or '));
+  const verb = !token.pos && token.lemma !== undefined && token.lemma !== token.surface &&
+    readings.length > 0 && readings.every((label) => VERB_FORM.test(label) && !EITHER.test(label));
+  return verb ? keys.map((k) => (k.key === token.lemma && !k.pos ? { ...k, pos: VERB } : k)) : keys;
+}
+
+/**
  * Look a token up the way the analyser planned.
  *
  * A tier-2 token carries its keys in order — 勉強している tries 勉強する,
  * then 勉強; 3匹 falls back to 匹 — each with the reading and part of speech
- * that pick 私【わたし】 over 私【あたし】 and この over 九. Anything else is
- * looked up by lemma, then surface.
+ * that pick 私【わたし】 over 私【あたし】 and この over 九. A tier-1 token's
+ * keys say only the words, and its trace says whether it is a verb's form
+ * (keysOf). Anything else is looked up by lemma, then surface.
  */
 export async function lookupToken(
-  token: Pick<Token, 'surface' | 'lemma' | 'lemmaReading' | 'pos' | 'lookup' | 'compound' | 'derived'>,
+  token: Pick<Token, 'surface' | 'lemma' | 'lemmaReading' | 'pos' | 'lookup' | 'compound' | 'derived' | 'inflections'>,
 ): Promise<LookupResult> {
   if (token.compound) return lookupCompound(token.surface, token.compound);
   const direct = token.lookup?.length
-    ? await lookupKeys(token.lookup.filter((k) => k.key))
+    ? await lookupKeys(keysOf(token))
     : await lookupWord(token.lemma, token.surface, { reading: token.lemmaReading });
   // No entry for the word: it may be a word with a suffix, and the parts have entries.
   if (direct.state === 'empty' && token.derived) return lookupCompound(token.surface, token.derived, true);

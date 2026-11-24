@@ -256,6 +256,99 @@ describe('a Wiktionary dictionary', () => {
   });
 });
 
+describe('a word the line uses in a verb’s form', () => {
+  // Have you seen my keys?: seen is see, asked for as a verb (keysOf in client.ts).
+  const row = (id: string, kind: string[], ...glosses: string[]): Entry =>
+    ({ id, word: 'see', common: false, kind, senses: glosses.map((g) => ({ pos: kind, glosses: [g] })) });
+  const opened = (entries: Entry[]): string[] => entries[0]?.senses.map((s) => s.glosses[0] ?? '') ?? [];
+
+  it('opens on the verb in Wiktionary, the noun after it: Japanese Wiktionary writes them 動 and 名', async () => {
+    const { SOURCES } = await sources();
+    // wty-en-ja term_bank_1#2574 and #2575, in the file's order.
+    const ja = [row('2574', ['名'], '司教。', '教皇庁。（カトリック）'), row('2575', ['動'], '～を見る、みえる、目に入る。')];
+    expect(opened(SOURCES['wty-en-ja']!.rank(ja, 'see', { pos: 'v' }))).toEqual(['～を見る、みえる、目に入る。', '司教。', '教皇庁。（カトリック）']);
+    // Asked for as the word alone, as before: the file's order.
+    expect(opened(SOURCES['wty-en-ja']!.rank(ja, 'see'))[0]).toBe('司教。');
+
+    const en = [row('1', ['n'], 'A diocese.'), row('2', ['v', 'vt'], 'To perceive with the eyes.')];
+    expect(SOURCES['wty-en-en']!.rank(en, 'see', { pos: 'v' })[0]).toMatchObject({
+      kind: ['v', 'n'], senses: [{ glosses: ['To perceive with the eyes.'] }, { glosses: ['A diocese.'] }],
+    });
+  });
+
+  it('opens on the verb in WikDict and the glossaries too', async () => {
+    const { SOURCES } = await sources();
+    const de = [row('1', ['n'], 'Bischofssitz'), row('2', ['v'], 'sehen; schauen; verstehen')];
+    expect(SOURCES['wikdict-en-de']!.rank(de, 'see', { pos: 'v' })[0]).toMatchObject({
+      kind: ['v', 'n'], senses: [{ glosses: ['sehen; schauen; verstehen'] }, { glosses: ['Bischofssitz'] }],
+    });
+    const uk = [row('1', ['n'], 'єпархія'), row('2', ['v'], 'ба́чити')];
+    expect(opened(SOURCES['wty-en-uk-gloss']!.rank(uk, 'see', { pos: 'v' }))[0]).toBe('ба́чити');
+  });
+
+  it('never leaves a row out for being asked for a verb, in any dictionary: the learner’s own answers as before', async () => {
+    const { SOURCES } = await sources();
+    const ids = Object.keys(SOURCES).filter((id) => /^(wty|wikdict)-/.test(id) || id === 'krdict');
+    expect(ids.length).toBeGreaterThan(60);
+    for (const id of ids) {
+      const rows = [row('1', ['n'], 'a diocese'), row('2', ['v'], 'to perceive'), row('3', ['名'], '司教'), row('4', ['動'], '見る'), row('5', [], 'bare')];
+      const glosses = (entries: Entry[]): string[] => entries.flatMap((e) => e.senses.map((s) => s.glosses[0] ?? '')).sort();
+      expect(glosses(SOURCES[id]!.rank(rows, 'see', { pos: 'v' })), id).toEqual(glosses(SOURCES[id]!.rank(rows, 'see')));
+      expect(SOURCES[id]!.followsForms?.({ pos: 'v' }) ?? true, id).toBe(SOURCES[id]!.followsForms?.({}) ?? true);
+    }
+  });
+
+  it('keeps the order where the word has no verb, and an analyser’s tag no dictionary code is', async () => {
+    const { SOURCES } = await sources();
+    const nouns = [row('1', ['n'], 'key'), row('2', ['adj'], 'main')];
+    expect(opened(SOURCES['wty-en-en']!.rank(nouns, 'see', { pos: 'v' }))).toEqual(['key', 'main']);
+    const ja = [row('1', ['名'], '司教。'), row('2', ['動'], '～を見る')];
+    expect(opened(SOURCES['wty-en-ja']!.rank(ja, 'see', { pos: '動詞,自立' }))[0]).toBe('司教。');
+  });
+});
+
+describe('a learner who reads traditional Chinese', () => {
+  it('reads the meanings of a Wiktionary in Chinese in traditional characters, and the words as they are', async () => {
+    const { SOURCES, fetchBytes } = await sources();
+    // Spanish visto → ver, as wty-es-zh has ver.
+    const file = (): Uint8Array => zip({ 'term_bank_1.json': JSON.stringify([lemma('ver', 'v', '看见，查看，拜访'), lemma('头发', 'n', '头发')]) });
+    fetchBytes.mockResolvedValue(file());
+    const hant = (await all(await SOURCES['wty-es-zh']!.read('zh-Hant'))).flatMap((b) => b.entries.map((e) => e.entry));
+    // 发 is 發 or 髮 by the word, and stays as written; the word explained is the language learned, and stays.
+    expect(hant.map((e) => [e.word, e.senses[0]?.glosses[0]])).toEqual([['ver', '看見，查看，拜訪'], ['头发', '頭发']]);
+
+    fetchBytes.mockResolvedValue(file());
+    const hans = (await all(await SOURCES['wty-es-zh']!.read('zh'))).flatMap((b) => b.entries.map((e) => e.entry));
+    expect(hans.map((e) => e.senses[0]?.glosses[0])).toEqual(['看见，查看，拜访', '头发']);
+  });
+
+  it('is a download of its own, which leaves the learners of simplified Chinese with theirs', async () => {
+    const { SOURCES } = await sources();
+    for (const id of ['wty-es-zh', 'wty-ja-zh', 'krdict']) {
+      expect(SOURCES[id]!.formatFor?.['zh-Hant'], id).toBeGreaterThan(0);
+      expect(SOURCES[id]!.formatFor?.zh, id).toBeUndefined();
+    }
+  });
+
+  it('reads krdict’s Chinese in traditional characters, the names of its kinds of word too', async () => {
+    const { SOURCES, fetchBytes } = await sources();
+    const row = (word: string, label: string, meaning: string, explained: string): unknown[] => [
+      word, '', label, '', 0,
+      [{ type: 'structured-content', content: [
+        { tag: 'span', content: [{ tag: 'span', style: { fontWeight: 'bold' }, content: word }] },
+        { tag: 'div', content: [{ tag: 'div', content: [{ tag: 'span', content: meaning }] }, { tag: 'div', content: explained }] },
+      ] }],
+      1, '',
+    ];
+    fetchBytes.mockResolvedValue(zip({ 'term_bank_1.json': JSON.stringify([row('이', '名词 ⭐', '牙齿', '口腔中的骨头。'), row('이', '助词', '主格助词', '表示主语。')]) }));
+    const krdict = SOURCES.krdict!;
+    const entries = (await all(await krdict.read('zh-Hant'))).flatMap((b) => b.entries.map((e) => e.entry));
+    expect(entries.map((e) => [e.kind, e.senses[0]?.glosses])).toEqual([[['名詞'], ['牙齒', '口腔中的骨頭。']], [['助詞'], ['主格助詞', '表示主語。']]]);
+    // A particle is still answered by a particle's entry.
+    expect(krdict.rank(entries as Entry[], '이', { pos: 'JKS' }).map((e) => e.kind)).toEqual([['助詞']]);
+  });
+});
+
 describe('a Korean particle', () => {
   /*
    * Rows of wty-ko-en, 2026.10.04, each with the bank and the row it came
@@ -462,10 +555,10 @@ describe('a dictionary in the learner’s own language', () => {
     expect(portuguese).toEqual(['分かる', '先生']);
 
     fetchBytes.mockResolvedValue(zip({
-      'term_bank_1.json': JSON.stringify([lemma('感觉', 'v', '感覺.'), lemma('感覺', 'v', '느끼다'), lemma('好', 'adj', '.')]),
+      'term_bank_1.json': JSON.stringify([lemma('感觉', 'v', '感覺.'), lemma('感覺', 'v', '느끼다'), lemma('好', 'adj', '좋다.')]),
     }));
     const korean = (await all(await SOURCES['wty-zh-ko']!.read('ko'))).flatMap((b) => b.entries.map((e) => e.entry.word));
-    // A meaning with no character at all is not a spelling, and is no business of this rule.
+    // A meaning with no Chinese character in it is not a spelling, and is no business of this rule.
     expect(korean).toEqual(['感覺', '好']);
   });
 

@@ -61,6 +61,12 @@ export interface Source {
   /** The shape of what `read` hands over; bumped when that changes. */
   format: number;
   /**
+   * Bumps of `format` for one edition alone, where what `read` hands over changed for that edition and no other:
+   * the Chinese files read in traditional characters for zh-Hant. Added to `format` in that edition's mark, so the
+   * learners of the others download nothing again.
+   */
+  formatFor?: Readonly<Record<string, number>>;
+  /**
    * Download one edition and hand its rows over a batch at a time, so a
    * dictionary far larger than memory can still be stored. Throws when the
    * download holds nothing: an empty answer must never replace a full store.
@@ -89,7 +95,7 @@ export interface Source {
 
 /** What the store records about its contents once, and only once, complete. */
 function mark(edition: string, source: Source): string {
-  return `${edition}@${source.release}#${source.format}`;
+  return `${edition}@${source.release}#${source.format + (source.formatFor?.[edition] ?? 0)}`;
 }
 
 /**

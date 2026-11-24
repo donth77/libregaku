@@ -26,6 +26,7 @@ node scripts/measure-word.mjs <word> <reading> <score>  # what one added adverb 
 node scripts/audit-cuts.mjs                             # words the analyser reads whole alone and cuts in sentences
 node scripts/compare-unidic.mjs                         # Japanese as IPADIC reads it, with and without UniDic's second opinion
 node scripts/build-zh-readings.mjs                      # which reading a Chinese character shows first
+node scripts/build-zh-traditional.mjs                   # the traditional form of each simplified character that has one
 node scripts/build-ko-fixture.mjs <ko-dic directory>    # what the analyser returns for the Korean tests' lines
 node scripts/measure-forms.mjs <lang>                   # a language read by its dictionary's forms, on Tatoeba
 node scripts/language-pairs.mjs                         # LANGUAGE-PAIRS.md, from the code
@@ -152,6 +153,13 @@ with more than one reading in CC-CEDICT, the one drawn above it by default, from
 Unihan's `kMandarin` and a short list of exceptions in the script. Run it when
 CC-CEDICT or Unihan is bumped, and read the diff.
 
+`build-zh-traditional` writes `src/dict/zh-traditional.ts`: each simplified character that
+CC-CEDICT writes as one traditional character in nearly every word it is in, checked against
+Unihan's `kTraditionalVariant`. `toTraditional()` (`src/dict/traditional.ts`) reads the
+Chinese dictionaries' meanings through it for a learner who reads traditional characters
+(`zh-Hant`); a character whose traditional form depends on the word (发, 后, 干) is left as it
+is written. Run it when CC-CEDICT or Unihan is bumped, and read the diff.
+
 `build-ko-fixture` writes `src/morphology/__tests__/fixtures/ko-dic.ts`: what the
 analyser really returns for the lines in `scripts/ko-fixture-lines.txt`, misreadings
 included, which the Korean merge tests stand on. Run it when a line is added to that
@@ -166,7 +174,10 @@ the commonest forms that could be more than one word with what each was read as.
 what it counts (`SHOW='…|…'` prints what the dictionary answers for a line's words, and what
 each is read as): `SAVE=base`, change, then `AGAINST=base`, and read every word read
 otherwise, in every one of those languages when the change is to the reader (`wty.ts`)
-or to `lemma.ts` or `hyphen.ts`.
+or to `lemma.ts` or `hyphen.ts`. `CARDS=1` measures what a card opens on instead: the first
+meaning of each word the line traces to another (seen → see), in the language's dictionary
+and in each in a learner's own language. Run it with `SAVE` and `AGAINST` before changing
+which rows a lookup puts first (`keysOf` in `src/dict/client.ts`, `byRole` in `sources.ts`).
 
 A dictionary in the learner's own language (`OWN_DICTIONARIES` in `settings.ts`) is added
 for a pair only where it has 55% of the language's thousand commonest words, the words a
@@ -230,7 +241,8 @@ src/morphology/         Segmenter implementations and which language gets which 
 src/dict/               one dictionary per language (sources.ts): download, storage and
                         lookup for JMdict, KANJIDIC2, CC-CEDICT and Wiktionary; remote
                         fallbacks for Japanese; which verb a Japanese verb in kana is
-                        (kana-verbs.ts, learned from Tatoeba by compare-unidic)
+                        (kana-verbs.ts, learned from Tatoeba by compare-unidic); meanings in
+                        traditional characters (traditional.ts, zh-traditional.ts)
 src/anki/               AnkiConnect client, note type, word status, hand marks, cards
                         waiting for Anki
 src/audio/              pronunciation and where a word's recording is found (recordings.ts),
@@ -279,7 +291,7 @@ SOURCES.md              every dictionary, recording and data source and its lice
 PRIVACY.md, TERMS.md    the privacy policy and terms the store listing links: change PRIVACY.md with
                         any change to what leaves the learner's computer
 scripts/                check-captions.mjs, diagnose.js, compare-words.mjs, measure-word.mjs, audit-cuts.mjs, compare-unidic.mjs,
-                        build-zh-readings.mjs,
+                        build-zh-readings.mjs, build-zh-traditional.mjs,
                         build-ko-fixture.mjs and the lines it reads (ko-fixture-lines.txt),
                         language-pairs.mjs and the page it writes (language-pairs-page.ts),
                         measure-forms.mjs and what it runs (measure-forms.ts),

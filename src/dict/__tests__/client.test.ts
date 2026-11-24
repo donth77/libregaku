@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { charactersOf, clearLookupCache, lookupToken, lookupWord } from '../client';
+import { charactersOf, clearLookupCache, keysOf, lookupToken, lookupWord } from '../client';
 import type { Entry } from '../jmdict';
+import { SOURCES } from '../sources';
+import { OWN_DICTIONARIES } from '../../settings';
 
 /**
  * The content-script side of lookups: which keys it asks for, in what order,
@@ -101,6 +103,104 @@ describe('lookupToken', () => {
     await lookupWord('食べる', '食べる');
     await lookupWord('食べる', '食べる');
     expect(sent).toHaveLength(2);
+  });
+});
+
+describe('a word the line uses in a verb’s form', () => {
+  // Have you seen my keys? — as the English segmenter traces seen (src/morphology/lemma.ts).
+  const seen = {
+    surface: 'seen', lemma: 'see', inflections: ['past participle', 'or seen', 'or sin'],
+    lookup: [{ key: 'see' }, { key: 'seen' }, { key: 'sin' }],
+  };
+
+  it('asks for its dictionary form as a verb, and for the other words as they are', async () => {
+    expect(keysOf(seen)).toEqual([{ key: 'see', pos: 'v' }, { key: 'seen' }, { key: 'sin' }]);
+    offscreen((m) => (m.type === 'dict-lookup' ? { ok: true, source: 'local', entries: [entry(String(m.key))] } : undefined));
+    await lookupToken(seen);
+    expect(sent.map((m) => [m.key, m.pos])).toEqual([['see', 'v']]);
+  });
+
+  it('does so for every tense, mood and verbal noun the trace names, in any language read by its forms', () => {
+    const verb = (surface: string, lemma: string, ...inflections: string[]) =>
+      keysOf({ surface, lemma, inflections, lookup: [{ key: lemma }] })[0]?.pos;
+    expect(verb('visto', 'ver', 'masculine singular past participle')).toBe('v');
+    expect(verb('hablábamos', 'hablar', 'first-person plural imperfect indicative')).toBe('v');
+    expect(verb('going', 'go', 'present gerund participle and', 'or going')).toBe('v');
+    expect(verb('يملك', 'ملك', 'third-person singular masculine non-past', 'third-person singular masculine jussive')).toBe('v');
+    expect(verb('yiyor', 'yemek', 'ongoing')).toBe('v');
+  });
+
+  it('asks as before where any reading of the trace is not a verb’s, or a person is all it names', () => {
+    const verb = (surface: string, lemma: string, ...inflections: string[]) =>
+      keysOf({ surface, lemma, inflections, lookup: [{ key: lemma }] })[0]?.pos;
+    // friends is the plural of friend the noun, or friend the verb's third person: the line does not say which.
+    expect(verb('friends', 'friend', 'plural', 'third-person singular present indicative simple')).toBeUndefined();
+    expect(verb('casas', 'casa', 'plural')).toBeUndefined();
+    // من with a person on it is "from us"; a Turkish person ending follows a noun as well ("they are cows").
+    expect(verb('منا', 'من', 'first-person plural masculine feminine dual', 'third-person masculine past dual')).toBeUndefined();
+    expect(verb('inekler', 'inek', 'third-person plural')).toBeUndefined();
+    // خبزا is "bread" in the accusative far more often than "the two of them baked", and is written alike.
+    expect(verb('خبزا', 'خبز', 'third-person masculine past dual', 'third-person masculine past passive dual')).toBeUndefined();
+    expect(verb("Tom's", 'Tom', 'possessive')).toBeUndefined();
+  });
+
+  it('leaves the analyser’s own tag to decide, where it gave one', () => {
+    const tagged = { surface: '来た', lemma: '来る', pos: '動詞', inflections: ['past'], lookup: [{ key: '来る' }] };
+    expect(keysOf(tagged)).toEqual([{ key: '来る' }]);
+    expect(keysOf({ ...seen, lookup: [{ key: 'see', pos: 'VV' }] })).toEqual([{ key: 'see', pos: 'VV' }]);
+    // A word in its own form has no trace to go by.
+    expect(keysOf({ surface: 'see', lemma: 'see', lookup: [{ key: 'see' }] })).toEqual([{ key: 'see' }]);
+  });
+});
+
+describe('a word the line uses in a verb’s form, with a dictionary in the learner’s own language', () => {
+  const seen = {
+    surface: 'seen', lemma: 'see', inflections: ['past participle', 'or seen', 'or sin'],
+    lookup: [{ key: 'see' }, { key: 'seen' }, { key: 'sin' }],
+  };
+  const row = (id: string, kind: string[], ...glosses: string[]): Entry =>
+    ({ id, word: 'see', common: false, kind, senses: glosses.map((g) => ({ pos: kind, glosses: [g] })) });
+  /** The language's own dictionary, English Wiktionary's see (wty-en-en). */
+  const english = [row('e1', ['n'], 'A diocese.'), row('e2', ['v'], 'To perceive or detect with the eyes.')];
+
+  /**
+   * The offscreen document as answerLookup answers: the learner's own dictionary first, each with its own rank,
+   * then the language's own; the rows of each as the store hands them to the rank.
+   */
+  function asOffscreen(ownId: string, own: Entry[], lang: string): void {
+    offscreen((m) => {
+      if (m.type !== 'dict-lookup') return undefined;
+      const key = String(m.key);
+      const hint = { reading: m.reading as string | undefined, pos: m.pos as string | undefined };
+      const mine = SOURCES[ownId]!.rank(own.filter((e) => e.word === key), key, hint);
+      if (mine.length) return { ok: true, source: 'local', entries: mine.map((e) => ({ ...e, lang })) };
+      return { ok: true, source: 'local', entries: SOURCES['wty-en-en']!.rank(english.filter((e) => e.word === key), key, hint) };
+    });
+  }
+
+  it('opens on the learner’s own dictionary, on its verb, for every own dictionary English has', async () => {
+    // Thai Wiktionary's see is two verb rows (wty-en-th); Japanese's a noun row, then the verb's (wty-en-ja).
+    const rows: Record<string, [Entry[], string]> = {
+      'wty-en-th': [[row('t1', ['v'], 'เห็น, เจอ'), row('t2', ['v'], 'เข้าใจ')], 'เห็น, เจอ'],
+      'wty-en-ja': [[row('j1', ['名'], '司教。'), row('j2', ['動'], '～を見る、みえる、目に入る。')], '～を見る、みえる、目に入る。'],
+    };
+    const pairs = Object.entries(OWN_DICTIONARIES.en!);
+    expect(pairs.length).toBeGreaterThan(10);
+    for (const [lang, id] of pairs) {
+      clearLookupCache();
+      // Any other: WikDict's and the glossaries' see, the noun's row first (wikdict-en-de: Bischofssitz).
+      const [own, opens] = rows[id] ?? [[row('o1', ['n'], `${lang}: diocese`), row('o2', ['v'], `${lang}: to see`)], `${lang}: to see`];
+      asOffscreen(id, own, lang);
+      const r = await lookupToken(seen);
+      const top = r.state === 'ok' ? r.entries[0] : undefined;
+      expect([top?.lang, top?.senses[0]?.glosses[0]], id).toEqual([lang, opens]);
+    }
+  });
+
+  it('opens on the language’s own dictionary, on its verb, where the learner’s has no such word', async () => {
+    asOffscreen('wty-en-th', [], 'th');
+    const r = await lookupToken(seen);
+    expect(r.state === 'ok' ? [r.entries[0]?.lang, r.entries[0]?.senses[0]?.glosses[0]] : r).toEqual([undefined, 'To perceive or detect with the eyes.']);
   });
 });
 

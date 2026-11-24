@@ -14,6 +14,14 @@
  *
  *   COVER=wty-zh-pl,wikdict-zh-es node scripts/measure-forms.mjs zh   # how many of the commonest words each has
  *
+ *   CARDS=1 SAVE=base node scripts/measure-forms.mjs en    # and what the card of each word the line traces to another
+ *   CARDS=1 AGAINST=base node scripts/measure-forms.mjs en # (seen → see) opens on, in each dictionary the language
+ *                                                          # is looked up in; then every card that opens otherwise
+ *
+ * CARDS asks each dictionary as a lookup does: the keys the dictionary client sends (keysOf in src/dict/client.ts),
+ * and each source's own rank (src/dict/sources.ts), answered from memory as lookup() in src/dict/store.ts answers.
+ * Run it before changing either, and read every card that opens otherwise.
+ *
  * Run it before adding a language or changing what its hints (italian.ts, spanish.ts…), its GAPS, the reader
  * (src/dict/wty.ts) or the hyphen joining say, and read what changes: the hints and GAPS take a word only on
  * what this counts. Data is downloaded into node_modules/.cache/libregaku-forms.
@@ -26,13 +34,15 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import init, { TokenizerBuilder, loadDictionaryFromBytes, type Tokenizer } from 'lindera-wasm';
-import { DICTIONARIES, FALLBACK_DICTIONARIES } from '../src/settings';
+import { DICTIONARIES, FALLBACK_DICTIONARIES, OWN_DICTIONARIES } from '../src/settings';
 import { SOURCES } from '../src/dict/sources';
-import type { Entry } from '../src/dict/jmdict';
-import type { FormInfo, Inflection } from '../src/dict/store';
+import { keysOf } from '../src/dict/client';
+import type { Entry, RankHint } from '../src/dict/jmdict';
+import { FORMS_FOLLOWED, type FormInfo, type Inflection, type Source } from '../src/dict/store';
 import { onlySpelling } from '../src/dict/wty';
 import { LINDERA_DICTS } from '../src/morphology/dictionaries';
 import { analyserFor } from '../src/morphology/index';
+import type { Token } from '../src/morphology/types';
 import { cover, keepDownloads } from './cover';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
@@ -182,6 +192,8 @@ const lower = (s: string): string => s.toLocaleLowerCase(LANG);
 const missing = new Map<string, number>();
 const ambiguous = new Map<string, { n: number; chose: Map<string, number>; could: string }>();
 const saved: string[] = [];
+/** The words the line traces to another (CARDS), each once with how often it came: seen → see, "past participle". */
+const traced = new Map<string, { n: number; token: Token }>();
 let seen = 0;
 let found = 0;
 for (const text of lines) {
@@ -189,6 +201,12 @@ for (const text of lines) {
   const words = tokens.filter((t) => !t.punct);
   saved.push(`${words.map((t) => `${t.surface}${t.lemma && t.lemma !== t.surface ? `>${t.lemma}` : ''}`).join(' ')}\t${text}`);
   for (const t of words) {
+    if (process.env.CARDS && t.lemma && t.lemma !== t.surface && t.inflections?.length) {
+      const key = `${t.surface}>${t.lemma}\t${t.inflections.join(' · ')}`;
+      const was = traced.get(key);
+      if (was) was.n++;
+      else traced.set(key, { n: 1, token: t });
+    }
     if (!/\p{L}/u.test(t.surface)) continue;
     seen++;
     if ([t.lemma, t.surface, lower(t.surface)].some((k) => k && entries.has(k))) found++;
@@ -236,6 +254,58 @@ if (process.env.COVER) {
   }
   const common = [...counts].sort((a, b) => b[1] - a[1]).slice(0, 1000);
   report.push('', ...(await cover(common, process.env.COVER.split(','))));
+}
+
+/*
+ * CARDS=1: the first meaning of the card each traced word opens, in the language's own dictionary and in each in a
+ * learner's own language (OWN_DICTIONARIES), as `${LANG}-cards-${SAVE}.tsv`; with AGAINST, each that opens otherwise.
+ */
+if (process.env.CARDS) {
+  interface Held { source: Source; entries: Map<string, Entry[]>; forms: Map<string, Inflection[]> }
+  const held: Array<[string, Held]> = [[DICTIONARIES[LANG]!, { source, entries, forms }]];
+  for (const [native, id] of Object.entries(OWN_DICTIONARIES[LANG] ?? {})) {
+    const own = SOURCES[id];
+    if (!own || held.some(([x]) => x === id)) continue;
+    const h: Held = { source: own, entries: new Map(), forms: new Map() };
+    for await (const batch of await own.read(native)) {
+      for (const { entry, keys } of batch.entries) for (const k of keys) h.entries.set(k, [...(h.entries.get(k) ?? []), entry]);
+      for (const row of batch.inflections ?? []) h.forms.set(row.form, [...(h.forms.get(row.form) ?? []), row]);
+    }
+    held.push([id, h]);
+  }
+  // lookup() in src/dict/store.ts: the entries under the key, or under the words it is a form of.
+  const lookup = (h: Held, key: string, hint: RankHint): Entry[] => {
+    const under = h.entries.get(key) ?? [];
+    if (under.length) return h.source.rank(under, key, hint);
+    if (h.source.followsForms?.(hint) === false) return [];
+    const of = [...new Set((h.forms.get(key) ?? []).flatMap((r) => r.of.map((o) => o.lemma)))].slice(0, FORMS_FOLLOWED);
+    return of.flatMap((w) => h.source.rank(h.entries.get(w) ?? [], w, hint));
+  };
+  const cards: string[] = [];
+  for (const [word, { n, token }] of traced) {
+    for (const [id, h] of held) {
+      let top: Entry | undefined;
+      for (const { key, ...hint } of keysOf(token)) {
+        top = lookup(h, key, hint)[0];
+        if (top) break;
+      }
+      const first = top?.senses[0];
+      cards.push(`${id}\t${word}\t${n}\t${(first?.pos ?? []).join(' ')}\t${(first?.glosses ?? []).join('; ').slice(0, 100)}`);
+    }
+  }
+  report.push('', `CARDS: ${traced.size} words traced to another, in ${held.length} dictionaries`);
+  if (process.env.SAVE) writeFileSync(`${CACHE}/${LANG}-cards-${process.env.SAVE}.tsv`, cards.join('\n'));
+  if (process.env.AGAINST) {
+    const at = (line: string): [string, string] => {
+      const [id = '', word = '', labels = '', n = '', ...first] = line.split('\t');
+      return [`${id}\t${word}\t${labels}`, `${n}\t${first.join(' ')}`];
+    };
+    const was = new Map(readFileSync(`${CACHE}/${LANG}-cards-${process.env.AGAINST}.tsv`, 'utf8').split('\n').map(at));
+    const changed = cards.map(at).filter(([k, v]) => was.has(k) && was.get(k) !== v)
+      .map(([k, v]) => [Number(v.split('\t')[0]), `${v.split('\t')[0]}\t${k}\t${was.get(k)!.split('\t')[1]}  =>  ${v.split('\t')[1]}`] as const)
+      .sort((a, b) => b[0] - a[0]);
+    report.push(`CARDS OPENED OTHERWISE THAN IN "${process.env.AGAINST}": ${changed.length}`, ...changed.map(([, line]) => line));
+  }
 }
 
 if (process.env.SAVE) writeFileSync(`${CACHE}/${LANG}-${process.env.SAVE}.tsv`, saved.join('\n'));

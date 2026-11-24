@@ -95,6 +95,41 @@ const USAGE = new Map(Object.entries({
   '🇻🇪': 'Venezuela', '🇩🇪⬅️': 'western', '✡️': 'Judaism', '🛕': 'Hinduism',
 }));
 
+/** The codes above that name a part of speech, not its grammar: a row is one of these. */
+const PARTS = new Set([
+  'n', 'name', 'v', 'adj', 'adv', 'pron', 'det', 'artic', 'num', 'counter', 'prep', 'prep-phrase', 'conj', 'ptcl', 'intj',
+  'phrase', 'prov', 'pref', 'suf', 'r', 'char', 'adn', 'ptcpl', 'contr',
+]);
+
+/** One of the codes above for a part of speech: 'v', 'n', 'adj'. Not an analyser's tag (VV, 動詞,自立), a gender or a usage. */
+export const isKindCode = (code: string): boolean => PARTS.has(code);
+
+/**
+ * The other codes the files' tag banks (tag_bank_1.json, 2026.10.22) file under partOfSpeech, as the codes above.
+ * Of the 67 Wiktionary files the extension reads, 61 share English Wiktionary's tag bank, French's and Thai's among
+ * them, whose verb is v and which also file a transitive or a reflexive verb so (vt, vr). Two editions write theirs in
+ * their own language: Japanese Wiktionary's five files call a verb 動 and a noun 名, German's one V and S. The rows
+ * keep their codes, and a card shows 名 as it is; this only tells which part a row is. Left out: postp, adj_noun and
+ * pos-r, which no code above is.
+ */
+const EDITION_PARTS = new Map(Object.entries({
+  vt: 'v', vi: 'v', vr: 'v', vdt: 'v', 'prop-n': 'name', surn: 'name',
+  動: 'v', 自動: 'v', 他動: 'v', 名: 'n', 名前: 'name', 形: 'adj', 形容動詞: 'adj', 連体詞: 'adn', 副: 'adv', 定: 'artic',
+  接続: 'conj', 助数詞: 'counter', 感動詞: 'intj', 数詞: 'num', 成句: 'phrase', ことわざ: 'prov', 接頭辞: 'pref',
+  前: 'prep', 代: 'pron', 助: 'ptcl', 接尾辞: 'suf',
+  V: 'v', Vi: 'v', Vt: 'v', Vr: 'v', S: 'n', Vorn: 'name', Adj: 'adj', Adv: 'adv', Artik: 'artic', Konj: 'conj',
+  Int: 'intj', Num: 'num', Wortverbindung: 'phrase', Präf: 'pref', Präp: 'prep', Pron: 'pron', Ptkl: 'ptcl', Suf: 'suf',
+}));
+
+/** The part of speech of a row, in the codes above whichever edition it came from: the first of its codes that is one. */
+export function partOfRow(row: Pick<Entry, 'kind'>): string | undefined {
+  for (const code of row.kind ?? []) {
+    const part = PARTS.has(code) ? code : EDITION_PARTS.get(code);
+    if (part) return part;
+  }
+  return undefined;
+}
+
 /** Codes of a row that a card does not say: a German noun's or adjective's declension (strong, weak, mixed) says which endings it takes, and "not comparable" is said of the few that are. */
 const HEADER_NOISE = new Set(['not-comp', 'strong', 'weak', 'mixed']);
 
@@ -166,6 +201,34 @@ const CHARACTERS = /^[\p{Script=Han}\s,、]+:?$/u;
 const POINTER = /^(?:For [^,]+, )?see the entry at /i;
 
 /**
+ * A "meaning" of nothing but stops, commas, brackets, dashes and quotation marks: what a converter leaves where it
+ * dropped a link or a template, ".", "[[]]", ", , ." — 212 of them over the 67 Wiktionary files the extension
+ * reads (2026.10.22), the only meaning of curb in Korean and of skinbound in English. A symbol is a meaning, and
+ * stays: † is dagger's in Polish, ¥ a braille sign's.
+ */
+const EMPTY = /^[\s\p{Ps}\p{Pe}\p{Pd}\p{Pi}\p{Pf}.,;:!?…'"/。、，；：！？・／]*$/u;
+
+/**
+ * The editions whose files give the credit of a quotation as a meaning: Korean Wiktionary's.
+ *
+ * Its pages number a meaning's finer meanings in bold ('''1-1.''' 목격하다), and open the line that credits a
+ * quotation with its year in bold ('''2016''', VOA Learning English (public domain)). kaikki's reader of the edition
+ * takes both for meanings and drops the bold, so the credit comes out as a meaning of its own beside the one the
+ * quotation illustrates — ", VOA Learning English (public domain)", its sentences as its examples. Nothing in the
+ * row marks it, in its structure or in kaikki's: it is an item of the same list, built as every other meaning is.
+ * What tells it is where it stands and what was cut from it. A quotation is never the first item of a list, and
+ * what is left of "'''2016''', VOA…" opens with the comma after the year. Over the edition's seven files the
+ * extension reads (2026.10.22), 85 items after the first open with a comma: 82 credits and three with nothing in
+ * them (", , ."). Of the six that lead a list, two are meanings (génie, ", 뛰어난 사람, 천재"; 容, ", 용서하다.")
+ * and one is a credit, all three kept; the other three are empty (EMPTY).
+ *
+ * Elsewhere a comma before a meaning is what is left of a label or a link the converter dropped, and the meaning
+ * is what follows: ", (thông tục) gàn" in Vietnamese, ", Peser." in French — 1,486 in the other editions' files.
+ * So the rule is the edition's, not the reader's.
+ */
+const CREDITED: ReadonlySet<string> = new Set(['ko']);
+
+/**
  * A meaning's text as it is stored, or '' for what is not a meaning.
  *
  * - Its first line only. What follows a line break is not the meaning: an
@@ -178,13 +241,18 @@ const POINTER = /^(?:For [^,]+, )?see the entry at /i;
  * - A row with no part of speech is, in Korean, a syllable and the Chinese
  *   characters read as it: "水: water" is worth keeping, and a character on
  *   its own, of which there are thousands, says nothing.
- * - A line that only points at another page (POINTER) is no meaning either.
+ * - A line that only points at another page (POINTER) is no meaning either,
+ *   nor one with nothing in it but punctuation (EMPTY).
+ * - `credit`: the item follows another in a list of an edition that gives
+ *   quotations' credits as meanings (CREDITED); one that opens with a comma
+ *   is such a credit.
  */
-function meaningOf(text: string, heads: boolean, tagged: boolean): string {
+function meaningOf(text: string, heads: boolean, tagged: boolean, credit = false): string {
   const [line = ''] = text.trim().split('\n');
   let gloss = line.replace(/\s+/g, ' ').trim().replace(/^\* /, '');
   if (heads) gloss = gloss.replace(/\s*:$/, '');
-  return DEBRIS.test(gloss) || POINTER.test(gloss) || (!tagged && CHARACTERS.test(gloss)) ? '' : gloss;
+  if (credit && gloss.startsWith(',')) return '';
+  return DEBRIS.test(gloss) || POINTER.test(gloss) || EMPTY.test(gloss) || (!tagged && CHARACTERS.test(gloss)) ? '' : gloss;
 }
 
 /**
@@ -214,7 +282,7 @@ const ASIDE = /^(?:details-entry|summary-entry|extra-info|example-sentence)/;
  * keeps only its own labels — one nested under "(Mexico) a punch" is as often
  * "(Argentina) a fight" as a finer shade of the first.
  */
-function readMeaning(item: unknown, pos: string[], senses: Sense[], depth: number, heads = false): void {
+function readMeaning(item: unknown, pos: string[], senses: Sense[], depth: number, heads = false, credited = false, after = false): void {
   let text = '';
   const misc: string[] = [];
   const nested: Node[] = [];
@@ -231,22 +299,24 @@ function readMeaning(item: unknown, pos: string[], senses: Sense[], depth: numbe
   };
   walk(isNode(item) ? item.content : item, depth);
 
-  const gloss = meaningOf(text, heads || nested.length > 0, pos.length > 0);
+  const gloss = meaningOf(text, heads || nested.length > 0, pos.length > 0, credited && after);
   if (gloss) addSense(senses, { pos, glosses: [gloss], misc });
-  for (const list of nested) readList(list, pos, senses, depth + 1);
+  for (const list of nested) readList(list, pos, senses, depth + 1, credited);
 }
 
 /**
  * Every meaning in a list. A list straight inside a list is one level further
  * down, not an item, and the item before it is what it is nested under.
+ * `credited`: the file is of an edition that gives quotations' credits as
+ * meanings (CREDITED), and an item after the first may be one.
  */
-function readList(list: Node, pos: string[], senses: Sense[], depth: number): void {
+function readList(list: Node, pos: string[], senses: Sense[], depth: number, credited = false): void {
   if (depth > DEEPEST) return;
   const items = children(list.content);
   items.forEach((item, i) => {
     const next = items[i + 1];
-    if (isNode(item) && isList(item)) readList(item, pos, senses, depth + 1);
-    else readMeaning(item, pos, senses, depth + 1, isNode(next) && isList(next));
+    if (isNode(item) && isList(item)) readList(item, pos, senses, depth + 1, credited);
+    else readMeaning(item, pos, senses, depth + 1, isNode(next) && isList(next), credited, i > 0);
   });
 }
 
@@ -285,13 +355,15 @@ const ATTACHED = /^[^;,.()]+ of \S+ combined with \S+\.?$/;
  * Null for a row with no meanings, and for one that has nothing of its own
  * to say (ATTACHED): its word is found through the rows of forms.
  */
-function readEntry(id: string, word: string, reading: unknown, tags: string, definitions: unknown[]): Entry | null {
+function readEntry(
+  id: string, word: string, reading: unknown, tags: string, definitions: unknown[], credited: boolean,
+): Entry | null {
   const kind = codesOf(tags);
   const senses: Sense[] = [];
   for (const definition of definitions) {
     // Yomitan lets a definition be bare text. wty writes none, and reading one costs this line.
     if (typeof definition === 'string') readMeaning(definition, kind, senses, 0);
-    else if (isNode(definition)) for (const list of glossLists(definition.content)) readList(list, kind, senses, 0);
+    else if (isNode(definition)) for (const list of glossLists(definition.content)) readList(list, kind, senses, 0, credited);
   }
   if (!senses.length || senses.every((s) => ATTACHED.test(s.glosses[0] ?? ''))) return null;
   return {
@@ -449,8 +521,12 @@ function readForm(term: string, rules: unknown, definitions: unknown[]): Inflect
 
 /* ── Rows ───────────────────────────────────────────────────────── */
 
-/** One row of a term bank: a dictionary entry, a form of one, or nothing usable. */
-export function readRow(row: unknown, id: string): { entry: Entry } | { inflection: Inflection } | null {
+/**
+ * One row of a term bank: a dictionary entry, a form of one, or nothing usable. `edition` is the language the
+ * file explains its words in, the edition of Wiktionary it was made from: Korean's gives quotations' credits as
+ * meanings (CREDITED).
+ */
+export function readRow(row: unknown, id: string, edition?: string): { entry: Entry } | { inflection: Inflection } | null {
   if (!Array.isArray(row)) return null;
   const [term, reading, tags, rules, , definitions] = row as unknown[];
   if (typeof term !== 'string' || !term.trim() || !Array.isArray(definitions)) return null;
@@ -461,7 +537,7 @@ export function readRow(row: unknown, id: string): { entry: Entry } | { inflecti
     const inflection = readForm(word, rules, definitions);
     return inflection ? { inflection } : null;
   }
-  const entry = readEntry(id, word, reading, tagged, definitions);
+  const entry = readEntry(id, word, reading, tagged, definitions, edition !== undefined && CREDITED.has(edition));
   return entry ? { entry } : null;
 }
 
@@ -547,9 +623,11 @@ function namesALetter(row: Entry): boolean {
  * What kind of word it is, each part of speech once and three at most, the
  * one with the most meanings first: ser is a verb and a masculine noun, [v, n,
  * masc]. How it is used, only where every row says so: 수 has sixteen rows,
- * one of them uncommon and one historical, and the word is neither.
+ * one of them uncommon and one historical, and the word is neither. `lead` is
+ * the part of speech the rows were put in order for, named first whatever its
+ * count: see is "verb, noun" where the line has it as a verb.
  */
-function gathered(rows: Entry[]): string[] {
+function gathered(rows: Entry[], lead?: string): string[] {
   const kinds = rows.map((r) => r.kind ?? []);
   // Each part of speech once, the one with the most meanings first: tout is a determiner before it is a noun.
   const parts = new Map<string, { meanings: number; beside: Set<string> }>();
@@ -562,7 +640,7 @@ function gathered(rows: Entry[]): string[] {
     if (NOUNS.has(part)) for (const code of rest) if (BESIDE_NOUN.has(code)) found.beside.add(code);
     parts.set(part, found);
   }
-  const ranked = [...parts].sort((a, b) => b[1].meanings - a[1].meanings);
+  const ranked = [...parts].sort((a, b) => Number(b[0] === lead) - Number(a[0] === lead) || b[1].meanings - a[1].meanings);
   // The gender is said in the header where the word is a noun first; otherwise beside the noun's own meanings on the card.
   const named = ranked.slice(0, PARTS_NAMED).flatMap(([part, { beside }], at) => (at ? [part] : [part, ...beside]));
   const more = ranked.length - PARTS_NAMED;
@@ -587,9 +665,10 @@ const BESIDE_NOUN = new Set(['masc', 'fem', 'neut', 'pl-only']);
  * entry takes the id of the row that leads. Each sense keeps the codes of the
  * row it came from, and a meaning two rows share is said once, under the
  * codes of both. Rows read differently stay apart, as JMdict's are, for
- * ranking to choose between.
+ * ranking to choose between. `lead`: the part of speech the rows were put in
+ * order for, which the entry's `kind` names first (gathered).
  */
-export function mergeByWord(entries: Entry[]): Entry[] {
+export function mergeByWord(entries: Entry[], lead?: string): Entry[] {
   const groups = new Map<string, Entry[]>();
   for (const entry of entries) {
     const key = `${entry.word}\u0000${entry.reading ?? ''}`;
@@ -611,7 +690,7 @@ export function mergeByWord(entries: Entry[]): Entry[] {
     }
     const senses: Sense[] = [];
     for (const row of rows) for (const sense of row.senses) addSense(senses, sense);
-    const kind = gathered(rows);
+    const kind = gathered(rows, lead);
     into.push({ ...first, common: rows.some((r) => r.common), senses, kind: kind.length ? kind : undefined });
   }
   return [...merged, ...letters];

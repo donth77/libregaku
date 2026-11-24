@@ -47,11 +47,13 @@ Where no recording is found, your browser's own voice says the word.
 
 ## Data built into the extension
 
-Two small tables are built from these sources and shipped with the extension. Each keeps its
+Three small tables are built from these sources and shipped with the extension. Each keeps its
 source's licence.
 
 - Which reading a Chinese character shows first (`src/dict/zh-readings.ts`), from
   [Unihan](https://www.unicode.org/reports/tr38/) (Unicode License) and CC-CEDICT.
+- The traditional form of a simplified Chinese character, for meanings shown to a reader of
+  traditional characters (`src/dict/zh-traditional.ts`), from CC-CEDICT, checked against Unihan.
 - Which verb a Japanese verb written in kana is (`src/dict/kana-verbs.ts`), learned from
   [Tatoeba](https://tatoeba.org/)'s example sentences (CC BY 2.0 FR).
 

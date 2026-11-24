@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Entry } from '../jmdict';
-import { formIn, kindOf, mergeByWord, onlyForm, readGlossRow, readRow, type Inflection } from '../wty';
+import { formIn, kindOf, mergeByWord, onlyForm, partOfRow, readGlossRow, readRow, type Inflection } from '../wty';
 
 /*
  * Rows as wiktionary-to-yomitan publishes them — wty-es-en, wty-ko-en and
@@ -908,5 +908,92 @@ describe('readGlossRow, on a row of a glossary', () => {
   it('is no entry where no meaning has an equivalent', () => {
     expect(readGlossRow(row('nothing', 'n', meaning('a label and no list')), '5')).toBeNull();
     expect(readGlossRow(['', '', 'n', 'n', 0, [], 0, ''], '6')).toBeNull();
+  });
+});
+
+/*
+ * Korean Wiktionary gives the credit of a quotation as a meaning of its own: kaikki's reader of the edition takes
+ * "'''2016''', VOA Learning English (public domain)" for a numbered meaning and drops the bold year (CREDITED in
+ * wty.ts). Rows from wty-en-ko, wty-fr-ko and wty-en-vi, 2026.10.22, their examples cut to one or none.
+ */
+const example = (sentence: string): unknown => ({ tag: 'details', data: { content: 'details-entry-examples' }, content: [
+  { tag: 'summary', data: { content: 'summary-entry' }, content: '1 예문' },
+  { tag: 'div', data: { content: 'extra-info' }, content: { tag: 'div', data: { content: 'example-sentence' }, content: [
+    { tag: 'div', data: { content: 'example-sentence-a' }, lang: 'en', content: sentence },
+  ] } },
+] });
+const item = (text: string, ...more: unknown[]): unknown => ({ tag: 'li', content: [{ tag: 'div', content: [text, ...more] }] });
+
+/** en-ko term_bank_1#618 */
+const SEE_KO = meanings('see', 'v', 'v', [
+  item('보다, 바라보다.', example('I want to see her. 난 그 여자를 보고 싶다.')),
+  item(', VOA Learning English (public domain)', example('I want to see this house! 저는 이 집을 보고 싶어요.')),
+  item(', Englishispeak.com', example('Where? I don’t see it. 어디요, 잘 안 보이는데요')),
+  item('목격하다(To witness or observe by personal experience. )'),
+  item('(상황이 어떠한지) 알아보다', example('I’ll see if I can find Jeff. 제프를 한 번 찾아봐야겠어요.')),
+]);
+/** fr-ko term_bank_1#843: the comma is what is left of a link, and the meaning is all the row has. */
+const GENIE_KO = meanings('génie', '', '', [item(', 뛰어난 사람, 천재')]);
+/** en-vi term_bank_1#2931: the same comma, before a meaning, under another. */
+const FOCAL_VI = meanings('focal', 'adj', 'adj', [item('(vật lý) (thuộc) tiêu điểm.'), item(', (toán học) tiêu.')]);
+/** en-ko term_bank_1#3643: a link the converter dropped, and a full stop where it stood. */
+const CURB_KO = meanings('curb', '', '', [item('.', example('They are parking their cars along the curb.'))]);
+
+describe('readRow, on a quotation’s credit given as a meaning', () => {
+  const glosses = (read: ReturnType<typeof readRow>): string[] =>
+    read && 'entry' in read ? read.entry.senses.flatMap((s) => s.glosses) : [];
+
+  it('leaves the credits out of a Korean row, and keeps every meaning', () => {
+    expect(glosses(readRow(SEE_KO, '618', 'ko'))).toEqual([
+      '보다, 바라보다.', '목격하다(To witness or observe by personal experience. )', '(상황이 어떠한지) 알아보다',
+    ]);
+  });
+
+  it('keeps a Korean meaning that leads its list, comma and all: a quotation never stands first', () => {
+    expect(glosses(readRow(GENIE_KO, '843', 'ko'))).toEqual([', 뛰어난 사람, 천재']);
+  });
+
+  it('keeps the meaning after a comma in another edition, where the comma is what a dropped label left', () => {
+    expect(glosses(readRow(FOCAL_VI, '2931', 'vi'))).toEqual(['(vật lý) (thuộc) tiêu điểm.', ', (toán học) tiêu.']);
+    // Read with no edition, as before there was the rule.
+    expect(glosses(readRow(SEE_KO, '618'))).toContain(', VOA Learning English (public domain)');
+  });
+
+  it('gives no meaning of punctuation alone, in any edition, and keeps a symbol', () => {
+    expect(readRow(CURB_KO, '3643', 'ko')).toBeNull();
+    expect(glosses(readRow(meanings('Lastwagen', 'n', 'n', [item('[[]]'), item('…'), item('Camion.')]), '0', 'fr'))).toEqual(['Camion.']);
+    expect(glosses(readRow(meanings('dagger', 'n', 'n', [item('sztylet, puginał'), item('†')]), '0', 'pl'))).toEqual(['sztylet, puginał', '†']);
+  });
+});
+
+describe('partOfRow', () => {
+  it('names a row’s part of speech in the file’s codes, whichever edition wrote them', () => {
+    expect(partOfRow({ kind: ['v', 'vt'] })).toBe('v');
+    // Japanese Wiktionary's verb, and a French noun's gender ahead of 名 in its Japanese file.
+    expect(partOfRow({ kind: ['動'] })).toBe('v');
+    expect(partOfRow({ kind: ['fem', '名'] })).toBe('n');
+    // German Wiktionary's.
+    expect(partOfRow({ kind: ['V', 'unreg'] })).toBe('v');
+    // Every other edition's tag bank is English Wiktionary's, which files a transitive verb under partOfSpeech too.
+    expect(partOfRow({ kind: ['vi'] })).toBe('v');
+    expect(partOfRow({ kind: ['prop-n'] })).toBe('name');
+    expect(partOfRow({ kind: ['S', 'Mask'] })).toBe('n');
+    expect(partOfRow({ kind: ['abbv'] })).toBeUndefined();
+    expect(partOfRow({})).toBeUndefined();
+  });
+});
+
+describe('mergeByWord, for a word the line uses as one part of speech', () => {
+  const row = (id: string, kind: string[], ...glosses: string[]): Entry =>
+    ({ id, word: 'see', common: false, kind, senses: glosses.map((g) => ({ pos: kind, glosses: [g] })) });
+
+  it('names first the part of speech it was put in order for, whatever its count', () => {
+    const verb = row('2', ['v'], 'to perceive with the eyes');
+    const noun = row('1', ['n'], 'a diocese', 'the seat of a bishop');
+    expect(mergeByWord([noun, verb])[0]?.kind).toEqual(['n', 'v']);
+    expect(mergeByWord([verb, noun], 'v')[0]).toMatchObject({
+      kind: ['v', 'n'],
+      senses: [{ glosses: ['to perceive with the eyes'] }, { glosses: ['a diocese'] }, { glosses: ['the seat of a bishop'] }],
+    });
   });
 });

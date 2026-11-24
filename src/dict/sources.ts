@@ -4,10 +4,11 @@ import type { Entry, RankHint } from './jmdict';
 import type { CharacterInfo } from './kanji';
 import { JMDICT, lookup, type Batch, type Source } from './store';
 import { wikdictEntries, wikdictUrl } from './wikdict';
-import { formIn, mergeByWord, onlyForm, readGlossRow, readRow, type Inflection } from './wty';
+import { formIn, isKindCode, mergeByWord, onlyForm, partOfRow, readGlossRow, readRow, type Inflection } from './wty';
 import { foldArabic } from '../morphology/arabic';
 import { foldHindi } from '../morphology/hindi';
 import { foldTurkish } from '../morphology/turkish';
+import { toTraditional } from './traditional';
 import { zipFiles } from './zip';
 
 /**
@@ -198,6 +199,34 @@ function oneRowEach(rows: Inflection[], unwritten: ReadonlySet<string>): Inflect
 const WTY_FORMAT: Record<string, number> = { de: 6, ko: 7, ja: 6, zh: 6 };
 
 /**
+ * And by the edition a file is read for, where what is stored moved on for it alone (Source.formatFor). 23 November
+ * 2026: Korean, whose quotations' credits are no longer read as meanings (CREDITED in wty.ts); and the Chinese files
+ * read for zh-Hant, now in traditional characters (IN_SCRIPT). The meanings of punctuation alone (EMPTY in wty.ts)
+ * went from every edition's files with the first, 212 lines over 67 files, and are not worth a download of their
+ * own: 16 in English's 1.1 million meanings would have every learner of English fetch 110 MB again. They go from a
+ * stored file at its language's next bump.
+ */
+const WTY_EDITION_FORMAT: Readonly<Record<string, number>> = { ko: 1, 'zh-Hant': 1 };
+
+/**
+ * Editions read in another script than their files are written in. A learner who reads traditional Chinese
+ * (zh-Hant) is given the files in Chinese (OWN_DICTIONARIES in settings.ts), whose meanings are written mostly in
+ * simplified characters, and reads them in traditional ones (toTraditional). Only what explains the word: the word
+ * itself is the language learned, and stays as its file writes it.
+ */
+const IN_SCRIPT: Readonly<Record<string, (text: string) => string>> = { 'zh-Hant': toTraditional };
+
+/** An entry's meanings, and its own names for what kind of word it is, written as `write` writes them. */
+function inScript(entry: Entry, write: ((text: string) => string) | undefined, kinds = false): Entry {
+  if (!write) return entry;
+  return {
+    ...entry,
+    ...(kinds && entry.kind ? { kind: entry.kind.map(write) } : {}),
+    senses: entry.senses.map((s) => ({ ...s, ...(kinds ? { pos: s.pos.map(write) } : {}), glosses: s.glosses.map(write) })),
+  };
+}
+
+/**
  * The kinds of word (wty's codes) each of an analyser's tags stands for, by language: what a row has to be
  * to be the word the analyser found. Korean 안 is an adverb ("not") where it is tagged MAG, and 년 a counter
  * ("year") where it is NNBC, though the file's first rows for them are "inside" and a slur.
@@ -211,14 +240,36 @@ const ROLES: Record<string, Record<string, readonly string[]>> = {
 /** Codes that say a row is not the usual use of the word. */
 const MARKED = new Set(['lit', 'poet', 'dated', 'dialect', 'obs', 'arch', 'uncmmn', 'rare', 'offens', 'vulg', 'derog']);
 
-/** The rows that are the analyser's role for the word first, the rest after them, each in its own order. */
-function byRole(rows: Entry[], target: string, hint?: RankHint): Entry[] {
-  const wanted = hint?.pos ? ROLES[target]?.[hint.pos.split('+')[0] ?? ''] : undefined;
-  if (!wanted || rows.length < 2) return rows;
-  const fits = (row: Entry): boolean => wanted.includes(row.kind?.[0] ?? '');
+/**
+ * The kinds of word a lookup asks for, in the dictionary's codes: those the analyser's tag stands for (ROLES), or
+ * the code itself where the dictionary client sends one of the dictionary's own. It does for a word the line uses
+ * in a verb's form (keysOf in client.ts): seen is asked for as see, 'v'.
+ */
+function wantedOf(target: string, hint?: RankHint): readonly string[] | undefined {
+  const tag = hint?.pos?.split('+')[0] ?? '';
+  return ROLES[target]?.[tag] ?? (isKindCode(tag) ? [tag] : undefined);
+}
+
+/**
+ * The rows that are the analyser's role for the word first, the rest after them, each in its own order; and the
+ * part of speech the card then opens on, for its header to name first (mergeByWord).
+ *
+ * The rest are kept, not left out. The role is a reading of the line, and can be wrong: an English participle is as
+ * often an adjective (a broken heart, a closed door), and the meaning a learner wants may be the other row's. The
+ * card labels each part of speech where its meanings change (popup.ts), so a noun after the verb is said to be one,
+ * and only the order says which the line was read as.
+ */
+function byRole(rows: Entry[], target: string, hint?: RankHint): { rows: Entry[]; lead?: string } {
+  const wanted = wantedOf(target, hint);
+  if (!wanted || rows.length < 2) return { rows };
+  // In the edition's own codes too: Japanese Wiktionary's verb is 動 (partOfRow).
+  const fits = (row: Entry): boolean => wanted.includes(partOfRow(row) ?? '');
   const usual = (row: Entry): boolean => fits(row) && !(row.kind ?? []).some((k) => MARKED.has(k));
   // The role, in its usual use; then the role in a literary or a dated one; then the others.
-  return [...rows.filter(usual), ...rows.filter((row) => fits(row) && !usual(row)), ...rows.filter((row) => !fits(row))];
+  const ordered = [...rows.filter(usual), ...rows.filter((row) => fits(row) && !usual(row)), ...rows.filter((row) => !fits(row))];
+  const first = ordered[0];
+  const lead = first && fits(first) ? partOfRow(first) : undefined;
+  return { rows: ordered, ...(lead ? { lead } : {}) };
 }
 
 /** A word, or a word's main meaning, that the published file leaves out. */
@@ -499,20 +550,24 @@ export function wty(target: string, native: string): Source {
     db: `libregaku-dict-${id}`,
     release: WTY_REVISION,
     // Bumped when the reader (wty.ts) or the words added here (GAPS) change what is stored. By the language
-    // whose words changed, so that a new word for German is not a new download of Spanish.
+    // whose words changed, so that a new word for German is not a new download of Spanish; and by the edition,
+    // where only what is stored for it changed.
     format: WTY_FORMAT[target] ?? 5,
+    formatFor: WTY_EDITION_FORMAT,
     rank: (entries: Entry[], key: string, hint?: RankHint) => {
       // One row for each part of speech a word has; the card shows one entry.
-      // The row that is the role the analyser found for it first: 우리 "we", not 우리 "cage".
-      const rows = byRole(entries.filter((e) => e.word === key), target, hint);
-      if (!particle) return mergeByWord(rows);
+      // The row that is the role the analyser found for it first: 우리 "we", not 우리 "cage"; see the verb, not
+      // see the noun, for seen.
+      const { rows, lead } = byRole(entries.filter((e) => e.word === key), target, hint);
+      if (!particle) return mergeByWord(rows, lead);
       // A particle's rows are an entry apart (PARTICLE): all that answers a
       // particle, and what comes last for any other word.
       const own = mergeByWord(rows.filter(ofParticle));
-      return isParticle(hint) ? own : [...mergeByWord(rows.filter((row) => !ofParticle(row))), ...own];
+      return isParticle(hint) ? own : [...mergeByWord(rows.filter((row) => !ofParticle(row)), lead), ...own];
     },
     followsForms: (hint) => !isParticle(hint),
-    async read(_edition, onDownload) {
+    async read(edition, onDownload) {
+      const script = IN_SCRIPT[edition];
       const number = (name: string): number => Number(/(\d+)\.json$/.exec(name)?.[1] ?? 0);
       const banks = zipFiles(await fetchBytes(wtyUrl(target, native), onDownload))
         .filter((f) => /^term_bank_\d+\.json$/.test(f.name))
@@ -545,7 +600,7 @@ export function wty(target: string, native: string): Source {
           for (let i = 0; i < rows.length; i += ROWS) {
             const batch: Required<Omit<Batch, 'percent'>> = { entries: [], inflections: [] };
             for (const raw of rows.slice(i, i + ROWS) as unknown[]) {
-              const row = readRow(raw, idOf(n++));
+              const row = readRow(raw, idOf(n++), native);
               if (!row) continue;
               // Arabic in some editions keyed with its vowels (كِتَاب): under كتاب, its vowels kept as the reading.
               if (lemmaKey && 'entry' in row && lemmaKey(row.entry.word) !== row.entry.word) {
@@ -554,7 +609,7 @@ export function wty(target: string, native: string): Source {
               if (lemmaKey && 'inflection' in row) row.inflection = { ...row.inflection, form: lemmaKey(row.inflection.form) };
               if ('entry' in row) {
                 // sono, a row of its own, is a form of essere (formIn), and only that where it says nothing more (onlyForm).
-                if (!pointerOnly(row.entry) && !onlyForm(row.entry)) batch.entries.push({ entry: row.entry, keys: [row.entry.word] });
+                if (!pointerOnly(row.entry) && !onlyForm(row.entry)) batch.entries.push({ entry: inScript(row.entry, script), keys: [row.entry.word] });
                 const form = formIn(row.entry);
                 if (form) batch.inflections.push(lemmaKey ? { ...form, of: form.of.map((o) => ({ ...o, lemma: lemmaKey(o.lemma) })) } : form);
                 const key = respell?.(row.entry.word);
@@ -695,8 +750,10 @@ const KRDICT: Source = {
   id: 'krdict',
   db: 'libregaku-dict-krdict',
   release: '1.0.0',
-  // Bumped when krdictSenses reads a row differently.
+  // Bumped when krdictSenses reads a row differently; and for zh-Hant alone, read in traditional characters since
+  // 23 November 2026 (IN_SCRIPT).
   format: 2,
+  formatFor: { 'zh-Hant': 1 },
   rank: (entries: Entry[], key: string, hint?: RankHint) => {
     const rows = entries.filter((e) => e.word === key);
     const ofParticle = (e: Entry): boolean => KRDICT_PARTICLE.has(e.kind?.[0] ?? '');
@@ -712,6 +769,8 @@ const KRDICT: Source = {
       .sort((a, b) => number(a.name) - number(b.name));
     if (!banks.length) throw new Error('libregaku: dictionary contained no words');
     const HAN = /\p{Script=Han}/u;
+    // Its Chinese is simplified: in traditional characters for zh-Hant, the names of its kinds of word too (助词, 助詞).
+    const script = IN_SCRIPT[edition];
     return (async function* (): AsyncGenerator<Batch> {
       let n = 0;
       for (const [at, bank] of banks.entries()) {
@@ -728,13 +787,13 @@ const KRDICT: Source = {
           const senses = krdictSenses(raw[5]);
           if (!senses.length) continue;
           entries.push({
-            entry: {
+            entry: inScript({
               id: idOf(n++), word,
               // Stars grade the words a learner meets first; any is common.
               common: label.includes('⭐'),
               ...(kind ? { kind: [kind] } : {}),
               senses: senses.map((glosses) => ({ pos: kind ? [kind] : [], glosses })),
-            },
+            }, script, true),
             keys: [word],
           });
         }
@@ -907,7 +966,10 @@ export function wtyGlossary(target: string, native: string): Source {
     db: `libregaku-dict-${id}`,
     release: WTY_REVISION,
     format: 1,
-    rank: (entries: Entry[], key: string) => mergeByWord(entries.filter((e) => e.word === key)),
+    rank: (entries: Entry[], key: string, hint?: RankHint) => {
+      const { rows, lead } = byRole(entries.filter((e) => e.word === key), target, hint);
+      return mergeByWord(rows, lead);
+    },
     async read(_edition, onDownload) {
       const number = (name: string): number => Number(/(\d+)\.json$/.exec(name)?.[1] ?? 0);
       const banks = zipFiles(await fetchBytes(wtyUrl(target, native, 'gloss'), onDownload))
@@ -952,7 +1014,11 @@ export function wikdict(target: string, native: string): Source {
     db: `libregaku-dict-${id}`,
     release: WIKDICT_RELEASE,
     format: 1,
-    rank: (entries: Entry[], key: string) => mergeByWord(entries.filter((e) => e.word === key)),
+    // Each part of speech a row of its own, as Wiktionary's: see the verb before see the noun, for seen (byRole).
+    rank: (entries: Entry[], key: string, hint?: RankHint) => {
+      const { rows, lead } = byRole(entries.filter((e) => e.word === key), target, hint);
+      return mergeByWord(rows, lead);
+    },
     async read(_edition, onDownload) {
       const file = await fetchBytes(wikdictUrl(target, native), onDownload);
       const all = [...wikdictEntries(file)];
