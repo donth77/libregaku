@@ -78,9 +78,16 @@ pnpm typecheck
 | Cantonese | Full, with Jyutping |
 | Korean, Spanish, French, German, Italian, Portuguese, Thai, Hindi, Arabic, Turkish, English | Full |
 
+Definitions come in your own language where a dictionary has them, and in English otherwise.
+[`LANGUAGE-PAIRS.md`](LANGUAGE-PAIRS.md) lists each pair and the dictionaries behind it.
+
+## Help
+
+Something not working, or a question? [Open an issue](https://github.com/donth77/libregaku/issues).
+
 ## Privacy
 
-No account, no server, and nothing collected. [`PRIVACY.md`](PRIVACY.md) lists the few
+No account, no server, and nothing sent to the developer. [`PRIVACY.md`](PRIVACY.md) lists the few
 times a word or a download request leaves your computer, and to whom.
 [`TERMS.md`](TERMS.md) has the terms of use.
 

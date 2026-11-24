@@ -1,12 +1,13 @@
 # Privacy policy
 
-Last updated 19 November 2026.
+Last updated 23 November 2026.
 
 Libregaku is a browser extension made by Tom Donohue. It has no account and no server. Nothing
-you do with it is sent to the developer, and nothing is collected, sold, used for advertising or
-analysed.
+you do with it is sent to the developer, and nothing is sold, used for advertising or analysed.
 
-What it does with data, and the few times something leaves your computer, is set out below.
+In the Chrome Web Store's terms, Libregaku handles website content: the subtitles of the video you
+watch, the words you look up, and the sound, picture and title of a line you make a card from. What
+it does with them, and the few times something leaves your computer, is set out below.
 
 ## What stays on your computer
 
