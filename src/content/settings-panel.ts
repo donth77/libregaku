@@ -9,7 +9,8 @@ import { markSites, siteInfo, SITE_INFO_STYLE } from '../site-info';
 import { foldable } from './folds';
 import { copyText } from './share';
 import {
-  DEFAULTS, DEFINITION_LANGUAGES, cardDeck, featuresOf, setSetting, settings, type Settings, TARGET_LANGUAGES, targetVariant,
+  DEFAULTS, DEFINITION_LANGUAGES, cardDeck, dictionaryOf, featuresOf, ownDictionaryOf, setSetting, settings, type Settings,
+  TARGET_LANGUAGES, targetVariant,
   TRANSLATION_LANGUAGES, UNDERLINES, type UnderlineKey,
 } from '../settings';
 
@@ -664,13 +665,27 @@ function showFor(root: ParentNode, target: string, native = settings().native): 
   named(root, 'ruby', has.readings === 'pinyin' ? [t.pinyin, t.pinyinHint]
     : has.readings === 'jyutping' ? [t.jyutping, t.jyutpingHint] : [t.ruby, t.rubyHint]);
   named(root, 'cardKanji', has.characters === 'hanzi' ? [t.cardHanzi, t.cardHanziHint] : [t.cardKanji, t.cardKanjiHint]);
+  // What the language gets, and in which language its words are explained, which is yours where a dictionary is.
+  const note = root.querySelector('select[name=target]')?.closest('.set')?.querySelector('.hint');
+  if (note) note.textContent = tierNote(target, { native, definitions: settings().definitions });
   // Definitions follow your language; a language of their own only where the dictionary has none in it.
   const defs = root.querySelector('select[name=definitions]')?.closest<HTMLElement>('.set');
   if (!defs) return;
-  const own = DEFINITION_LANGUAGES.some((l) => l.code === native);
-  defs.hidden = !has.definitions || own;
+  const edition = DEFINITION_LANGUAGES.some((l) => l.code === native);
+  defs.hidden = !has.definitions || edition;
+  // Where a dictionary in your language comes first, this picks the language for the words it lacks.
+  const first = ownDefinitions(target, native);
   const hint = defs.querySelector('.hint');
-  if (hint) hint.textContent = ui.settings.definitionsHintFor(languageName(native));
+  if (hint) hint.textContent = first ? t.definitionsHintOwn(languageName(first)) : t.definitionsHintFor(languageName(native));
+}
+
+/**
+ * The language of the dictionary in your own language for a language learned (ownDictionaryOf), or undefined where
+ * there is none. Chinese for zh-Hant too: the dictionaries in Chinese are Chinese Wiktionary's and KRDict's, which
+ * are in either script.
+ */
+function ownDefinitions(code: string, native: string): string | undefined {
+  return ownDictionaryOf(code, { native })?.edition.split('-')[0];
 }
 
 /*
@@ -680,13 +695,27 @@ function showFor(root: ParentNode, target: string, native = settings().native): 
  * front than discovered as flakiness. Above that, the note goes by what the
  * language has — readings to draw, and of which kind — never by its name.
  * Read in the interface language when it is shown.
+ *
+ * And it says which language definitions are in, from the dictionaries a
+ * lookup asks (LANGUAGE-PAIRS.md is written from the same two): the one in
+ * your own language first where there is one (ownDictionaryOf), then the
+ * language's own (dictionaryOf), which is in English but for JMdict's editions.
  */
-export function tierNote(code: string): string {
+export function tierNote(code: string, s: Pick<Settings, 'native' | 'definitions'> = settings()): string {
   const tier = TARGET_LANGUAGES.find((l) => l.code === code)?.tier ?? 0;
-  if (tier === 0) return ui.settings.supportBasic;
+  const dictionary = dictionaryOf(code, s);
+  const t = ui.settings;
+  if (tier === 0 || !dictionary) return t.supportBasic;
+  // JMdict names its editions by three letters (ger); every other dictionary's is a language code already.
+  const base = DEFINITION_LANGUAGES.find((l) => l.jmdict === dictionary.edition)?.code ?? dictionary.edition;
+  const own = ownDefinitions(code, s.native);
+  const definitions = own && own !== base
+    ? t.supportDefinitionsOwn(languageName(own), languageName(base))
+    : t.supportDefinitions(languageName(base));
   const readings = featuresOf(code).readings;
-  return ui.settings[readings === 'furigana' ? 'supportFull' : readings === 'pinyin' ? 'supportPinyin'
-    : readings === 'jyutping' ? 'supportJyutping' : 'supportWords'];
+  const note = readings === 'furigana' ? t.supportFull : readings === 'pinyin' ? t.supportPinyin
+    : readings === 'jyutping' ? t.supportJyutping : t.supportWords;
+  return note(definitions);
 }
 
 let seq = 0;
@@ -705,6 +734,8 @@ export function buildSettings(onChange: Rerender, opts: SettingsPanelOptions = {
     // Its own flags too, and the one picked for it.
     if (which === 'target') redrawFlags(root);
     if (which === 'native') showFor(root, settings().target, (e.target as HTMLSelectElement).value);
+    // Japanese falls back to the definitions language chosen, and the note under "I'm learning" names it.
+    if (which === 'definitions') showFor(root, settings().target);
   });
 
   /*
@@ -844,14 +875,12 @@ export function buildSettings(onChange: Rerender, opts: SettingsPanelOptions = {
   const t = ui.settings;
 
   group('languages', t.languagesHeading, t.languagesAbout);
-  const target = select('target', t.target,
+  // Its note says what the language gets; showFor says it again as the language learned, yours or the definitions
+  // language changes.
+  select('target', t.target,
     // Limited is boundaries alone: no dictionary forms, so no lookups and no matching a word to its card.
     TARGET_LANGUAGES.map((l) => [l.code, l.tier > 0 ? learningLabel(l.code) : t.targetLimited(learningLabel(l.code))]),
     tierNote(settings().target));
-  target.addEventListener('change', () => {
-    const hint = target.closest('.set')?.querySelector('.hint');
-    if (hint) hint.textContent = tierNote(target.value);
-  });
   // Which script, for a language written in more than one: a video often has
   // subtitles in both. Not a data-setting: it holds one choice of each
   // language's, and fillScripts keeps it in step.

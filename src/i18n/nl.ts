@@ -51,10 +51,13 @@ export const nl: Translation = {
     languagesAbout: 'Kies de taal die je leert en je eigen taal.',
     target: 'Ik leer',
     targetLimited: (language: string): string => `${language} – beperkt`,
-    supportFull: 'Volledige ondersteuning, met lezingen en furigana.',
-    supportPinyin: 'Volledige ondersteuning, met pinyin. Definities zijn in het Engels.',
-    supportJyutping: 'Volledige ondersteuning, met Jyutping. Definities zijn in het Engels.',
-    supportWords: 'Volledige ondersteuning. Definities zijn in het Engels.',
+    supportFull: (definitions: string): string => `Volledige ondersteuning, met lezingen en furigana. ${definitions}`,
+    supportPinyin: (definitions: string): string => `Volledige ondersteuning, met pinyin. ${definitions}`,
+    supportJyutping: (definitions: string): string => `Volledige ondersteuning, met Jyutping. ${definitions}`,
+    supportWords: (definitions: string): string => `Volledige ondersteuning. ${definitions}`,
+    supportDefinitions: (language: string): string => `Definities zijn in het ${language}.`,
+    supportDefinitionsOwn: (language: string, fallback: string): string =>
+      `Definities zijn in het ${language}, en in het ${fallback} voor woorden die het woordenboek in het ${language} niet heeft.`,
     script: 'Schrifttekens',
     scriptHint: 'Worden gebruikt als een video beide heeft.',
     supportBasic: 'Basisondersteuning: woorden worden gesplitst, maar er is nog geen woordenboek en er zijn geen lezingen.',
@@ -64,6 +67,8 @@ export const nl: Translation = {
     definitionsHint: 'Het woordenboek heeft geen definities in jouw taal, dus worden ze in deze taal getoond.',
     definitionsHintFor: (language: string): string =>
       `Het woordenboek heeft geen definities in het ${language}, dus worden ze in deze taal getoond.`,
+    definitionsHintOwn: (language: string): string =>
+      `Woorden die het woordenboek in het ${language} niet heeft, worden in deze taal uitgelegd.`,
 
     // Woorden opzoeken
     lookupHeading: 'Woorden opzoeken',

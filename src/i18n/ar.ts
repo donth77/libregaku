@@ -69,10 +69,13 @@ export const ar: Translation = {
     languagesAbout: 'اختر اللغة التي تتعلمها ولغتك.',
     target: 'أتعلّم',
     targetLimited: (language: string): string => `${language} — دعم محدود`,
-    supportFull: 'دعم كامل، يشمل القراءات والفوريغانا.',
-    supportPinyin: 'دعم كامل، يشمل البينيين. التعريفات بالإنجليزية.',
-    supportJyutping: 'دعم كامل، يشمل Jyutping. التعريفات بالإنجليزية.',
-    supportWords: 'دعم كامل. التعريفات بالإنجليزية.',
+    supportFull: (definitions: string): string => `دعم كامل، يشمل القراءات والفوريغانا. ${definitions}`,
+    supportPinyin: (definitions: string): string => `دعم كامل، يشمل البينيين. ${definitions}`,
+    supportJyutping: (definitions: string): string => `دعم كامل، يشمل Jyutping. ${definitions}`,
+    supportWords: (definitions: string): string => `دعم كامل. ${definitions}`,
+    supportDefinitions: (language: string): string => `التعريفات باللغة ${language}.`,
+    supportDefinitionsOwn: (language: string, fallback: string): string =>
+      `التعريفات باللغة ${language}، وباللغة ${fallback} للكلمات غير الموجودة في القاموس باللغة ${language}.`,
     script: 'الكتابة',
     scriptHint: 'هي المستخدمة عندما يتوفّر الفيديو بالنوعين.',
     supportBasic: 'دعم أساسي: تُقسَّم الكلمات، لكن لا يوجد قاموس ولا قراءات بعد.',
@@ -82,6 +85,8 @@ export const ar: Translation = {
     definitionsHint: 'لا يحتوي القاموس على تعريفات بلغتك، لذا تظهر بهذه اللغة.',
     definitionsHintFor: (language: string): string =>
       `لا يحتوي القاموس على تعريفات باللغة ${language}، لذا تظهر بهذه اللغة.`,
+    definitionsHintOwn: (language: string): string =>
+      `الكلمات غير الموجودة في القاموس باللغة ${language} تظهر تعريفاتها بهذه اللغة.`,
 
     // البحث عن الكلمات
     lookupHeading: 'البحث عن الكلمات',

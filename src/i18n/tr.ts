@@ -47,10 +47,14 @@ export const tr: Translation = {
     languagesAbout: 'Öğrendiğiniz dili ve kendi dilinizi seçin.',
     target: 'Öğrendiğim dil',
     targetLimited: (language: string): string => `${language} — sınırlı`,
-    supportFull: 'Tam destek; okunuşlar ve furigana dahil.',
-    supportPinyin: 'Tam destek; pinyin dahil. Tanımlar İngilizcedir.',
-    supportJyutping: 'Tam destek; Jyutping dahil. Tanımlar İngilizcedir.',
-    supportWords: 'Tam destek. Tanımlar İngilizcedir.',
+    supportFull: (definitions: string): string => `Tam destek; okunuşlar ve furigana dahil. ${definitions}`,
+    supportPinyin: (definitions: string): string => `Tam destek; pinyin dahil. ${definitions}`,
+    supportJyutping: (definitions: string): string => `Tam destek; Jyutping dahil. ${definitions}`,
+    supportWords: (definitions: string): string => `Tam destek. ${definitions}`,
+    // Without a suffix after the name (İngilizce), whose vowel would have to match it.
+    supportDefinitions: (language: string): string => `Tanımlar ${language} gösterilir.`,
+    supportDefinitionsOwn: (language: string, fallback: string): string =>
+      `Tanımlar ${language} gösterilir; ${language} sözlükte bulunmayan kelimeler için ${fallback}.`,
     script: 'Yazı',
     scriptHint: 'Videoda ikisi de varsa bu kullanılır.',
     supportBasic: 'Temel destek: kelimeler ayrılır ama henüz sözlük ya da okunuş yok.',
@@ -60,6 +64,8 @@ export const tr: Translation = {
     definitionsHint: 'Sözlükte sizin dilinizde tanım yok, bu yüzden tanımlar bu dilde gösterilir.',
     definitionsHintFor: (language: string): string =>
       `Sözlükte ${language} tanım yok, bu yüzden tanımlar bu dilde gösterilir.`,
+    definitionsHintOwn: (language: string): string =>
+      `${language} sözlükte bulunmayan kelimelerin tanımları bu dilde gösterilir.`,
 
     // Kelime arama
     lookupHeading: 'Kelime arama',

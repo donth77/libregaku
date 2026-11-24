@@ -60,10 +60,14 @@ export const uk: Translation = {
     languagesAbout: 'Виберіть мову, яку вивчаєте, і свою мову.',
     target: 'Я вивчаю',
     targetLimited: (language: string): string => `${language} — обмежено`,
-    supportFull: 'Повна підтримка, зокрема читання та фурігана.',
-    supportPinyin: 'Повна підтримка, зокрема піньїнь. Визначення англійською.',
-    supportJyutping: 'Повна підтримка, зокрема Jyutping. Визначення англійською.',
-    supportWords: 'Повна підтримка. Визначення англійською.',
+    supportFull: (definitions: string): string => `Повна підтримка, зокрема читання та фурігана. ${definitions}`,
+    supportPinyin: (definitions: string): string => `Повна підтримка, зокрема піньїнь. ${definitions}`,
+    supportJyutping: (definitions: string): string => `Повна підтримка, зокрема Jyutping. ${definitions}`,
+    supportWords: (definitions: string): string => `Повна підтримка. ${definitions}`,
+    // Named as the browser names a language (англійська), so said as "the language of the definitions: ...".
+    supportDefinitions: (language: string): string => `Мова визначень: ${language}.`,
+    supportDefinitionsOwn: (language: string, fallback: string): string =>
+      `Мова визначень: ${language}, а для слів, яких немає в словнику цією мовою, — ${fallback}.`,
     script: 'Письмо',
     scriptHint: 'Використовується, коли у відео є обидва варіанти.',
     supportBasic: 'Базова підтримка: текст ділиться на слова, але словника й читань поки немає.',
@@ -73,6 +77,8 @@ export const uk: Translation = {
     definitionsHint: 'У словнику немає визначень вашою мовою, тому вони показуються цією.',
     definitionsHintFor: (language: string): string =>
       `У словнику немає визначень вашою мовою (${language}), тому вони показуються цією.`,
+    definitionsHintOwn: (language: string): string =>
+      `Слова, яких немає в словнику вашою мовою (${language}), показуються цією.`,
 
     // Пошук у словнику
     lookupHeading: 'Пошук у словнику',

@@ -22,14 +22,25 @@ export const settings = {
   target: "I'm learning",
   /** A language in that menu that has only basic support so far. `language` is its name. */
   targetLimited: (language: string): string => `${language} — limited`,
-  /** Under "I'm learning", for a language with readings and a dictionary: Japanese. */
-  supportFull: 'Full support, including readings and furigana.',
-  /** Under "I'm learning", for Chinese: full support, with pinyin (the romanised reading) above the characters. */
-  supportPinyin: 'Full support, including pinyin. Definitions are in English.',
-  /** Under "I'm learning", for Cantonese: full support, with Jyutping (its romanised reading) above the characters. */
-  supportJyutping: 'Full support, including Jyutping. Definitions are in English.',
-  /** Under "I'm learning", for a language with a dictionary and no readings to show, such as Korean or Spanish. */
-  supportWords: 'Full support. Definitions are in English.',
+  /**
+   * Under "I'm learning", for a language with readings and a dictionary: Japanese. `definitions` is a sentence
+   * saying what language its definitions are in (supportDefinitions or supportDefinitionsOwn), put where it goes.
+   */
+  supportFull: (definitions: string): string => `Full support, including readings and furigana. ${definitions}`,
+  /** The same for Chinese: full support, with pinyin (the romanised reading) above the characters. */
+  supportPinyin: (definitions: string): string => `Full support, including pinyin. ${definitions}`,
+  /** The same for Cantonese: full support, with Jyutping (its romanised reading) above the characters. */
+  supportJyutping: (definitions: string): string => `Full support, including Jyutping. ${definitions}`,
+  /** The same for a language with a dictionary and no readings to show, such as Korean or Spanish. */
+  supportWords: (definitions: string): string => `Full support. ${definitions}`,
+  /** After one of those, where every definition is in one language. `language` is its name, as it reads inside a sentence. */
+  supportDefinitions: (language: string): string => `Definitions are in ${language}.`,
+  /**
+   * The same where a dictionary in your own language comes first: `language` is yours, and `fallback` the one a word
+   * is explained in when that dictionary doesn't have it (usually English). Each name reads as inside a sentence.
+   */
+  supportDefinitionsOwn: (language: string, fallback: string): string =>
+    `Definitions are in ${language}, and in ${fallback} for words the dictionary in ${language} doesn't have.`,
   /**
    * A menu under "I'm learning", for a language written in more than one
    * script: Chinese, in Simplified or Traditional characters. Its choices are
@@ -54,6 +65,12 @@ export const settings = {
   /** Its explanation. `language` is your language's name, as it reads inside a sentence. */
   definitionsHintFor: (language: string): string =>
     `The dictionary has no definitions in ${language}, so they're shown in this language.`,
+  /**
+   * Its explanation where a dictionary in your language comes first, as one in Portuguese does for Japanese: this
+   * row then picks the language for the words that one lacks. `language` is yours, as it reads inside a sentence.
+   */
+  definitionsHintOwn: (language: string): string =>
+    `Words the dictionary in ${language} doesn't have are explained in this language.`,
 
   // Looking words up
   lookupHeading: 'Looking words up',

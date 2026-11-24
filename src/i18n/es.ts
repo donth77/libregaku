@@ -42,10 +42,13 @@ export const es: Translation = {
     languagesAbout: 'Elige el idioma que aprendes y tu propio idioma.',
     target: 'Estoy aprendiendo',
     targetLimited: (language: string): string => `${language} (limitado)`,
-    supportFull: 'Compatibilidad completa, incluidas las lecturas y el furigana.',
-    supportPinyin: 'Compatibilidad completa, incluido el pinyin. Las definiciones están en inglés.',
-    supportJyutping: 'Compatibilidad completa, incluido el Jyutping. Las definiciones están en inglés.',
-    supportWords: 'Compatibilidad completa. Las definiciones están en inglés.',
+    supportFull: (definitions: string): string => `Compatibilidad completa, incluidas las lecturas y el furigana. ${definitions}`,
+    supportPinyin: (definitions: string): string => `Compatibilidad completa, incluido el pinyin. ${definitions}`,
+    supportJyutping: (definitions: string): string => `Compatibilidad completa, incluido el Jyutping. ${definitions}`,
+    supportWords: (definitions: string): string => `Compatibilidad completa. ${definitions}`,
+    supportDefinitions: (language: string): string => `Las definiciones están en ${language}.`,
+    supportDefinitionsOwn: (language: string, fallback: string): string =>
+      `Las definiciones están en ${language}, y en ${fallback} para las palabras que no tiene el diccionario en ${language}.`,
     script: 'Caracteres',
     scriptHint: 'Los que se usan cuando un video tiene ambos.',
     supportBasic: 'Compatibilidad básica: se separan las palabras, pero aún no hay diccionario ni lecturas.',
@@ -55,6 +58,8 @@ export const es: Translation = {
     definitionsHint: 'El diccionario no tiene definiciones en tu idioma, así que se muestran en este.',
     definitionsHintFor: (language: string): string =>
       `El diccionario no tiene definiciones en ${language}, así que se muestran en este idioma.`,
+    definitionsHintOwn: (language: string): string =>
+      `Las palabras que no tiene el diccionario en ${language} se explican en este idioma.`,
 
     // Búsqueda de palabras
     lookupHeading: 'Búsqueda de palabras',

@@ -66,10 +66,13 @@ export const it: Translation = {
     languagesAbout: 'Scegli la lingua che stai imparando e la tua lingua.',
     target: 'Sto imparando',
     targetLimited: (language: string): string => `${language} (limitato)`,
-    supportFull: 'Supporto completo, incluse letture e furigana.',
-    supportPinyin: 'Supporto completo, incluso il pinyin. Le definizioni sono in inglese.',
-    supportJyutping: 'Supporto completo, incluso il Jyutping. Le definizioni sono in inglese.',
-    supportWords: 'Supporto completo. Le definizioni sono in inglese.',
+    supportFull: (definitions: string): string => `Supporto completo, incluse letture e furigana. ${definitions}`,
+    supportPinyin: (definitions: string): string => `Supporto completo, incluso il pinyin. ${definitions}`,
+    supportJyutping: (definitions: string): string => `Supporto completo, incluso il Jyutping. ${definitions}`,
+    supportWords: (definitions: string): string => `Supporto completo. ${definitions}`,
+    supportDefinitions: (language: string): string => `Le definizioni sono in ${language}.`,
+    supportDefinitionsOwn: (language: string, fallback: string): string =>
+      `Le definizioni sono in ${language}, e in ${fallback} per le parole che il dizionario in ${language} non ha.`,
     script: 'Caratteri',
     scriptHint: 'Quelli usati quando un video li ha entrambi.',
     supportBasic: 'Supporto di base: le parole vengono separate, ma non ci sono ancora né dizionario né letture.',
@@ -79,6 +82,8 @@ export const it: Translation = {
     definitionsHint: 'Il dizionario non ha definizioni nella tua lingua, quindi vengono mostrate in questa.',
     definitionsHintFor: (language: string): string =>
       `Il dizionario non ha definizioni in ${language}, quindi vengono mostrate in questa lingua.`,
+    definitionsHintOwn: (language: string): string =>
+      `Le parole che il dizionario in ${language} non ha sono spiegate in questa lingua.`,
 
     // Ricerca delle parole
     lookupHeading: 'Ricerca delle parole',

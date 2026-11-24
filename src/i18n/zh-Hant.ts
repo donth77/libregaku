@@ -31,10 +31,13 @@ export const zhHant: Translation = {
     languagesAbout: '選擇學習語言和母語。',
     target: '學習語言',
     targetLimited: (language: string): string => `${language}（有限支援）`,
-    supportFull: '完整支援，包括讀音和振假名。',
-    supportPinyin: '完整支援，包括拼音。釋義為英文。',
-    supportJyutping: '完整支援，包括 Jyutping。釋義為英文。',
-    supportWords: '完整支援。釋義為英文。',
+    supportFull: (definitions: string): string => `完整支援，包括讀音和振假名。${definitions}`,
+    supportPinyin: (definitions: string): string => `完整支援，包括拼音。${definitions}`,
+    supportJyutping: (definitions: string): string => `完整支援，包括 Jyutping。${definitions}`,
+    supportWords: (definitions: string): string => `完整支援。${definitions}`,
+    supportDefinitions: (language: string): string => `釋義為${language}。`,
+    supportDefinitionsOwn: (language: string, fallback: string): string =>
+      `釋義為${language}；${language}字典裡沒有的詞，釋義為${fallback}。`,
     script: '文字',
     scriptHint: '影片兩種都有時，使用這一種。',
     supportBasic: '基本支援：可以分詞，但還沒有字典和讀音。',
@@ -43,6 +46,8 @@ export const zhHant: Translation = {
     definitions: '釋義語言',
     definitionsHint: '字典沒有你母語的釋義，因此改用這個語言顯示。',
     definitionsHintFor: (language: string): string => `字典沒有${language}的釋義，因此改用這個語言顯示。`,
+    definitionsHintOwn: (language: string): string =>
+      `${language}字典裡沒有的詞，改用這個語言顯示釋義。`,
 
     // Looking words up
     lookupHeading: '查詢單字',

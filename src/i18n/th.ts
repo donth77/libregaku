@@ -37,10 +37,13 @@ export const th: Translation = {
     languagesAbout: 'เลือกภาษาที่กำลังเรียนและภาษาของคุณ',
     target: 'ภาษาที่เรียน',
     targetLimited: (language: string): string => `${language} — รองรับจำกัด`,
-    supportFull: 'รองรับเต็มรูปแบบ รวมถึงคำอ่านและฟุริงานะ',
-    supportPinyin: 'รองรับเต็มรูปแบบ รวมถึงพินอิน ความหมายเป็นภาษาอังกฤษ',
-    supportJyutping: 'รองรับเต็มรูปแบบ รวมถึง Jyutping ความหมายเป็นภาษาอังกฤษ',
-    supportWords: 'รองรับเต็มรูปแบบ ความหมายเป็นภาษาอังกฤษ',
+    supportFull: (definitions: string): string => `รองรับเต็มรูปแบบ รวมถึงคำอ่านและฟุริงานะ ${definitions}`,
+    supportPinyin: (definitions: string): string => `รองรับเต็มรูปแบบ รวมถึงพินอิน ${definitions}`,
+    supportJyutping: (definitions: string): string => `รองรับเต็มรูปแบบ รวมถึง Jyutping ${definitions}`,
+    supportWords: (definitions: string): string => `รองรับเต็มรูปแบบ ${definitions}`,
+    supportDefinitions: (language: string): string => `ความหมายเป็นภาษา${language}`,
+    supportDefinitionsOwn: (language: string, fallback: string): string =>
+      `ความหมายเป็นภาษา${language} และเป็นภาษา${fallback}สำหรับคำที่พจนานุกรมภาษา${language}ไม่มี`,
     script: 'ตัวอักษร',
     scriptHint: 'ใช้เมื่อวิดีโอมีทั้งสองแบบ',
     supportBasic: 'รองรับขั้นพื้นฐาน: ตัดคำได้ แต่ยังไม่มีพจนานุกรมหรือคำอ่าน',
@@ -50,6 +53,8 @@ export const th: Translation = {
     definitionsHint: 'พจนานุกรมไม่มีความหมายเป็นภาษาของคุณ จึงแสดงเป็นภาษานี้แทน',
     definitionsHintFor: (language: string): string =>
       `พจนานุกรมไม่มีความหมายเป็นภาษา${language} จึงแสดงเป็นภาษานี้แทน`,
+    definitionsHintOwn: (language: string): string =>
+      `คำที่พจนานุกรมภาษา${language}ไม่มี จะแสดงความหมายเป็นภาษานี้`,
 
     // การดูความหมาย
     lookupHeading: 'การดูความหมาย',

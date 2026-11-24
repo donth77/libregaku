@@ -42,10 +42,13 @@ export const pt: Translation = {
     languagesAbout: 'Escolha o idioma que você está aprendendo e o seu idioma.',
     target: 'Estou aprendendo',
     targetLimited: (language: string): string => `${language} — limitado`,
-    supportFull: 'Suporte completo, incluindo leituras e furigana.',
-    supportPinyin: 'Suporte completo, incluindo pinyin. As definições ficam em inglês.',
-    supportJyutping: 'Suporte completo, incluindo Jyutping. As definições ficam em inglês.',
-    supportWords: 'Suporte completo. As definições ficam em inglês.',
+    supportFull: (definitions: string): string => `Suporte completo, incluindo leituras e furigana. ${definitions}`,
+    supportPinyin: (definitions: string): string => `Suporte completo, incluindo pinyin. ${definitions}`,
+    supportJyutping: (definitions: string): string => `Suporte completo, incluindo Jyutping. ${definitions}`,
+    supportWords: (definitions: string): string => `Suporte completo. ${definitions}`,
+    supportDefinitions: (language: string): string => `As definições ficam em ${language}.`,
+    supportDefinitionsOwn: (language: string, fallback: string): string =>
+      `As definições ficam em ${language}, e em ${fallback} para as palavras que o dicionário em ${language} não tem.`,
     script: 'Caracteres',
     scriptHint: 'Os usados quando um vídeo tem os dois.',
     supportBasic: 'Suporte básico: as palavras são separadas, mas ainda não há dicionário nem leituras.',
@@ -55,6 +58,8 @@ export const pt: Translation = {
     definitionsHint: 'O dicionário não tem definições no seu idioma, então elas aparecem neste.',
     definitionsHintFor: (language: string): string =>
       `O dicionário não tem definições em ${language}, então elas aparecem neste idioma.`,
+    definitionsHintOwn: (language: string): string =>
+      `As palavras que o dicionário em ${language} não tem aparecem neste idioma.`,
 
     // Looking words up
     lookupHeading: 'Consulta de palavras',

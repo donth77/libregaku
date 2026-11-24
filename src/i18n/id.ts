@@ -33,10 +33,13 @@ export const id: Translation = {
     languagesAbout: 'Pilih bahasa yang Anda pelajari dan bahasa Anda sendiri.',
     target: 'Saya belajar',
     targetLimited: (language: string): string => `${language} — terbatas`,
-    supportFull: 'Dukungan penuh, termasuk cara baca dan furigana.',
-    supportPinyin: 'Dukungan penuh, termasuk pinyin. Definisi dalam bahasa Inggris.',
-    supportJyutping: 'Dukungan penuh, termasuk Jyutping. Definisi dalam bahasa Inggris.',
-    supportWords: 'Dukungan penuh. Definisi dalam bahasa Inggris.',
+    supportFull: (definitions: string): string => `Dukungan penuh, termasuk cara baca dan furigana. ${definitions}`,
+    supportPinyin: (definitions: string): string => `Dukungan penuh, termasuk pinyin. ${definitions}`,
+    supportJyutping: (definitions: string): string => `Dukungan penuh, termasuk Jyutping. ${definitions}`,
+    supportWords: (definitions: string): string => `Dukungan penuh. ${definitions}`,
+    supportDefinitions: (language: string): string => `Definisi dalam bahasa ${language}.`,
+    supportDefinitionsOwn: (language: string, fallback: string): string =>
+      `Definisi dalam bahasa ${language}, dan dalam bahasa ${fallback} untuk kata yang tidak ada di kamus bahasa ${language}.`,
     script: 'Aksara',
     scriptHint: 'Yang dipakai saat video punya keduanya.',
     supportBasic: 'Dukungan dasar: kata-kata dipisahkan, tetapi belum ada kamus atau cara baca.',
@@ -46,6 +49,8 @@ export const id: Translation = {
     definitionsHint: 'Kamus tidak punya definisi dalam bahasa Anda, jadi definisi ditampilkan dalam bahasa ini.',
     definitionsHintFor: (language: string): string =>
       `Kamus tidak punya definisi dalam bahasa ${language}, jadi definisi ditampilkan dalam bahasa ini.`,
+    definitionsHintOwn: (language: string): string =>
+      `Kata yang tidak ada di kamus bahasa ${language} dijelaskan dalam bahasa ini.`,
 
     // Looking words up
     lookupHeading: 'Pencarian kata',

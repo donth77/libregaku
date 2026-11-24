@@ -53,10 +53,14 @@ export const pl: Translation = {
     languagesAbout: 'Wybierz język, którego się uczysz, i swój własny.',
     target: 'Uczę się',
     targetLimited: (language: string): string => `${language} — ograniczona obsługa`,
-    supportFull: 'Pełna obsługa, w tym czytania i furigana.',
-    supportPinyin: 'Pełna obsługa, w tym pinyin. Definicje są po angielsku.',
-    supportJyutping: 'Pełna obsługa, w tym Jyutping. Definicje są po angielsku.',
-    supportWords: 'Pełna obsługa. Definicje są po angielsku.',
+    supportFull: (definitions: string): string => `Pełna obsługa, w tym czytania i furigana. ${definitions}`,
+    supportPinyin: (definitions: string): string => `Pełna obsługa, w tym pinyin. ${definitions}`,
+    supportJyutping: (definitions: string): string => `Pełna obsługa, w tym Jyutping. ${definitions}`,
+    supportWords: (definitions: string): string => `Pełna obsługa. ${definitions}`,
+    // Named as the browser names a language (angielski), so said as "the language of the definitions: ...".
+    supportDefinitions: (language: string): string => `Język definicji: ${language}.`,
+    supportDefinitionsOwn: (language: string, fallback: string): string =>
+      `Język definicji: ${language}, a dla słów, których nie ma w słowniku w tym języku: ${fallback}.`,
     script: 'Znaki',
     scriptHint: 'Używane, gdy film ma oba rodzaje.',
     supportBasic: 'Podstawowa obsługa: słowa są rozdzielane, ale nie ma jeszcze słownika ani czytań.',
@@ -66,6 +70,8 @@ export const pl: Translation = {
     definitionsHint: 'Słownik nie ma definicji w twoim języku, więc są pokazywane w tym.',
     definitionsHintFor: (language: string): string =>
       `Słownik nie ma definicji w twoim języku (${language}), więc są pokazywane w tym.`,
+    definitionsHintOwn: (language: string): string =>
+      `Słowa, których nie ma w słowniku w twoim języku (${language}), są pokazywane w tym.`,
 
     // Sprawdzanie słów
     lookupHeading: 'Sprawdzanie słów',

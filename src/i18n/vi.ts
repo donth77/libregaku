@@ -14,6 +14,9 @@ const without = (missing: readonly MissingMedia[]): string =>
       : 'âm thanh của câu'))
     .join(' hoặc ');
 
+/** A language's name as the browser gives it (Tiếng Anh), as it reads inside a sentence: tiếng Anh. */
+const inSentence = (language: string): string => `${language}`.replace(/^Tiếng /, 'tiếng ');
+
 /** Each kind of media, inside a sentence and at the start of one. */
 const MEDIA = { audio: 'âm thanh', video: 'video', picture: 'hình ảnh' } as const;
 const MEDIA_FIRST = { audio: 'Âm thanh', video: 'Video', picture: 'Hình ảnh' } as const;
@@ -37,10 +40,14 @@ export const vi: Translation = {
     languagesAbout: 'Chọn ngôn ngữ bạn đang học và ngôn ngữ của bạn.',
     target: 'Ngôn ngữ đang học',
     targetLimited: (language: string): string => `${language} (hạn chế)`,
-    supportFull: 'Hỗ trợ đầy đủ, gồm cả cách đọc và furigana.',
-    supportPinyin: 'Hỗ trợ đầy đủ, gồm cả pinyin. Nghĩa được viết bằng tiếng Anh.',
-    supportJyutping: 'Hỗ trợ đầy đủ, gồm cả Jyutping. Nghĩa được viết bằng tiếng Anh.',
-    supportWords: 'Hỗ trợ đầy đủ. Nghĩa được viết bằng tiếng Anh.',
+    supportFull: (definitions: string): string => `Hỗ trợ đầy đủ, gồm cả cách đọc và furigana. ${definitions}`,
+    supportPinyin: (definitions: string): string => `Hỗ trợ đầy đủ, gồm cả pinyin. ${definitions}`,
+    supportJyutping: (definitions: string): string => `Hỗ trợ đầy đủ, gồm cả Jyutping. ${definitions}`,
+    supportWords: (definitions: string): string => `Hỗ trợ đầy đủ. ${definitions}`,
+    supportDefinitions: (language: string): string => `Nghĩa được viết bằng ${inSentence(language)}.`,
+    supportDefinitionsOwn: (language: string, fallback: string): string =>
+      `Nghĩa được viết bằng ${inSentence(language)}, và bằng ${inSentence(fallback)} với những từ mà từ điển ` +
+      `${inSentence(language)} không có.`,
     script: 'Chữ viết',
     scriptHint: 'Được dùng khi video có cả hai.',
     supportBasic: 'Hỗ trợ cơ bản: có tách từ, nhưng chưa có từ điển hay cách đọc.',
@@ -50,6 +57,8 @@ export const vi: Translation = {
     definitionsHint: 'Từ điển không có nghĩa bằng ngôn ngữ của bạn, nên nghĩa sẽ hiện bằng ngôn ngữ này.',
     definitionsHintFor: (language: string): string =>
       `Từ điển không có nghĩa bằng ${language}, nên nghĩa sẽ hiện bằng ngôn ngữ này.`,
+    definitionsHintOwn: (language: string): string =>
+      `Những từ mà từ điển ${inSentence(language)} không có sẽ hiện nghĩa bằng ngôn ngữ này.`,
 
     // Tra từ
     lookupHeading: 'Tra từ',

@@ -38,10 +38,14 @@ export const ko: Translation = {
     languagesAbout: '학습 언어와 내 언어를 선택합니다.',
     target: '학습 언어',
     targetLimited: (language: string): string => `${language} — 제한적`,
-    supportFull: '읽는 법과 후리가나까지 모두 지원합니다.',
-    supportPinyin: '병음까지 모두 지원합니다. 뜻은 영어로 나옵니다.',
-    supportJyutping: 'Jyutping까지 모두 지원합니다. 뜻은 영어로 나옵니다.',
-    supportWords: '모두 지원합니다. 뜻은 영어로 나옵니다.',
+    supportFull: (definitions: string): string => `읽는 법과 후리가나까지 모두 지원합니다. ${definitions}`,
+    supportPinyin: (definitions: string): string => `병음까지 모두 지원합니다. ${definitions}`,
+    supportJyutping: (definitions: string): string => `Jyutping까지 모두 지원합니다. ${definitions}`,
+    supportWords: (definitions: string): string => `모두 지원합니다. ${definitions}`,
+    // Every language's name in Korean ends in 어 (영어, 스페인어), so 로 follows it.
+    supportDefinitions: (language: string): string => `뜻은 ${language}로 나옵니다.`,
+    supportDefinitionsOwn: (language: string, fallback: string): string =>
+      `뜻은 ${language}로 나오고, ${language} 사전에 없는 단어는 ${fallback}로 나옵니다.`,
     script: '문자',
     scriptHint: '영상에 둘 다 있으면 이쪽을 사용합니다.',
     supportBasic: '기본 지원: 단어를 나누기만 하며, 사전과 읽는 법은 아직 없습니다.',
@@ -50,6 +54,8 @@ export const ko: Translation = {
     definitions: '뜻 표시 언어',
     definitionsHint: '사전에 내 언어로 된 뜻이 없어서 이 언어로 보여 줍니다.',
     definitionsHintFor: (language: string): string => `사전에 ${language} 뜻이 없어서 이 언어로 보여 줍니다.`,
+    definitionsHintOwn: (language: string): string =>
+      `${language} 사전에 없는 단어는 이 언어로 보여 줍니다.`,
 
     // Looking words up
     lookupHeading: '단어 찾기',

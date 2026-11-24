@@ -51,10 +51,13 @@ export const de: Translation = {
     languagesAbout: 'Wähle die Sprache, die du lernst, und deine eigene Sprache.',
     target: 'Ich lerne',
     targetLimited: (language: string): string => `${language} – eingeschränkt`,
-    supportFull: 'Volle Unterstützung, mit Lesungen und Furigana.',
-    supportPinyin: 'Volle Unterstützung, mit Pinyin. Definitionen sind auf Englisch.',
-    supportJyutping: 'Volle Unterstützung, mit Jyutping. Definitionen sind auf Englisch.',
-    supportWords: 'Volle Unterstützung. Definitionen sind auf Englisch.',
+    supportFull: (definitions: string): string => `Volle Unterstützung, mit Lesungen und Furigana. ${definitions}`,
+    supportPinyin: (definitions: string): string => `Volle Unterstützung, mit Pinyin. ${definitions}`,
+    supportJyutping: (definitions: string): string => `Volle Unterstützung, mit Jyutping. ${definitions}`,
+    supportWords: (definitions: string): string => `Volle Unterstützung. ${definitions}`,
+    supportDefinitions: (language: string): string => `Definitionen sind auf ${language}.`,
+    supportDefinitionsOwn: (language: string, fallback: string): string =>
+      `Definitionen sind auf ${language} und für Wörter, die das Wörterbuch auf ${language} nicht hat, auf ${fallback}.`,
     script: 'Schriftzeichen',
     scriptHint: 'Werden verwendet, wenn ein Video beide hat.',
     supportBasic: 'Grundlegende Unterstützung: Wörter werden getrennt, aber es gibt noch kein Wörterbuch und keine Lesungen.',
@@ -64,6 +67,8 @@ export const de: Translation = {
     definitionsHint: 'Das Wörterbuch hat keine Definitionen in deiner Sprache, deshalb erscheinen sie in dieser.',
     definitionsHintFor: (language: string): string =>
       `Das Wörterbuch hat keine Definitionen auf ${language}, deshalb erscheinen sie in dieser Sprache.`,
+    definitionsHintOwn: (language: string): string =>
+      `Wörter, die das Wörterbuch auf ${language} nicht hat, werden in dieser Sprache erklärt.`,
 
     // Wörter nachschlagen
     lookupHeading: 'Wörter nachschlagen',

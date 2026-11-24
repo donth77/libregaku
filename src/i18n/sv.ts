@@ -47,10 +47,13 @@ export const sv: Translation = {
     languagesAbout: 'Välj språket du lär dig och ditt eget språk.',
     target: 'Jag lär mig',
     targetLimited: (language: string): string => `${language} – begränsat stöd`,
-    supportFull: 'Fullt stöd, med läsningar och furigana.',
-    supportPinyin: 'Fullt stöd, med pinyin. Definitionerna är på engelska.',
-    supportJyutping: 'Fullt stöd, med Jyutping. Definitionerna är på engelska.',
-    supportWords: 'Fullt stöd. Definitionerna är på engelska.',
+    supportFull: (definitions: string): string => `Fullt stöd, med läsningar och furigana. ${definitions}`,
+    supportPinyin: (definitions: string): string => `Fullt stöd, med pinyin. ${definitions}`,
+    supportJyutping: (definitions: string): string => `Fullt stöd, med Jyutping. ${definitions}`,
+    supportWords: (definitions: string): string => `Fullt stöd. ${definitions}`,
+    supportDefinitions: (language: string): string => `Definitionerna är på ${language}.`,
+    supportDefinitionsOwn: (language: string, fallback: string): string =>
+      `Definitionerna är på ${language}, och på ${fallback} för ord som ordboken på ${language} saknar.`,
     script: 'Skrivtecken',
     scriptHint: 'Används när en video har båda.',
     supportBasic: 'Grundläggande stöd: orden delas upp, men det finns ännu ingen ordbok och inga läsningar.',
@@ -60,6 +63,8 @@ export const sv: Translation = {
     definitionsHint: 'Ordboken har inga definitioner på ditt språk, så de visas på det här.',
     definitionsHintFor: (language: string): string =>
       `Ordboken har inga definitioner på ${language}, så de visas på det här språket.`,
+    definitionsHintOwn: (language: string): string =>
+      `Ord som ordboken på ${language} saknar förklaras på det här språket.`,
 
     // Slå upp ord
     lookupHeading: 'Slå upp ord',

@@ -60,10 +60,14 @@ export const ru: Translation = {
     languagesAbout: 'Выберите язык, который изучаете, и свой язык.',
     target: 'Я изучаю',
     targetLimited: (language: string): string => `${language} — ограниченно`,
-    supportFull: 'Полная поддержка, включая чтения и фуригану.',
-    supportPinyin: 'Полная поддержка, включая пиньинь. Определения на английском.',
-    supportJyutping: 'Полная поддержка, включая Jyutping. Определения на английском.',
-    supportWords: 'Полная поддержка. Определения на английском.',
+    supportFull: (definitions: string): string => `Полная поддержка, включая чтения и фуригану. ${definitions}`,
+    supportPinyin: (definitions: string): string => `Полная поддержка, включая пиньинь. ${definitions}`,
+    supportJyutping: (definitions: string): string => `Полная поддержка, включая Jyutping. ${definitions}`,
+    supportWords: (definitions: string): string => `Полная поддержка. ${definitions}`,
+    // Named as the browser names a language (английский), so said as "the language of the definitions: ...".
+    supportDefinitions: (language: string): string => `Язык определений: ${language}.`,
+    supportDefinitionsOwn: (language: string, fallback: string): string =>
+      `Язык определений: ${language}, а для слов, которых нет в словаре на этом языке, — ${fallback}.`,
     script: 'Письменность',
     scriptHint: 'Используется, когда в видео есть обе.',
     supportBasic: 'Базовая поддержка: текст делится на слова, но словаря и чтений пока нет.',
@@ -73,6 +77,8 @@ export const ru: Translation = {
     definitionsHint: 'В словаре нет определений на вашем языке, поэтому они показываются на этом.',
     definitionsHintFor: (language: string): string =>
       `В словаре нет определений на вашем языке (${language}), поэтому они показываются на этом.`,
+    definitionsHintOwn: (language: string): string =>
+      `Слова, которых нет в словаре на вашем языке (${language}), показываются на этом.`,
 
     // Поиск в словаре
     lookupHeading: 'Поиск в словаре',

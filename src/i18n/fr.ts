@@ -68,10 +68,13 @@ export const fr: Translation = {
     languagesAbout: 'Choisissez la langue que vous apprenez et votre propre langue.',
     target: 'J’apprends',
     targetLimited: (language: string): string => `${language} (limité)`,
-    supportFull: 'Prise en charge complète, y compris les lectures et le furigana.',
-    supportPinyin: 'Prise en charge complète, y compris le pinyin. Les définitions sont en anglais.',
-    supportJyutping: 'Prise en charge complète, y compris le Jyutping. Les définitions sont en anglais.',
-    supportWords: 'Prise en charge complète. Les définitions sont en anglais.',
+    supportFull: (definitions: string): string => `Prise en charge complète, y compris les lectures et le furigana. ${definitions}`,
+    supportPinyin: (definitions: string): string => `Prise en charge complète, y compris le pinyin. ${definitions}`,
+    supportJyutping: (definitions: string): string => `Prise en charge complète, y compris le Jyutping. ${definitions}`,
+    supportWords: (definitions: string): string => `Prise en charge complète. ${definitions}`,
+    supportDefinitions: (language: string): string => `Les définitions sont en ${language}.`,
+    supportDefinitionsOwn: (language: string, fallback: string): string =>
+      `Les définitions sont en ${language}, et en ${fallback} pour les mots absents du dictionnaire en ${language}.`,
     script: 'Caractères',
     scriptHint: 'Ceux utilisés quand une vidéo propose les deux.',
     supportBasic: 'Prise en charge de base : les mots sont séparés, mais il n’y a pas encore de dictionnaire ni de lectures.',
@@ -81,6 +84,8 @@ export const fr: Translation = {
     definitionsHint: 'Le dictionnaire n’a pas de définitions dans votre langue : elles s’affichent donc dans celle-ci.',
     definitionsHintFor: (language: string): string =>
       `Le dictionnaire n’a pas de définitions en ${language} : elles s’affichent donc dans cette langue.`,
+    definitionsHintOwn: (language: string): string =>
+      `Les mots absents du dictionnaire en ${language} sont expliqués dans cette langue.`,
 
     // Recherche de mots
     lookupHeading: 'Recherche de mots',

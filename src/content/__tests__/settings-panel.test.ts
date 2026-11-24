@@ -233,17 +233,87 @@ describe('settings panel selects', () => {
   });
 
   it('says under "I\'m learning" what the language gets', () => {
-    expect(tierNote('ja')).toBe('Full support, including readings and furigana.');
-    expect(tierNote('zh')).toBe('Full support, including pinyin. Definitions are in English.');
-    expect(tierNote('ko')).toBe('Full support. Definitions are in English.');
-    expect(tierNote('es')).toBe('Full support. Definitions are in English.');
-    expect(tierNote('it')).toBe('Full support. Definitions are in English.');
-    expect(tierNote('th')).toBe('Full support. Definitions are in English.');
-    expect(tierNote('hi')).toBe('Full support. Definitions are in English.');
-    expect(tierNote('ar')).toBe('Full support. Definitions are in English.');
-    expect(tierNote('tr')).toBe('Full support. Definitions are in English.');
-    expect(tierNote('en')).toBe('Full support. Definitions are in English.');
-    expect(tierNote('xx')).toBe('Basic support: words are split, but there is no dictionary or readings yet.');
+    // English is your language: every definition is in it.
+    const english = { native: 'en', definitions: 'en' };
+    expect(tierNote('ja', english)).toBe('Full support, including readings and furigana. Definitions are in English.');
+    expect(tierNote('zh', english)).toBe('Full support, including pinyin. Definitions are in English.');
+    expect(tierNote('yue', english)).toBe('Full support, including Jyutping. Definitions are in English.');
+    for (const code of ['ko', 'es', 'it', 'th', 'hi', 'ar', 'tr', 'en']) {
+      expect(tierNote(code, english)).toBe('Full support. Definitions are in English.');
+    }
+    expect(tierNote('xx', english)).toBe('Basic support: words are split, but there is no dictionary or readings yet.');
+  });
+
+  it('says definitions are in your language where a dictionary in it exists, and in English past it', () => {
+    const yours = (native: string, definitions = 'en') => ({ native, definitions });
+    const own = (language: string): string =>
+      `Definitions are in ${language}, and in English for words the dictionary in ${language} doesn't have.`;
+    // Wiktionary or WikDict in your language first, then the English dictionary.
+    expect(tierNote('fr', yours('es'))).toBe(`Full support. ${own('Spanish')}`);
+    expect(tierNote('en', yours('hi'))).toBe(`Full support. ${own('Hindi')}`);
+    expect(tierNote('ko', yours('ja'))).toBe(`Full support. ${own('Japanese')}`);
+    expect(tierNote('zh', yours('de'))).toBe(`Full support, including pinyin. ${own('German')}`);
+    // Chinese in either script reads the same dictionaries in Chinese.
+    expect(tierNote('ja', yours('zh-Hant'))).toBe(`Full support, including readings and furigana. ${own('Chinese')}`);
+    // JMdict has an edition in German: every definition is in it.
+    expect(tierNote('ja', yours('de'))).toBe('Full support, including readings and furigana. Definitions are in German.');
+    // None in your language: English, or for Japanese the language chosen for definitions.
+    expect(tierNote('th', yours('es'))).toBe('Full support. Definitions are in English.');
+    expect(tierNote('yue', yours('fr'))).toBe('Full support, including Jyutping. Definitions are in English.');
+    expect(tierNote('ja', yours('pl', 'fr'))).toBe('Full support, including readings and furigana. Definitions are in French.');
+    expect(tierNote('ja', yours('pt', 'es'))).toBe(
+      'Full support, including readings and furigana. Definitions are in Portuguese, and in Spanish for words the dictionary in Portuguese doesn\'t have.',
+    );
+  });
+
+  it('says it again as the language learned, your language or the definitions language changes', async () => {
+    const root = buildSettings(() => {});
+    const note = (): string | null | undefined => hintOf(selectFor(root, "I'm learning")).textContent;
+    // As the browser sends it: up to the panel, which listens for every row's.
+    const pick = (setting: string, value: string): void => {
+      const sel = root.querySelector<HTMLSelectElement>(`select[name=${setting}]`)!;
+      sel.value = value;
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+    expect(note()).toBe('Full support, including readings and furigana. Definitions are in English.');
+    try {
+      pick('target', 'fr');
+      expect(note()).toBe('Full support. Definitions are in English.');
+      pick('native', 'es');
+      expect(note()).toBe("Full support. Definitions are in Spanish, and in English for words the dictionary in Spanish doesn't have.");
+      pick('target', 'th');
+      expect(note()).toBe('Full support. Definitions are in English.');
+      // Japanese for a Polish speaker: in the language chosen for definitions, here or in another tab.
+      await setSetting('native', 'pl');
+      await setSetting('target', 'ja');
+      syncSettingsControls(root);
+      expect(note()).toBe('Full support, including readings and furigana. Definitions are in English.');
+      pick('definitions', 'de');
+      expect(note()).toBe('Full support, including readings and furigana. Definitions are in German.');
+    } finally {
+      await setSetting('target', 'ja');
+      await setSetting('native', 'en');
+      await setSetting('definitions', 'en');
+    }
+  });
+
+  it('says it in the interface language, naming each language as that language does', () => {
+    const spanish = { native: 'es', definitions: 'en' };
+    setUiLanguage('es');
+    try {
+      expect(tierNote('fr', spanish)).toBe(
+        'Compatibilidad completa. Las definiciones están en español, y en inglés para las palabras que no tiene el diccionario en español.',
+      );
+      expect(tierNote('th', spanish)).toBe('Compatibilidad completa. Las definiciones están en inglés.');
+      // Japanese, whose sentences run on without a space.
+      setUiLanguage('ja');
+      expect(tierNote('ja', { native: 'ja', definitions: 'en' })).toBe('すべての機能に対応しています。読みとふりがなも表示します。意味は英語です。');
+      expect(tierNote('en', { native: 'ja', definitions: 'en' })).toBe(
+        'すべての機能に対応しています。意味は日本語で、日本語の辞書にない語は英語です。',
+      );
+    } finally {
+      setUiLanguage('en');
+    }
   });
 
   it('credits every source a language draws on', () => {
@@ -263,17 +333,54 @@ describe('settings panel selects', () => {
     // English has definitions of its own: one row.
     expect(row.hidden).toBe(true);
     try {
-      // Korean has none, so a second row asks which to use instead.
+      // Polish has none, in JMdict or any other dictionary of Japanese, so a second row asks which to use instead.
+      yours.value = 'pl';
+      yours.dispatchEvent(new Event('change', { bubbles: true }));
+      expect(row.hidden).toBe(false);
+      expect(hintOf(definitions).textContent).toBe("The dictionary has no definitions in Polish, so they're shown in this language.");
+      // Korean has Wiktionary's, asked first: the row picks the language for the words it lacks.
       yours.value = 'ko';
       yours.dispatchEvent(new Event('change', { bubbles: true }));
       expect(row.hidden).toBe(false);
-      expect(hintOf(definitions).textContent).toBe("The dictionary has no definitions in Korean, so they're shown in this language.");
+      expect(hintOf(definitions).textContent).toBe("Words the dictionary in Korean doesn't have are explained in this language.");
       // A language learned without a dictionary has no definitions to choose.
       await setSetting('target', 'es');
       syncSettingsControls(root);
       expect(row.hidden).toBe(true);
     } finally {
       await setSetting('target', 'ja');
+      await setSetting('native', 'en');
+    }
+  });
+
+  it('says the definitions row picks the language for what a dictionary in your language lacks, where there is one', async () => {
+    const hint = (root: HTMLElement): string | null | undefined =>
+      hintOf(root.querySelector<HTMLSelectElement>('select[name=definitions]')!).textContent;
+    try {
+      // Built for your language, from scratch or after a change in another tab.
+      for (const [native, said] of [
+        ['pt', "Words the dictionary in Portuguese doesn't have are explained in this language."],
+        // Chinese in either script: the same dictionaries in Chinese.
+        ['zh', "Words the dictionary in Chinese doesn't have are explained in this language."],
+        ['zh-Hant', "Words the dictionary in Chinese doesn't have are explained in this language."],
+        ['vi', "The dictionary has no definitions in Vietnamese, so they're shown in this language."],
+      ]) {
+        await setSetting('native', native!);
+        expect(hint(buildSettings(() => {}))).toBe(said);
+      }
+      const root = buildSettings(() => {});
+      await setSetting('native', 'ko');
+      syncSettingsControls(root);
+      expect(hint(root)).toBe("Words the dictionary in Korean doesn't have are explained in this language.");
+      // In the interface language too.
+      setUiLanguage('pt');
+      try {
+        await setSetting('native', 'pt');
+        expect(hint(buildSettings(() => {}))).toBe('As palavras que o dicionário em português não tem aparecem neste idioma.');
+      } finally {
+        setUiLanguage('en');
+      }
+    } finally {
       await setSetting('native', 'en');
     }
   });

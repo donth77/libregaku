@@ -42,10 +42,13 @@ export const hi: Translation = {
     languagesAbout: 'वह भाषा चुनें जो आप सीख रहे हैं, और अपनी भाषा।',
     target: 'सीखने की भाषा',
     targetLimited: (language: string): string => `${language} — सीमित`,
-    supportFull: 'पूरा सपोर्ट, उच्चारण और फ़ुरिगाना के साथ।',
-    supportPinyin: 'पूरा सपोर्ट, पिनयिन के साथ। अर्थ अंग्रेज़ी में हैं।',
-    supportJyutping: 'पूरा सपोर्ट, Jyutping के साथ। अर्थ अंग्रेज़ी में हैं।',
-    supportWords: 'पूरा सपोर्ट। अर्थ अंग्रेज़ी में हैं।',
+    supportFull: (definitions: string): string => `पूरा सपोर्ट, उच्चारण और फ़ुरिगाना के साथ। ${definitions}`,
+    supportPinyin: (definitions: string): string => `पूरा सपोर्ट, पिनयिन के साथ। ${definitions}`,
+    supportJyutping: (definitions: string): string => `पूरा सपोर्ट, Jyutping के साथ। ${definitions}`,
+    supportWords: (definitions: string): string => `पूरा सपोर्ट। ${definitions}`,
+    supportDefinitions: (language: string): string => `अर्थ ${language} में हैं।`,
+    supportDefinitionsOwn: (language: string, fallback: string): string =>
+      `अर्थ ${language} में हैं; जो शब्द ${language} शब्दकोश में नहीं हैं, उनके अर्थ ${fallback} में हैं।`,
     script: 'लिपि',
     scriptHint: 'जब वीडियो में दोनों हों, तब यही इस्तेमाल होती है।',
     supportBasic: 'बुनियादी सपोर्ट: शब्द अलग किए जाते हैं, पर अभी कोई शब्दकोश या उच्चारण नहीं है।',
@@ -55,6 +58,8 @@ export const hi: Translation = {
     definitionsHint: 'शब्दकोश के अर्थ आपकी भाषा में नहीं हैं, इसलिए वे इस भाषा में दिखाए जाते हैं।',
     definitionsHintFor: (language: string): string =>
       `शब्दकोश के अर्थ ${language} में नहीं हैं, इसलिए वे इस भाषा में दिखाए जाते हैं।`,
+    definitionsHintOwn: (language: string): string =>
+      `जो शब्द ${language} शब्दकोश में नहीं हैं, उनके अर्थ इस भाषा में दिखाए जाते हैं।`,
 
     // अर्थ देखना
     lookupHeading: 'अर्थ देखना',

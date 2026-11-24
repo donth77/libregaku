@@ -39,10 +39,13 @@ export const ja: Translation = {
     languagesAbout: '学習する言語と母語を選びます。',
     target: '学習言語',
     targetLimited: (language: string): string => `${language}（一部対応）`,
-    supportFull: 'すべての機能に対応しています。読みとふりがなも表示します。',
-    supportPinyin: 'すべての機能に対応しています。ピンインも表示します。意味は英語です。',
-    supportJyutping: 'すべての機能に対応しています。Jyutpingも表示します。意味は英語です。',
-    supportWords: 'すべての機能に対応しています。意味は英語です。',
+    supportFull: (definitions: string): string => `すべての機能に対応しています。読みとふりがなも表示します。${definitions}`,
+    supportPinyin: (definitions: string): string => `すべての機能に対応しています。ピンインも表示します。${definitions}`,
+    supportJyutping: (definitions: string): string => `すべての機能に対応しています。Jyutpingも表示します。${definitions}`,
+    supportWords: (definitions: string): string => `すべての機能に対応しています。${definitions}`,
+    supportDefinitions: (language: string): string => `意味は${language}です。`,
+    supportDefinitionsOwn: (language: string, fallback: string): string =>
+      `意味は${language}で、${language}の辞書にない語は${fallback}です。`,
     script: '文字',
     scriptHint: '動画に両方ある場合は、こちらを使います。',
     supportBasic: '基本対応：単語には区切りますが、辞書と読みはまだありません。',
@@ -52,6 +55,8 @@ export const ja: Translation = {
     definitionsHint: '辞書に母語の意味がないため、この言語で表示します。',
     definitionsHintFor: (language: string): string =>
       `辞書に${language}の意味がないため、この言語で表示します。`,
+    definitionsHintOwn: (language: string): string =>
+      `${language}の辞書にない語は、この言語で表示します。`,
 
     // 単語を調べる
     lookupHeading: '単語を調べる',

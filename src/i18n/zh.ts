@@ -34,10 +34,13 @@ export const zh: Translation = {
     languagesAbout: '选择学习语言和母语。',
     target: '学习语言',
     targetLimited: (language: string): string => `${language}（有限支持）`,
-    supportFull: '完整支持，包括读音和假名注音。',
-    supportPinyin: '完整支持，包括拼音。释义为英文。',
-    supportJyutping: '完整支持，包括 Jyutping。释义为英文。',
-    supportWords: '完整支持。释义为英文。',
+    supportFull: (definitions: string): string => `完整支持，包括读音和假名注音。${definitions}`,
+    supportPinyin: (definitions: string): string => `完整支持，包括拼音。${definitions}`,
+    supportJyutping: (definitions: string): string => `完整支持，包括 Jyutping。${definitions}`,
+    supportWords: (definitions: string): string => `完整支持。${definitions}`,
+    supportDefinitions: (language: string): string => `释义为${language}。`,
+    supportDefinitionsOwn: (language: string, fallback: string): string =>
+      `释义为${language}；${language}词典里没有的词，释义为${fallback}。`,
     script: '文字',
     scriptHint: '视频两种都有时，使用这一种。',
     supportBasic: '基础支持：可以分词，但暂时没有词典和读音。',
@@ -46,6 +49,8 @@ export const zh: Translation = {
     definitions: '释义语言',
     definitionsHint: '词典没有你母语的释义，因此改用这种语言显示。',
     definitionsHintFor: (language: string): string => `词典没有${language}释义，因此改用这种语言显示。`,
+    definitionsHintOwn: (language: string): string =>
+      `${language}词典里没有的词，改用这种语言显示释义。`,
 
     // Looking words up
     lookupHeading: '查词',
