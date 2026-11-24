@@ -173,6 +173,13 @@ export const ASSUMPTIONS: Assumption[] = [
     fallback: null,
   },
   {
+    id: 'dict.wty-glossary',
+    site: 'external',
+    claim: 'The same pinned release still serves wty-<language>-<language>-gloss.zip, the glossaries, under the language\'s own edition (dict/en/ar/wty-en-ar-gloss.zip), and a glossary\'s row is [term, reading, tags, rules, score, definitions, …] with each meaning a div holding one marked sense-label, in the language learned, and a list marked glossary whose items are the equivalents',
+    breaks: 'The dictionaries for learners of English whose own language is Arabic, Hindi or Ukrainian, of French in Arabic or Ukrainian, and of Portuguese in Italian never download, or hold no words: those learners see English definitions instead',
+    fallback: 'The language\'s own dictionary, in English',
+  },
+  {
     id: 'dict.wikdict',
     site: 'external',
     claim: 'download.wikdict.com/dictionaries/sqlite/2/<language>-<language>.sqlite3 is a SQLite file (UTF-8, ordinary rowid tables) whose translation table has lexentry, written_rep, trans_list, score and is_good columns, where is_good = 1 rows are the matches WikDict stands behind and trans_list is equivalents joined with " | "; and the host serves it directly, with no redirect to one missing from host_permissions',

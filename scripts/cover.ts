@@ -10,7 +10,7 @@
  */
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { SOURCES, wikdict, wty } from '../src/dict/sources';
+import { SOURCES, wikdict, wty, wtyGlossary } from '../src/dict/sources';
 import { FORMS_FOLLOWED, type Source } from '../src/dict/store';
 
 /** Every download kept in `dir` under a hash of its address, and fetched only the first time. */
@@ -30,10 +30,11 @@ export function keepDownloads(dir: string): void {
   }) as typeof fetch;
 }
 
-/** A dictionary by its id, the extension's own or one it could have: wty-ja-pl, wikdict-zh-es. */
+/** A dictionary by its id, the extension's own or one it could have: wty-ja-pl, wty-en-ar-gloss, wikdict-zh-es. */
 function sourceOf(id: string): { source: Source; native: string } | undefined {
-  const [kind, target = '', native = ''] = id.split('-');
-  const source = kind === 'wty' ? wty(target, native) : kind === 'wikdict' ? wikdict(target, native) : SOURCES[id];
+  const [kind, target = '', native = '', gloss] = id.split('-');
+  const source = kind === 'wty' ? (gloss === 'gloss' ? wtyGlossary(target, native) : wty(target, native))
+    : kind === 'wikdict' ? wikdict(target, native) : SOURCES[id];
   return source ? { source, native } : undefined;
 }
 

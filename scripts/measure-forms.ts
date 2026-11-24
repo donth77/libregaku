@@ -18,14 +18,15 @@
  * (src/dict/wty.ts) or the hyphen joining say, and read what changes: the hints and GAPS take a word only on
  * what this counts. Data is downloaded into node_modules/.cache/libregaku-forms.
  *
- * Chinese is read too, for COVER (scripts/cover.ts): its words are found by the analyser, which is run here on
- * the dictionary the offscreen document reads it with (ANALYSED), and looked up as they are written.
+ * Chinese, Cantonese and Korean are read too, for COVER (scripts/cover.ts): their words are found by the analyser,
+ * which is run here on the dictionary the offscreen document reads each with (ANALYSED), its rows as the reader
+ * there gives them (ROWS).
  */
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import init, { TokenizerBuilder, loadDictionaryFromBytes, type Tokenizer } from 'lindera-wasm';
-import { DICTIONARIES } from '../src/settings';
+import { DICTIONARIES, FALLBACK_DICTIONARIES } from '../src/settings';
 import { SOURCES } from '../src/dict/sources';
 import type { Entry } from '../src/dict/jmdict';
 import type { FormInfo, Inflection } from '../src/dict/store';
@@ -41,12 +42,21 @@ const SAMPLE = Number(process.env.SAMPLE ?? 20000);
 /** Tatoeba's names for the languages. */
 const ISO3: Record<string, string> = {
   es: 'spa', fr: 'fra', de: 'deu', it: 'ita', pt: 'por', en: 'eng', tr: 'tur', th: 'tha', hi: 'hin', ar: 'ara', zh: 'cmn',
+  yue: 'yue', ko: 'kor',
 };
 /**
  * The languages read by the analyser, with the Lindera dictionary the offscreen document reads each with: Chinese
- * is cc-cedict's words and nothing more of them (its reader in src/offscreen.ts), the readings coming from CC-CEDICT.
+ * and Cantonese are cc-cedict's words and nothing more of them (its reader in src/offscreen.ts), the readings
+ * coming from their dictionaries; Korean is ko-dic's morphemes, which the merge rules join into words.
  */
-const ANALYSED: Record<string, string> = { zh: 'cc-cedict' };
+const ANALYSED: Record<string, string> = { zh: 'cc-cedict', yue: 'cc-cedict', ko: 'ko-dic' };
+/** `details[i]`, or nothing for the "*" a dictionary writes where it has nothing (col() in src/offscreen.ts). */
+const col = (d: string[], i: number): string | undefined => (d[i] && d[i] !== '*' ? d[i] : undefined);
+/** One of the analyser's rows as the offscreen document's reader for its dictionary gives it (READERS there). */
+const ROWS: Record<string, (surface: string, details: string[]) => unknown> = {
+  'cc-cedict': (surface) => ({ surface }),
+  'ko-dic': (surface, d) => ({ surface, tag: col(d, 0), type: col(d, 4), expression: col(d, 7) }),
+};
 
 const source = SOURCES[DICTIONARIES[LANG] ?? ''];
 const analyser = analyserFor(LANG);
@@ -80,8 +90,11 @@ async function tokenizerFor(dict: string): Promise<Tokenizer> {
 const analysedWith = ANALYSED[LANG];
 const tokenizer = analysedWith ? await tokenizerFor(analysedWith) : undefined;
 /** A line as the offscreen document answers a 'tokenize' for it (analyse() there). */
-const tokenize = (text: string): { ok: boolean; tokens: Array<{ surface: string }>; complete: boolean } => ({
-  ok: true, tokens: (tokenizer?.tokenize(text) as Array<{ surface: string }> | undefined ?? []).map((t) => ({ surface: t.surface })), complete: true,
+const tokenize = (text: string): { ok: boolean; tokens: unknown[]; complete: boolean } => ({
+  ok: true,
+  tokens: (tokenizer?.tokenize(text) as Array<{ surface: string; details?: string[] }> | undefined ?? [])
+    .map((t) => ROWS[analysedWith ?? '']!(t.surface, t.details ?? [])),
+  complete: true,
 });
 
 // The dictionary as the store keeps it: entries under their keys, and the forms.
@@ -210,6 +223,9 @@ const report = [
  * The words are the thousand commonest dictionary forms the lines were read as.
  */
 if (process.env.COVER) {
+  // Korean's words are its dictionary's or its second's (FALLBACK_DICTIONARIES): Wiktionary lacks ordinary words.
+  const second = SOURCES[FALLBACK_DICTIONARIES[LANG] ?? ''];
+  if (second) for await (const batch of await second.read('en')) for (const { keys } of batch.entries) for (const k of keys) if (!entries.has(k)) entries.set(k, []);
   const counts = new Map<string, number>();
   for (const line of saved) {
     for (const w of (line.split('\t')[0] ?? '').split(' ')) {

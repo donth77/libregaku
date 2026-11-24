@@ -8,7 +8,7 @@ import { CANTO_URLS, CEDICT_URL, CXDICT_URL, HANDEDICT_URL, krdictUrl, parseCant
 import { zipFiles as unzip } from '../../src/dict/zip';
 import { jmdictUrl, kanjidicUrl } from '../../src/dict/store';
 import { wikdictEntries, wikdictUrl } from '../../src/dict/wikdict';
-import { readRow } from '../../src/dict/wty';
+import { readGlossRow, readRow } from '../../src/dict/wty';
 import { zipFiles } from '../../src/dict/zip';
 import { LINDERA_DICTS } from '../../src/morphology/dictionaries';
 import { fetchCheckingHops } from './hosts';
@@ -109,6 +109,20 @@ describe('dictionary contract', () => {
     expect(words.filter((r) => r && 'entry' in r).length, why).toBeGreaterThan(100);
     expect(forms.filter((r) => r && 'inflection' in r).length, why).toBeGreaterThan(100);
   }, 240_000);
+
+  it('dict.wty-glossary — a glossary is still served, and its rows read as equivalents of the words people look up', async () => {
+    const why = describeFailure('dict.wty-glossary');
+    const url = wtyUrl('fr', 'ar', 'gloss');
+    const res = await fetchCheckingHops(url, {}, why);
+    expect(res.ok, `${url} returned HTTP ${res.status}.\n${why}`).toBe(true);
+    const rows = await Promise.all(zipFiles(new Uint8Array(await res.arrayBuffer()))
+      .filter((f) => /^term_bank_\d+\.json$/.test(f.name))
+      .map(async (bank) => JSON.parse(new TextDecoder().decode(await bank.bytes())) as unknown[]));
+    const entries = rows.flat().map((row, i) => readGlossRow(row, String(i))).filter((e) => e !== null);
+    expect(entries.length, `only ${entries.length} entries.\n${why}`).toBeGreaterThan(10_000);
+    const maison = entries.find((e) => e.word === 'maison');
+    expect(maison?.senses.flatMap((s) => s.glosses), why).toContain('بيت');
+  }, 120_000);
 
   it('dict.cedict — CC-CEDICT is still published, an entry to a line', async () => {
     const why = describeFailure('dict.cedict');

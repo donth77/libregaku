@@ -180,6 +180,28 @@ describe('a dictionary in your own language', () => {
     expect(ownDictionaryOf('th', { native: 'fr' })).toBeNull();
   });
 
+  it('is Wiktionary in the learner’s language for Korean, Portuguese and Hindi where it holds enough, and a glossary where none does', () => {
+    expect(ownDictionaryOf('ko', { native: 'pl' })).toEqual({ source: 'wty-ko-pl', edition: 'pl' });
+    // Korea's dictionary for learners stays where it has the language.
+    expect(ownDictionaryOf('ko', { native: 'ja' })).toEqual({ source: 'krdict', edition: 'ja' });
+    expect(ownDictionaryOf('pt', { native: 'ja' })).toEqual({ source: 'wty-pt-ja', edition: 'ja' });
+    expect(ownDictionaryOf('pt', { native: 'zh-Hant' })).toEqual({ source: 'wty-pt-zh', edition: 'zh-Hant' });
+    expect(ownDictionaryOf('hi', { native: 'zh' })).toEqual({ source: 'wty-hi-zh', edition: 'zh' });
+    expect(ownDictionaryOf('hi', { native: 'pl' })).toEqual({ source: 'wty-hi-pl', edition: 'pl' });
+    // English Wiktionary's own words with their equivalents: no edition explains English in Arabic, Hindi or Ukrainian.
+    expect(ownDictionaryOf('en', { native: 'ar' })).toEqual({ source: 'wty-en-ar-gloss', edition: 'ar' });
+    expect(ownDictionaryOf('en', { native: 'hi' })).toEqual({ source: 'wty-en-hi-gloss', edition: 'hi' });
+    expect(ownDictionaryOf('en', { native: 'uk' })).toEqual({ source: 'wty-en-uk-gloss', edition: 'uk' });
+    expect(ownDictionaryOf('fr', { native: 'ar' })).toEqual({ source: 'wty-fr-ar-gloss', edition: 'ar' });
+    expect(ownDictionaryOf('fr', { native: 'uk' })).toEqual({ source: 'wty-fr-uk-gloss', edition: 'uk' });
+    expect(ownDictionaryOf('pt', { native: 'it' })).toEqual({ source: 'wty-pt-it-gloss', edition: 'it' });
+    // Under the bar: Korean in German 52%, Spanish in Japanese 54%, and nothing for Thai or Cantonese.
+    expect(ownDictionaryOf('ko', { native: 'de' })).toBeNull();
+    expect(ownDictionaryOf('es', { native: 'ja' })).toBeNull();
+    expect(ownDictionaryOf('th', { native: 'pl' })).toBeNull();
+    expect(ownDictionaryOf('yue', { native: 'fr' })).toBeNull();
+  });
+
   it('names only dictionaries there are, each for a language that has one of its own', () => {
     for (const [lang, pairs] of Object.entries(OWN_DICTIONARIES)) {
       expect(DICTIONARIES[lang]).toBeTruthy();

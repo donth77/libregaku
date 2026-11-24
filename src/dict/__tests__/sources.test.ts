@@ -116,6 +116,33 @@ describe('the registry', () => {
     expect(wtyUrl('zh', 'ru')).toMatch(/\/latest\/dict\/cmn\/ru\/wty-cmn-ru\.zip$/);
     expect(wtyUrl('zh', 'pl')).toMatch(/\/latest\/dict\/zh\/pl\/wty-zh-pl\.zip$/);
   });
+
+  it('downloads a glossary from the same release, filed under the edition it was made from', async () => {
+    const { wtyUrl } = await sources();
+    expect(wtyUrl('en', 'ar', 'gloss')).toMatch(/\/resolve\/\d{4}-\d{2}-\d{2}\/latest\/dict\/en\/ar\/wty-en-ar-gloss\.zip$/);
+    // Chinese Wiktionary's, under zh, where Russian Wiktionary's own file of Chinese is under cmn.
+    expect(wtyUrl('zh', 'ru', 'gloss')).toMatch(/\/latest\/dict\/zh\/ru\/wty-zh-ru-gloss\.zip$/);
+  });
+});
+
+describe('a Wiktionary glossary', () => {
+  it('reads each word with its equivalents, under the word, and leaves a row with none', async () => {
+    const { SOURCES, fetchBytes } = await sources();
+    const meaning = (label: string, equivalent: string): unknown => ({ type: 'structured-content', content: { tag: 'div', content: [
+      { tag: 'div', data: { content: 'sense-label' }, content: label },
+      { tag: 'ul', data: { content: 'glossary' }, content: [{ tag: 'li', content: equivalent }] },
+    ] } });
+    fetchBytes.mockResolvedValue(zip({
+      'index.json': '{"title":"wty-en-ar-gloss"}',
+      'term_bank_1.json': JSON.stringify([
+        ['free', '', 'adj', 'adj', 0, [meaning('not imprisoned', 'حُرّ'), meaning('not in use', 'شَاغِر')], 0, ''],
+        ['nothing', '', 'n', 'n', 0, [], 0, ''],
+      ]),
+    }));
+    const entries = (await all(await SOURCES['wty-en-ar-gloss']!.read('ar'))).flatMap((b) => b.entries);
+    expect(entries.map((e) => [e.keys, e.entry.senses.map((s) => s.glosses)])).toEqual([[['free'], [['حُرّ'], ['شَاغِر']]]]);
+    expect(String(fetchBytes.mock.calls.at(-1)?.[0])).toMatch(/\/en\/ar\/wty-en-ar-gloss\.zip$/);
+  });
 });
 
 describe('a Wiktionary dictionary', () => {

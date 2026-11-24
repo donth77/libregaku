@@ -172,9 +172,12 @@ A dictionary in the learner's own language (`OWN_DICTIONARIES` in `settings.ts`)
 for a pair only where it has 55% of the language's thousand commonest words, the words a
 card opens as the extension reads Tatoeba. `COVER=wty-it-fr,wikdict-it-fr` counts that
 (`scripts/cover.ts`), following another spelling to its word as a lookup does: with
-`measure-forms` for those languages and for Chinese, which it reads with the analyser
-(`measure-forms.mjs zh`), and with `compare-unidic` for Japanese. Measure every candidate,
-write the shares in the comment above the pairs, and add only those over the bar.
+`measure-forms` for those languages and for Chinese, Cantonese and Korean, which it reads
+with the analyser (`measure-forms.mjs zh`, `yue`, `ko`), and with `compare-unidic` for
+Japanese. The candidates are each Wiktionary edition's file of the language, WikDict's pair,
+and the language's own edition's glossary of its translation tables (`wty-en-ar-gloss`,
+read by `wtyGlossary`). Measure every candidate, write the shares in the comment above the
+pairs, and add only those over the bar.
 
 Arabic and Turkish are read past their table of forms as well. Arabic writes the little
 words of a sentence onto the word they go with (و, ب, ال in front; the pronouns behind), and

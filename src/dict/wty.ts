@@ -465,6 +465,67 @@ export function readRow(row: unknown, id: string): { entry: Entry } | { inflecti
   return entry ? { entry } : null;
 }
 
+/* ── Glossaries ─────────────────────────────────────────────────── */
+
+/** An equivalent that is a note to the reader of the table, not a word: "etc.", "etc. See у /в". */
+const NOT_A_WORD = /^(?:etc\b|see\b|\p{P}*$)/iu;
+/** Marks that only say how an equivalent is said: Arabic's vowels, and the stress on a Ukrainian or Russian word. */
+const SAID = /[\u064B-\u065F\u0670]|(?<=\p{Script=Cyrillic})\u0301/gu;
+/** How many equivalents one meaning shows, as WikDict's do (wikdict.ts). */
+const EQUIVALENTS = 8;
+
+/** All the text in a node. */
+function textIn(node: unknown, depth = 0): string {
+  if (depth > DEEPEST) return '';
+  if (typeof node === 'string') return node;
+  if (Array.isArray(node)) return node.map((child) => textIn(child, depth + 1)).join('');
+  return isNode(node) ? textIn(node.content, depth + 1) : '';
+}
+
+/** The equivalents in one of a glossary's meanings: the items of its list marked glossary, or its text where it is bare. */
+function equivalentsIn(definition: unknown): string[] {
+  const found: string[] = [];
+  const walk = (node: unknown, depth: number): void => {
+    if (depth > DEEPEST) return;
+    if (typeof node === 'string') found.push(node);
+    else if (Array.isArray(node)) for (const child of node) walk(child, depth + 1);
+    else if (isNode(node)) {
+      if (role(node) === 'glossary') for (const item of children(node.content)) found.push(textIn(item));
+      // The edition's own words for the meaning are in the language being learned.
+      else if (role(node) !== 'sense-label') walk(node.content, depth + 1);
+    }
+  };
+  walk(isNode(definition) ? definition.content : definition, 0);
+  return found.map((g) => g.replace(/\s+/g, ' ').trim()).filter((g) => g && !NOT_A_WORD.test(g));
+}
+
+/**
+ * A row of a Wiktionary glossary (wty's "gloss" files, sources.ts) as an entry, or null where it has no
+ * equivalent: a word of an edition's own language with, for each of its meanings, the edition's words for it and
+ * the equivalents its translation tables give in another language. The equivalents are kept, as WikDict's are,
+ * each meaning's a sense: go is "ذَهَبَ, رَاحَ", then "ذَهَبَ, زَالَ, اِخْتَفَى". A word written with its vowels or
+ * its stress and again without is kept once, as it was written first.
+ */
+export function readGlossRow(row: unknown, id: string): Entry | null {
+  if (!Array.isArray(row)) return null;
+  const [term, , tags, , , definitions] = row as unknown[];
+  if (typeof term !== 'string' || !term.trim() || !Array.isArray(definitions)) return null;
+  const kind = codesOf(typeof tags === 'string' ? tags : '');
+  const senses: Sense[] = [];
+  for (const definition of definitions) {
+    const said = new Set<string>();
+    const glosses = equivalentsIn(definition).filter((g) => {
+      const plain = g.replace(SAID, '');
+      if (said.has(plain)) return false;
+      said.add(plain);
+      return true;
+    });
+    if (glosses.length) addSense(senses, { pos: kind, glosses: glosses.slice(0, EQUIVALENTS) });
+  }
+  if (!senses.length) return null;
+  return { id, word: term.trim(), common: false, ...(kind.length ? { kind } : {}), senses };
+}
+
 /** How Wiktionary words the row for a letter's name: de, "The name of the Latin script letter D/d." */
 const LETTER_NAME = /^The name of the Latin[- ]script letter\b/;
 /** And for an Arabic letter as a number: ل, "The twelfth numeral symbol of the Arabic alphabet". */

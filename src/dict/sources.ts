@@ -4,7 +4,7 @@ import type { Entry, RankHint } from './jmdict';
 import type { CharacterInfo } from './kanji';
 import { JMDICT, lookup, type Batch, type Source } from './store';
 import { wikdictEntries, wikdictUrl } from './wikdict';
-import { formIn, mergeByWord, onlyForm, readRow, type Inflection } from './wty';
+import { formIn, mergeByWord, onlyForm, readGlossRow, readRow, type Inflection } from './wty';
 import { foldArabic } from '../morphology/arabic';
 import { foldHindi } from '../morphology/hindi';
 import { foldTurkish } from '../morphology/turkish';
@@ -104,12 +104,15 @@ const WTY_REVISION = '2026.10.22';
  */
 const FILED_AS: Record<string, Record<string, string>> = { zh: { ru: 'cmn', es: 'cmn' } };
 
-/** A Wiktionary dictionary: `target` words explained in `native`. */
-export function wtyUrl(target: string, native: string): string {
-  const filed = FILED_AS[target]?.[native] ?? target;
+/**
+ * A Wiktionary dictionary: `target` words explained in `native`. A glossary (`kind` 'gloss') is the target
+ * language's own edition instead, each of its words with the equivalents its translation tables give in `native`.
+ */
+export function wtyUrl(target: string, native: string, kind?: 'gloss'): string {
+  const filed = kind ? target : FILED_AS[target]?.[native] ?? target;
   return (
     `https://huggingface.co/datasets/daxida/wty-release/resolve/${WTY_TAG}/` +
-    `latest/dict/${filed}/${native}/wty-${filed}-${native}.zip`
+    `latest/dict/${filed}/${native}/wty-${filed}-${native}${kind ? `-${kind}` : ''}.zip`
   );
 }
 
@@ -890,6 +893,47 @@ export const CANTO: Source = {
   },
 };
 
+/**
+ * A Wiktionary glossary as a source (readGlossRow in wty.ts): `target` words from that language's own edition, each
+ * with the equivalents its translation tables give in `native`. English Wiktionary's tables hold most of the
+ * thousand commonest English words in Arabic, Hindi and Ukrainian, which no edition explains English in. Like
+ * WikDict's, a row is equivalents, not explanations, and has no forms: a word is traced to its dictionary form by
+ * the language's own dictionary.
+ */
+export function wtyGlossary(target: string, native: string): Source {
+  const id = `wty-${target}-${native}-gloss`;
+  return {
+    id,
+    db: `libregaku-dict-${id}`,
+    release: WTY_REVISION,
+    format: 1,
+    rank: (entries: Entry[], key: string) => mergeByWord(entries.filter((e) => e.word === key)),
+    async read(_edition, onDownload) {
+      const number = (name: string): number => Number(/(\d+)\.json$/.exec(name)?.[1] ?? 0);
+      const banks = zipFiles(await fetchBytes(wtyUrl(target, native, 'gloss'), onDownload))
+        .filter((f) => /^term_bank_\d+\.json$/.test(f.name))
+        .sort((a, b) => number(a.name) - number(b.name));
+      if (!banks.length) throw new Error('libregaku: dictionary contained no words');
+      return (async function* (): AsyncGenerator<Batch> {
+        let n = 0;
+        for (const [at, bank] of banks.entries()) {
+          const rows = JSON.parse(new TextDecoder().decode(await bank.bytes())) as unknown;
+          if (!Array.isArray(rows)) continue;
+          for (let i = 0; i < rows.length; i += ROWS) {
+            const entries: Batch['entries'] = [];
+            for (const raw of rows.slice(i, i + ROWS) as unknown[]) {
+              const entry = readGlossRow(raw, idOf(n++));
+              if (entry) entries.push({ entry, keys: [entry.word] });
+            }
+            const done = (at + Math.min(i + ROWS, rows.length) / rows.length) / banks.length;
+            yield { entries, percent: Math.round(done * 100) };
+          }
+        }
+      })();
+    },
+  };
+}
+
 /* ── WikDict: bilingual dictionaries from Wiktionary, for pairs the Wiktionary files hold little of ── */
 
 /**
@@ -1021,6 +1065,19 @@ export const SOURCES: Record<string, Source> = {
   // Japanese and Chinese, measured with COVER in scripts/compare-unidic.mjs and scripts/measure-forms.mjs zh.
   'wty-ja-pt': wty('ja', 'pt'),
   'wty-zh-pl': wty('zh', 'pl'),
+  // Every other pair that fell to English, measured with COVER, November 2026: Korean, Portuguese and Hindi.
+  'wty-ko-pl': wty('ko', 'pl'),
+  'wty-pt-ja': wty('pt', 'ja'),
+  'wty-pt-zh': wty('pt', 'zh'),
+  'wty-hi-zh': wty('hi', 'zh'),
+  'wty-hi-pl': wty('hi', 'pl'),
+  // And glossaries, where no edition explains the language in the learner's: English, French and Portuguese.
+  'wty-en-ar-gloss': wtyGlossary('en', 'ar'),
+  'wty-en-hi-gloss': wtyGlossary('en', 'hi'),
+  'wty-en-uk-gloss': wtyGlossary('en', 'uk'),
+  'wty-fr-ar-gloss': wtyGlossary('fr', 'ar'),
+  'wty-fr-uk-gloss': wtyGlossary('fr', 'uk'),
+  'wty-pt-it-gloss': wtyGlossary('pt', 'it'),
   [KRDICT.id]: KRDICT,
   [CANTO.id]: CANTO,
 };

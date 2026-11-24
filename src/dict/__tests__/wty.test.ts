@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Entry } from '../jmdict';
-import { formIn, kindOf, mergeByWord, onlyForm, readRow, type Inflection } from '../wty';
+import { formIn, kindOf, mergeByWord, onlyForm, readGlossRow, readRow, type Inflection } from '../wty';
 
 /*
  * Rows as wiktionary-to-yomitan publishes them — wty-es-en, wty-ko-en and
@@ -864,5 +864,49 @@ describe('formIn: a verb row that is a form of another verb', () => {
   it('leaves a verb with a meaning of its own, and any row that is no verb', () => {
     expect(formIn(entryOf(meanings('parlare', 'v', 'v', [li('to speak, to talk')])))).toBeNull();
     expect(formIn(entryOf(meanings('ha', 'intj', '', [li('ah! (usually ironic or sarcastic)')])))).toBeNull();
+  });
+});
+
+describe('readGlossRow, on a row of a glossary', () => {
+  /*
+   * Rows of wty-en-ar-gloss, wty-en-uk-gloss and wty-fr-ar-gloss (2026.10.22), as the term banks write them,
+   * cut to the meanings a test reads.
+   */
+  const meaning = (label: string, ...equivalents: string[]): unknown => ({
+    type: 'structured-content',
+    content: { tag: 'div', content: [
+      { tag: 'div', data: { content: 'sense-label' }, content: label },
+      { tag: 'ul', data: { content: 'glossary' }, content: equivalents.map((e) => ({ tag: 'li', content: e })) },
+    ] },
+  });
+  const row = (term: string, tags: string, ...definitions: unknown[]): unknown => [term, '', tags, tags, 0, definitions, 0, ''];
+
+  it('keeps the equivalents of each meaning as a sense, and leaves the edition’s own words for it out', () => {
+    const go = readGlossRow(row('go', 'v',
+      meaning('to move through space (especially from one place to another)', 'ذَهَبَ', 'رَاحَ'),
+      meaning('to disappear', 'ذَهَبَ', 'زَالَ', 'اِخْتَفَى')), '7');
+    expect(go).toEqual({
+      id: '7', word: 'go', common: false, kind: ['v'],
+      senses: [{ pos: ['v'], glosses: ['ذَهَبَ', 'رَاحَ'] }, { pos: ['v'], glosses: ['ذَهَبَ', 'زَالَ', 'اِخْتَفَى'] }],
+    });
+  });
+
+  it('says a meaning once where the row has it twice, and an equivalent once where it is written with its vowels and again without', () => {
+    const be = readGlossRow(row('be', 'v', meaning('used to declare the subject and object identical', 'бу́ти'),
+      meaning('used to indicate that the values on either side of an equation are the same', 'бу́ти')), '1');
+    expect(be?.senses).toEqual([{ pos: ['v'], glosses: ['бу́ти'] }]);
+    const dictionary = readGlossRow(row('dictionary', 'n', meaning('reference work of words and their meanings', 'قَامُوس', 'مُعْجَم', 'قاموس', 'قاموس')), '2');
+    expect(dictionary?.senses[0]?.glosses).toEqual(['قَامُوس', 'مُعْجَم']);
+  });
+
+  it('leaves out what is a note to the reader of the table, and reads a meaning the file writes as bare text', () => {
+    const have = readGlossRow(row('have', 'v', meaning('1. to possess', 'ма́ти', 'у /в мене', 'etc. See у /в')), '3');
+    expect(have?.senses[0]?.glosses).toEqual(['ма́ти', 'у /в мене']);
+    expect(readGlossRow(row('mardi', 'n', 'الثُّلاثَاء'), '4')?.senses).toEqual([{ pos: ['n'], glosses: ['الثُّلاثَاء'] }]);
+  });
+
+  it('is no entry where no meaning has an equivalent', () => {
+    expect(readGlossRow(row('nothing', 'n', meaning('a label and no list')), '5')).toBeNull();
+    expect(readGlossRow(['', '', 'n', 'n', 0, [], 0, ''], '6')).toBeNull();
   });
 });

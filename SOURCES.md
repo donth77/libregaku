@@ -14,7 +14,7 @@ you choose a language that uses it, and kept in your browser.
 | [JMdict and KANJIDIC2](https://www.edrdg.org/jmdict/j_jmdict.html), by the Electronic Dictionary Research and Development Group, as JSON by [jmdict-simplified](https://github.com/scriptin/jmdict-simplified) | Japanese words, and the kanji they are written with | CC BY-SA 4.0 |
 | [CC-CEDICT](https://www.mdbg.net/chinese/dictionary?page=cc-cedict), by MDBG and its contributors | Chinese (Mandarin) words and their pinyin | CC BY-SA 4.0 |
 | [CC-Canto](https://cantonese.org/), by Pleco | Cantonese words, and Jyutping for CC-CEDICT's | CC BY-SA 3.0 |
-| [Wiktionary](https://www.wiktionary.org/), through [kaikki.org](https://kaikki.org/) and [wiktionary-to-yomitan](https://github.com/yomidevs/wiktionary-to-yomitan) | Most languages' words and their forms, and some of them explained in your own language | CC BY-SA 4.0 |
+| [Wiktionary](https://www.wiktionary.org/), through [kaikki.org](https://kaikki.org/) and [wiktionary-to-yomitan](https://github.com/yomidevs/wiktionary-to-yomitan) | Most languages' words and their forms, and some of them explained in your own language, or given with your language's words for them from Wiktionary's translation tables | CC BY-SA 4.0 |
 | [WikDict](https://www.wikdict.com/), by Karl Bartel, from Wiktionary through DBnary | Some languages explained in your own language | CC BY-SA 4.0 |
 | [한국어기초사전 (KRDict)](https://krdict.korean.go.kr/), by the National Institute of Korean Language, as files by [Lyroxide](https://github.com/Lyroxide/yomitan-ko-dic) | Korean words explained in your own language | CC BY-SA 2.0 KR |
 | [CFDICT](https://github.com/licryle/CxDICT), by chine.in, kept up to date by CxDICT | Chinese explained in French | CC BY-SA 4.0 |

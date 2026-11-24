@@ -56,16 +56,25 @@ export const OWN_DICTIONARIES: Record<string, Record<string, string>> = {
    * Japanese and Chinese: the same bar as for the languages below, the words counted as the analyser reads them
    * (COVER in scripts/compare-unidic.mjs, and in scripts/measure-forms.mjs zh). Japanese, which JMdict has no
    * edition in: Wiktionary in Korean 82%, Chinese 79% and Portuguese 73%. Polish has 53%, Thai 39%, Italian 29%,
-   * Turkish 17%, Vietnamese 9% and Indonesian 6%; WikDict 16 to 22% in each; Arabic, Ukrainian and Hindi neither.
+   * Turkish 17%, Vietnamese 9% and Indonesian 6%; WikDict 16 to 22% in each; and Japanese Wiktionary's glossaries
+   * (its translation tables) 11 to 25% in each, Arabic, Hindi and Ukrainian among them.
    */
   ja: { zh: 'wty-ja-zh', 'zh-Hant': 'wty-ja-zh', ko: 'wty-ja-ko', pt: 'wty-ja-pt' },
-  // Korea's dictionary for learners, in each language it explains words in (Chinese: simplified).
-  ko: Object.fromEntries(['ar', 'es', 'fr', 'id', 'ja', 'ru', 'th', 'vi', 'zh', 'zh-Hant'].map((l) => [l, 'krdict'])),
+  /*
+   * Korea's dictionary for learners, in each language it explains words in (Chinese: simplified); for the rest,
+   * the analyser's words counted with COVER (scripts/measure-forms.mjs ko): Wiktionary in Polish 59%. Korean
+   * Wiktionary's glossaries have German 52%, Dutch 48%, Italian 47%, Portuguese 47%, Swedish 46%, Turkish 45%,
+   * Hindi 33% and Ukrainian 31%, and the other editions' files of Korean 9 to 28%.
+   */
+  ko: {
+    ...Object.fromEntries(['ar', 'es', 'fr', 'id', 'ja', 'ru', 'th', 'vi', 'zh', 'zh-Hant'].map((l) => [l, 'krdict'])),
+    pl: 'wty-ko-pl',
+  },
   /*
    * CFDICT (by way of CxDICT) 98% and HanDeDict 98%, as CC-CEDICT is written; Wiktionary in Japanese 90%, Korean 74%
    * and Polish 68%. Wiktionary has Thai 31%, Russian 24%, Dutch 20%, Italian 18%, Portuguese 17%, Turkish 12%,
    * Spanish 9%, Indonesian 6% and Vietnamese 6%; WikDict, from Chinese Wiktionary's translations and in traditional
-   * characters, 7 to 15% in each of its nine.
+   * characters, 7 to 15% in each of its nine; and Chinese Wiktionary's glossaries, from the same tables, 12 to 17%.
    */
   zh: { fr: 'cxdict-fr', de: 'handedict', ja: 'wty-zh-ja', ko: 'wty-zh-ko', pl: 'wty-zh-pl' },
   /*
@@ -73,50 +82,75 @@ export const OWN_DICTIONARIES: Record<string, Record<string, string>> = {
    * least 55% of the language's thousand commonest words (as scripts/measure-forms.mjs counts them with COVER,
    * over 20,000 Tatoeba sentences), the better of Wiktionary's edition and WikDict where both do. The rest of
    * a lookup falls to the English dictionary, as it does for the words these lack.
+   *
+   * Where no edition explains the language in the learner's, the language's own edition may: its glossaries, its
+   * words with the equivalents its translation tables give (wtyGlossary in src/dict/sources.ts), measured the same.
    */
   // Wiktionary in French 94%, Chinese 91%, Polish 95%, Dutch 95%, Russian 88% and Korean 76%; WikDict in German 64%,
-  // Portuguese 56% and Italian 60%.
+  // Portuguese 56% and Italian 60%. Not: Japanese 54%, Turkish 46%, Thai 41% and Vietnamese 15% in Wiktionary; Swedish
+  // 47% and Indonesian 29% in WikDict; Arabic 17%, Ukrainian 10% and Hindi 9% in Spanish Wiktionary's glossaries.
   es: {
     fr: 'wty-es-fr', zh: 'wty-es-zh', 'zh-Hant': 'wty-es-zh', pl: 'wty-es-pl', nl: 'wty-es-nl', ru: 'wty-es-ru', ko: 'wty-es-ko',
     de: 'wikdict-es-de', pt: 'wikdict-es-pt', it: 'wikdict-es-it',
   },
   // Wiktionary in French 95%, Polish 94%, Chinese 90%, Russian 90% and Korean 63%; WikDict in Spanish 91%, Swedish 90%,
-  // Italian 84%, Portuguese 80%, Dutch 69%, Turkish 61% and Japanese 60%.
+  // Italian 84%, Portuguese 80%, Dutch 69%, Turkish 61% and Japanese 60%. Not: Thai 44% and Vietnamese 9% in
+  // Wiktionary, Indonesian 33% in WikDict; Ukrainian 48%, Arabic 23% and Hindi 6% in German Wiktionary's glossaries.
   de: {
     fr: 'wty-de-fr', ru: 'wty-de-ru', zh: 'wty-de-zh', 'zh-Hant': 'wty-de-zh', pl: 'wty-de-pl', ko: 'wty-de-ko',
     es: 'wikdict-de-es', pt: 'wikdict-de-pt', it: 'wikdict-de-it', sv: 'wikdict-de-sv', nl: 'wikdict-de-nl', tr: 'wikdict-de-tr',
     ja: 'wikdict-de-ja',
   },
   // Wiktionary in Polish 97%, Dutch 91%, Russian 90%, Korean 85%, Vietnamese 84%, Japanese 78%, Chinese 74%, Turkish 73%
-  // and Thai 61%; WikDict in German 93%, Spanish 93%, Portuguese 91%, Italian 91%, Swedish 86% and Indonesian 63%.
+  // and Thai 61%; WikDict in German 93%, Spanish 93%, Portuguese 91%, Italian 91%, Swedish 86% and Indonesian 63%; French
+  // Wiktionary's glossaries in Arabic 67% and Ukrainian 56%. Not: Hindi, 19% in the glossaries.
   fr: {
     zh: 'wty-fr-zh', 'zh-Hant': 'wty-fr-zh', tr: 'wty-fr-tr', vi: 'wty-fr-vi', ru: 'wty-fr-ru', th: 'wty-fr-th',
     nl: 'wty-fr-nl', pl: 'wty-fr-pl', ko: 'wty-fr-ko', ja: 'wty-fr-ja',
     es: 'wikdict-fr-es', pt: 'wikdict-fr-pt', it: 'wikdict-fr-it', de: 'wikdict-fr-de', sv: 'wikdict-fr-sv', id: 'wikdict-fr-id',
+    ar: 'wty-fr-ar-gloss', uk: 'wty-fr-uk-gloss',
   },
   // Wiktionary in Polish 94%, French 90%, German 82%, Russian 72%, Korean 71%, Chinese 63%, Japanese 59% and Spanish 55%.
+  // Not: Turkish 45%, Dutch 40%, Thai 38% and Vietnamese 6% in Wiktionary; Portuguese 46%, Swedish 37% and Indonesian
+  // 21% in WikDict; Arabic 8%, Ukrainian 7% and Hindi 5% in Italian Wiktionary's glossaries.
   it: {
     pl: 'wty-it-pl', fr: 'wty-it-fr', de: 'wty-it-de', ru: 'wty-it-ru', ko: 'wty-it-ko', zh: 'wty-it-zh', 'zh-Hant': 'wty-it-zh',
     ja: 'wty-it-ja', es: 'wty-it-es',
   },
-  // Wiktionary in French 93%, Polish 86% and Russian 66%; WikDict in Spanish 59% and German 57%.
+  // Wiktionary in French 93%, Polish 86%, Russian 66%, Chinese 55% and Japanese 55%; WikDict in Spanish 59% and German
+  // 57%; Portuguese Wiktionary's glossary in Italian 65%. Not: Swedish 54.6%, Dutch 53%, Arabic 40%, Hindi 28%,
+  // Ukrainian 26%, Thai 23% and Vietnamese 17% in the glossaries; Turkish 44% and Indonesian 36% in WikDict; Korean 34%
+  // in Wiktionary.
   pt: {
-    fr: 'wty-pt-fr', pl: 'wty-pt-pl', ru: 'wty-pt-ru', es: 'wikdict-pt-es', de: 'wikdict-pt-de',
+    fr: 'wty-pt-fr', pl: 'wty-pt-pl', ru: 'wty-pt-ru', zh: 'wty-pt-zh', 'zh-Hant': 'wty-pt-zh', ja: 'wty-pt-ja',
+    es: 'wikdict-pt-es', de: 'wikdict-pt-de', it: 'wty-pt-it-gloss',
   },
-  // Wiktionary in Polish 86%, Russian 80% and French 62% (keyed without vowels, as the English edition is).
+  // Wiktionary in Chinese 56% and Polish 55%. Not: Russian 50%, French 27%, Korean 26%, Thai 23%, Dutch 19%, Turkish
+  // 17%, Japanese 14% and 2 to 7% in the rest; nothing at all in Arabic, Indonesian, Ukrainian or Swedish.
+  hi: { zh: 'wty-hi-zh', 'zh-Hant': 'wty-hi-zh', pl: 'wty-hi-pl' },
+  // Wiktionary in Polish 86%, Russian 80% and French 62% (keyed without vowels, as the English edition is). Not:
+  // Turkish 41%, Chinese 38%, Korean 36%, Japanese 24%, Portuguese 22%, Spanish 21% and 2 to 14% in the rest; nothing
+  // at all in Hindi, Indonesian, Ukrainian or Swedish.
   ar: { pl: 'wty-ar-pl', ru: 'wty-ar-ru', fr: 'wty-ar-fr' },
-  // Wiktionary in Russian 81%, Polish 68% and Chinese 67%; WikDict in German 61% and French 58%.
+  // Wiktionary in Russian 81%, Polish 68% and Chinese 67%; WikDict in German 61% and French 58%. Not: Swedish 54%,
+  // Spanish 49%, Dutch 48%, Italian 45%, Portuguese 41%, Japanese 34% and Indonesian 27% in WikDict; Arabic 35%,
+  // Korean 14%, Ukrainian 12% and Hindi 11% in Turkish Wiktionary's glossaries; Thai and Vietnamese 9%.
   tr: {
     ru: 'wty-tr-ru', pl: 'wty-tr-pl', zh: 'wty-tr-zh', 'zh-Hant': 'wty-tr-zh', de: 'wikdict-tr-de', fr: 'wikdict-tr-fr',
   },
   // Wiktionary in Japanese 98%, Spanish 95%, Polish 91%, Vietnamese 91%, Korean 91%, French 91%, Dutch 89% and Thai 86%;
-  // WikDict in German 90%, Russian 90%, Portuguese 90%, Swedish 89%, Italian 89%, Turkish 83% and Indonesian 73%. Chinese
-  // has 49% in Wiktionary and 44% in WikDict, and Ukrainian, Arabic and Hindi neither.
+  // WikDict in German 90%, Russian 90%, Portuguese 90%, Swedish 89%, Italian 89%, Turkish 83% and Indonesian 73%; English
+  // Wiktionary's glossaries in Arabic 87%, Ukrainian 87% and Hindi 82%. Chinese has 52% in Wiktionary and 44% in WikDict.
   en: {
     ja: 'wty-en-ja', es: 'wty-en-es', pl: 'wty-en-pl', vi: 'wty-en-vi', ko: 'wty-en-ko', fr: 'wty-en-fr', nl: 'wty-en-nl',
     th: 'wty-en-th', de: 'wikdict-en-de', ru: 'wikdict-en-ru', pt: 'wikdict-en-pt', sv: 'wikdict-en-sv', it: 'wikdict-en-it',
-    tr: 'wikdict-en-tr', id: 'wikdict-en-id',
+    tr: 'wikdict-en-tr', id: 'wikdict-en-id', ar: 'wty-en-ar-gloss', hi: 'wty-en-hi-gloss', uk: 'wty-en-uk-gloss',
   },
+  /*
+   * None for Thai: Wiktionary has Polish 53%, Japanese 44%, Chinese 42% and Russian 32%, and under 20% in the rest;
+   * Thai Wiktionary's glossaries 5 to 25%. Nor for Cantonese: Wiktionary explains it in
+   * Portuguese, French, Spanish and Japanese, and the best has 5%.
+   */
 };
 
 /**
