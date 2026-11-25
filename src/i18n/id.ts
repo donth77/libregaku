@@ -691,6 +691,7 @@ export const id: Translation = {
     marksNotSynced: 'Tanda Anda tidak dapat disimpan ke Anki. Tanda tetap ada di browser ini dan akan dicoba lagi.',
     cardsNotAdded:
       'Anki tidak menerima sebagian kartu yang disimpan saat Anki tertutup. Kartu itu masih disimpan dan akan dicoba lagi.',
+    extensionReloaded: 'Libregaku telah diperbarui atau dimulai ulang. Muat ulang tab ini untuk mencari kata lagi.',
 
     // Details
     playerNeverLoaded: 'Pemutar tidak pernah selesai dimuat.',

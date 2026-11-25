@@ -723,6 +723,7 @@ export const nl: Translation = {
     cardsNotAdded:
       'Anki nam sommige kaarten niet aan die bewaard werden terwijl het gesloten was. ' +
       'Ze blijven bewaard en worden opnieuw geprobeerd.',
+    extensionReloaded: 'Libregaku is bijgewerkt of opnieuw gestart. Laad dit tabblad opnieuw om weer woorden op te zoeken.',
 
     // Details
     playerNeverLoaded: 'De speler is nooit helemaal geladen.',

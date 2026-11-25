@@ -671,6 +671,7 @@ export const ko: Translation = {
     markNotSaved: '표시를 저장하지 못했습니다. 새로고침하기 전까지만 적용되고, 그 뒤에는 사라집니다.',
     marksNotSynced: '표시를 Anki에 저장하지 못했습니다. 이 브라우저에 보관해 두고 다시 시도합니다.',
     cardsNotAdded: 'Anki가 닫혀 있는 동안 보관한 카드 중 일부를 Anki가 받지 않았습니다. 계속 보관하며 다시 시도합니다.',
+    extensionReloaded: 'Libregaku가 업데이트되었거나 다시 시작되었습니다. 단어를 다시 찾아보려면 이 탭을 새로고침하세요.',
 
     // Details
     playerNeverLoaded: '플레이어 로딩이 끝나지 않았습니다.',

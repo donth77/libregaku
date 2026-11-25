@@ -652,6 +652,7 @@ export const zh: Translation = {
     markNotSaved: '无法保存该标记。它在重新加载页面前有效，之后会丢失。',
     marksNotSynced: '无法将标记保存到 Anki。标记已保存在此浏览器中，稍后会重试。',
     cardsNotAdded: 'Anki 没有接受部分在关闭期间暂存的卡片。这些卡片仍会保留，稍后重试。',
+    extensionReloaded: 'Libregaku 已更新或重新启动。请重新加载此标签页以继续查词。',
 
     // Details
     playerNeverLoaded: '播放器一直没有加载完成。',

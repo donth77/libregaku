@@ -1,14 +1,19 @@
 import { ui } from '../i18n';
-import { textTracks, type DashTrack } from './dash';
+import { betweenParts, elementTime, joinPeriods, mediaTime, textTracks, type DashPart, type DashTrack } from './dash';
 import { cuesFromSegments } from './hls';
 import type { Cue, SubtitleSource, TrackInfo } from './types';
 
 /**
  * HBO Max. It plays DASH: the manifest lists each subtitle track as a
  * text AdaptationSet whose segments are numbered WebVTT files, with cue times
- * already on the programme's clock. `inject-max.ts` passes on the manifest
- * the player itself fetched, whose URL is signed; every segment URL is
- * relative to it, so resolving them builds nothing by hand.
+ * on the title's own clock, the one HBO Max's player shows. `inject-max.ts`
+ * passes on the manifest the player itself fetched, whose URL is signed; every
+ * segment URL is relative to it, so resolving them builds nothing by hand.
+ *
+ * On the plan with ads the title is several periods with ad breaks between
+ * them (mx.ad-periods), and the <video>'s clock runs through the ads: each
+ * language is joined into one track, and the element's time is read onto the
+ * title's (time(), seek(), isAd()).
  *
  * The manifest does not name its title, so the list served is the last one
  * the page fetched. A next episode's arriving early would be served for the
@@ -68,20 +73,29 @@ interface MxTrack extends DashTrack {
   cc: boolean;
 }
 
-/** Tracks with ids that survive a refreshed manifest: language, kind, and position among those. */
+/**
+ * Tracks with ids that survive a refreshed manifest: language, kind, and position among those.
+ * HBO Max's own only: an ad's period lists captions of its own, served from elsewhere.
+ */
 export function asTracks(tracks: DashTrack[]): MxTrack[] {
   const seen = new Map<string, number>();
   const out: MxTrack[] = [];
-  for (const t of tracks) {
+  for (const t of joinPeriods(tracks.filter((t) => t.urls.every(isMediaUrl)))) {
     const forced = /forced/i.test(t.role);
     const cc = /caption/i.test(t.role);
-    if (!t.urls.every(isMediaUrl)) continue;
     const key = `${t.language}:${forced ? 'forced' : cc ? 'cc' : 'sub'}`;
     const n = seen.get(key) ?? 0;
     seen.set(key, n + 1);
     out.push({ ...t, id: `${key}:${n}`, forced, cc });
   }
   return out;
+}
+
+/** Every part the title's tracks are in, in order of the <video>'s clock, each once. */
+export function partsOf(tracks: readonly DashTrack[]): DashPart[] {
+  const byStart = new Map<number, DashPart>();
+  for (const t of tracks) for (const p of t.parts) if (!byStart.has(p.start)) byStart.set(p.start, p);
+  return [...byStart.values()].sort((a, b) => a.start - b.start);
 }
 
 export class MaxAdapter implements SubtitleSource {
@@ -102,6 +116,8 @@ export class MaxAdapter implements SubtitleSource {
   ];
 
   #tracks: MxTrack[] = [];
+  /** Where the title's parts are on the <video>'s clock: every period a track of its own is in. Empty until a manifest is read. */
+  #parts: DashPart[] = [];
   /** Cues by track id and its first segment's URL, in flight or done. */
   #cues = new Map<string, Promise<Cue[]>>();
   #watchId: string | null = watchIdOf(location.pathname);
@@ -136,6 +152,25 @@ export class MaxAdapter implements SubtitleSource {
     // The tab's title is wrapped in bidi marks.
     const clean = named.replace(/[⁦-⁩‎‏]/g, '').trim();
     return clean || null;
+  }
+
+  /** Where playback is on the title's clock, through the ad breaks the <video>'s clock counts. */
+  time(): number | null {
+    const video = this.video();
+    return video ? mediaTime(this.#parts, video.currentTime) : null;
+  }
+
+  /** To a moment of the title, past the ad breaks before it. */
+  seek(seconds: number): void {
+    const video = this.video();
+    if (!video || !Number.isFinite(seconds) || seconds < 0) return;
+    video.currentTime = elementTime(this.#parts, seconds) ?? seconds;
+  }
+
+  /** In an ad break: the <video> is in none of the title's parts. */
+  isAd(): boolean {
+    const video = this.video();
+    return video ? betweenParts(this.#parts, video.currentTime) : false;
   }
 
   /** The watch page. HBO Max has no documented way to open one at a moment, so the card links to the title. */
@@ -222,6 +257,7 @@ export class MaxAdapter implements SubtitleSource {
       tracks.length === this.#tracks.length && tracks.every((t, i) => t.urls[0] === this.#tracks[i]?.urls[0]);
     if (same) return;
     this.#tracks = tracks;
+    this.#parts = partsOf(tracks);
     this.#trackCbs.forEach((cb) => cb());
   }
 }

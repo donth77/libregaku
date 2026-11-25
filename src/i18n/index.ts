@@ -223,6 +223,23 @@ export function languageLabel(code: string): string {
 }
 
 /**
+ * A subtitle track as a menu names it: the site's own name for it, or, where the site gives only
+ * the language's code (HBO Max's "en-GB" and "en-US SDH", Viki's "pt", or nothing at all), the
+ * language named as Intl names it: "English (United Kingdom)", "English (United States) SDH",
+ * "Portuguese".
+ */
+export function trackLabel(label: string, lang: string): string {
+  const own = label.trim();
+  if (!lang) return own;
+  if (!own) return languageLabel(lang);
+  const code = lang.toLowerCase();
+  const said = own.toLowerCase();
+  if (said === code) return languageLabel(lang);
+  if (said.startsWith(`${code} `)) return `${languageLabel(lang)} ${own.slice(lang.length).trim()}`;
+  return own;
+}
+
+/**
  * A language being learned, as a menu item: as Intl names it, but for one
  * whose name covers another language that can be learned too. Intl calls
  * Mandarin "Chinese", and Cantonese is Chinese as well.

@@ -745,6 +745,7 @@ export const fr: Translation = {
     marksNotSynced: 'Impossible d’enregistrer vos marques dans Anki. Elles sont gardées dans ce navigateur, et un nouvel essai aura lieu.',
     cardsNotAdded:
       'Anki a refusé certaines des cartes gardées pendant qu’il était fermé. Elles sont toujours gardées, et un nouvel essai aura lieu.',
+    extensionReloaded: 'Libregaku a été mis à jour ou redémarré. Rechargez cet onglet pour rechercher à nouveau des mots.',
 
     // Détails
     playerNeverLoaded: 'Le lecteur n’a jamais fini de se charger.',

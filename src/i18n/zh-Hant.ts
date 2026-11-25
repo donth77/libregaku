@@ -665,6 +665,7 @@ export const zhHant: Translation = {
     markNotSaved: '無法儲存這個標記。重新載入前仍會生效，之後就會消失。',
     marksNotSynced: '無法將標記儲存到 Anki。標記會保留在這個瀏覽器中，稍後會再試一次。',
     cardsNotAdded: 'Anki 關閉期間保留的卡片中，有些未被 Anki 接受。這些卡片仍會保留，稍後會再試一次。',
+    extensionReloaded: 'Libregaku 已更新或重新啟動。請重新載入此分頁，才能繼續查詢單字。',
 
     // Details
     playerNeverLoaded: '播放器一直沒有載入完成。',

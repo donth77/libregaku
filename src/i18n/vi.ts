@@ -696,6 +696,7 @@ export const vi: Translation = {
     marksNotSynced: 'Không lưu được đánh dấu của bạn vào Anki. Chúng được giữ trong trình duyệt này và sẽ được thử lại.',
     cardsNotAdded:
       'Anki không nhận một số thẻ được giữ lại trong lúc Anki đóng. Các thẻ đó vẫn được giữ và sẽ được thử lại.',
+    extensionReloaded: 'Libregaku đã được cập nhật hoặc khởi động lại. Hãy tải lại thẻ này để tra từ tiếp.',
 
     // Chi tiết
     playerNeverLoaded: 'Trình phát không tải xong.',

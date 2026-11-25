@@ -2,7 +2,7 @@ import { queuedCards } from './anki/card-queue';
 import { probe, type AnkiState } from './anki/client';
 import { ANKI_PORT } from './anki/endpoint';
 import type { CaptureFailure } from './audio/tab-capture';
-import { learningLabel, loadUiLanguage, localize, setTranslationLoader, setUiLanguage, ui, uiLocale } from './i18n';
+import { learningLabel, loadUiLanguage, trackLabel, localize, setTranslationLoader, setUiLanguage, ui, uiLocale } from './i18n';
 import { logo } from './logo';
 import { loadSettings, onSettingsChange, setSetting, settings, TARGET_LANGUAGES } from './settings';
 import type { TrackInfo } from './adapters/types';
@@ -124,8 +124,9 @@ function fillTracks(
     if (t.forced && t.id !== selected) continue;
     const o = document.createElement('option');
     o.value = t.id;
-    // The track's name is the site's; only the mark for a generated one is ours.
-    const name = t.label || t.lang;
+    // The track's name is the site's, or the language's where the site names it only by its code;
+    // the mark for a generated one is ours.
+    const name = trackLabel(t.label, t.lang);
     o.textContent = t.generated ? ui.action.generatedTrack(name) : name;
     sel.appendChild(o);
   }

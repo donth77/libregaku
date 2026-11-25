@@ -704,6 +704,7 @@ export const sv: Translation = {
     marksNotSynced: 'Kunde inte spara dina markeringar i Anki. De finns kvar i den här webbläsaren och skickas igen.',
     cardsNotAdded:
       'Anki tog inte emot några av korten som sparades medan det var stängt. De finns kvar och skickas igen.',
+    extensionReloaded: 'Libregaku har uppdaterats eller startats om. Ladda om den här fliken för att slå upp ord igen.',
 
     // Detaljer
     playerNeverLoaded: 'Spelaren laddades aldrig klart.',

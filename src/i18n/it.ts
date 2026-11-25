@@ -743,6 +743,7 @@ export const it: Translation = {
     marksNotSynced: 'Impossibile salvare i tuoi contrassegni in Anki. Restano in questo browser e verrà fatto un nuovo tentativo.',
     cardsNotAdded:
       'Anki non ha accettato alcune delle carte conservate mentre era chiuso. Sono ancora conservate e verrà fatto un nuovo tentativo.',
+    extensionReloaded: 'Libregaku è stato aggiornato o riavviato. Ricarica questa scheda per cercare di nuovo le parole.',
 
     // Dettagli
     playerNeverLoaded: 'Il player non ha mai finito di caricarsi.',

@@ -175,8 +175,45 @@ describe('the track pickers', () => {
     });
     const shown = (id: string): Array<string | null> =>
       Array.from(document.querySelectorAll(`#${id} option`)).map((o) => o.textContent);
-    expect(shown('track')).toEqual(['Japanese', 'ja (auto)']);
-    expect(shown('second')).toEqual(['None', 'Japanese', 'ja (auto)']);
+    expect(shown('track')).toEqual(['Japanese', 'Japanese (auto)']);
+    expect(shown('second')).toEqual(['None', 'Japanese', 'Japanese (auto)']);
+  });
+
+  it('name a language where the site gives only its code', async () => {
+    document.body.innerHTML = PAGE;
+    vi.stubGlobal('chrome', {
+      tabs: {
+        query: async () => [{ id: 5 }],
+        // As HBO Max's manifest labels them.
+        sendMessage: async () => ({
+          supported: true, site: 'max', title: 'x', rendering: true, sidebarOpen: true, track: null, second: 'gb',
+          tracks: [
+            { id: 'gb', lang: 'en-GB', label: 'en-GB' },
+            { id: 'us', lang: 'en-US', label: 'en-US SDH' },
+            { id: 'tw', lang: 'zh-Hant-TW', label: 'zh-Hant-TW' },
+            { id: 'th', lang: 'th', label: 'th' },
+            { id: 'named', lang: 'es-419', label: 'Español (Latinoamérica)' },
+          ],
+        }),
+      },
+      runtime: { openOptionsPage: () => {}, sendMessage: async () => ({ ok: false, kind: 'offline', offline: true }) },
+      storage: { local: { get: async () => ({}) } },
+    });
+    vi.resetModules();
+    await import('../action');
+    await vi.waitFor(() => {
+      if (document.getElementById('tracks')?.hidden !== false) throw new Error('not yet');
+    });
+    const shown = Array.from(document.querySelectorAll('#second option')).map((o) => o.textContent);
+    expect(shown).toEqual([
+      'None',
+      'English (United Kingdom)',
+      'English (United States) SDH',
+      'Chinese (Traditional, Taiwan)',
+      'Thai',
+      // A name of the site's own is kept.
+      'Español (Latinoamérica)',
+    ]);
   });
 
   it("leave out Netflix's forced tracks, unless one is in use", async () => {

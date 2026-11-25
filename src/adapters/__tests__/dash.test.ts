@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isoSeconds, textTracks } from '../dash';
+import { betweenParts, elementTime, isoSeconds, joinPeriods, mediaTime, textTracks } from '../dash';
 
 const BASE = 'https://x.cf.prd.media.h264.io/gcs/abc/dash.mpd?sig=1';
 
@@ -93,5 +93,71 @@ describe('textTracks, where each track is one whole file', () => {
 
   it('names a track by its label attribute, else its language', () => {
     expect(got.map((t) => [t.language, t.label, t.role])).toEqual([['ko', '한국어', 'subtitle'], ['en', 'en', 'subtitle']]);
+  });
+});
+
+// HBO Max's plan with ads, as its manifest lays an episode out: a card and an ad before the title, the
+// title's first part, a break, the second part. Each part lists every language again, its file numbered on
+// from the last, its lines timed on the title's own clock from the presentationTimeOffset.
+const part = (start: string, duration: string, offset: number, n: number, length: number): string => `
+  <Period id="${offset}" start="${start}" duration="${duration}">
+    <AdaptationSet id="11" lang="en-GB" contentType="text"><Label>en-GB</Label><Role value="subtitle"/>
+      <Representation mimeType="text/vtt" id="t0"><SegmentTemplate timescale="1000" presentationTimeOffset="${offset}" startNumber="${n}" media="t/321c14/t0/$Number$.vtt"><SegmentTimeline><S t="${offset}" d="${length}"/></SegmentTimeline></SegmentTemplate></Representation>
+    </AdaptationSet>
+    <AdaptationSet id="12" lang="th" contentType="text"><Label>th</Label><Role value="subtitle"/>
+      <Representation mimeType="text/vtt" id="t1"><SegmentTemplate timescale="1000" presentationTimeOffset="${offset}" startNumber="${n}" media="t/321c14/t1/$Number$.vtt"><SegmentTimeline><S t="${offset}" d="${length}"/></SegmentTimeline></SegmentTemplate></Representation>
+    </AdaptationSet>
+  </Period>`;
+const ad = (start: string, duration: string): string => `
+  <Period start="${start}" duration="${duration}">
+    <AdaptationSet lang="en-US" contentType="text"><Label>en-US CC</Label><Role value="caption"/>
+      <Representation mimeType="text/vtt" id="c"><BaseURL>https://ads.example/cc.vtt</BaseURL></Representation>
+    </AdaptationSet>
+  </Period>`;
+const WITH_ADS = `<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" type="static" mediaPresentationDuration="PT26M22.723S">
+  ${ad('PT0.000S', 'PT8.008S')}${ad('PT8.008S', 'PT15.015S')}
+  ${part('PT23.023S', 'PT14M0.6S', 0, 1, 840600)}
+  ${ad('PT14M23.623S', 'PT1M30.06S')}
+  ${part('PT15M53.683S', 'PT10M29.04S', 840600, 2, 629040)}
+</MPD>`;
+
+describe('a title in parts, with ad breaks between them', () => {
+  const tracks = textTracks(WITH_ADS, BASE);
+  const title = tracks.filter((t) => t.urls.every((u) => u.includes('h264.io')));
+
+  it("places each part on the <video>'s clock, and its lines on the title's", () => {
+    expect(title.filter((t) => t.language === 'en-GB').map((t) => t.parts)).toEqual([
+      [{ start: 23.023, end: 863.623, offset: 0 }],
+      [{ start: 953.683, end: 1582.723, offset: 840.6 }],
+    ]);
+  });
+
+  it('joins the parts into one track for each language, its files in order', () => {
+    const joined = joinPeriods(title);
+    expect(joined.map((t) => t.label)).toEqual(['en-GB', 'th']);
+    expect(joined[0]?.urls).toEqual([
+      'https://x.cf.prd.media.h264.io/gcs/abc/t/321c14/t0/1.vtt',
+      'https://x.cf.prd.media.h264.io/gcs/abc/t/321c14/t0/2.vtt',
+    ]);
+    expect(joined[0]?.parts.map((p) => p.offset)).toEqual([0, 840.6]);
+  });
+
+  it("reads the <video>'s clock as the title's, through the breaks, and back", () => {
+    const parts = joinPeriods(title)[0]?.parts ?? [];
+    // 7:33.7 on the element, as the player showed it: 7:10.7 into the title.
+    expect(mediaTime(parts, 453.692929)).toBeCloseTo(430.67, 2);
+    // The second part's first line, at 14:03.36 of the title.
+    expect(elementTime(parts, 843.36)).toBeCloseTo(956.443, 3);
+    expect(mediaTime(parts, 956.443)).toBeCloseTo(843.36, 3);
+    // Before the title and in the break: where the title is waiting.
+    expect(mediaTime(parts, 5)).toBe(0);
+    expect(mediaTime(parts, 900)).toBeCloseTo(840.6, 3);
+    expect([betweenParts(parts, 5), betweenParts(parts, 453), betweenParts(parts, 900), betweenParts(parts, 1000)]).toEqual([true, false, true, false]);
+  });
+
+  it("leaves a title in one period, from the start, on the <video>'s clock", () => {
+    const parts = textTracks(MPD, BASE)[0]?.parts ?? [];
+    expect(parts).toEqual([{ start: 0, end: 2823.88, offset: 0 }]);
+    expect([mediaTime(parts, 1234.5), elementTime(parts, 1234.5), betweenParts(parts, 1234.5)]).toEqual([1234.5, 1234.5, false]);
   });
 });

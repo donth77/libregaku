@@ -713,6 +713,7 @@ export const es: Translation = {
     marksNotSynced: 'No se pudieron guardar tus marcas en Anki. Se conservan en este navegador y se volverá a intentar.',
     cardsNotAdded:
       'Anki no aceptó algunas de las tarjetas guardadas mientras estaba cerrado. Siguen guardadas y se volverá a intentar.',
+    extensionReloaded: 'Libregaku se actualizó o se reinició. Vuelve a cargar esta pestaña para buscar palabras de nuevo.',
 
     // Detalles
     playerNeverLoaded: 'El reproductor no terminó de cargarse.',

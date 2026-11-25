@@ -728,6 +728,7 @@ export const de: Translation = {
     cardsNotAdded:
       'Anki hat einige der Karten nicht angenommen, die aufgehoben wurden, während es geschlossen war. ' +
       'Sie bleiben aufgehoben und werden erneut versucht.',
+    extensionReloaded: 'Libregaku wurde aktualisiert oder neu gestartet. Lade diesen Tab neu, um wieder Wörter nachzuschlagen.',
 
     // Details
     playerNeverLoaded: 'Der Player wurde nie fertig geladen.',

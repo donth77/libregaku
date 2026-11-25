@@ -532,8 +532,15 @@ export const ASSUMPTIONS: Assumption[] = [
   {
     id: 'mx.segments',
     site: 'max',
-    claim: 'Each segment is a WebVTT file on h264.io, fetchable from the page, whose cue times are on the same clock as the <video>\'s currentTime (X-TIMESTAMP-MAP MPEGTS:0)',
+    claim: 'Each segment is a WebVTT file on h264.io, fetchable from the page, whose cue times are on the title\'s own clock (X-TIMESTAMP-MAP MPEGTS:0), the media time its period\'s presentationTimeOffset begins at',
     breaks: 'No cues: the track is dropped as not HBO Max-hosted, a fetch is refused, or every line is early or late',
+    fallback: null,
+  },
+  {
+    id: 'mx.ad-periods',
+    site: 'max',
+    claim: 'On the plan with ads the manifest is a Period for each part of the title and each ad, with start and duration on the <video>\'s clock, which runs through the ads. Each of the title\'s parts lists every language again, its SegmentTemplate\'s presentationTimeOffset where the last part stopped; an ad\'s captions are not on h264.io. Without ads the title is one Period from 0',
+    breaks: 'Each language listed once per part, only the first part\'s lines loaded and those early by the ads before them, or lines shown over an ad',
     fallback: null,
   },
   {
@@ -650,6 +657,7 @@ export const NOTICES: Record<string, NoticeTitle> = {
   'mark-not-saved': 'markNotSaved',
   'marks-not-synced': 'marksNotSynced',
   'cards-not-added': 'cardsNotAdded',
+  'extension-reloaded': 'extensionReloaded',
 };
 
 export function describeFailure(id: string): string {

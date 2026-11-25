@@ -723,6 +723,7 @@ export const pl: Translation = {
     marksNotSynced: 'Nie udało się zapisać oznaczeń w Anki. Są przechowywane w tej przeglądarce i nastąpi kolejna próba.',
     cardsNotAdded:
       'Anki nie przyjęło części kart zachowanych, gdy było zamknięte. Nadal są zachowane i nastąpi kolejna próba.',
+    extensionReloaded: 'Rozszerzenie Libregaku zostało zaktualizowane lub uruchomione ponownie. Odśwież tę kartę, aby znów sprawdzać słowa.',
 
     // Szczegóły
     playerNeverLoaded: 'Odtwarzacz nie wczytał się do końca.',

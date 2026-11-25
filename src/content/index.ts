@@ -32,7 +32,7 @@ import {
   onSettingsChange, targetVariant,
   nextSubtitleView, setSetting, settings, underlineVars,
 } from '../settings';
-import { languageList, loadUiLanguage, setTranslationLoader, setUiLanguage, ui } from '../i18n';
+import { languageList, loadUiLanguage, setTranslationLoader, setUiLanguage, trackLabel, ui } from '../i18n';
 import {
   cancelPopupClose, closePopup, closePopupSoon, draftFor, popupKey, popupShows, pressAdd, showPopup, type Added, type CardDraft,
 } from './popup';
@@ -998,7 +998,7 @@ async function run(gen: number): Promise<boolean> {
         // the player draws meanwhile is another language's subtitles, not to
         // be read as this one's; say what brings the track instead. The list
         // that follows the learner's own choice is picked up (followTracks).
-        showNotice(mount, 'track-not-sent', ui.notices.chooseInPlayer(track.label || track.lang));
+        showNotice(mount, 'track-not-sent', ui.notices.chooseInPlayer(trackLabel(track.label, track.lang)));
         return true;
       }
     }
@@ -1052,7 +1052,7 @@ async function run(gen: number): Promise<boolean> {
         // A missing second track is not a failure of the first — but it is
         // one the learner should hear about, or the setting looks broken.
         log('no second subtitle track:', e);
-        showNotice(mount, 'second-track-failed', ui.notices.secondTrackError(pick.label || pick.lang, String(e).slice(0, 140)));
+        showNotice(mount, 'second-track-failed', ui.notices.secondTrackError(trackLabel(pick.label, pick.lang), String(e).slice(0, 140)));
       }
     } else {
       /*
@@ -1770,6 +1770,8 @@ async function openLookup(mount: HTMLElement, el: HTMLElement, token: Token, byH
     });
   } catch (e) {
     log('lookup failed:', e);
+    // The extension was updated or reloaded under this tab: nothing it asks will be answered again.
+    if (!chrome.runtime?.id) showNotice(mount, 'extension-reloaded');
   }
 }
 

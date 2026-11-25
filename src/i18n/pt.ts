@@ -708,6 +708,7 @@ export const pt: Translation = {
     marksNotSynced: 'Não foi possível salvar suas marcações no Anki. Elas ficam neste navegador e serão enviadas de novo.',
     cardsNotAdded:
       'O Anki não aceitou alguns dos cartões guardados enquanto estava fechado. Eles continuam guardados e serão enviados de novo.',
+    extensionReloaded: 'O Libregaku foi atualizado ou reiniciado. Recarregue esta aba para voltar a consultar palavras.',
 
     // Details
     playerNeverLoaded: 'O player não terminou de carregar.',

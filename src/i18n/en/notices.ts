@@ -64,6 +64,12 @@ export const notices = {
   markNotSaved: "Couldn't save that mark. It applies until you reload, then it's lost.",
   marksNotSynced: "Couldn't save your marks to Anki. They're kept in this browser and will be tried again.",
   cardsNotAdded: "Anki wouldn't take some of the cards kept while it was closed. They're still kept, and will be tried again.",
+  /**
+   * A word was looked up in a tab whose Libregaku is from before the extension was updated or
+   * reloaded: what runs in the page can no longer reach the rest of it, so nothing can be looked up
+   * until the tab is loaded again.
+   */
+  extensionReloaded: 'Libregaku was updated or restarted. Reload this tab to look up words again.',
 
   // Details: the smaller line under a title
   /** Under subtitlesOff, when the site's video player never appeared. */

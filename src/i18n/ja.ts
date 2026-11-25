@@ -682,6 +682,7 @@ export const ja: Translation = {
     marksNotSynced: 'マークをAnkiに保存できませんでした。このブラウザに保持して、あとで再試行します。',
     cardsNotAdded:
       'Ankiが閉じている間に保持していたカードの一部を、Ankiが受け付けませんでした。カードは保持したまま、あとで再試行します。',
+    extensionReloaded: 'Libregakuが更新または再起動されました。単語を調べるには、このタブを再読み込みしてください。',
 
     // 詳細
     playerNeverLoaded: 'プレーヤーの読み込みが完了しませんでした。',

@@ -703,6 +703,7 @@ export const tr: Translation = {
     markNotSaved: 'Bu işaret kaydedilemedi. Sayfayı yeniden yükleyene kadar geçerli, sonra kaybolacak.',
     marksNotSynced: "İşaretleriniz Anki'ye kaydedilemedi. Bu tarayıcıda saklanıyorlar ve yeniden denenecek.",
     cardsNotAdded: 'Anki, kapalıyken saklanan kartların bazılarını kabul etmedi. Hâlâ saklanıyorlar ve yeniden denenecek.',
+    extensionReloaded: 'Libregaku güncellendi veya yeniden başlatıldı. Kelimelere yeniden bakmak için bu sekmeyi yeniden yükleyin.',
 
     // Ayrıntılar
     playerNeverLoaded: 'Oynatıcının yüklenmesi hiç tamamlanmadı.',
